@@ -1,0 +1,87 @@
+// src/types/index.ts
+
+import type { User, Page, Revision } from '@prisma/client';
+import type { JSONContent } from '@tiptap/react';
+
+export interface AuthSession {
+  userId: string;
+  radixAddress: string;
+  personaAddress?: string;
+  displayName?: string;
+  expiresAt: Date;
+}
+
+export interface RadixPersona {
+  identityAddress: string;
+  label?: string;
+}
+
+export interface RadixAccount {
+  address: string;
+  label?: string;
+  appearanceId?: number;
+}
+
+export interface RadixWalletData {
+  persona?: RadixPersona;
+  accounts: RadixAccount[];
+}
+
+export interface SignedChallenge {
+  challenge: string;
+  address: string;
+  proof: {
+    publicKey: string;
+    signature: string;
+    curve: 'curve25519' | 'secp256k1';
+  };
+}
+
+export type WikiAuthor = Pick<User, 'id' | 'displayName' | 'radixAddress'>;
+
+export interface WikiPage extends Omit<Page, 'content'> {
+  content: JSONContent | unknown;
+  author?: WikiAuthor;
+  revisions?: Pick<Revision, 'id'>[];
+  fullPath?: string;
+  tagPath: string;
+}
+
+export interface WikiPageInput {
+  slug?: string;
+  title: string;
+  content: JSONContent | unknown;
+  excerpt?: string;
+  isPublished?: boolean;
+  tagPath: string;
+}
+
+export interface AppStore {
+  session: AuthSession | null;
+  isLoading: boolean;
+  isConnected: boolean;
+  walletData: RadixWalletData | null;
+  setSession: (session: AuthSession | null) => void;
+  setLoading: (isLoading: boolean) => void;
+  setConnected: (isConnected: boolean) => void;
+  setWalletData: (walletData: RadixWalletData | null) => void;
+  logout: () => Promise<void>;
+  connect: () => void;
+  _rdtDisconnect: (() => void) | null;
+  _rdtConnect: (() => void) | null;
+  _setRdtCallbacks: (connect: (() => void) | null, disconnect: (() => void) | null) => void;
+  currentPage: WikiPage | null;
+  recentPages: WikiPage[];
+  searchResults: WikiPage[];
+  setCurrentPage: (page: WikiPage | null) => void;
+  setRecentPages: (pages: WikiPage[]) => void;
+  setSearchResults: (pages: WikiPage[]) => void;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}

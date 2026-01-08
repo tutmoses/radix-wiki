@@ -1,0 +1,83 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id              String    @id @default(cuid())
+  radixAddress    String    @unique @map("radix_address")
+  personaAddress  String?   @map("persona_address")
+  displayName     String?   @map("display_name")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  pages           Page[]
+  revisions       Revision[]
+  
+  @@map("users")
+}
+
+model Page {
+  id          String    @id @default(cuid())
+  slug        String    
+  title       String
+  content     Json      @default("{}")
+  excerpt     String?
+  isPublished Boolean   @default(false) @map("is_published")
+  tagPath     String    @map("tag_path") // e.g., "contents/tech/core-protocols"
+  authorId    String    @map("author_id")
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  revisions   Revision[]
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  @@unique([tagPath, slug])
+  @@index([slug])
+  @@index([authorId])
+  @@index([isPublished])
+  @@index([tagPath])
+  @@map("pages")
+}
+
+model Revision {
+  id        String   @id @default(cuid())
+  pageId    String   @map("page_id")
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  content   Json
+  title     String
+  authorId  String   @map("author_id")
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  message   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  @@index([pageId])
+  @@index([createdAt])
+  @@map("revisions")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  token        String   @unique
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  
+  @@index([token])
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Challenge {
+  id        String   @id @default(cuid())
+  challenge String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  @@index([challenge])
+  @@map("challenges")
+}

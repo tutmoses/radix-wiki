@@ -1,0 +1,181 @@
+// src/components/layout/Sidebar.tsx
+
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Home, Plus, ChevronRight, ChevronDown, Settings } from 'lucide-react';
+import { useState } from 'react';
+import { cn } from '@/lib/utils';
+import { useIsAuthenticated, useStore } from '@/hooks/useStore';
+import { TAG_HIERARCHY, type TagNode } from '@/lib/tags';
+
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+function NavItem({ href, icon, label, isActive, onClick }: { 
+  href: string; 
+  icon: React.ReactNode; 
+  label: string; 
+  isActive?: boolean; 
+  onClick?: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-2 px-3 py-2 rounded-md transition-colors',
+        isActive ? 'bg-accent-muted text-accent font-medium' : 'text-text-muted hover:bg-surface-2 hover:text-text'
+      )}
+    >
+      {icon}
+      <span className="text-sm">{label}</span>
+    </Link>
+  );
+}
+
+function TagNavItem({ 
+  node, 
+  parentPath, 
+  pathname, 
+  onClose,
+  depth 
+}: { 
+  node: TagNode; 
+  parentPath: string;
+  pathname: string;
+  onClose?: () => void;
+  depth: number;
+}) {
+  const currentPath = parentPath ? `${parentPath}/${node.slug}` : node.slug;
+  const href = `/${currentPath}`;
+  const isActive = pathname === href || pathname.startsWith(href + '/');
+  const hasChildren = node.children && node.children.length > 0;
+  const [isExpanded, setIsExpanded] = useState(isActive);
+
+  return (
+    <div className={cn(depth > 0 && 'ml-3')}>
+      <div className="flex items-center">
+        {hasChildren && (
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-1 rounded hover:bg-surface-2 text-text-muted"
+          >
+            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </button>
+        )}
+        <Link
+          href={href}
+          onClick={onClose}
+          className={cn(
+            'flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-sm',
+            isActive ? 'bg-accent-muted text-accent font-medium' : 'text-text-muted hover:bg-surface-2 hover:text-text',
+            !hasChildren && 'ml-5'
+          )}
+        >
+          {node.name}
+        </Link>
+      </div>
+      {hasChildren && isExpanded && (
+        <div className="mt-1">
+          {node.children!.map(child => (
+            <TagNavItem
+              key={child.slug}
+              node={child}
+              parentPath={currentPath}
+              pathname={pathname}
+              onClose={onClose}
+              depth={depth + 1}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NavSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <h3 className="text-xs font-semibold uppercase tracking-wider px-3 py-1 text-text-muted">{title}</h3>
+      <nav className="flex flex-col gap-1">{children}</nav>
+    </div>
+  );
+}
+
+export function Sidebar({ isOpen, onClose }: SidebarProps) {
+  const pathname = usePathname();
+  const isAuthenticated = useIsAuthenticated();
+  const { recentPages } = useStore();
+
+  return (
+    <>
+      {isOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden animate-[fadeIn_0.2s_ease-out]" onClick={onClose} />
+      )}
+
+      <aside
+        className={cn(
+          'fixed lg:sticky top-16 left-0 z-40 h-[calc(100vh-4rem)] w-64 bg-surface-0 border-r border-border-muted',
+          'transform transition-transform duration-200 ease-in-out lg:transform-none lg:translate-x-0',
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        <div className="flex flex-col gap-6 p-4 h-full overflow-y-auto">
+          <NavSection title="Navigation">
+            <NavItem href="/" icon={<Home size={18} />} label="Home" isActive={pathname === '/'} onClick={onClose} />
+          </NavSection>
+
+          {isAuthenticated && (
+            <NavSection title="Quick Actions">
+              <NavItem href="/new" icon={<Plus size={18} />} label="New Page" isActive={pathname === '/new'} onClick={onClose} />
+            </NavSection>
+          )}
+
+          <NavSection title="Categories">
+            {TAG_HIERARCHY.map(node => (
+              <TagNavItem
+                key={node.slug}
+                node={node}
+                parentPath=""
+                pathname={pathname}
+                onClose={onClose}
+                depth={0}
+              />
+            ))}
+          </NavSection>
+
+          {recentPages.length > 0 && (
+            <NavSection title="Recent Pages">
+              {recentPages.slice(0, 5).map((page) => (
+                <Link
+                  key={page.id}
+                  href={`/${page.tagPath}/${page.slug}`}
+                  onClick={onClose}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-2 rounded-md transition-colors group',
+                    pathname === `/${page.tagPath}/${page.slug}` ? 'bg-accent-muted text-accent' : 'text-text-muted hover:bg-surface-2 hover:text-text'
+                  )}
+                >
+                  <ChevronRight size={14} className="shrink-0 opacity-50 group-hover:opacity-100" />
+                  <span className="text-sm truncate">{page.title}</span>
+                </Link>
+              ))}
+            </NavSection>
+          )}
+
+          {isAuthenticated && (
+            <div className="mt-auto pt-4 border-t border-border-muted">
+              <NavItem href="/settings" icon={<Settings size={18} />} label="Settings" isActive={pathname === '/settings'} onClick={onClose} />
+            </div>
+          )}
+        </div>
+      </aside>
+    </>
+  );
+}
+
+export default Sidebar;
