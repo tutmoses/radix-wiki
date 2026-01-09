@@ -17,6 +17,14 @@ export async function GET(request: NextRequest) {
     const published = searchParams.get('published');
     const tagPath = searchParams.get('tagPath');
 
+    // If no query params, return homepage
+    if (!search && !published && !tagPath && !searchParams.has('page') && !searchParams.has('pageSize')) {
+      const homepage = await prisma.page.findFirst({
+        where: { tagPath: '', slug: '' },
+      });
+      return NextResponse.json(homepage);
+    }
+
     const where: Prisma.PageWhereInput = {};
     if (published === 'true') where.isPublished = true;
     else if (published === 'false') where.isPublished = false;
@@ -84,6 +92,44 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(page, { status: 201 });
   } catch (error) {
     console.error('Failed to create page:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const auth = await requireAuth(request);
+    if ('error' in auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const body: Partial<WikiPageInput> = await request.json();
+    const { title, content } = body;
+
+    const existing = await prisma.page.findFirst({ where: { tagPath: '', slug: '' } });
+
+    if (existing) {
+      const page = await prisma.page.update({
+        where: { id: existing.id },
+        data: {
+          title: title ?? undefined,
+          content: content !== undefined ? (content as unknown as Prisma.InputJsonValue) : undefined,
+        },
+      });
+      return NextResponse.json(page);
+    } else {
+      const page = await prisma.page.create({
+        data: {
+          tagPath: '',
+          slug: '',
+          title: title || 'Homepage',
+          content: (content as unknown as Prisma.InputJsonValue) || {},
+          isPublished: true,
+          authorId: auth.session.userId,
+        },
+      });
+      return NextResponse.json(page, { status: 201 });
+    }
+  } catch (error) {
+    console.error('Failed to update homepage:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

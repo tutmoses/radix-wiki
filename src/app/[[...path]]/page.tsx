@@ -27,9 +27,9 @@ const DEFAULT_HOMEPAGE_CONTENT: BlockContent = [
   { id: 'hero-paragraph', type: 'paragraph', text: 'A decentralized wiki platform powered by **Radix DLT**. Create, collaborate, and share knowledge with Web3 authentication.' },
   { id: 'features-heading', type: 'heading', level: 2, text: 'Features' },
   { id: 'features-list', type: 'list', style: 'bullet', items: [
-    { text: '**Decentralized Auth** — Login securely with your Radix Wallet using ROLA verification' },
-    { text: '**Collaborative** — Create and edit wiki pages with full revision history' },
-    { text: '**Fast & Modern** — Built with Next.js and Tailwind CSS' },
+    { text: '**Decentralized Auth** â€” Login securely with your Radix Wallet using ROLA verification' },
+    { text: '**Collaborative** â€” Create and edit wiki pages with full revision history' },
+    { text: '**Fast & Modern** â€” Built with Next.js and Tailwind CSS' },
   ]},
   { id: 'recent-heading', type: 'heading', level: 2, text: 'Recent Pages' },
   { id: 'recent-pages', type: 'recentPages', limit: 6 },
@@ -109,10 +109,14 @@ function HomePageView() {
   useEffect(() => {
     (async () => {
       try {
-        const response = await fetch('/api/wiki/system/home');
+        const response = await fetch('/api/wiki');
         if (response.ok) {
           const page = await response.json();
-          setHomepageData({ id: page.id, content: page.content });
+          if (page) {
+            setHomepageData({ id: page.id, content: page.content });
+          } else {
+            setHomepageData({ content: DEFAULT_HOMEPAGE_CONTENT });
+          }
         } else {
           setHomepageData({ content: DEFAULT_HOMEPAGE_CONTENT });
         }
@@ -133,7 +137,7 @@ function HomePageView() {
       <div className="flex flex-col gap-8">
         {isAuthenticated && (
           <div className="flex justify-end">
-            <Link href="/home/edit"><Button variant="secondary" size="sm"><Edit size={16} />Edit Homepage</Button></Link>
+            <Link href="/edit"><Button variant="secondary" size="sm"><Edit size={16} />Edit Homepage</Button></Link>
           </div>
         )}
         <BlockRenderer content={content} className="max-w-4xl mx-auto" />
@@ -149,7 +153,7 @@ function HomePageView() {
         </div>
         <footer className="border-t border-border-muted py-8 mt-8">
           <div className="flex items-center justify-between flex-wrap gap-4 text-text-muted text-sm">
-            <p>© 2024 RADIX Wiki. Powered by Radix DLT.</p>
+            <p>Â© 2024 RADIX Wiki. Powered by Radix DLT.</p>
             <div className="flex items-center gap-4">
               <a href="https://radixdlt.com" target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">Radix DLT</a>
               <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">GitHub</a>
@@ -167,16 +171,14 @@ function EditHomePageView() {
   const [content, setContent] = useState<BlockContent>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [pageExists, setPageExists] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const response = await fetch('/api/wiki/system/home');
+        const response = await fetch('/api/wiki');
         if (response.ok) {
           const page = await response.json();
-          setContent(page.content);
-          setPageExists(true);
+          setContent(page?.content || DEFAULT_HOMEPAGE_CONTENT);
         } else {
           setContent(DEFAULT_HOMEPAGE_CONTENT);
         }
@@ -191,16 +193,10 @@ function EditHomePageView() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const method = pageExists ? 'PUT' : 'POST';
-      const endpoint = pageExists ? '/api/wiki/system/home' : '/api/wiki';
-      const body = pageExists
-        ? { content }
-        : { title: 'Homepage', content, tagPath: 'system', slug: 'home', isPublished: true };
-
-      const response = await fetch(endpoint, {
-        method,
+      const response = await fetch('/api/wiki', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ title: 'Homepage', content }),
       });
 
       if (response.ok) router.push('/');
@@ -585,8 +581,8 @@ export default function DynamicPage() {
     return <HomePageView />;
   }
 
-  // Route: /home/edit
-  if (rawPath.length === 2 && rawPath[0] === 'home' && rawPath[1] === 'edit') {
+  // Route: /edit
+  if (rawPath.length === 1 && rawPath[0] === 'edit') {
     return <EditHomePageView />;
   }
 
