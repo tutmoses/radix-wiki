@@ -61,7 +61,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       where: { id: existingPage.id },
       data: {
         title: title ?? undefined,
-        content: content as Prisma.InputJsonValue ?? undefined,
+        content: content !== undefined ? (content as unknown as Prisma.InputJsonValue) : undefined,
         excerpt: excerpt ?? undefined,
         isPublished: isPublished ?? undefined,
       },
@@ -73,7 +73,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         data: {
           pageId: page.id,
           title: title || existingPage.title,
-          content: (content as Prisma.InputJsonValue) || (existingPage.content as Prisma.InputJsonValue),
+          content: content ? (content as unknown as Prisma.InputJsonValue) : (existingPage.content as Prisma.InputJsonValue),
           authorId: auth.session.userId,
           message: revisionMessage,
         },
