@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       data: {
         slug,
         title,
-        content: content as Prisma.InputJsonValue,
+        content: content as unknown as Prisma.InputJsonValue,
         excerpt,
         isPublished: isPublished ?? false,
         tagPath,
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       data: {
         pageId: page.id,
         title,
-        content: content as Prisma.InputJsonValue,
+        content: content as unknown as Prisma.InputJsonValue,
         authorId: auth.session.userId,
         message: 'Initial version',
       },
