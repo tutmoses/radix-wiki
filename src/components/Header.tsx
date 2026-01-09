@@ -1,10 +1,9 @@
-// src/components/layout/Header.tsx
+// src/components/Header.tsx
 
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { BookOpen, Search, Plus, Menu, X, Loader2, LogOut, ChevronDown } from 'lucide-react';
+import { BookOpen, Search, Menu, X, Loader2, LogOut, ChevronDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useStore, useIsAuthenticated } from '@/hooks/useStore';
 import { cn, shortenAddress } from '@/lib/utils';
@@ -16,7 +15,6 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuToggle, isMenuOpen }: HeaderProps) {
-  const pathname = usePathname();
   const isAuthenticated = useIsAuthenticated();
   const { session, walletData, isConnected, isLoading, logout, connect } = useStore();
   const [showSearch, setShowSearch] = useState(false);
@@ -48,8 +46,8 @@ export function Header({ onMenuToggle, isMenuOpen }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 bg-surface-0/80 backdrop-blur-md border-b border-border-muted">
       <div className="container">
-        <div className="flex items-center h-16 gap-4">
-          <button onClick={onMenuToggle} className="p-2 rounded-md hover:bg-surface-2 lg:hidden" aria-label="Toggle menu">
+        <div className="flex items-center h-16 gap-3">
+          <button onClick={onMenuToggle} className="p-2 rounded-md hover:bg-surface-2" aria-label="Toggle menu">
             {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
@@ -60,51 +58,25 @@ export function Header({ onMenuToggle, isMenuOpen }: HeaderProps) {
             <span className="font-semibold text-lg hidden sm:block">RADIX Wiki</span>
           </Link>
 
-          <div className="flex-1 max-w-md mx-auto hidden md:block">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
-              <input
-                type="search"
-                placeholder="Search pages..."
-                className="w-full pl-10 px-3 py-2 text-sm bg-surface-1 border border-border rounded-md focus:border-accent focus:ring-2 focus:ring-accent-muted focus:outline-none"
-                onFocus={() => setShowSearch(true)}
-                onBlur={() => setTimeout(() => setShowSearch(false), 200)}
-              />
-            </div>
-          </div>
-
           <div className="flex items-center gap-2 ml-auto">
-            <button onClick={() => setShowSearch(!showSearch)} className="p-2 rounded-md hover:bg-surface-2 md:hidden" aria-label="Search">
+            <button onClick={() => setShowSearch(!showSearch)} className="p-2 rounded-md hover:bg-surface-2" aria-label="Search">
               <Search size={20} />
             </button>
-
-            {showAsConnected && (
-              <Link
-                href="/new"
-                className={cn(
-                  'hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md bg-surface-2 border border-border hover:bg-surface-3',
-                  pathname === '/new' && 'bg-accent-muted text-accent'
-                )}
-              >
-                <Plus size={16} />
-                <span className="hidden lg:inline">New Page</span>
-              </Link>
-            )}
 
             <div id="radix-connect-btn" ref={menuRef} className="relative">
               {isLoading ? (
                 <div className="flex items-center gap-2 bg-surface-1 px-3 py-1.5 rounded-md">
                   <Loader2 size={14} className="animate-spin" />
-                  <span className="text-sm">Connecting...</span>
+                  <span className="text-sm hidden sm:inline">Connecting...</span>
                 </div>
               ) : showAsConnected ? (
                 <>
                   <button
                     onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center gap-2 bg-surface-1 px-3 py-1.5 rounded-md hover:bg-surface-2 transition-colors"
+                    className="flex items-center gap-2 bg-surface-1 px-2 sm:px-3 py-1.5 rounded-md hover:bg-surface-2 transition-colors"
                   >
                     <div className="w-2 h-2 rounded-full bg-green-500" />
-                    <span className="text-sm font-medium">{displayName}</span>
+                    <span className="text-sm font-medium hidden sm:inline">{displayName}</span>
                     <ChevronDown size={14} className={cn('transition-transform', showUserMenu && 'rotate-180')} />
                   </button>
                   {showUserMenu && (
@@ -121,7 +93,8 @@ export function Header({ onMenuToggle, isMenuOpen }: HeaderProps) {
                 </>
               ) : (
                 <Button variant="primary" size="sm" onClick={connect}>
-                  Connect Wallet
+                  <span className="hidden sm:inline">Connect Wallet</span>
+                  <span className="sm:hidden">Connect</span>
                 </Button>
               )}
             </div>
@@ -129,7 +102,7 @@ export function Header({ onMenuToggle, isMenuOpen }: HeaderProps) {
         </div>
 
         {showSearch && (
-          <div className="pb-4 md:hidden animate-[slideUp_0.3s_ease-out]">
+          <div className="pb-4 animate-[slideUp_0.3s_ease-out]">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
               <input

@@ -1,4 +1,4 @@
-// src/components/layout/WikiLayout.tsx
+// src/components/WikiLayout.tsx
 
 'use client';
 
@@ -27,12 +27,10 @@ export function WikiLayout({ children, maxWidth = 'full', showSidebar = true }: 
   return (
     <div className="min-h-screen bg-surface-0">
       <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} isMenuOpen={sidebarOpen} />
-      <div className="flex items-start">
-        {showSidebar && <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
-        <main className="flex-1 min-h-[calc(100vh-4rem)]">
-          <div className={`container py-8 ${maxWidthClasses[maxWidth]}`}>{children}</div>
-        </main>
-      </div>
+      {showSidebar && <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
+      <main className="min-h-[calc(100vh-4rem)]">
+        <div className={`container py-6 sm:py-8 ${maxWidthClasses[maxWidth]}`}>{children}</div>
+      </main>
     </div>
   );
 }

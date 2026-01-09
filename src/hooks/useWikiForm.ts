@@ -4,11 +4,11 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import type { JSONContent } from '@tiptap/react';
+import type { BlockContent } from '@/lib/blocks';
 
 interface WikiFormData {
   title: string;
-  content: JSONContent | undefined;
+  content: BlockContent;
   tagPath: string;
   isPublished: boolean;
 }
@@ -19,21 +19,24 @@ interface UseWikiFormOptions {
   slug?: string;
 }
 
-export function useWikiForm({ initialData, tagPath: existingTagPath, slug }: UseWikiFormOptions = {}) {
+export function useWikiForm({ initialData, tagPath: existingTagPath, slug: existingSlug }: UseWikiFormOptions = {}) {
   const router = useRouter();
-  const isEditMode = !!slug;
 
   const [title, setTitle] = useState(initialData?.title || '');
-  const [content, setContent] = useState<JSONContent | undefined>(initialData?.content);
+  const [content, setContent] = useState<BlockContent>(initialData?.content || []);
   const [tagPath, setTagPath] = useState(initialData?.tagPath || existingTagPath || '');
   const [isPublished, setIsPublished] = useState(initialData?.isPublished ?? true);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Determine mode based on whether we're editing an existing page
+  // If slug exists, we need to check if the page exists to know if we're editing or creating
+  const isEditMode = !!existingSlug;
+
   const validate = useCallback((): string | null => {
     if (!title.trim()) return 'Title is required';
-    if (!tagPath && !isEditMode) return 'Please select a category';
+    if (!existingTagPath && !tagPath) return 'Please select a category';
     return null;
-  }, [title, tagPath, isEditMode]);
+  }, [title, tagPath, existingTagPath]);
 
   const save = useCallback(async (): Promise<boolean> => {
     const error = validate();
@@ -42,15 +45,27 @@ export function useWikiForm({ initialData, tagPath: existingTagPath, slug }: Use
     setIsSaving(true);
     try {
       const currentTagPath = existingTagPath || tagPath;
-      const endpoint = isEditMode 
-        ? `/api/wiki/${currentTagPath}/${slug}` 
+      
+      // Check if page exists (for edit vs create)
+      let pageExists = false;
+      if (existingSlug) {
+        const checkResponse = await fetch(`/api/wiki/${currentTagPath}/${existingSlug}`);
+        pageExists = checkResponse.ok;
+      }
+
+      const endpoint = pageExists 
+        ? `/api/wiki/${currentTagPath}/${existingSlug}` 
         : '/api/wiki';
-      const method = isEditMode ? 'PUT' : 'POST';
+      const method = pageExists ? 'PUT' : 'POST';
+
+      const body = pageExists
+        ? { title, content, isPublished }
+        : { title, content, isPublished, tagPath: currentTagPath, slug: existingSlug };
 
       const response = await fetch(endpoint, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, content, isPublished, tagPath: currentTagPath }),
+        body: JSON.stringify(body),
       });
 
       if (response.ok) {
@@ -59,20 +74,20 @@ export function useWikiForm({ initialData, tagPath: existingTagPath, slug }: Use
         return true;
       } else {
         const data = await response.json();
-        alert(data.error || `Failed to ${isEditMode ? 'save' : 'create'} page`);
+        alert(data.error || `Failed to ${pageExists ? 'save' : 'create'} page`);
         return false;
       }
     } catch {
-      alert(`Failed to ${isEditMode ? 'save' : 'create'} page`);
+      alert('Failed to save page');
       return false;
     } finally {
       setIsSaving(false);
     }
-  }, [title, content, isPublished, tagPath, existingTagPath, slug, isEditMode, router, validate]);
+  }, [title, content, isPublished, tagPath, existingTagPath, existingSlug, router, validate]);
 
   const reset = useCallback((data?: Partial<WikiFormData>) => {
     setTitle(data?.title || '');
-    setContent(data?.content);
+    setContent(data?.content || []);
     setTagPath(data?.tagPath || existingTagPath || '');
     setIsPublished(data?.isPublished ?? true);
   }, [existingTagPath]);

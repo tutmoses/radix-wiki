@@ -4,9 +4,15 @@ export interface TagNode {
   name: string;
   slug: string;
   children?: TagNode[];
+  hidden?: boolean; // Hidden from public navigation
 }
 
 export const TAG_HIERARCHY: TagNode[] = [
+  {
+    name: 'System',
+    slug: 'system',
+    hidden: true, // Not shown in navigation
+  },
   {
     name: 'Contents',
     slug: 'contents',
@@ -30,6 +36,11 @@ export const TAG_HIERARCHY: TagNode[] = [
   { name: 'Jobs', slug: 'jobs' },
   { name: 'Talent', slug: 'talent' },
 ];
+
+// Get visible tags (exclude hidden)
+export function getVisibleTags(hierarchy: TagNode[] = TAG_HIERARCHY): TagNode[] {
+  return hierarchy.filter(node => !node.hidden);
+}
 
 export function getTagPath(node: TagNode, hierarchy: TagNode[] = TAG_HIERARCHY, path: string[] = []): string[] | null {
   for (const item of hierarchy) {
@@ -84,6 +95,7 @@ export function getAllLeafTags(hierarchy: TagNode[] = TAG_HIERARCHY, parentPath:
   const leaves: { tag: TagNode; path: string[] }[] = [];
   
   for (const node of hierarchy) {
+    if (node.hidden) continue;
     const currentPath = [...parentPath, node.slug];
     if (!node.children || node.children.length === 0) {
       leaves.push({ tag: node, path: currentPath });

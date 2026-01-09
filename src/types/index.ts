@@ -1,7 +1,7 @@
 // src/types/index.ts
 
 import type { User, Page, Revision } from '@prisma/client';
-import type { JSONContent } from '@tiptap/react';
+import type { BlockContent } from '@/lib/blocks';
 
 export interface AuthSession {
   userId: string;
@@ -40,7 +40,7 @@ export interface SignedChallenge {
 export type WikiAuthor = Pick<User, 'id' | 'displayName' | 'radixAddress'>;
 
 export interface WikiPage extends Omit<Page, 'content'> {
-  content: JSONContent | unknown;
+  content: BlockContent;
   author?: WikiAuthor;
   revisions?: Pick<Revision, 'id'>[];
   fullPath?: string;
@@ -50,7 +50,7 @@ export interface WikiPage extends Omit<Page, 'content'> {
 export interface WikiPageInput {
   slug?: string;
   title: string;
-  content: JSONContent | unknown;
+  content: BlockContent;
   excerpt?: string;
   isPublished?: boolean;
   tagPath: string;

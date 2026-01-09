@@ -1,14 +1,14 @@
-// src/components/layout/Sidebar.tsx
+// src/components/Sidebar.tsx
 
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Plus, ChevronRight, ChevronDown, Settings } from 'lucide-react';
+import { Home, ChevronRight, ChevronDown, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useIsAuthenticated, useStore } from '@/hooks/useStore';
-import { TAG_HIERARCHY, type TagNode } from '@/lib/tags';
+import { getVisibleTags, type TagNode } from '@/lib/tags';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -110,17 +110,18 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const isAuthenticated = useIsAuthenticated();
   const { recentPages } = useStore();
+  const visibleTags = getVisibleTags();
 
   return (
     <>
       {isOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden animate-[fadeIn_0.2s_ease-out]" onClick={onClose} />
+        <div className="fixed inset-0 bg-black/50 z-40 animate-[fadeIn_0.2s_ease-out]" onClick={onClose} />
       )}
 
       <aside
         className={cn(
-          'fixed lg:sticky top-16 left-0 z-40 h-[calc(100vh-4rem)] w-64 bg-surface-0 border-r border-border-muted',
-          'transform transition-transform duration-200 ease-in-out lg:transform-none lg:translate-x-0',
+          'fixed top-16 left-0 z-40 h-[calc(100vh-4rem)] w-72 max-w-[85vw] bg-surface-0 border-r border-border-muted',
+          'transform transition-transform duration-200 ease-in-out',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -129,14 +130,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <NavItem href="/" icon={<Home size={18} />} label="Home" isActive={pathname === '/'} onClick={onClose} />
           </NavSection>
 
-          {isAuthenticated && (
-            <NavSection title="Quick Actions">
-              <NavItem href="/new" icon={<Plus size={18} />} label="New Page" isActive={pathname === '/new'} onClick={onClose} />
-            </NavSection>
-          )}
-
           <NavSection title="Categories">
-            {TAG_HIERARCHY.map(node => (
+            {visibleTags.map(node => (
               <TagNavItem
                 key={node.slug}
                 node={node}

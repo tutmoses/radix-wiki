@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { ChevronRight, ChevronDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { TAG_HIERARCHY, type TagNode } from '@/lib/tags';
+import { getVisibleTags, type TagNode } from '@/lib/tags';
 
 interface TagSelectorProps {
   value: string;
@@ -35,12 +35,6 @@ function TagNodeItem({
     if (hasChildren) {
       setIsExpanded(!isExpanded);
     } else {
-      onSelect(currentPath);
-    }
-  };
-
-  const handleSelect = () => {
-    if (!hasChildren) {
       onSelect(currentPath);
     }
   };
@@ -84,9 +78,11 @@ function TagNodeItem({
 }
 
 export function TagSelector({ value, onChange }: TagSelectorProps) {
+  const visibleTags = getVisibleTags();
+  
   return (
     <div className="flex flex-col gap-1 p-2 bg-surface-1 rounded-lg border border-border max-h-64 overflow-y-auto">
-      {TAG_HIERARCHY.map(node => (
+      {visibleTags.map(node => (
         <TagNodeItem
           key={node.slug}
           node={node}
