@@ -45,7 +45,7 @@ export function Header({ onMenuToggle, isMenuOpen }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 bg-surface-0/80 backdrop-blur-md border-b border-border-muted">
-      <div className="container">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center h-16 gap-3">
           <button onClick={onMenuToggle} className="p-2 rounded-md hover:bg-surface-2" aria-label="Toggle menu">
             {isMenuOpen ? <X size={20} /> : <Menu size={20} />}

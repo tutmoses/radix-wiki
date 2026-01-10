@@ -28,7 +28,7 @@
 
 @layer base {
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { font-family: var(--font-sans); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
+  html { font-family: var(--font-sans); font-size: 14px; line-height: 1.6; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
   body { background-color: var(--surface-0); color: var(--text); min-height: 100vh; }
   ::selection { background-color: var(--accent-muted); color: var(--text); }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -39,7 +39,9 @@
 }
 
 @layer components {
-  .container { width: 100%; max-width: 72rem; margin-inline: auto; padding-inline: var(--page-padding); }
+  .container { width: 100%; margin-inline: auto; padding-inline: var(--page-padding); }
+  .grid-3-col { display: flex; gap: 1.5rem; }
+  .grid-3-col > * { flex: 1; min-width: 0; }
 }
 
 /* Radix Connect Button */

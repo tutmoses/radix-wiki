@@ -65,24 +65,24 @@ function RecentPagesRenderer({ block }: { block: Extract<Block, { type: 'recentP
   }, [block.tagPath, block.limit]);
 
   if (isLoading) return (
-    <div className="grid gap-3 animate-pulse">
-      {[...Array(Math.min(block.limit, 3))].map((_, i) => <div key={i} className="h-20 bg-surface-1 rounded-lg" />)}
+    <div className="flex gap-6 animate-pulse">
+      {[...Array(Math.min(block.limit, 3))].map((_, i) => <div key={i} className="flex-1 h-32 bg-surface-1 rounded-lg" />)}
     </div>
   );
   if (pages.length === 0) return <p className="text-text-muted text-sm">No pages found.</p>;
 
   return (
-    <div className="grid gap-3">
+    <div className="flex gap-6 flex-wrap">
       {pages.map(page => {
         const leafTag = findTagByPath(page.tagPath.split('/'));
         return (
-          <Link key={page.id} href={`/${page.tagPath}/${page.slug}`} className="group">
-            <div className="flex items-start gap-3 p-3 bg-surface-1 rounded-lg border border-border-muted hover:border-border transition-colors">
+          <Link key={page.id} href={`/${page.tagPath}/${page.slug}`} className="flex-1 min-w-[280px] max-w-[calc(33.333%-1rem)] group">
+            <div className="flex items-start gap-3 p-4 bg-surface-1 rounded-lg border border-border-muted hover:border-border transition-colors h-full">
               <FileText size={18} className="text-accent shrink-0 mt-0.5" />
               <div className="flex flex-col gap-1 min-w-0">
                 <span className="font-medium group-hover:text-accent transition-colors truncate">{page.title}</span>
-                {page.excerpt && <p className="text-sm text-text-muted line-clamp-1">{page.excerpt}</p>}
-                <div className="flex items-center gap-2">
+                {page.excerpt && <p className="text-sm text-text-muted line-clamp-2">{page.excerpt}</p>}
+                <div className="flex items-center gap-2 mt-auto pt-2">
                   <span className="text-xs text-text-muted flex items-center gap-1"><Clock size={12} />{formatRelativeTime(page.updatedAt)}</span>
                   {leafTag && <Badge variant="secondary" className="text-xs">{leafTag.name}</Badge>}
                 </div>
@@ -119,13 +119,13 @@ function PageListRenderer({ block }: { block: Extract<Block, { type: 'pageList' 
     })();
   }, [block.pageIds]);
 
-  if (isLoading) return <div className="h-20 bg-surface-1 rounded-lg animate-pulse" />;
+  if (isLoading) return <div className="flex gap-6"><div className="flex-1 h-20 bg-surface-1 rounded-lg animate-pulse" /></div>;
   if (pages.length === 0) return <p className="text-text-muted text-sm">No pages selected.</p>;
 
   return (
-    <div className="grid gap-2">
+    <div className="flex gap-4 flex-wrap">
       {pages.map(page => (
-        <Link key={page.id} href={`/${page.tagPath}/${page.slug}`} className="group flex items-center gap-2 p-2 rounded-md hover:bg-surface-1 transition-colors">
+        <Link key={page.id} href={`/${page.tagPath}/${page.slug}`} className="group flex items-center gap-2 p-3 rounded-md bg-surface-1 hover:bg-surface-2 transition-colors">
           <FileText size={16} className="text-accent" /><span className="group-hover:text-accent transition-colors">{page.title}</span>
         </Link>
       ))}
@@ -224,7 +224,7 @@ function renderBlock(block: Block): React.ReactNode {
 export function BlockRenderer({ content, className }: { content: BlockContent | unknown; className?: string }) {
   if (!content || !Array.isArray(content)) return null;
   return (
-    <div className={cn('flex flex-col gap-4', className)}>
+    <div className={cn('flex flex-col gap-6', className)}>
       {(content as BlockContent).map(block => <div key={block.id}>{renderBlock(block)}</div>)}
     </div>
   );
