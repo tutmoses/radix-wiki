@@ -56,28 +56,6 @@ export interface WikiPageInput {
   tagPath: string;
 }
 
-export interface AppStore {
-  session: AuthSession | null;
-  isLoading: boolean;
-  isConnected: boolean;
-  walletData: RadixWalletData | null;
-  setSession: (session: AuthSession | null) => void;
-  setLoading: (isLoading: boolean) => void;
-  setConnected: (isConnected: boolean) => void;
-  setWalletData: (walletData: RadixWalletData | null) => void;
-  logout: () => Promise<void>;
-  connect: () => void;
-  _rdtDisconnect: (() => void) | null;
-  _rdtConnect: (() => void) | null;
-  _setRdtCallbacks: (connect: (() => void) | null, disconnect: (() => void) | null) => void;
-  currentPage: WikiPage | null;
-  recentPages: WikiPage[];
-  searchResults: WikiPage[];
-  setCurrentPage: (page: WikiPage | null) => void;
-  setRecentPages: (pages: WikiPage[]) => void;
-  setSearchResults: (pages: WikiPage[]) => void;
-}
-
 export interface PaginatedResponse<T> {
   items: T[];
   total: number;

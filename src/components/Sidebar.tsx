@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 import { Home, ChevronRight, ChevronDown, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { useIsAuthenticated, useStore } from '@/hooks/useStore';
+import { useIsAuthenticated } from '@/hooks/useStore';
 import { getVisibleTags, type TagNode } from '@/lib/tags';
 
 interface SidebarProps {
@@ -37,13 +37,7 @@ function NavItem({ href, icon, label, isActive, onClick }: {
   );
 }
 
-function TagNavItem({ 
-  node, 
-  parentPath, 
-  pathname, 
-  onClose,
-  depth 
-}: { 
+function TagNavItem({ node, parentPath, pathname, onClose, depth }: { 
   node: TagNode; 
   parentPath: string;
   pathname: string;
@@ -109,7 +103,6 @@ function NavSection({ title, children }: { title: string; children: React.ReactN
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const isAuthenticated = useIsAuthenticated();
-  const { recentPages } = useStore();
   const visibleTags = getVisibleTags();
 
   return (
@@ -117,7 +110,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {isOpen && (
         <div className="fixed inset-0 bg-black/50 z-40 animate-[fadeIn_0.2s_ease-out]" onClick={onClose} />
       )}
-
       <aside
         className={cn(
           'fixed top-16 left-0 z-40 h-[calc(100vh-4rem)] w-72 max-w-[85vw] bg-surface-0 border-r border-border-muted',
@@ -129,39 +121,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <NavSection title="Navigation">
             <NavItem href="/" icon={<Home size={18} />} label="Home" isActive={pathname === '/'} onClick={onClose} />
           </NavSection>
-
           <NavSection title="Categories">
             {visibleTags.map(node => (
-              <TagNavItem
-                key={node.slug}
-                node={node}
-                parentPath=""
-                pathname={pathname}
-                onClose={onClose}
-                depth={0}
-              />
+              <TagNavItem key={node.slug} node={node} parentPath="" pathname={pathname} onClose={onClose} depth={0} />
             ))}
           </NavSection>
-
-          {recentPages.length > 0 && (
-            <NavSection title="Recent Pages">
-              {recentPages.slice(0, 5).map((page) => (
-                <Link
-                  key={page.id}
-                  href={`/${page.tagPath}/${page.slug}`}
-                  onClick={onClose}
-                  className={cn(
-                    'flex items-center gap-2 px-3 py-2 rounded-md transition-colors group',
-                    pathname === `/${page.tagPath}/${page.slug}` ? 'bg-accent-muted text-accent' : 'text-text-muted hover:bg-surface-2 hover:text-text'
-                  )}
-                >
-                  <ChevronRight size={14} className="shrink-0 opacity-50 group-hover:opacity-100" />
-                  <span className="text-sm truncate">{page.title}</span>
-                </Link>
-              ))}
-            </NavSection>
-          )}
-
           {isAuthenticated && (
             <div className="mt-auto pt-4 border-t border-border-muted">
               <NavItem href="/settings" icon={<Settings size={18} />} label="Settings" isActive={pathname === '/settings'} onClick={onClose} />

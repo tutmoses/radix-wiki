@@ -2,7 +2,7 @@
 
 'use client';
 
-import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type HTMLAttributes, type ReactNode } from 'react';
+import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
 // Button
@@ -32,12 +32,7 @@ const btnSizes: Record<ButtonSize, string> = {
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', isLoading, disabled, children, ...props }, ref) => (
     <button ref={ref} className={cn(btnBase, btnVariants[variant], btnSizes[size], className)} disabled={disabled || isLoading} {...props}>
-      {isLoading ? (
-        <>
-          <Spinner size="sm" />
-          <span>Loading...</span>
-        </>
-      ) : children}
+      {isLoading ? <><Spinner size="sm" /><span>Loading...</span></> : children}
     </button>
   )
 );
@@ -77,7 +72,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 );
 Input.displayName = 'Input';
 
-// Card
+// Card (simplified - use className for internal layout)
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   interactive?: boolean;
 }
@@ -96,31 +91,6 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
   )
 );
 Card.displayName = 'Card';
-
-export const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => <div ref={ref} className={cn('flex flex-col gap-1 mb-4', className)} {...props} />
-);
-CardHeader.displayName = 'CardHeader';
-
-export const CardTitle = forwardRef<HTMLHeadingElement, HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => <h3 ref={ref} className={cn('text-xl font-semibold', className)} {...props} />
-);
-CardTitle.displayName = 'CardTitle';
-
-export const CardDescription = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, ...props }, ref) => <p ref={ref} className={cn('text-sm text-text-muted', className)} {...props} />
-);
-CardDescription.displayName = 'CardDescription';
-
-export const CardContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => <div ref={ref} className={className} {...props} />
-);
-CardContent.displayName = 'CardContent';
-
-export const CardFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => <div ref={ref} className={cn('flex items-center gap-2 mt-4 pt-4 border-t border-border-muted', className)} {...props} />
-);
-CardFooter.displayName = 'CardFooter';
 
 // Badge
 type BadgeVariant = 'default' | 'secondary' | 'success' | 'warning' | 'danger';

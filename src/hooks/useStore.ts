@@ -4,12 +4,27 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { AppStore, AuthSession, RadixWalletData, WikiPage } from '@/types';
+import type { AuthSession, RadixWalletData } from '@/types';
+
+interface AppStore {
+  session: AuthSession | null;
+  isLoading: boolean;
+  isConnected: boolean;
+  walletData: RadixWalletData | null;
+  _rdtDisconnect: (() => void) | null;
+  _rdtConnect: (() => void) | null;
+  _setRdtCallbacks: (connect: (() => void) | null, disconnect: (() => void) | null) => void;
+  setSession: (session: AuthSession | null) => void;
+  setLoading: (isLoading: boolean) => void;
+  setConnected: (isConnected: boolean) => void;
+  setWalletData: (walletData: RadixWalletData | null) => void;
+  connect: () => void;
+  logout: () => Promise<void>;
+}
 
 export const useStore = create<AppStore>()(
   persist(
     (set, get) => ({
-      // Auth state
       session: null,
       isLoading: true,
       isConnected: false,
@@ -32,13 +47,6 @@ export const useStore = create<AppStore>()(
         _rdtDisconnect?.();
         set({ session: null, isConnected: false, walletData: null, isLoading: false });
       },
-      // Wiki state
-      currentPage: null,
-      recentPages: [],
-      searchResults: [],
-      setCurrentPage: (page) => set({ currentPage: page }),
-      setRecentPages: (pages) => set({ recentPages: pages }),
-      setSearchResults: (pages) => set({ searchResults: pages }),
     }),
     {
       name: 'radix-wiki-store',
