@@ -48,33 +48,18 @@ export const useStore = create<AppStore>()(
   )
 );
 
-// Derived hooks
 export const useIsAuthenticated = () => {
   const session = useStore((s) => s.session);
   return !!session && new Date(session.expiresAt) > new Date();
 };
 
-export const useWalletConnected = () => {
-  const { isConnected, walletData } = useStore();
-  return isConnected && !!walletData?.accounts?.length;
-};
-
-export const useCurrentUser = () => {
-  const { session, walletData } = useStore();
-  if (session) return { id: session.userId, radixAddress: session.radixAddress, personaAddress: session.personaAddress, displayName: session.displayName };
-  if (walletData?.accounts?.length) return { id: null, radixAddress: walletData.accounts[0].address, personaAddress: walletData.persona?.identityAddress, displayName: walletData.persona?.label || walletData.accounts[0].label };
-  return null;
-};
-
 export const useAuth = () => {
   const { session, walletData, isConnected } = useStore();
-  const user = session ? { id: session.userId, radixAddress: session.radixAddress, personaAddress: session.personaAddress, displayName: session.displayName } : null;
+  const user = session ? {
+    id: session.userId,
+    radixAddress: session.radixAddress,
+    personaAddress: session.personaAddress,
+    displayName: session.displayName,
+  } : null;
   return { user, isConnected, walletData };
-};
-
-export const usePageByPath = (tagPath: string, slug: string): WikiPage | null => {
-  const currentPage = useStore((s) => s.currentPage);
-  const recentPages = useStore((s) => s.recentPages);
-  if (currentPage?.tagPath === tagPath && currentPage?.slug === slug) return currentPage;
-  return recentPages.find((p) => p.tagPath === tagPath && p.slug === slug) || null;
 };

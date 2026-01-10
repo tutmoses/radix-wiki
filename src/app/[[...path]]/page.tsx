@@ -9,7 +9,6 @@ import { Edit, Clock, User, ArrowLeft, ArrowRight, Trash2, Save, Eye, FileText, 
 import { WikiLayout } from '@/components/WikiLayout';
 import { BlockEditor } from '@/components/BlockEditor';
 import { BlockRenderer } from '@/components/BlockRenderer';
-import { TagSelector, TagPathDisplay } from '@/components/TagSelector';
 import { Button, Card, CardContent, Badge, LoadingScreen, Input } from '@/components/ui';
 import { useAuth, useIsAuthenticated } from '@/hooks/useStore';
 import { useWikiForm } from '@/hooks/useWikiForm';
@@ -27,9 +26,9 @@ const DEFAULT_HOMEPAGE_CONTENT: BlockContent = [
   { id: 'hero-paragraph', type: 'paragraph', text: 'A decentralized wiki platform powered by **Radix DLT**. Create, collaborate, and share knowledge with Web3 authentication.' },
   { id: 'features-heading', type: 'heading', level: 2, text: 'Features' },
   { id: 'features-list', type: 'list', style: 'bullet', items: [
-    { text: '**Decentralized Auth** â€” Login securely with your Radix Wallet using ROLA verification' },
-    { text: '**Collaborative** â€” Create and edit wiki pages with full revision history' },
-    { text: '**Fast & Modern** â€” Built with Next.js and Tailwind CSS' },
+    { text: '**Decentralized Auth** — Login securely with your Radix Wallet using ROLA verification' },
+    { text: '**Collaborative** — Create and edit wiki pages with full revision history' },
+    { text: '**Fast & Modern** — Built with Next.js and Tailwind CSS' },
   ]},
   { id: 'recent-heading', type: 'heading', level: 2, text: 'Recent Pages' },
   { id: 'recent-pages', type: 'recentPages', limit: 6 },
@@ -98,13 +97,15 @@ function NotFoundCard({ title = 'Page not found', message = "The page you're loo
 }
 
 // ============================================================================
-// Homepage Views
+// Homepage View (unified view/edit)
 // ============================================================================
 
-function HomePageView() {
-  const [homepageData, setHomepageData] = useState<{ id?: string; content: BlockContent } | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+function HomepageView({ isEditing }: { isEditing: boolean }) {
+  const router = useRouter();
   const isAuthenticated = useIsAuthenticated();
+  const [content, setContent] = useState<BlockContent>(DEFAULT_HOMEPAGE_CONTENT);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -112,25 +113,64 @@ function HomePageView() {
         const response = await fetch('/api/wiki');
         if (response.ok) {
           const page = await response.json();
-          if (page) {
-            setHomepageData({ id: page.id, content: page.content });
-          } else {
-            setHomepageData({ content: DEFAULT_HOMEPAGE_CONTENT });
-          }
-        } else {
-          setHomepageData({ content: DEFAULT_HOMEPAGE_CONTENT });
+          setContent(page?.content || DEFAULT_HOMEPAGE_CONTENT);
         }
       } catch {
-        setHomepageData({ content: DEFAULT_HOMEPAGE_CONTENT });
+        setContent(DEFAULT_HOMEPAGE_CONTENT);
       } finally {
         setIsLoading(false);
       }
     })();
   }, []);
 
-  if (isLoading) return <WikiLayout><LoadingScreen message="Loading..." /></WikiLayout>;
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/wiki', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'Homepage', content }),
+      });
+      if (response.ok) router.push('/');
+      else alert((await response.json()).error || 'Failed to save homepage');
+    } catch {
+      alert('Failed to save homepage');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-  const content = homepageData?.content || DEFAULT_HOMEPAGE_CONTENT;
+  if (isEditing && !isAuthenticated) {
+    return <AuthRequiredCard message="Please connect your Radix wallet to edit the homepage." />;
+  }
+
+  if (isLoading) {
+    return <WikiLayout><LoadingScreen message="Loading..." /></WikiLayout>;
+  }
+
+  if (isEditing) {
+    return (
+      <WikiLayout maxWidth="4xl">
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <Link href="/" className="flex items-center gap-1 text-text-muted hover:text-text transition-colors">
+              <ArrowLeft size={16} /><span className="text-sm">Back to Homepage</span>
+            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/"><Button variant="secondary" size="sm"><Eye size={16} />Preview</Button></Link>
+              <Button onClick={handleSave} disabled={isSaving} size="sm"><Save size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
+            </div>
+          </div>
+          <h1 className="text-3xl font-bold">Edit Homepage</h1>
+          <BlockEditor content={content} onChange={setContent} />
+          <div className="flex items-center justify-between">
+            <Link href="/"><Button variant="ghost">Cancel</Button></Link>
+            <Button onClick={handleSave} disabled={isSaving}><Save size={18} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
+          </div>
+        </div>
+      </WikiLayout>
+    );
+  }
 
   return (
     <WikiLayout>
@@ -153,82 +193,13 @@ function HomePageView() {
         </div>
         <footer className="border-t border-border-muted py-8 mt-8">
           <div className="flex items-center justify-between flex-wrap gap-4 text-text-muted text-sm">
-            <p>Â© 2024 RADIX Wiki. Powered by Radix DLT.</p>
+            <p>© 2024 RADIX Wiki. Powered by Radix DLT.</p>
             <div className="flex items-center gap-4">
               <a href="https://radixdlt.com" target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">Radix DLT</a>
               <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">GitHub</a>
             </div>
           </div>
         </footer>
-      </div>
-    </WikiLayout>
-  );
-}
-
-function EditHomePageView() {
-  const router = useRouter();
-  const isAuthenticated = useIsAuthenticated();
-  const [content, setContent] = useState<BlockContent>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const response = await fetch('/api/wiki');
-        if (response.ok) {
-          const page = await response.json();
-          setContent(page?.content || DEFAULT_HOMEPAGE_CONTENT);
-        } else {
-          setContent(DEFAULT_HOMEPAGE_CONTENT);
-        }
-      } catch {
-        setContent(DEFAULT_HOMEPAGE_CONTENT);
-      } finally {
-        setIsLoading(false);
-      }
-    })();
-  }, []);
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const response = await fetch('/api/wiki', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: 'Homepage', content }),
-      });
-
-      if (response.ok) router.push('/');
-      else alert((await response.json()).error || 'Failed to save homepage');
-    } catch {
-      alert('Failed to save homepage');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  if (!isAuthenticated) return <AuthRequiredCard message="Please connect your Radix wallet to edit the homepage." />;
-  if (isLoading) return <WikiLayout><LoadingScreen message="Loading homepage..." /></WikiLayout>;
-
-  return (
-    <WikiLayout maxWidth="4xl">
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <Link href="/" className="flex items-center gap-1 text-text-muted hover:text-text transition-colors">
-            <ArrowLeft size={16} /><span className="text-sm">Back to Homepage</span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Link href="/"><Button variant="secondary" size="sm"><Eye size={16} />Preview</Button></Link>
-            <Button onClick={handleSave} disabled={isSaving} size="sm"><Save size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
-          </div>
-        </div>
-        <h1 className="text-3xl font-bold">Edit Homepage</h1>
-        <BlockEditor content={content} onChange={setContent} />
-        <div className="flex items-center justify-between">
-          <Link href="/"><Button variant="ghost">Cancel</Button></Link>
-          <Button onClick={handleSave} disabled={isSaving}><Save size={18} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
-        </div>
       </div>
     </WikiLayout>
   );
@@ -340,86 +311,26 @@ function CategoryListingView({ tagPath }: { tagPath: string[] }) {
 }
 
 // ============================================================================
-// Page Views
+// Page Editor (unified create/edit)
 // ============================================================================
 
-function CreatePageView({ tagPath, slug }: { tagPath: string; slug: string }) {
+function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tagPath: string; slug: string }) {
+  const { user } = useAuth();
   const form = useWikiForm({ tagPath, slug });
+  const isCreating = !page;
+  const viewPath = `/${tagPath}/${slug}`;
   const pathSegments = [...tagPath.split('/'), slug];
 
   useEffect(() => {
-    form.reset({ title: '', content: [], tagPath, isPublished: true });
-  }, [tagPath, slug]);
+    if (page) {
+      form.reset({ title: page.title, content: page.content as BlockContent, isPublished: page.isPublished });
+    } else {
+      form.reset({ title: '', content: [], tagPath, isPublished: true });
+    }
+  }, [page?.id, tagPath, slug]);
 
-  const canSave = form.title.trim();
-
-  return (
-    <WikiLayout maxWidth="4xl">
-      <div className="flex flex-col gap-6">
-        <BreadcrumbNav path={pathSegments} isCreate />
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <Link href={`/${tagPath}`} className="flex items-center gap-1 text-text-muted hover:text-text transition-colors">
-            <ArrowLeft size={16} /><span className="text-sm">Back to Category</span>
-          </Link>
-          <Button onClick={form.save} disabled={form.isSaving || !canSave} size="sm">
-            <Save size={16} />{form.isSaving ? 'Creating...' : 'Create Page'}
-          </Button>
-        </div>
-
-        <div className="bg-accent-muted border border-accent/30 rounded-lg p-4">
-          <p className="text-sm">
-            Creating new page at <code className="px-1.5 py-0.5 bg-surface-2 rounded text-xs">/{tagPath}/{slug}</code>
-          </p>
-        </div>
-
-        <input
-          type="text"
-          value={form.title}
-          onChange={(e) => form.setTitle(e.target.value)}
-          placeholder="Page Title"
-          className="text-3xl font-bold bg-transparent border-0 outline-none w-full placeholder:text-text-muted"
-          autoFocus
-        />
-
-        <BlockEditor content={form.content} onChange={form.setContent} />
-
-        <Card>
-          <CardContent className="flex flex-col gap-4">
-            <h3 className="text-xl font-semibold">Page Settings</h3>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="published"
-                checked={form.isPublished}
-                onChange={(e) => form.setIsPublished(e.target.checked)}
-                className="w-4 h-4 rounded border-border"
-              />
-              <label htmlFor="published" className="text-sm">Publish this page immediately</label>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="flex items-center justify-between">
-          <Link href={`/${tagPath}`}><Button variant="ghost">Cancel</Button></Link>
-          <Button onClick={form.save} disabled={form.isSaving || !canSave}>
-            <Save size={18} />{form.isSaving ? 'Creating...' : 'Create Page'}
-          </Button>
-        </div>
-      </div>
-    </WikiLayout>
-  );
-}
-
-function EditPageView({ page, tagPath, slug }: { page: WikiPageWithRevisions; tagPath: string; slug: string }) {
-  const { user } = useAuth();
-  const form = useWikiForm({ tagPath, slug });
-  const viewPath = `/${tagPath}/${slug}`;
-
-  useEffect(() => {
-    form.reset({ title: page.title, content: page.content as BlockContent, isPublished: page.isPublished });
-  }, [page.id]);
-
-  if (user && page.authorId !== user.id) {
+  // Authorization check for editing existing pages
+  if (page && user && page.authorId !== user.id) {
     return (
       <WikiLayout maxWidth="md" showSidebar={false}>
         <Card className="text-center">
@@ -433,19 +344,36 @@ function EditPageView({ page, tagPath, slug }: { page: WikiPageWithRevisions; ta
     );
   }
 
+  const canSave = isCreating ? form.title.trim() : true;
+  const backHref = isCreating ? `/${tagPath}` : viewPath;
+  const backLabel = isCreating ? 'Back to Category' : 'Back to Page';
+  const saveLabel = isCreating ? (form.isSaving ? 'Creating...' : 'Create Page') : (form.isSaving ? 'Saving...' : 'Save Changes');
+
   return (
     <WikiLayout maxWidth="4xl">
       <div className="flex flex-col gap-6">
-        <BreadcrumbNav path={[...tagPath.split('/'), slug]} isEdit />
+        <BreadcrumbNav path={pathSegments} isEdit={!isCreating} isCreate={isCreating} />
         <div className="flex items-center justify-between flex-wrap gap-4">
-          <Link href={viewPath} className="flex items-center gap-1 text-text-muted hover:text-text transition-colors">
-            <ArrowLeft size={16} /><span className="text-sm">Back to Page</span>
+          <Link href={backHref} className="flex items-center gap-1 text-text-muted hover:text-text transition-colors">
+            <ArrowLeft size={16} /><span className="text-sm">{backLabel}</span>
           </Link>
           <div className="flex items-center gap-2">
-            <Link href={viewPath}><Button variant="secondary" size="sm"><Eye size={16} />Preview</Button></Link>
-            <Button onClick={form.save} disabled={form.isSaving} size="sm"><Save size={16} />{form.isSaving ? 'Saving...' : 'Save Changes'}</Button>
+            {!isCreating && (
+              <Link href={viewPath}><Button variant="secondary" size="sm"><Eye size={16} />Preview</Button></Link>
+            )}
+            <Button onClick={form.save} disabled={form.isSaving || !canSave} size="sm">
+              <Save size={16} />{saveLabel}
+            </Button>
           </div>
         </div>
+
+        {isCreating && (
+          <div className="bg-accent-muted border border-accent/30 rounded-lg p-4">
+            <p className="text-sm">
+              Creating new page at <code className="px-1.5 py-0.5 bg-surface-2 rounded text-xs">/{tagPath}/{slug}</code>
+            </p>
+          </div>
+        )}
 
         <input
           type="text"
@@ -453,6 +381,7 @@ function EditPageView({ page, tagPath, slug }: { page: WikiPageWithRevisions; ta
           onChange={(e) => form.setTitle(e.target.value)}
           placeholder="Page Title"
           className="text-3xl font-bold bg-transparent border-0 outline-none w-full placeholder:text-text-muted"
+          autoFocus={isCreating}
         />
 
         <BlockEditor content={form.content} onChange={form.setContent} />
@@ -468,19 +397,27 @@ function EditPageView({ page, tagPath, slug }: { page: WikiPageWithRevisions; ta
                 onChange={(e) => form.setIsPublished(e.target.checked)}
                 className="w-4 h-4 rounded border-border"
               />
-              <label htmlFor="published" className="text-sm">Publish this page</label>
+              <label htmlFor="published" className="text-sm">
+                {isCreating ? 'Publish this page immediately' : 'Publish this page'}
+              </label>
             </div>
           </CardContent>
         </Card>
 
         <div className="flex items-center justify-between">
-          <Link href={viewPath}><Button variant="ghost">Cancel</Button></Link>
-          <Button onClick={form.save} disabled={form.isSaving}><Save size={18} />{form.isSaving ? 'Saving...' : 'Save Changes'}</Button>
+          <Link href={backHref}><Button variant="ghost">Cancel</Button></Link>
+          <Button onClick={form.save} disabled={form.isSaving || !canSave}>
+            <Save size={18} />{saveLabel}
+          </Button>
         </div>
       </div>
     </WikiLayout>
   );
 }
+
+// ============================================================================
+// Page View
+// ============================================================================
 
 function ViewPageView({ page }: { page: WikiPageWithRevisions }) {
   const router = useRouter();
@@ -567,7 +504,6 @@ function ViewPageView({ page }: { page: WikiPageWithRevisions }) {
 
 export default function DynamicPage() {
   const params = useParams();
-  const router = useRouter();
   const rawPath = (params.path as string[]) || [];
   const isAuthenticated = useIsAuthenticated();
 
@@ -578,12 +514,12 @@ export default function DynamicPage() {
 
   // Route: /
   if (rawPath.length === 0) {
-    return <HomePageView />;
+    return <HomepageView isEditing={false} />;
   }
 
   // Route: /edit
   if (rawPath.length === 1 && rawPath[0] === 'edit') {
-    return <EditHomePageView />;
+    return <HomepageView isEditing={true} />;
   }
 
   // Determine if edit mode
@@ -647,7 +583,7 @@ export default function DynamicPage() {
   // Page not found - show create form for authenticated users
   if (pageNotFound) {
     if (isAuthenticated) {
-      return <CreatePageView tagPath={tagPath} slug={slug} />;
+      return <PageEditor tagPath={tagPath} slug={slug} />;
     }
     return <NotFoundCard />;
   }
@@ -659,7 +595,7 @@ export default function DynamicPage() {
 
   // Edit mode
   if (isEditMode) {
-    return <EditPageView page={page} tagPath={tagPath} slug={slug} />;
+    return <PageEditor page={page} tagPath={tagPath} slug={slug} />;
   }
 
   // View mode

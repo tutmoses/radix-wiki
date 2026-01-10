@@ -2,6 +2,7 @@
 
 import { SignJWT, jwtVerify, JWTPayload } from 'jose';
 import { cookies } from 'next/headers';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import type { AuthSession } from '@/types';
 
@@ -19,7 +20,6 @@ interface SessionPayload extends JWTPayload {
   displayName?: string;
 }
 
-// Create a new session
 export async function createSession(
   userId: string,
   radixAddress: string,
@@ -28,7 +28,6 @@ export async function createSession(
 ): Promise<string> {
   const expiresAt = new Date(Date.now() + SESSION_DURATION);
 
-  // Create JWT
   const token = await new SignJWT({
     userId,
     radixAddress,
@@ -41,16 +40,10 @@ export async function createSession(
     .setJti(crypto.randomUUID())
     .sign(JWT_SECRET);
 
-  // Store session in database
   await prisma.session.create({
-    data: {
-      userId,
-      token,
-      expiresAt,
-    },
+    data: { userId, token, expiresAt },
   });
 
-  // Set cookie
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
@@ -63,29 +56,17 @@ export async function createSession(
   return token;
 }
 
-// Get current session from cookie
 export async function getSession(): Promise<AuthSession | null> {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    if (!token) return null;
 
-    if (!token) {
-      return null;
-    }
-
-    // Verify JWT
     const { payload } = await jwtVerify<SessionPayload>(token, JWT_SECRET);
 
-    // Verify session exists in database
-    const session = await prisma.session.findUnique({
-      where: { token },
-    });
-
+    const session = await prisma.session.findUnique({ where: { token } });
     if (!session || session.expiresAt < new Date()) {
-      // Clean up expired session
-      if (session) {
-        await prisma.session.delete({ where: { id: session.id } });
-      }
+      if (session) await prisma.session.delete({ where: { id: session.id } });
       return null;
     }
 
@@ -102,19 +83,12 @@ export async function getSession(): Promise<AuthSession | null> {
   }
 }
 
-// Verify session from token (for API routes)
 export async function verifySession(token: string): Promise<AuthSession | null> {
   try {
     const { payload } = await jwtVerify<SessionPayload>(token, JWT_SECRET);
 
-    // Verify session exists in database
-    const session = await prisma.session.findUnique({
-      where: { token },
-    });
-
-    if (!session || session.expiresAt < new Date()) {
-      return null;
-    }
+    const session = await prisma.session.findUnique({ where: { token } });
+    if (!session || session.expiresAt < new Date()) return null;
 
     return {
       userId: payload.userId,
@@ -128,40 +102,43 @@ export async function verifySession(token: string): Promise<AuthSession | null> 
   }
 }
 
-// Destroy session
 export async function destroySession(): Promise<void> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
   if (token) {
-    // Delete from database
-    await prisma.session.deleteMany({
-      where: { token },
-    });
+    await prisma.session.deleteMany({ where: { token } });
   }
 
-  // Clear cookie
   cookieStore.delete(SESSION_COOKIE_NAME);
 }
 
-// Clean up expired sessions (call periodically)
 export async function cleanupExpiredSessions(): Promise<number> {
   const result = await prisma.session.deleteMany({
-    where: {
-      expiresAt: {
-        lt: new Date(),
-      },
-    },
+    where: { expiresAt: { lt: new Date() } },
   });
-
   return result.count;
 }
 
-// Get session token from request headers (for API routes)
 export function getTokenFromHeaders(headers: Headers): string | null {
   const authHeader = headers.get('Authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    return authHeader.slice(7);
+  return authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+}
+
+// Auth helpers (consolidated from auth.ts)
+export async function getAuthSession(request?: NextRequest): Promise<AuthSession | null> {
+  const session = await getSession();
+  if (session) return session;
+
+  if (request) {
+    const token = getTokenFromHeaders(request.headers);
+    if (token) return verifySession(token);
   }
+
   return null;
+}
+
+export async function requireAuth(request?: NextRequest): Promise<{ session: AuthSession } | { error: true }> {
+  const session = await getAuthSession(request);
+  return session ? { session } : { error: true };
 }

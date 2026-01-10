@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
 import { slugify } from '@/lib/utils';
-import { requireAuth } from '@/lib/api/auth';
+import { requireAuth } from '@/lib/radix/session';
 import { isValidTagPath } from '@/lib/tags';
 import type { WikiPageInput } from '@/types';
 
