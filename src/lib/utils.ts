@@ -36,24 +36,6 @@ export function formatRelativeTime(date: Date | string): string {
   return formatDate(d);
 }
 
-export function debounce<T extends (...args: Parameters<T>) => ReturnType<T>>(func: T, wait: number): (...args: Parameters<T>) => void {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  return (...args: Parameters<T>) => {
-    if (timeoutId) clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func(...args), wait);
-  };
-}
-
-export function generateExcerpt(html: string, maxLength: number = 160): string {
-  const text = html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-  return truncate(text, maxLength);
-}
-
-export function isValidRadixAddress(address: string): boolean {
-  const pattern = /^(account|identity)_(tdx_[12]_|rdx1)[a-z0-9]{50,60}$/;
-  return pattern.test(address);
-}
-
 export function shortenAddress(address: string, chars: number = 6): string {
   return address.length <= chars * 2 ? address : `${address.slice(0, chars)}...${address.slice(-chars)}`;
 }
