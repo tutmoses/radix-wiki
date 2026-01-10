@@ -9,6 +9,7 @@ import { Edit, Clock, User, ArrowLeft, ArrowRight, Trash2, Save, Eye, FileText, 
 import { WikiLayout } from '@/components/WikiLayout';
 import { BlockEditor } from '@/components/BlockEditor';
 import { BlockRenderer } from '@/components/BlockRenderer';
+import { Footer } from '@/components/Footer';
 import { Button, Card, Badge, LoadingScreen, Input } from '@/components/ui';
 import { useAuth, useIsAuthenticated } from '@/hooks/useStore';
 import { formatRelativeTime, formatDate, slugify } from '@/lib/utils';
@@ -19,20 +20,6 @@ import type { BlockContent } from '@/lib/blocks';
 interface WikiPageWithRevisions extends WikiPage {
   revisions?: { id: string }[];
 }
-
-const DEFAULT_HOMEPAGE_CONTENT: BlockContent = [
-  { id: 'hero-heading', type: 'heading', level: 1, text: 'Welcome to RADIX Wiki' },
-  { id: 'hero-paragraph', type: 'paragraph', text: 'A decentralized wiki platform powered by **Radix DLT**. Create, collaborate, and share knowledge with Web3 authentication.' },
-  { id: 'features-heading', type: 'heading', level: 2, text: 'Features' },
-  { id: 'features-list', type: 'list', style: 'bullet', items: [
-    { text: '**Decentralized Auth** — Login securely with your Radix Wallet using ROLA verification' },
-    { text: '**Collaborative** — Create and edit wiki pages with full revision history' },
-    { text: '**Fast & Modern** — Built with Next.js and Tailwind CSS' },
-  ]},
-  { id: 'recent-heading', type: 'heading', level: 2, text: 'Recent Pages' },
-  { id: 'recent-pages', type: 'recentPages', limit: 6 },
-  { id: 'cta-callout', type: 'callout', variant: 'info', title: 'Get Started', text: 'Connect your Radix wallet to start creating and editing pages.' },
-];
 
 // Shared Components
 function Breadcrumbs({ path, suffix }: { path: string[]; suffix?: string }) {
@@ -75,13 +62,13 @@ function StatusCard({ title, message, backHref = '/', icon }: { title: string; m
 function HomepageView({ isEditing }: { isEditing: boolean }) {
   const router = useRouter();
   const isAuthenticated = useIsAuthenticated();
-  const [content, setContent] = useState<BlockContent>(DEFAULT_HOMEPAGE_CONTENT);
+  const [content, setContent] = useState<BlockContent>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetch('/api/wiki').then(r => r.ok ? r.json() : null)
-      .then(page => setContent(page?.content || DEFAULT_HOMEPAGE_CONTENT))
+      .then(page => setContent(page?.content || []))
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -129,15 +116,7 @@ function HomepageView({ isEditing }: { isEditing: boolean }) {
           {!isAuthenticated && <Button size="lg" variant="primary" onClick={() => document.querySelector<HTMLButtonElement>('#radix-connect-btn button')?.click()}>Connect Radix Wallet<ArrowRight size={18} /></Button>}
           <Link href="/contents"><Button variant="secondary" size="lg">Browse Content</Button></Link>
         </div>
-        <footer className="border-t border-border-muted py-8 mt-8">
-          <div className="flex items-center justify-between flex-wrap gap-4 text-text-muted text-sm">
-            <p>© 2024 RADIX Wiki. Powered by Radix DLT.</p>
-            <div className="flex items-center gap-4">
-              <a href="https://radixdlt.com" target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">Radix DLT</a>
-              <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">GitHub</a>
-            </div>
-          </div>
-        </footer>
+        <Footer />
       </div>
     </WikiLayout>
   );
