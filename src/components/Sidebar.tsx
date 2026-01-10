@@ -27,12 +27,12 @@ function NavItem({ href, icon, label, isActive, onClick }: {
       href={href}
       onClick={onClick}
       className={cn(
-        'flex items-center gap-2 px-3 py-2 rounded-md transition-colors',
-        isActive ? 'bg-accent-muted text-accent font-medium' : 'text-text-muted hover:bg-surface-2 hover:text-text'
+        'row px-3 py-2 rounded-md transition-colors',
+        isActive ? 'bg-accent-muted text-accent font-medium' : 'text-muted hover:bg-surface-2 hover:text-text'
       )}
     >
       {icon}
-      <span className="text-sm">{label}</span>
+      <span>{label}</span>
     </Link>
   );
 }
@@ -52,12 +52,9 @@ function TagNavItem({ node, parentPath, pathname, onClose, depth }: {
 
   return (
     <div className={cn(depth > 0 && 'ml-3')}>
-      <div className="flex items-center">
+      <div className="row">
         {hasChildren && (
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1 rounded hover:bg-surface-2 text-text-muted"
-          >
+          <button onClick={() => setIsExpanded(!isExpanded)} className="icon-btn p-1 text-muted">
             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
         )}
@@ -65,8 +62,8 @@ function TagNavItem({ node, parentPath, pathname, onClose, depth }: {
           href={href}
           onClick={onClose}
           className={cn(
-            'flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-sm',
-            isActive ? 'bg-accent-muted text-accent font-medium' : 'text-text-muted hover:bg-surface-2 hover:text-text',
+            'flex-1 row px-2 py-1.5 rounded-md transition-colors',
+            isActive ? 'bg-accent-muted text-accent font-medium' : 'text-muted hover:bg-surface-2 hover:text-text',
             !hasChildren && 'ml-5'
           )}
         >
@@ -76,14 +73,7 @@ function TagNavItem({ node, parentPath, pathname, onClose, depth }: {
       {hasChildren && isExpanded && (
         <div className="mt-1">
           {node.children!.map(child => (
-            <TagNavItem
-              key={child.slug}
-              node={child}
-              parentPath={currentPath}
-              pathname={pathname}
-              onClose={onClose}
-              depth={depth + 1}
-            />
+            <TagNavItem key={child.slug} node={child} parentPath={currentPath} pathname={pathname} onClose={onClose} depth={depth + 1} />
           ))}
         </div>
       )}
@@ -93,9 +83,9 @@ function TagNavItem({ node, parentPath, pathname, onClose, depth }: {
 
 function NavSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1">
-      <h3 className="text-xs font-semibold uppercase tracking-wider px-3 py-1 text-text-muted">{title}</h3>
-      <nav className="flex flex-col gap-1">{children}</nav>
+    <div className="stack-2">
+      <h4 className="uppercase tracking-wider px-3 py-1 text-muted">{title}</h4>
+      <nav className="stack-2">{children}</nav>
     </div>
   );
 }
@@ -107,17 +97,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   return (
     <>
-      {isOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 animate-[fadeIn_0.2s_ease-out]" onClick={onClose} />
-      )}
-      <aside
-        className={cn(
-          'fixed top-16 left-0 z-40 h-[calc(100vh-4rem)] w-72 max-w-[85vw] bg-surface-0 border-r border-border-muted',
-          'transform transition-transform duration-200 ease-in-out',
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        )}
-      >
-        <div className="flex flex-col gap-6 p-4 h-full overflow-y-auto">
+      {isOpen && <div className="fixed inset-0 bg-black/50 z-40 animate-[fade-in_0.2s_ease-out]" onClick={onClose} />}
+      <aside className={cn(
+        'fixed top-16 left-0 z-40 h-[calc(100vh-4rem)] w-72 max-w-[85vw] bg-surface-0 border-r border-border-muted transform transition-transform duration-200 ease-in-out',
+        isOpen ? 'translate-x-0' : '-translate-x-full'
+      )}>
+        <div className="stack-6 p-4 h-full overflow-y-auto">
           <NavSection title="Navigation">
             <NavItem href="/" icon={<Home size={18} />} label="Home" isActive={pathname === '/'} onClick={onClose} />
           </NavSection>

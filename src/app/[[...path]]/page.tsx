@@ -24,17 +24,17 @@ interface WikiPageWithRevisions extends WikiPage {
 // Shared Components
 function Breadcrumbs({ path, suffix }: { path: string[]; suffix?: string }) {
   return (
-    <nav className="flex items-center gap-2 text-sm text-text-muted flex-wrap">
-      <Link href="/" className="hover:text-text transition-colors">Home</Link>
+    <nav className="row wrap text-muted">
+      <Link href="/" className="link-muted">Home</Link>
       {path.map((segment, i) => {
         const href = '/' + path.slice(0, i + 1).join('/');
         const tag = findTagByPath(path.slice(0, i + 1));
         const isLast = i === path.length - 1 && !suffix;
         return (
-          <span key={href} className="flex items-center gap-2">
+          <span key={href} className="row">
             <span>/</span>
             {isLast ? <span className="text-text">{tag?.name || segment}</span> 
-              : <Link href={href} className="hover:text-text transition-colors">{tag?.name || segment}</Link>}
+              : <Link href={href} className="link-muted">{tag?.name || segment}</Link>}
           </span>
         );
       })}
@@ -43,15 +43,23 @@ function Breadcrumbs({ path, suffix }: { path: string[]; suffix?: string }) {
   );
 }
 
+function BackLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link href={href} className="row link-muted">
+      <ArrowLeft size={16} /><span>{children}</span>
+    </Link>
+  );
+}
+
 function StatusCard({ title, message, backHref = '/', icon }: { title: string; message: string; backHref?: string; icon?: React.ReactNode }) {
   return (
     <WikiLayout showSidebar={false}>
-      <div className="flex justify-center">
+      <div className="center">
         <Card className="text-center max-w-md">
-          <div className="flex flex-col items-center gap-4 py-12">
-            {icon && <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-surface-2 text-text-muted">{icon}</div>}
-            <h1 className="text-2xl font-semibold">{title}</h1>
-            <p className="text-text-muted">{message}</p>
+          <div className="stack items-center py-12">
+            {icon && <div className="center w-16 h-16 rounded-2xl bg-surface-2 text-muted">{icon}</div>}
+            <h1>{title}</h1>
+            <p className="text-muted">{message}</p>
             <Link href={backHref}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link>
           </div>
         </Card>
@@ -90,17 +98,17 @@ function HomepageView({ isEditing }: { isEditing: boolean }) {
   if (isEditing) {
     return (
       <WikiLayout>
-        <div className="flex flex-col gap-6">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <Link href="/" className="flex items-center gap-1 text-text-muted hover:text-text transition-colors"><ArrowLeft size={16} /><span className="text-sm">Back to Homepage</span></Link>
-            <div className="flex items-center gap-2">
+        <div className="stack-6">
+          <div className="spread">
+            <BackLink href="/">Back to Homepage</BackLink>
+            <div className="row">
               <Link href="/"><Button variant="secondary" size="sm"><Eye size={16} />Preview</Button></Link>
               <Button onClick={handleSave} disabled={isSaving} size="sm"><Save size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
             </div>
           </div>
-          <h1 className="text-3xl font-bold">Edit Homepage</h1>
+          <h1>Edit Homepage</h1>
           <BlockEditor content={content} onChange={setContent} />
-          <div className="flex items-center justify-between">
+          <div className="spread">
             <Link href="/"><Button variant="ghost">Cancel</Button></Link>
             <Button onClick={handleSave} disabled={isSaving}><Save size={18} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
           </div>
@@ -111,10 +119,10 @@ function HomepageView({ isEditing }: { isEditing: boolean }) {
 
   return (
     <WikiLayout>
-      <div className="flex flex-col gap-8">
-        {isAuthenticated && <div className="flex justify-end"><Link href="/edit"><Button variant="secondary" size="sm"><Edit size={16} />Edit Homepage</Button></Link></div>}
+      <div className="stack-6">
+        {isAuthenticated && <div className="row justify-end"><Link href="/edit"><Button variant="secondary" size="sm"><Edit size={16} />Edit Homepage</Button></Link></div>}
         <BlockRenderer content={content} />
-        <div className="flex items-center gap-4 justify-center flex-wrap">
+        <div className="row-4 justify-center wrap">
           {!isAuthenticated && <Button size="lg" variant="primary" onClick={() => document.querySelector<HTMLButtonElement>('#radix-connect-btn button')?.click()}>Connect Radix Wallet<ArrowRight size={18} /></Button>}
           <Link href="/contents"><Button variant="secondary" size="lg">Browse Content</Button></Link>
         </div>
@@ -146,12 +154,12 @@ function CategoryView({ tagPath }: { tagPath: string[] }) {
 
   return (
     <WikiLayout>
-      <div className="flex flex-col gap-6">
+      <div className="stack-6">
         <Breadcrumbs path={tagPath} />
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <h1 className="text-3xl font-bold">{tag?.name || tagPath[tagPath.length - 1]}</h1>
+        <div className="spread">
+          <h1>{tag?.name || tagPath[tagPath.length - 1]}</h1>
           {isAuthenticated && (
-            <div className="flex items-center gap-2">
+            <div className="row">
               {showCreate ? (
                 <>
                   <Input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="page-slug" className="w-48" onKeyDown={e => e.key === 'Enter' && handleCreate()} autoFocus />
@@ -163,19 +171,19 @@ function CategoryView({ tagPath }: { tagPath: string[] }) {
           )}
         </div>
         {tag?.children?.length ? (
-          <div className="flex flex-wrap gap-2">
+          <div className="row wrap">
             {tag.children.map(c => <Link key={c.slug} href={`/${pathStr}/${c.slug}`}><Badge variant="secondary" className="cursor-pointer hover:bg-surface-3">{c.name}</Badge></Link>)}
           </div>
         ) : null}
         {isLoading ? <LoadingScreen message="Loading pages..." /> : pages.length > 0 ? (
-          <div className="flex gap-6 flex-wrap">
+          <div className="row-4 wrap">
             {pages.map(p => (
               <Link key={p.id} href={`/${p.tagPath}/${p.slug}`} className="flex-1 min-w-[300px] max-w-[calc(33.333%-1rem)]">
                 <Card interactive className="h-full">
-                  <div className="flex flex-col gap-2">
-                    <h3 className="text-xl font-semibold">{p.title}</h3>
-                    {p.excerpt && <p className="text-text-muted">{p.excerpt}</p>}
-                    <span className="text-sm text-text-muted">{formatRelativeTime(p.updatedAt)}</span>
+                  <div className="stack-2">
+                    <h3>{p.title}</h3>
+                    {p.excerpt && <p className="text-muted">{p.excerpt}</p>}
+                    <small>{formatRelativeTime(p.updatedAt)}</small>
                   </div>
                 </Card>
               </Link>
@@ -183,8 +191,8 @@ function CategoryView({ tagPath }: { tagPath: string[] }) {
           </div>
         ) : (
           <Card className="text-center py-12">
-            <p className="text-text-muted">No pages in this category yet.</p>
-            {isAuthenticated && <p className="text-sm text-text-muted mt-2">Click "New Page" above to create one.</p>}
+            <p className="text-muted">No pages in this category yet.</p>
+            {isAuthenticated && <small className="mt-2 block">Click "New Page" above to create one.</small>}
           </Card>
         )}
       </div>
@@ -234,36 +242,34 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tag
 
   return (
     <WikiLayout>
-      <div className="flex gap-6">
-        <div className="flex-1 flex flex-col gap-6">
+      <div className="row-4 items-start">
+        <div className="flex-1 stack-6">
           <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix={isCreating ? 'Create' : 'Edit'} />
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <Link href={backHref} className="flex items-center gap-1 text-text-muted hover:text-text transition-colors">
-              <ArrowLeft size={16} /><span className="text-sm">{isCreating ? 'Back to Category' : 'Back to Page'}</span>
-            </Link>
-            <div className="flex items-center gap-2">
+          <div className="spread">
+            <BackLink href={backHref}>{isCreating ? 'Back to Category' : 'Back to Page'}</BackLink>
+            <div className="row">
               {!isCreating && <Link href={viewPath}><Button variant="secondary" size="sm"><Eye size={16} />Preview</Button></Link>}
               <Button onClick={save} disabled={isSaving || !canSave} size="sm"><Save size={16} />{saveLabel}</Button>
             </div>
           </div>
           {isCreating && (
-            <div className="bg-accent-muted border border-accent/30 rounded-lg p-4">
-              <p className="text-sm">Creating new page at <code className="px-1.5 py-0.5 bg-surface-2 rounded text-xs">/{tagPath}/{slug}</code></p>
+            <div className="callout callout-info">
+              <p>Creating new page at <code>/{tagPath}/{slug}</code></p>
             </div>
           )}
           <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title"
-            className="text-3xl font-bold bg-transparent border-0 outline-none w-full placeholder:text-text-muted" autoFocus={isCreating} />
+            className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
           <BlockEditor content={content} onChange={setContent} />
         </div>
         <div className="w-80 shrink-0">
-          <Card className="sticky top-20">
-            <div className="flex flex-col gap-4">
-              <h3 className="text-xl font-semibold">Page Settings</h3>
-              <label className="flex items-center gap-2 text-sm">
+          <Card className="sticky-card">
+            <div className="stack">
+              <h3>Page Settings</h3>
+              <label className="row">
                 <input type="checkbox" checked={isPublished} onChange={e => setIsPublished(e.target.checked)} className="w-4 h-4 rounded border-border" />
                 {isCreating ? 'Publish immediately' : 'Published'}
               </label>
-              <div className="flex flex-col gap-2 pt-4 border-t border-border">
+              <div className="stack-2 pt-4 border-t border-border">
                 <Button onClick={save} disabled={isSaving || !canSave}><Save size={18} />{saveLabel}</Button>
                 <Link href={backHref}><Button variant="ghost" className="w-full">Cancel</Button></Link>
               </div>
@@ -296,15 +302,15 @@ function PageView({ page }: { page: WikiPageWithRevisions }) {
 
   return (
     <WikiLayout>
-      <div className="flex gap-6">
+      <div className="row-4 items-start">
         <div className="flex-1 min-w-0">
-          <article className="flex flex-col gap-6">
+          <article className="stack-6">
             <Breadcrumbs path={[...tagPathArray, page.slug]} />
-            <header className="flex flex-col gap-4 pb-6 border-b border-border">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <h1 className="text-3xl font-bold">{page.title}</h1>
+            <header className="stack pb-6 border-b border-border">
+              <div className="spread">
+                <h1>{page.title}</h1>
                 {isAuthor && (
-                  <div className="flex items-center gap-2">
+                  <div className="row">
                     <Link href={`/${page.tagPath}/${page.slug}/edit`}><Button variant="secondary" size="sm"><Edit size={16} />Edit</Button></Link>
                     <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isDeleting} className="text-red-500 hover:bg-red-500/10">
                       <Trash2 size={16} />{isDeleting ? 'Deleting...' : 'Delete'}
@@ -312,40 +318,29 @@ function PageView({ page }: { page: WikiPageWithRevisions }) {
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-4 flex-wrap text-text-muted text-sm">
-                {page.author && <span className="flex items-center gap-1"><User size={14} />{page.author.displayName || page.author.radixAddress.slice(0, 16)}...</span>}
-                <span className="flex items-center gap-1"><Clock size={14} />Updated {formatRelativeTime(page.updatedAt)}</span>
+              <div className="row-4 wrap text-muted">
+                {page.author && <span className="row"><User size={14} />{page.author.displayName || page.author.radixAddress.slice(0, 16)}...</span>}
+                <span className="row"><Clock size={14} />Updated {formatRelativeTime(page.updatedAt)}</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="row">
                 {tagPathArray.map((s, i) => <Badge key={s} variant="secondary">{findTagByPath(tagPathArray.slice(0, i + 1))?.name || s}</Badge>)}
               </div>
             </header>
             <BlockRenderer content={page.content} />
-            <footer className="pt-6 border-t border-border text-text-muted text-sm flex items-center gap-4 flex-wrap">
+            <footer className="row-4 wrap pt-6 border-t border-border text-muted">
               <span>Created {formatDate(page.createdAt)}</span>
               {page.revisions?.length ? <span>{page.revisions.length} revision{page.revisions.length !== 1 ? 's' : ''}</span> : null}
             </footer>
           </article>
         </div>
         <div className="w-64 shrink-0 hidden lg:block">
-          <Card className="sticky top-20">
-            <div className="flex flex-col gap-3">
-              <h4 className="font-semibold text-sm text-text-muted uppercase tracking-wider">Page Info</h4>
-              <div className="flex flex-col gap-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-text-muted">Created</span>
-                  <span>{formatDate(page.createdAt)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-text-muted">Updated</span>
-                  <span>{formatRelativeTime(page.updatedAt)}</span>
-                </div>
-                {page.revisions?.length ? (
-                  <div className="flex justify-between">
-                    <span className="text-text-muted">Revisions</span>
-                    <span>{page.revisions.length}</span>
-                  </div>
-                ) : null}
+          <Card className="sticky-card">
+            <div className="stack">
+              <h4 className="uppercase tracking-wider text-muted">Page Info</h4>
+              <div className="stack-2">
+                <div className="spread"><span className="text-muted">Created</span><span>{formatDate(page.createdAt)}</span></div>
+                <div className="spread"><span className="text-muted">Updated</span><span>{formatRelativeTime(page.updatedAt)}</span></div>
+                {page.revisions?.length ? <div className="spread"><span className="text-muted">Revisions</span><span>{page.revisions.length}</span></div> : null}
               </div>
             </div>
           </Card>

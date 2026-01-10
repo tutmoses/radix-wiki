@@ -15,24 +15,34 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   isLoading?: boolean;
 }
 
-const btnBase = 'inline-flex items-center justify-center gap-2 font-medium rounded-md border border-transparent cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap';
 const btnVariants: Record<ButtonVariant, string> = {
   primary: 'bg-accent text-text-inverted hover:bg-accent-hover',
-  secondary: 'bg-surface-2 text-text border-border hover:bg-surface-3',
-  ghost: 'bg-transparent text-text hover:bg-surface-2',
+  secondary: 'bg-surface-2 border-border hover:bg-surface-3',
+  ghost: 'hover:bg-surface-2',
   danger: 'bg-red-500 text-white hover:bg-red-600',
 };
+
 const btnSizes: Record<ButtonSize, string> = {
-  sm: 'px-3 py-1.5 text-sm',
-  md: 'px-4 py-2 text-sm',
-  lg: 'px-6 py-3 text-base',
-  icon: 'p-2 aspect-square',
+  sm: 'px-3 py-1.5',
+  md: 'px-4 py-2',
+  lg: 'px-6 py-3',
+  icon: 'p-2',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', isLoading, disabled, children, ...props }, ref) => (
-    <button ref={ref} className={cn(btnBase, btnVariants[variant], btnSizes[size], className)} disabled={disabled || isLoading} {...props}>
-      {isLoading ? <><Spinner size="sm" /><span>Loading...</span></> : children}
+    <button
+      ref={ref}
+      className={cn(
+        'row justify-center font-medium rounded-md border border-transparent cursor-pointer transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed',
+        btnVariants[variant],
+        btnSizes[size],
+        className
+      )}
+      disabled={disabled || isLoading}
+      {...props}
+    >
+      {isLoading ? <><Spinner size="sm" />Loading...</> : children}
     </button>
   )
 );
@@ -49,30 +59,24 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, hint, id, ...props }, ref) => {
     const inputId = id || props.name;
     return (
-      <div className="flex flex-col gap-1">
-        {label && <label htmlFor={inputId} className="text-sm font-medium">{label}</label>}
+      <div className="stack-2">
+        {label && <label htmlFor={inputId} className="font-medium">{label}</label>}
         <input
           ref={ref}
           id={inputId}
-          className={cn(
-            'w-full px-3 py-2 text-sm bg-surface-0 border border-border rounded-md transition-all',
-            'focus:border-accent focus:ring-2 focus:ring-accent-muted focus:outline-none',
-            'placeholder:text-text-muted',
-            error && 'border-red-500 focus:border-red-500',
-            className
-          )}
+          className={cn('input', error && 'border-red-500 focus:border-red-500', className)}
           aria-invalid={!!error}
           {...props}
         />
-        {error && <p className="text-sm text-red-500">{error}</p>}
-        {hint && !error && <p className="text-xs text-text-muted">{hint}</p>}
+        {error && <p className="text-red-500">{error}</p>}
+        {hint && !error && <small>{hint}</small>}
       </div>
     );
   }
 );
 Input.displayName = 'Input';
 
-// Card (simplified - use className for internal layout)
+// Card
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   interactive?: boolean;
 }
@@ -81,11 +85,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
   ({ className, interactive, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn(
-        'bg-surface-0 border border-border-muted rounded-lg p-6',
-        interactive && 'transition-all hover:border-border hover:shadow-md hover:-translate-y-0.5 cursor-pointer',
-        className
-      )}
+      className={cn(interactive ? 'surface-interactive p-6' : 'panel', className)}
       {...props}
     />
   )
@@ -100,15 +100,15 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 const badgeVariants: Record<BadgeVariant, string> = {
-  default: 'bg-accent-muted text-accent',
-  secondary: 'bg-surface-2 text-text-muted',
-  success: 'bg-green-500/15 text-green-600',
-  warning: 'bg-yellow-500/15 text-yellow-600',
-  danger: 'bg-red-500/15 text-red-600',
+  default: 'badge-accent',
+  secondary: '',
+  success: 'bg-green-500/15 text-green-500',
+  warning: 'bg-yellow-500/15 text-yellow-500',
+  danger: 'bg-red-500/15 text-red-500',
 };
 
 export function Badge({ className, variant = 'default', ...props }: BadgeProps) {
-  return <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full', badgeVariants[variant], className)} {...props} />;
+  return <span className={cn('badge', badgeVariants[variant], className)} {...props} />;
 }
 
 // Spinner
@@ -130,10 +130,10 @@ export function Spinner({ size = 'md', className }: SpinnerProps) {
 
 export function LoadingScreen({ message = 'Loading...' }: { message?: string }) {
   return (
-    <div className="flex items-center justify-center min-h-[400px]">
-      <div className="flex flex-col items-center gap-4">
+    <div className="center min-h-[400px]">
+      <div className="stack-2 items-center">
         <Spinner size="lg" />
-        <p className="text-sm text-text-muted">{message}</p>
+        <p className="text-muted">{message}</p>
       </div>
     </div>
   );
