@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { requireAuth } from '@/lib/radix/session';
+import { requireBalance } from '@/lib/radix/balance';
 import type { CommentInput } from '@/types';
 
 export async function GET(request: NextRequest) {
@@ -35,22 +36,15 @@ export async function POST(request: NextRequest) {
     const body: CommentInput & { pageId: string } = await request.json();
     const { content, parentId, pageId } = body;
 
-    if (!pageId) {
-      return NextResponse.json({ error: 'pageId is required' }, { status: 400 });
-    }
+    if (!pageId) return NextResponse.json({ error: 'pageId is required' }, { status: 400 });
+    if (!content?.trim()) return NextResponse.json({ error: 'Content is required' }, { status: 400 });
+    if (content.length > 5000) return NextResponse.json({ error: 'Comment too long (max 5000 chars)' }, { status: 400 });
 
-    if (!content?.trim()) {
-      return NextResponse.json({ error: 'Content is required' }, { status: 400 });
-    }
+    const page = await prisma.page.findUnique({ where: { id: pageId }, select: { id: true, tagPath: true } });
+    if (!page) return NextResponse.json({ error: 'Page not found' }, { status: 404 });
 
-    if (content.length > 5000) {
-      return NextResponse.json({ error: 'Comment too long (max 5000 chars)' }, { status: 400 });
-    }
-
-    const page = await prisma.page.findUnique({ where: { id: pageId }, select: { id: true } });
-    if (!page) {
-      return NextResponse.json({ error: 'Page not found' }, { status: 404 });
-    }
+    const balanceCheck = await requireBalance(auth.session, { type: 'comment', tagPath: page.tagPath });
+    if (!balanceCheck.ok) return balanceCheck.response;
 
     if (parentId) {
       const parent = await prisma.comment.findUnique({ where: { id: parentId } });

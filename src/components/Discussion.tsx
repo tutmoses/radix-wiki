@@ -4,31 +4,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { MessageSquare, Reply, Trash2, ChevronDown, ChevronUp, Send } from 'lucide-react';
-import { cn, formatRelativeTime } from '@/lib/utils';
+import { cn, formatRelativeTime, parseInlineMarkdown } from '@/lib/utils';
 import { Button } from '@/components/ui';
 import { useIsAuthenticated, useAuth } from '@/hooks/useStore';
 import type { WikiComment } from '@/types';
 
 const MAX_DEPTH = 3;
-
-const INLINE_MARKDOWN_REGEX = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
-
-function parseInlineMarkdown(text: string): React.ReactNode[] {
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0, key = 0, match;
-  INLINE_MARKDOWN_REGEX.lastIndex = 0;
-  
-  while ((match = INLINE_MARKDOWN_REGEX.exec(text)) !== null) {
-    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
-    const [full, , bold, italic, code] = match;
-    if (bold) parts.push(<strong key={key++}>{bold}</strong>);
-    else if (italic) parts.push(<em key={key++}>{italic}</em>);
-    else if (code) parts.push(<code key={key++}>{code}</code>);
-    lastIndex = match.index + full.length;
-  }
-  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
-  return parts.length ? parts : [text];
-}
 
 function buildCommentTree(comments: WikiComment[]): WikiComment[] {
   const map = new Map<string, WikiComment>();
@@ -129,7 +110,7 @@ function CommentThread({ comment, depth, pageId, onReply, onDelete, currentUserI
       <div className="stack-1">
         <div className="row text-small">
           <span className="font-medium">{comment.author?.displayName || comment.author?.radixAddress?.slice(0, 12) + '...'}</span>
-          <span className="text-muted">·</span>
+          <span className="text-muted">Â·</span>
           <span className="text-muted">{formatRelativeTime(comment.createdAt)}</span>
           {hasReplies && (
             <button onClick={() => setCollapsed(!collapsed)} className="row text-muted hover:text-text ml-auto">

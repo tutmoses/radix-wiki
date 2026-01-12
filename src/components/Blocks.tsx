@@ -9,7 +9,7 @@ import {
   AlertCircle, Minus, Code, Quote, Clock, FileText, Columns, Settings, Table, ListTree,
   AlertTriangle, CheckCircle, Info
 } from 'lucide-react';
-import { cn, formatRelativeTime } from '@/lib/utils';
+import { cn, formatRelativeTime, parseInlineMarkdown, slugify } from '@/lib/utils';
 import { findTagByPath } from '@/lib/tags';
 import { Button, Input, Badge } from '@/components/ui';
 import { 
@@ -20,8 +20,7 @@ import {
 } from '@/lib/blocks';
 import type { WikiPage } from '@/types';
 
-// Shared Constants & Utilities
-
+// Icons map
 const ICONS: Record<string, React.ReactNode> = {
   Type: <Type size={18} />, AlignLeft: <AlignLeft size={18} />, Image: <Image size={18} />,
   AlertCircle: <AlertCircle size={18} />, Minus: <Minus size={18} />, Code: <Code size={18} />,
@@ -29,43 +28,15 @@ const ICONS: Record<string, React.ReactNode> = {
   Columns: <Columns size={18} />, Table: <Table size={18} />, ListTree: <ListTree size={18} />,
 };
 
-const CALLOUT_CONFIG = {
-  info: { className: 'callout-info', Icon: Info, iconClass: 'status-info' },
-  warning: { className: 'callout-warning', Icon: AlertTriangle, iconClass: 'status-warning' },
-  success: { className: 'callout-success', Icon: CheckCircle, iconClass: 'status-success' },
-  error: { className: 'callout-error', Icon: AlertCircle, iconClass: 'status-error' },
+const CALLOUT_STYLES = {
+  info: { cls: 'callout-info', Icon: Info, iconCls: 'status-info' },
+  warning: { cls: 'callout-warning', Icon: AlertTriangle, iconCls: 'status-warning' },
+  success: { cls: 'callout-success', Icon: CheckCircle, iconCls: 'status-success' },
+  error: { cls: 'callout-error', Icon: AlertCircle, iconCls: 'status-error' },
 } as const;
 
-const slugify = (text: string) => text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-
-// Inline Markdown Parser
-
-const INLINE_MARKDOWN_REGEX = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|\[(.+?)\]\((.+?)\))/g;
-const LIST_ITEM_REGEX = /^[\s]*[-*â€¢]\s+(.+)$/;
-
-function parseInlineMarkdown(text: string): React.ReactNode[] {
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0, key = 0, match;
-  INLINE_MARKDOWN_REGEX.lastIndex = 0;
-  
-  while ((match = INLINE_MARKDOWN_REGEX.exec(text)) !== null) {
-    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
-    const [full, , bold, italic, code, linkText, href] = match;
-    if (bold) parts.push(<strong key={key++}>{bold}</strong>);
-    else if (italic) parts.push(<em key={key++}>{italic}</em>);
-    else if (code) parts.push(<code key={key++}>{code}</code>);
-    else if (linkText && href) {
-      const isExternal = href.startsWith('http');
-      parts.push(isExternal
-        ? <a key={key++} href={href} target="_blank" rel="noopener noreferrer" className="link">{linkText}</a>
-        : <Link key={key++} href={href} className="link">{linkText}</Link>
-      );
-    }
-    lastIndex = match.index + full.length;
-  }
-  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
-  return parts.length ? parts : [text];
-}
+// List parsing for paragraphs
+const LIST_ITEM_REGEX = /^[\s]*[-*•]\s+(.+)$/;
 
 function parseParagraphContent(text: string): React.ReactNode {
   const lines = text.split('\n');
@@ -102,10 +73,7 @@ function parseParagraphContent(text: string): React.ReactNode {
 }
 
 // Shared Hooks
-
-type FetchMode = { type: 'recent'; tagPath?: string; limit: number } | { type: 'byIds'; pageIds: string[] };
-
-function usePages(mode: FetchMode) {
+function usePages(mode: { type: 'recent'; tagPath?: string; limit: number } | { type: 'byIds'; pageIds: string[] }) {
   const [pages, setPages] = useState<WikiPage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -140,8 +108,6 @@ function useBlockOperations<T extends Block>(blocks: T[], setBlocks: (blocks: T[
   return { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert };
 }
 
-// TOC Helpers
-
 function extractHeadings(content: BlockContent, maxDepth = 3): HeadingBlock[] {
   const headings: HeadingBlock[] = [];
   const process = (blocks: Block[]) => {
@@ -154,8 +120,7 @@ function extractHeadings(content: BlockContent, maxDepth = 3): HeadingBlock[] {
   return headings;
 }
 
-// Editor-Only Components
-
+// Selector component for options
 function Selector<T extends string>({ options, value, onChange }: { options: readonly T[]; value: T; onChange: (v: T) => void }) {
   return (
     <div className="row wrap">
@@ -169,12 +134,13 @@ function Selector<T extends string>({ options, value, onChange }: { options: rea
   );
 }
 
+// Insert Block Menu
 function InsertBlockMenu({ onInsert, onClose, blockTypes }: { onInsert: (type: BlockType) => void; onClose: () => void; blockTypes: readonly BlockType[] }) {
   const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose(); };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    const handler = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose(); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, [onClose]);
 
   return (
@@ -202,23 +168,117 @@ function InsertButton({ onInsert, compact, allowColumns = true }: { onInsert: (t
   );
 }
 
-// Unified Block Components (mode: 'edit' | 'view')
-
+// Block Props type
 type BlockProps<T extends Block = Block> = { block: T; mode: 'edit' | 'view'; onUpdate?: (b: Block) => void; allContent?: BlockContent };
 
-function HeadingBlock({ block, mode, onUpdate }: BlockProps<Extract<Block, { type: 'heading' }>>) {
-  if (mode === 'view') {
-    const Tag = `h${block.level}` as 'h1' | 'h2' | 'h3';
-    return <Tag id={slugify(block.text)}>{block.text}</Tag>;
+// Block Renderers - View Mode
+const ViewRenderers: Record<string, (block: Block, allContent: BlockContent) => React.ReactNode> = {
+  heading: (b) => { const h = b as HeadingBlock; const Tag = `h${h.level}` as 'h1' | 'h2' | 'h3'; return <Tag id={slugify(h.text)}>{h.text}</Tag>; },
+  paragraph: (b) => <div className="paragraph">{parseParagraphContent((b as Extract<Block, {type:'paragraph'}>).text)}</div>,
+  divider: () => <hr />,
+  quote: (b) => { const q = b as Extract<Block, {type:'quote'}>; return <blockquote><p>{parseInlineMarkdown(q.text)}</p>{q.attribution && <cite className="block mt-2">— {q.attribution}</cite>}</blockquote>; },
+  callout: (b) => {
+    const c = b as Extract<Block, {type:'callout'}>;
+    const { cls, Icon, iconCls } = CALLOUT_STYLES[c.variant];
+    return <div className={cn('callout', cls)}><Icon size={20} className={cn('shrink-0 mt-0.5', iconCls)} /><div className="stack-2">{c.title && <strong>{c.title}</strong>}<p>{parseInlineMarkdown(c.text)}</p></div></div>;
+  },
+  code: (b) => { const c = b as Extract<Block, {type:'code'}>; return <div className="relative">{c.language && <small className="absolute top-2 right-2">{c.language}</small>}<pre><code>{c.code}</code></pre></div>; },
+  media: (b) => {
+    const m = b as MediaBlock;
+    if (!m.src) return null;
+    const getEmbedUrl = (url: string) => {
+      const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/);
+      if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
+      const vm = url.match(/vimeo\.com\/(\d+)/);
+      if (vm) return `https://player.vimeo.com/video/${vm[1]}`;
+      return url;
+    };
+    const aspectClass = { '16:9': 'aspect-video', '4:3': 'aspect-[4/3]', '1:1': 'aspect-square', auto: '' }[m.aspectRatio || '16:9'];
+    const content = m.mediaType === 'image' ? <img src={m.src} alt={m.alt || ''} className="rounded-lg max-w-full" />
+      : m.mediaType === 'video' ? <video src={m.src} className="rounded-lg max-w-full" controls />
+      : <div className={cn('w-full rounded-lg overflow-hidden surface', aspectClass)}><iframe src={getEmbedUrl(m.src)} className="w-full h-full border-0" allowFullScreen /></div>;
+    return <figure className="stack-2">{content}{m.caption && <figcaption className="text-muted text-center">{m.caption}</figcaption>}</figure>;
+  },
+  table: (b) => {
+    const t = b as TableBlock;
+    if (!t.rows.length) return null;
+    const [headerRow, bodyRows] = t.hasHeader ? [t.rows[0], t.rows.slice(1)] : [null, t.rows];
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          {headerRow && <thead><tr>{headerRow.cells.map((cell, i) => <th key={i} className="text-left p-2 border-b-2 border-border font-semibold bg-surface-1">{parseInlineMarkdown(cell)}</th>)}</tr></thead>}
+          <tbody>{bodyRows.map((row, i) => <tr key={i} className="border-b border-border-muted hover:bg-surface-1/50">{row.cells.map((cell, j) => <td key={j} className="p-2">{parseInlineMarkdown(cell)}</td>)}</tr>)}</tbody>
+        </table>
+      </div>
+    );
+  },
+  toc: (b, allContent) => {
+    const t = b as TocBlock;
+    const headings = extractHeadings(allContent, t.maxDepth || 3);
+    if (!headings.length) return <p className="text-muted text-small">No headings found.</p>;
+    return (
+      <nav className="stack-2">
+        {t.title && <h4 className="font-semibold">{t.title}</h4>}
+        <ul className="stack-1">{headings.map((h, i) => <li key={i} style={{ paddingLeft: `${(h.level - 1) * 0.75}rem` }}><a href={`#${slugify(h.text)}`} className="link-muted text-small hover:text-accent">{h.text}</a></li>)}</ul>
+      </nav>
+    );
+  },
+  columns: (b, allContent) => {
+    const c = b as ColumnsBlock;
+    const gapClass = { sm: 'gap-2', md: 'gap-4', lg: 'gap-6' }[c.gap || 'md'];
+    const alignClass = { start: 'items-start', center: 'items-center', end: 'items-end', stretch: 'items-stretch' }[c.align || 'start'];
+    return (
+      <div className={cn('flex flex-col md:flex-row', gapClass, alignClass)}>
+        {c.columns.map(col => <div key={col.id} className="flex-1 min-w-0 stack-6">{col.blocks.map(bl => <div key={bl.id}>{renderBlock(bl, 'view', undefined, allContent)}</div>)}</div>)}
+      </div>
+    );
+  },
+};
+
+// Page cards for recentPages/pageList
+function PageCard({ page, variant }: { page: WikiPage; variant: 'full' | 'compact' }) {
+  const leafTag = findTagByPath(page.tagPath.split('/'));
+  const href = `/${page.tagPath}/${page.slug}`;
+  if (variant === 'compact') {
+    return <Link href={href} className="group row p-3 surface hover:bg-surface-2 transition-colors"><FileText size={16} className="text-accent" /><span className="group-hover:text-accent transition-colors">{page.title}</span></Link>;
   }
+  return (
+    <Link href={href} className="flex-1 min-w-70 max-w-[calc(33.333%-1rem)] group">
+      <div className="row items-start gap-3 p-4 surface-interactive h-full">
+        <FileText size={18} className="text-accent shrink-0 mt-0.5" />
+        <div className="stack-2 min-w-0">
+          <span className="font-medium group-hover:text-accent transition-colors truncate">{page.title}</span>
+          {page.excerpt && <p className="text-muted line-clamp-2">{page.excerpt}</p>}
+          <div className="row mt-auto pt-2"><small className="row"><Clock size={12} />{formatRelativeTime(page.updatedAt)}</small>{leafTag && <Badge variant="secondary">{leafTag.name}</Badge>}</div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// Dynamic page blocks (need hooks)
+function RecentPagesView({ block }: { block: Extract<Block, {type:'recentPages'}> }) {
+  const { pages, isLoading } = usePages({ type: 'recent', tagPath: block.tagPath, limit: block.limit });
+  if (isLoading) return <div className="row-4 wrap">{Array.from({ length: Math.min(block.limit, 3) }, (_, i) => <div key={i} className="flex-1 h-32 skeleton" />)}</div>;
+  if (!pages.length) return <p className="text-muted">No pages found.</p>;
+  return <div className="row-4 wrap">{pages.map(p => <PageCard key={p.id} page={p} variant="full" />)}</div>;
+}
+
+function PageListView({ block }: { block: Extract<Block, {type:'pageList'}> }) {
+  const { pages, isLoading } = usePages({ type: 'byIds', pageIds: block.pageIds });
+  if (isLoading) return <div className="row-4"><div className="flex-1 h-20 skeleton" /></div>;
+  if (!pages.length) return <p className="text-muted">No pages selected.</p>;
+  return <div className="row-4 wrap">{pages.map(p => <PageCard key={p.id} page={p} variant="compact" />)}</div>;
+}
+
+// Edit mode components
+function HeadingEdit({ block, onUpdate }: BlockProps<HeadingBlock>) {
   return (
     <div className="stack-2">
       <div className="row">
         {([1, 2, 3] as const).map(level => (
           <button key={level} onClick={() => onUpdate?.({ ...block, level })}
-            className={cn('px-3 py-1 rounded-md border', block.level === level ? 'bg-accent text-text-inverted border-accent' : 'border-border hover:bg-surface-2')}>
-            H{level}
-          </button>
+            className={cn('px-3 py-1 rounded-md border', block.level === level ? 'bg-accent text-text-inverted border-accent' : 'border-border hover:bg-surface-2')}>H{level}</button>
         ))}
       </div>
       <input type="text" value={block.text} onChange={e => onUpdate?.({ ...block, text: e.target.value })} placeholder="Heading text..."
@@ -227,10 +287,8 @@ function HeadingBlock({ block, mode, onUpdate }: BlockProps<Extract<Block, { typ
   );
 }
 
-function ParagraphBlock({ block, mode, onUpdate }: BlockProps<Extract<Block, { type: 'paragraph' }>>) {
+function ParagraphEdit({ block, onUpdate }: BlockProps<Extract<Block, {type:'paragraph'}>>) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  
-  if (mode === 'view') return <div className="paragraph">{parseParagraphContent(block.text)}</div>;
 
   const updateWithCursor = useCallback((newText: string, cursorPos: number) => {
     onUpdate?.({ ...block, text: newText });
@@ -239,51 +297,9 @@ function ParagraphBlock({ block, mode, onUpdate }: BlockProps<Extract<Block, { t
 
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const { selectionStart: start, selectionEnd: end } = e.currentTarget;
-    
-    // Check for HTML content first (preserves links from rich text)
-    const htmlContent = e.clipboardData.getData('text/html');
-    if (htmlContent) {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(htmlContent, 'text/html');
-      const walkNode = (node: Node): string => {
-        if (node.nodeType === Node.TEXT_NODE) return node.textContent || '';
-        if (node.nodeType === Node.ELEMENT_NODE) {
-          const el = node as Element;
-          if (el.tagName === 'A') {
-            const href = el.getAttribute('href');
-            const text = el.textContent || '';
-            return href && text ? `[${text}](${href})` : text;
-          }
-          if (el.tagName === 'BR') return '\n';
-          if (['P', 'DIV'].includes(el.tagName)) {
-            const content = Array.from(el.childNodes).map(walkNode).join('');
-            return content + '\n\n';
-          }
-          if (el.tagName === 'LI') {
-            const content = Array.from(el.childNodes).map(walkNode).join('');
-            return '- ' + content + '\n';
-          }
-          return Array.from(el.childNodes).map(walkNode).join('');
-        }
-        return '';
-      };
-      const converted = walkNode(doc.body).trim().replace(/\n{3,}/g, '\n\n');
-      if (converted !== e.clipboardData.getData('text').trim()) {
-        e.preventDefault();
-        updateWithCursor(block.text.slice(0, start) + converted + block.text.slice(end), start + converted.length);
-        return;
-      }
-    }
-
     const pastedText = e.clipboardData.getData('text');
-    if (/^[\s]*[-*â€¢]\s|^[\s]*\d+[.)]\s/m.test(pastedText)) {
-      e.preventDefault();
-      const normalized = pastedText.split('\n').map(line => line.replace(/^[\s]*[-*â€¢]\s/, '- ').replace(/^[\s]*\d+[.)]\s/, '- ')).join('\n');
-      updateWithCursor(block.text.slice(0, start) + normalized + block.text.slice(end), start + normalized.length);
-      return;
-    }
-    const urlRegex = /https?:\/\/[^\s]+/g;
     const trimmed = pastedText.trim();
+    
     // Single URL pasted
     if (/^https?:\/\/[^\s]+$/.test(trimmed)) {
       e.preventDefault();
@@ -293,16 +309,12 @@ function ParagraphBlock({ block, mode, onUpdate }: BlockProps<Extract<Block, { t
       updateWithCursor(block.text.slice(0, start) + markdownLink + block.text.slice(end), start + markdownLink.length);
       return;
     }
-    // Text containing URLs - convert them to markdown links
-    if (urlRegex.test(pastedText)) {
+    
+    // List normalization
+    if (/^[\s]*[-*•]\s|^[\s]*\d+[.)]\s/m.test(pastedText)) {
       e.preventDefault();
-      const converted = pastedText.replace(urlRegex, url => {
-        try {
-          const linkText = new URL(url).hostname.replace(/^www\./, '');
-          return `[${linkText}](${url})`;
-        } catch { return url; }
-      });
-      updateWithCursor(block.text.slice(0, start) + converted + block.text.slice(end), start + converted.length);
+      const normalized = pastedText.split('\n').map(line => line.replace(/^[\s]*[-*•]\s/, '- ').replace(/^[\s]*\d+[.)]\s/, '- ')).join('\n');
+      updateWithCursor(block.text.slice(0, start) + normalized + block.text.slice(end), start + normalized.length);
     }
   };
 
@@ -315,26 +327,7 @@ function ParagraphBlock({ block, mode, onUpdate }: BlockProps<Extract<Block, { t
   );
 }
 
-function MediaBlockComponent({ block, mode, onUpdate }: BlockProps<MediaBlock>) {
-  const getEmbedUrl = (url: string) => {
-    const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/);
-    if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
-    const vm = url.match(/vimeo\.com\/(\d+)/);
-    if (vm) return `https://player.vimeo.com/video/${vm[1]}`;
-    return url;
-  };
-
-  if (mode === 'view') {
-    if (!block.src) return null;
-    const aspectClass = { '16:9': 'aspect-video', '4:3': 'aspect-[4/3]', '1:1': 'aspect-square', auto: '' }[block.aspectRatio || '16:9'];
-    const content = {
-      image: <img src={block.src} alt={block.alt || ''} className="rounded-lg max-w-full" />,
-      video: <video src={block.src} className="rounded-lg max-w-full" controls />,
-      embed: <div className={cn('w-full rounded-lg overflow-hidden surface', aspectClass)}><iframe src={getEmbedUrl(block.src)} className="w-full h-full border-0" allowFullScreen /></div>,
-    }[block.mediaType];
-    return <figure className="stack-2">{content}{block.caption && <figcaption className="text-muted text-center">{block.caption}</figcaption>}</figure>;
-  }
-
+function MediaEdit({ block, onUpdate }: BlockProps<MediaBlock>) {
   const detectMediaType = (url: string): 'image' | 'video' | 'embed' => {
     if (/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(url)) return 'image';
     if (/\.(mp4|webm|ogg)$/i.test(url)) return 'video';
@@ -349,21 +342,11 @@ function MediaBlockComponent({ block, mode, onUpdate }: BlockProps<MediaBlock>) 
       <Input label="Caption (optional)" value={block.caption || ''} onChange={e => onUpdate?.({ ...block, caption: e.target.value })} placeholder="Caption..." />
       {block.mediaType !== 'image' && <div className="row"><span className="text-small text-muted">Aspect ratio:</span><Selector options={['auto', '16:9', '4:3', '1:1'] as const} value={block.aspectRatio || 'auto'} onChange={aspectRatio => onUpdate?.({ ...block, aspectRatio })} /></div>}
       {block.src && block.mediaType === 'image' && <img src={block.src} alt={block.alt || ''} className="rounded-lg max-h-48 object-contain" />}
-      {block.src && block.mediaType === 'video' && <video src={block.src} className="rounded-lg max-h-48" controls />}
     </div>
   );
 }
 
-function CalloutBlockComponent({ block, mode, onUpdate }: BlockProps<Extract<Block, { type: 'callout' }>>) {
-  const { className, Icon, iconClass } = CALLOUT_CONFIG[block.variant];
-  if (mode === 'view') {
-    return (
-      <div className={cn('callout', className)}>
-        <Icon size={20} className={cn('shrink-0 mt-0.5', iconClass)} />
-        <div className="stack-2">{block.title && <strong>{block.title}</strong>}<p>{parseInlineMarkdown(block.text)}</p></div>
-      </div>
-    );
-  }
+function CalloutEdit({ block, onUpdate }: BlockProps<Extract<Block, {type:'callout'}>>) {
   return (
     <div className="stack">
       <Selector options={['info', 'warning', 'success', 'error'] as const} value={block.variant} onChange={variant => onUpdate?.({ ...block, variant })} />
@@ -373,29 +356,14 @@ function CalloutBlockComponent({ block, mode, onUpdate }: BlockProps<Extract<Blo
   );
 }
 
-function DividerBlock({ mode }: BlockProps<Extract<Block, { type: 'divider' }>>) {
-  if (mode === 'view') return <hr />;
-  return <div className="py-2"><hr /><small className="block text-center mt-2">Horizontal divider</small></div>;
-}
-
-function CodeBlockComponent({ block, mode, onUpdate }: BlockProps<Extract<Block, { type: 'code' }>>) {
-  if (mode === 'view') {
-    return (
-      <div className="relative">
-        {block.language && <small className="absolute top-2 right-2">{block.language}</small>}
-        <pre><code>{block.code}</code></pre>
-      </div>
-    );
-  }
+function CodeEdit({ block, onUpdate }: BlockProps<Extract<Block, {type:'code'}>>) {
   const languages = ['typescript', 'javascript', 'python', 'rust', 'sql', 'bash', 'json', 'css', 'html'];
   return (
     <div className="stack">
       <div className="row wrap">
         {languages.map(lang => (
           <button key={lang} onClick={() => onUpdate?.({ ...block, language: lang })}
-            className={cn('px-2 py-1 text-small rounded border', block.language === lang ? 'bg-accent text-text-inverted border-accent' : 'border-border hover:bg-surface-2')}>
-            {lang}
-          </button>
+            className={cn('px-2 py-1 text-small rounded border', block.language === lang ? 'bg-accent text-text-inverted border-accent' : 'border-border hover:bg-surface-2')}>{lang}</button>
         ))}
       </div>
       <textarea value={block.code} onChange={e => onUpdate?.({ ...block, code: e.target.value })} placeholder="// Enter code..." className="input min-h-30 resize-none font-mono" rows={6} spellCheck={false} />
@@ -403,32 +371,16 @@ function CodeBlockComponent({ block, mode, onUpdate }: BlockProps<Extract<Block,
   );
 }
 
-function QuoteBlockComponent({ block, mode, onUpdate }: BlockProps<Extract<Block, { type: 'quote' }>>) {
-  if (mode === 'view') {
-    return <blockquote><p>{parseInlineMarkdown(block.text)}</p>{block.attribution && <cite className="block mt-2">â€” {block.attribution}</cite>}</blockquote>;
-  }
+function QuoteEdit({ block, onUpdate }: BlockProps<Extract<Block, {type:'quote'}>>) {
   return (
     <div className="stack border-l-4 border-accent pl-4">
       <textarea value={block.text} onChange={e => onUpdate?.({ ...block, text: e.target.value })} placeholder="Quote text..." className="input-ghost min-h-15 italic resize-none" rows={2} />
-      <Input label="Attribution (optional)" value={block.attribution || ''} onChange={e => onUpdate?.({ ...block, attribution: e.target.value })} placeholder="â€” Author name" />
+      <Input label="Attribution (optional)" value={block.attribution || ''} onChange={e => onUpdate?.({ ...block, attribution: e.target.value })} placeholder="— Author name" />
     </div>
   );
 }
 
-function TableBlockComponent({ block, mode, onUpdate }: BlockProps<TableBlock>) {
-  if (mode === 'view') {
-    if (!block.rows.length) return null;
-    const [headerRow, bodyRows] = block.hasHeader ? [block.rows[0], block.rows.slice(1)] : [null, block.rows];
-    return (
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          {headerRow && <thead><tr>{headerRow.cells.map((cell, i) => <th key={i} className="text-left p-2 border-b-2 border-border font-semibold bg-surface-1">{parseInlineMarkdown(cell)}</th>)}</tr></thead>}
-          <tbody>{bodyRows.map((row, i) => <tr key={i} className="border-b border-border-muted hover:bg-surface-1/50">{row.cells.map((cell, j) => <td key={j} className="p-2">{parseInlineMarkdown(cell)}</td>)}</tr>)}</tbody>
-        </table>
-      </div>
-    );
-  }
-
+function TableEdit({ block, onUpdate }: BlockProps<TableBlock>) {
   const updateCell = (ri: number, ci: number, value: string) => onUpdate?.({ ...block, rows: block.rows.map((row, r) => r === ri ? { ...row, cells: row.cells.map((c, i) => i === ci ? value : c) } : row) });
   const addRow = () => onUpdate?.({ ...block, rows: [...block.rows, { cells: Array(block.rows[0]?.cells.length || 2).fill('') }] });
   const addColumn = () => onUpdate?.({ ...block, rows: block.rows.map(row => ({ ...row, cells: [...row.cells, ''] })) });
@@ -451,26 +403,13 @@ function TableBlockComponent({ block, mode, onUpdate }: BlockProps<TableBlock>) 
       <div className="row">
         <button onClick={addRow} className="text-accent text-small hover:text-accent-hover">+ Add row</button>
         <button onClick={addColumn} className="text-accent text-small hover:text-accent-hover">+ Add column</button>
-        {block.rows[0]?.cells.length > 1 && <button onClick={() => deleteColumn(block.rows[0].cells.length - 1)} className="text-muted text-small hover:text-error">âˆ’ Remove column</button>}
+        {block.rows[0]?.cells.length > 1 && <button onClick={() => deleteColumn(block.rows[0].cells.length - 1)} className="text-muted text-small hover:text-error">− Remove column</button>}
       </div>
     </div>
   );
 }
 
-function TocBlockComponent({ block, mode, onUpdate, allContent = [] }: BlockProps<TocBlock>) {
-  const headings = useMemo(() => extractHeadings(allContent, block.maxDepth || 3), [allContent, block.maxDepth]);
-
-  if (mode === 'view') {
-    if (!headings.length) return <p className="text-muted text-small">No headings found.</p>;
-    return (
-      <nav className="stack-2">
-        {block.title && <h4 className="font-semibold">{block.title}</h4>}
-        <ul className="stack-1">
-          {headings.map((h, i) => <li key={i} style={{ paddingLeft: `${(h.level - 1) * 0.75}rem` }}><a href={`#${slugify(h.text)}`} className="link-muted text-small hover:text-accent">{h.text}</a></li>)}
-        </ul>
-      </nav>
-    );
-  }
+function TocEdit({ block, onUpdate }: BlockProps<TocBlock>) {
   return (
     <div className="stack surface p-4 border-dashed">
       <div className="row text-muted"><ListTree size={18} /><span className="font-medium">Table of Contents</span></div>
@@ -481,35 +420,7 @@ function TocBlockComponent({ block, mode, onUpdate, allContent = [] }: BlockProp
   );
 }
 
-// Page Card (view only)
-function PageCard({ page, variant }: { page: WikiPage; variant: 'full' | 'compact' }) {
-  const leafTag = findTagByPath(page.tagPath.split('/'));
-  const href = `/${page.tagPath}/${page.slug}`;
-  if (variant === 'compact') {
-    return <Link href={href} className="group row p-3 surface hover:bg-surface-2 transition-colors"><FileText size={16} className="text-accent" /><span className="group-hover:text-accent transition-colors">{page.title}</span></Link>;
-  }
-  return (
-    <Link href={href} className="flex-1 min-w-70 max-w-[calc(33.333%-1rem)] group">
-      <div className="row items-start gap-3 p-4 surface-interactive h-full">
-        <FileText size={18} className="text-accent shrink-0 mt-0.5" />
-        <div className="stack-2 min-w-0">
-          <span className="font-medium group-hover:text-accent transition-colors truncate">{page.title}</span>
-          {page.excerpt && <p className="text-muted line-clamp-2">{page.excerpt}</p>}
-          <div className="row mt-auto pt-2"><small className="row"><Clock size={12} />{formatRelativeTime(page.updatedAt)}</small>{leafTag && <Badge variant="secondary">{leafTag.name}</Badge>}</div>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-function RecentPagesBlockComponent({ block, mode, onUpdate }: BlockProps<Extract<Block, { type: 'recentPages' }>>) {
-  const { pages, isLoading } = usePages({ type: 'recent', tagPath: block.tagPath, limit: block.limit });
-
-  if (mode === 'view') {
-    if (isLoading) return <div className="row-4 wrap">{Array.from({ length: Math.min(block.limit, 3) }, (_, i) => <div key={i} className="flex-1 h-32 skeleton" />)}</div>;
-    if (!pages.length) return <p className="text-muted">No pages found.</p>;
-    return <div className="row-4 wrap">{pages.map(page => <PageCard key={page.id} page={page} variant="full" />)}</div>;
-  }
+function RecentPagesEdit({ block, onUpdate }: BlockProps<Extract<Block, {type:'recentPages'}>>) {
   return (
     <div className="stack surface p-4 border-dashed">
       <div className="row text-muted"><Clock size={18} /><span className="font-medium">Recent Pages Widget</span></div>
@@ -519,16 +430,8 @@ function RecentPagesBlockComponent({ block, mode, onUpdate }: BlockProps<Extract
   );
 }
 
-function PageListBlockComponent({ block, mode, onUpdate }: BlockProps<Extract<Block, { type: 'pageList' }>>) {
-  const { pages, isLoading } = usePages({ type: 'byIds', pageIds: block.pageIds });
+function PageListEdit({ block, onUpdate }: BlockProps<Extract<Block, {type:'pageList'}>>) {
   const [newPageId, setNewPageId] = useState('');
-
-  if (mode === 'view') {
-    if (isLoading) return <div className="row-4"><div className="flex-1 h-20 skeleton" /></div>;
-    if (!pages.length) return <p className="text-muted">No pages selected.</p>;
-    return <div className="row-4 wrap">{pages.map(page => <PageCard key={page.id} page={page} variant="compact" />)}</div>;
-  }
-
   const addPage = () => { if (newPageId.trim()) { onUpdate?.({ ...block, pageIds: [...block.pageIds, newPageId.trim()] }); setNewPageId(''); } };
   return (
     <div className="stack surface p-4 border-dashed">
@@ -546,8 +449,7 @@ function PageListBlockComponent({ block, mode, onUpdate }: BlockProps<Extract<Bl
   );
 }
 
-// Columns Block (recursive)
-
+// Column Editor
 function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Column; onUpdate: (col: Column) => void; onDelete: () => void; canDelete: boolean }) {
   const setBlocks = useCallback((blocks: ContentBlock[]) => onUpdate({ ...column, blocks }), [column, onUpdate]);
   const { selectedIndex, setSelectedIndex, update, remove, move, insert } = useBlockOperations(column.blocks, setBlocks, createContentBlock as (type: BlockType) => ContentBlock);
@@ -574,19 +476,8 @@ function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Colum
   );
 }
 
-function ColumnsBlockComponent({ block, mode, onUpdate, allContent = [] }: BlockProps<ColumnsBlock>) {
+function ColumnsEdit({ block, onUpdate }: BlockProps<ColumnsBlock>) {
   const [showSettings, setShowSettings] = useState(false);
-  const gapClass = { sm: 'gap-2', md: 'gap-4', lg: 'gap-6' }[block.gap || 'md'];
-  const alignClass = { start: 'items-start', center: 'items-center', end: 'items-end', stretch: 'items-stretch' }[block.align || 'start'];
-
-  if (mode === 'view') {
-    return (
-      <div className={cn('flex flex-col md:flex-row', gapClass, alignClass)}>
-        {block.columns.map(col => <div key={col.id} className="flex-1 min-w-0 stack-6">{col.blocks.map(b => <div key={b.id}>{renderBlock(b, 'view', undefined, allContent)}</div>)}</div>)}
-      </div>
-    );
-  }
-
   const updateColumn = (i: number, col: Column) => onUpdate?.({ ...block, columns: block.columns.map((c, j) => j === i ? col : c) });
   const deleteColumn = (i: number) => block.columns.length > 1 && onUpdate?.({ ...block, columns: block.columns.filter((_, j) => j !== i) });
   const addColumn = () => block.columns.length < 4 && onUpdate?.({ ...block, columns: [...block.columns, createColumn()] });
@@ -613,39 +504,34 @@ function ColumnsBlockComponent({ block, mode, onUpdate, allContent = [] }: Block
   );
 }
 
-// Block Rendering
-
+// Unified block renderer
 function renderBlock(block: Block, mode: 'edit' | 'view', onUpdate?: (b: Block) => void, allContent: BlockContent = []): React.ReactNode {
-  const props = { block, mode, onUpdate, allContent } as BlockProps;
-  
+  if (mode === 'view') {
+    // Dynamic blocks need hooks
+    if (block.type === 'recentPages') return <RecentPagesView block={block} />;
+    if (block.type === 'pageList') return <PageListView block={block} />;
+    return ViewRenderers[block.type]?.(block, allContent) ?? <p className="text-warning text-small">Unknown block: {block.type}</p>;
+  }
+
+  // Edit mode
   switch (block.type) {
-    case 'heading': return <HeadingBlock {...props as BlockProps<Extract<Block, { type: 'heading' }>>} />;
-    case 'paragraph': return <ParagraphBlock {...props as BlockProps<Extract<Block, { type: 'paragraph' }>>} />;
-    case 'media': return <MediaBlockComponent {...props as BlockProps<MediaBlock>} />;
-    case 'callout': return <CalloutBlockComponent {...props as BlockProps<Extract<Block, { type: 'callout' }>>} />;
-    case 'divider': return <DividerBlock {...props as BlockProps<Extract<Block, { type: 'divider' }>>} />;
-    case 'code': return <CodeBlockComponent {...props as BlockProps<Extract<Block, { type: 'code' }>>} />;
-    case 'quote': return <QuoteBlockComponent {...props as BlockProps<Extract<Block, { type: 'quote' }>>} />;
-    case 'table': return <TableBlockComponent {...props as BlockProps<TableBlock>} />;
-    case 'toc': return <TocBlockComponent {...props as BlockProps<TocBlock>} />;
-    case 'recentPages': return <RecentPagesBlockComponent {...props as BlockProps<Extract<Block, { type: 'recentPages' }>>} />;
-    case 'pageList': return <PageListBlockComponent {...props as BlockProps<Extract<Block, { type: 'pageList' }>>} />;
-    case 'columns': return <ColumnsBlockComponent {...props as BlockProps<ColumnsBlock>} />;
-    // Legacy support
-    case 'image' as BlockType: return <MediaBlockComponent block={{ ...block, type: 'media', mediaType: 'image' } as MediaBlock} mode={mode} onUpdate={onUpdate} />;
-    case 'embed' as BlockType: return <MediaBlockComponent block={{ ...block, type: 'media', mediaType: 'embed', src: (block as any).url } as MediaBlock} mode={mode} onUpdate={onUpdate} />;
-    case 'list' as BlockType: {
-      const { style, items } = block as unknown as { style: string; items: { text: string; checked?: boolean }[] };
-      if (style === 'checklist') return <ul className="stack-2">{items.map((item, i) => <li key={i} className="row items-start"><input type="checkbox" checked={item.checked} readOnly className="mt-1 rounded" /><span className={item.checked ? 'line-through text-muted' : ''}>{parseInlineMarkdown(item.text)}</span></li>)}</ul>;
-      const Tag = style === 'numbered' ? 'ol' : 'ul';
-      return <Tag className={cn('pl-6 stack-2', style === 'numbered' ? 'list-decimal' : 'list-disc')}>{items.map((item, i) => <li key={i}>{parseInlineMarkdown(item.text)}</li>)}</Tag>;
-    }
-    default: return <p className="text-warning text-small">Unknown block type: {(block as Block).type}</p>;
+    case 'heading': return <HeadingEdit block={block} mode="edit" onUpdate={onUpdate} />;
+    case 'paragraph': return <ParagraphEdit block={block} mode="edit" onUpdate={onUpdate} />;
+    case 'media': return <MediaEdit block={block} mode="edit" onUpdate={onUpdate} />;
+    case 'callout': return <CalloutEdit block={block} mode="edit" onUpdate={onUpdate} />;
+    case 'divider': return <div className="py-2"><hr /><small className="block text-center mt-2">Horizontal divider</small></div>;
+    case 'code': return <CodeEdit block={block} mode="edit" onUpdate={onUpdate} />;
+    case 'quote': return <QuoteEdit block={block} mode="edit" onUpdate={onUpdate} />;
+    case 'table': return <TableEdit block={block} mode="edit" onUpdate={onUpdate} />;
+    case 'toc': return <TocEdit block={block} mode="edit" onUpdate={onUpdate} />;
+    case 'recentPages': return <RecentPagesEdit block={block} mode="edit" onUpdate={onUpdate} />;
+    case 'pageList': return <PageListEdit block={block} mode="edit" onUpdate={onUpdate} />;
+    case 'columns': return <ColumnsEdit block={block} mode="edit" onUpdate={onUpdate} />;
+    default: return <p className="text-warning text-small">Unknown block: {(block as Block).type}</p>;
   }
 }
 
-// Block Wrapper (edit mode)
-
+// Block Wrapper
 interface BlockWrapperProps {
   block: Block; index: number; total: number; isSelected: boolean;
   onSelect: () => void; onUpdate: (b: Block) => void; onDelete: () => void;
@@ -654,17 +540,15 @@ interface BlockWrapperProps {
 
 function BlockWrapper({ block, index, total, isSelected, onSelect, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveDown, compact }: BlockWrapperProps) {
   const reg = BLOCK_REGISTRY[block.type];
-  const isColumnsBlock = block.type === 'columns';
   const iconSize = compact ? 12 : 14;
 
   if (!reg) {
     return (
       <div className={cn('rounded border border-warning/50 bg-warning/10', compact ? 'p-3' : 'p-4 rounded-lg')}>
         <div className="spread mb-2">
-          <span className={cn('text-warning', compact ? 'text-small' : 'font-medium')}>Legacy block: {block.type}</span>
+          <span className={cn('text-warning', compact ? 'text-small' : 'font-medium')}>Unknown block: {block.type}</span>
           <button onClick={e => { e.stopPropagation(); onDelete(); }} className="icon-btn p-1 text-muted hover:text-error"><Trash2 size={iconSize} /></button>
         </div>
-        <small className="text-muted">This block type is no longer supported. Delete and recreate.</small>
       </div>
     );
   }
@@ -672,12 +556,12 @@ function BlockWrapper({ block, index, total, isSelected, onSelect, onUpdate, onD
   return (
     <div onClick={onSelect} className={cn('group relative transition-colors',
       compact ? cn('p-3 rounded-md border', isSelected ? 'border-accent bg-accent/5' : 'border-transparent hover:border-border-muted hover:bg-surface-2/50')
-        : cn('p-4 rounded-lg border', isSelected ? 'border-accent bg-accent/5' : 'border-border-muted hover:border-border', isColumnsBlock && 'bg-surface-1/30')
+        : cn('p-4 rounded-lg border', isSelected ? 'border-accent bg-accent/5' : 'border-border-muted hover:border-border', block.type === 'columns' && 'bg-surface-1/30')
     )}>
       <div className={cn('spread', compact ? 'mb-2' : 'mb-3')}>
         <div className="row">
           {!compact && <div className="row opacity-0 group-hover:opacity-100 transition-opacity mr-2"><button className="icon-btn p-1 text-muted cursor-grab"><GripVertical size={16} /></button></div>}
-          {!(compact ? false : isColumnsBlock) && <div className="row text-muted">{ICONS[reg.icon]}<span className="text-small font-medium uppercase">{reg.label}</span></div>}
+          {!(compact || block.type === 'columns') && <div className="row text-muted">{ICONS[reg.icon]}<span className="text-small font-medium uppercase">{reg.label}</span></div>}
         </div>
         <div className="row opacity-0 group-hover:opacity-100 transition-opacity">
           <button onClick={e => { e.stopPropagation(); onMoveUp(); }} disabled={index === 0} className="icon-btn p-1 text-muted disabled:opacity-30"><ChevronUp size={iconSize} /></button>
@@ -692,7 +576,6 @@ function BlockWrapper({ block, index, total, isSelected, onSelect, onUpdate, onD
 }
 
 // Public Exports
-
 export function BlockEditor({ content, onChange }: { content: BlockContent; onChange: (content: BlockContent) => void }) {
   const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(content, onChange, createBlock);
 

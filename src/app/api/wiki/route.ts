@@ -6,6 +6,7 @@ import { Prisma } from '@prisma/client';
 import { slugify } from '@/lib/utils';
 import { requireAuth } from '@/lib/radix/session';
 import { isValidTagPath } from '@/lib/tags';
+import { requireBalance } from '@/lib/radix/balance';
 import type { WikiPageInput } from '@/types';
 
 export async function GET(request: NextRequest) {
@@ -17,11 +18,8 @@ export async function GET(request: NextRequest) {
     const published = searchParams.get('published');
     const tagPath = searchParams.get('tagPath');
 
-    // If no query params, return homepage
     if (!search && !published && !tagPath && !searchParams.has('page') && !searchParams.has('pageSize')) {
-      const homepage = await prisma.page.findFirst({
-        where: { tagPath: '', slug: '' },
-      });
+      const homepage = await prisma.page.findFirst({ where: { tagPath: '', slug: '' } });
       return NextResponse.json(homepage);
     }
 
@@ -62,6 +60,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Valid tag path required' }, { status: 400 });
     }
 
+    const balanceCheck = await requireBalance(auth.session, { type: 'create', tagPath });
+    if (!balanceCheck.ok) return balanceCheck.response;
+
     let slug = body.slug || slugify(title);
     const existing = await prisma.page.findFirst({ where: { tagPath, slug } });
     if (existing) slug = `${slug}-${Date.now().toString(36)}`;
@@ -100,6 +101,9 @@ export async function PUT(request: NextRequest) {
   try {
     const auth = await requireAuth(request);
     if ('error' in auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const balanceCheck = await requireBalance(auth.session, { type: 'editHomepage' });
+    if (!balanceCheck.ok) return balanceCheck.response;
 
     const body: Partial<WikiPageInput> = await request.json();
     const { title, content } = body;

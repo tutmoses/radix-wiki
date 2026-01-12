@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
 import { requireAuth } from '@/lib/radix/session';
 import { isValidTagPath } from '@/lib/tags';
+import { requireBalance } from '@/lib/radix/balance';
 import type { WikiPageInput } from '@/types';
 
 type RouteContext = { params: Promise<{ path: string[] }> };
@@ -53,6 +54,9 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     if (existingPage.authorId !== auth.session.userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+
+    const balanceCheck = await requireBalance(auth.session, { type: 'edit', tagPath: parsed.tagPath });
+    if (!balanceCheck.ok) return balanceCheck.response;
 
     const body: Partial<WikiPageInput> & { revisionMessage?: string } = await request.json();
     const { title, content, excerpt, isPublished, revisionMessage } = body;
