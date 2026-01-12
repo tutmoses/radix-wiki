@@ -1,11 +1,28 @@
 // src/app/api/auth/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma/client';
 import { verifySignedChallenge } from '@/lib/radix/rola';
 import { createSession, getSession, destroySession } from '@/lib/radix/session';
 import { RADIX_CONFIG } from '@/lib/radix/config';
 import type { SignedChallenge, RadixAccount, RadixPersona } from '@/types';
+import type { BlockContent } from '@/lib/blocks';
+
+function createCommunityPageContent(displayName?: string): BlockContent {
+  const title = displayName ? `# Welcome to ${displayName}` : '# Welcome to My Page';
+  return [
+    {
+      id: crypto.randomUUID(),
+      type: 'text',
+      text: `${title}\n\nThis is your personal community page. Edit it to share your thoughts, projects, and contributions with the RADIX community.\n\n## About Me\n\nTell the community about yourself...`,
+    },
+  ];
+}
+
+function addressToSlug(address: string): string {
+  return address.slice(-16).toLowerCase();
+}
 
 export async function GET() {
   try {
@@ -63,6 +80,39 @@ export async function POST(request: NextRequest) {
         data: {
           personaAddress: persona?.identityAddress || user.personaAddress,
           displayName: persona?.label || user.displayName,
+        },
+      });
+    }
+
+    // Create community page if user doesn't have one
+    const slug = addressToSlug(primaryAccount.address);
+    const existingPage = await prisma.page.findFirst({
+      where: { tagPath: 'community', authorId: user.id },
+    });
+
+    if (!existingPage) {
+      const displayName = user.displayName || undefined;
+      const pageTitle = displayName ? `${displayName}` : 'My Community Page';
+      const content = createCommunityPageContent(displayName);
+
+      const page = await prisma.page.create({
+        data: {
+          tagPath: 'community',
+          slug,
+          title: pageTitle,
+          content: content as unknown as Prisma.InputJsonValue,
+          isPublished: true,
+          authorId: user.id,
+        },
+      });
+
+      await prisma.revision.create({
+        data: {
+          pageId: page.id,
+          title: pageTitle,
+          content: content as unknown as Prisma.InputJsonValue,
+          authorId: user.id,
+          message: 'Initial community page',
         },
       });
     }

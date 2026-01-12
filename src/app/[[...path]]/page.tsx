@@ -14,7 +14,7 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Button, Card, Badge, LoadingScreen, Input } from '@/components/ui';
 import { useAuth, useIsAuthenticated } from '@/hooks/useStore';
 import { formatRelativeTime, formatDate, slugify } from '@/lib/utils';
-import { isValidTagPath, findTagByPath } from '@/lib/tags';
+import { isValidTagPath, findTagByPath, isAuthorOnlyPath } from '@/lib/tags';
 import type { WikiPage } from '@/types';
 import { type BlockContent, createDefaultPageContent } from '@/lib/blocks';
 
@@ -132,13 +132,16 @@ function CategoryView({ tagPath }: { tagPath: string[] }) {
 
   const handleCreate = () => { const s = slugify(newSlug); if (s) router.push(`/${pathStr}/${s}`); };
 
+  // Don't allow creating new pages in community section (auto-created on signup)
+  const canCreatePages = isAuthenticated && pathStr !== 'community';
+
   return (
     <WikiLayout>
       <div className="stack-6">
         <Breadcrumbs path={tagPath} />
         <div className="spread">
           <h1>{tag?.name || tagPath[tagPath.length - 1]}</h1>
-          {isAuthenticated && (
+          {canCreatePages && (
             <div className="row">
               {showCreate ? (
                 <>
@@ -172,7 +175,7 @@ function CategoryView({ tagPath }: { tagPath: string[] }) {
         ) : (
           <Card className="text-center py-12">
             <p className="text-muted">No pages in this category yet.</p>
-            {isAuthenticated && <small className="mt-2 block">Click "New Page" above to create one.</small>}
+            {canCreatePages && <small className="mt-2 block">Click "New Page" above to create one.</small>}
           </Card>
         )}
       </div>
@@ -212,8 +215,9 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tag
     finally { setIsSaving(false); }
   };
 
-  if (page && user && page.authorId !== user.id) {
-    return <StatusCard title="Not Authorized" message="You can only edit your own pages." backHref={viewPath} />;
+  // Only block editing if it's an author-only page and user is not the author
+  if (page && user && isAuthorOnlyPath(page.tagPath) && page.authorId !== user.id) {
+    return <StatusCard title="Not Authorized" message="You can only edit your own pages in this category." backHref={viewPath} />;
   }
 
   const canSave = isCreating ? title.trim() : true;
@@ -269,9 +273,13 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tag
 function PageView({ page }: { page: WikiPageWithRevisions }) {
   const router = useRouter();
   const { user } = useAuth();
+  const isAuthenticated = useIsAuthenticated();
   const [isDeleting, setIsDeleting] = useState(false);
   const isAuthor = user && page.authorId === user.id;
   const tagPathArray = page.tagPath.split('/');
+
+  // Can edit if authenticated AND (not an author-only page OR is the author)
+  const canEdit = isAuthenticated && (!isAuthorOnlyPath(page.tagPath) || isAuthor);
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this page?')) return;
@@ -293,14 +301,16 @@ function PageView({ page }: { page: WikiPageWithRevisions }) {
             <header className="stack pb-6 border-b border-border">
               <div className="spread">
                 <h1>{page.title}</h1>
-                {isAuthor && (
-                  <div className="row">
+                <div className="row">
+                  {canEdit && (
                     <Link href={`/${page.tagPath}/${page.slug}/edit`}><Button variant="secondary" size="sm"><Edit size={16} />Edit</Button></Link>
+                  )}
+                  {isAuthor && (
                     <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isDeleting} className="text-error hover:bg-error/10">
                       <Trash2 size={16} />{isDeleting ? 'Deleting...' : 'Delete'}
                     </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
               <div className="row-4 wrap text-muted">
                 {page.author && <span className="row"><User size={14} />{page.author.displayName || page.author.radixAddress.slice(0, 16)}...</span>}

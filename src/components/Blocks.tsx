@@ -2,10 +2,10 @@
 
 'use client';
 
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { 
-  Plus, GripVertical, Trash2, Copy, ChevronUp, ChevronDown, Type, AlignLeft, Image, 
+  Plus, GripVertical, Trash2, Copy, ChevronUp, ChevronDown, Type, Image, 
   AlertCircle, Minus, Code, Quote, Clock, FileText, Columns, Settings, Table, ListTree,
   AlertTriangle, CheckCircle, Info
 } from 'lucide-react';
@@ -14,7 +14,7 @@ import { findTagByPath } from '@/lib/tags';
 import { Button, Input, Badge } from '@/components/ui';
 import { 
   type Block, type ContentBlock, type BlockContent, type BlockType, type Column, 
-  type ColumnsBlock, type TableBlock, type TocBlock, type MediaBlock, type HeadingBlock,
+  type ColumnsBlock, type TableBlock, type TocBlock, type MediaBlock, type TextBlock,
   createBlock, createContentBlock, duplicateBlock, createColumn, 
   BLOCK_REGISTRY, INSERTABLE_BLOCKS, CONTENT_BLOCK_TYPES 
 } from '@/lib/blocks';
@@ -22,7 +22,7 @@ import type { WikiPage } from '@/types';
 
 // Icons map
 const ICONS: Record<string, React.ReactNode> = {
-  Type: <Type size={18} />, AlignLeft: <AlignLeft size={18} />, Image: <Image size={18} />,
+  Type: <Type size={18} />, Image: <Image size={18} />,
   AlertCircle: <AlertCircle size={18} />, Minus: <Minus size={18} />, Code: <Code size={18} />,
   Quote: <Quote size={18} />, Clock: <Clock size={18} />, FileText: <FileText size={18} />,
   Columns: <Columns size={18} />, Table: <Table size={18} />, ListTree: <ListTree size={18} />,
@@ -36,40 +36,175 @@ const CALLOUT_STYLES = {
 } as const;
 
 // List parsing for paragraphs
-const LIST_ITEM_REGEX = /^[\s]*[-*•]\s+(.+)$/;
+const LIST_ITEM_REGEX = /^[\s]*[-*Ã¢â‚¬Â¢Ã¢â€”Â¦Ã¢â€”â€¹Ã¢â€“ÂªÃ¢â€“Â¸Ã¢â€“Âº]\s+(.+)$/;
+
+// Auto-resize textarea hook
+function useAutoResize(value: string) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  
+  return ref;
+}
+
+// Reusable rich paste hook for text blocks
+function useRichPaste(
+  text: string,
+  onUpdate: (newText: string) => void,
+  options: { preserveHtml?: boolean } = { preserveHtml: true }
+) {
+  const autoResizeRef = useAutoResize(text);
+
+  const htmlToMarkdown = useCallback((html: string): string => {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    
+    const processNode = (node: Node): string => {
+      if (node.nodeType === Node.TEXT_NODE) return node.textContent || '';
+      if (node.nodeType !== Node.ELEMENT_NODE) return '';
+      
+      const el = node as Element;
+      const tag = el.tagName.toLowerCase();
+      const children = Array.from(el.childNodes).map(processNode).join('');
+      
+      switch (tag) {
+        case 'a': {
+          const href = el.getAttribute('href');
+          return href ? `[${children}](${href})` : children;
+        }
+        case 'strong': case 'b': return `**${children}**`;
+        case 'em': case 'i': return `*${children}*`;
+        case 'code': return `\`${children}\``;
+        case 'br': return '\n';
+        case 'p': return children.trim() + '\n\n';
+        case 'div': return children + '\n';
+        case 'li': return `- ${children}\n`;
+        case 'ul': case 'ol': return children + '\n';
+        case 'h1': case 'h2': case 'h3': case 'h4': case 'h5': case 'h6': 
+          return children.trim() + '\n\n';
+        default: return children;
+      }
+    };
+    
+    return processNode(doc.body).replace(/\n{3,}/g, '\n\n').trim();
+  }, []);
+
+  const normalizeListBullets = useCallback((content: string): string => {
+    return content.split('\n').map(line => {
+      const indentMatch = line.match(/^(\s*)/);
+      const indent = indentMatch ? indentMatch[1] : '';
+      return line
+        .replace(/^(\s*)[-*Ã¢â‚¬Â¢Ã¢â€”Â¦Ã¢â€”â€¹Ã¢â€“ÂªÃ¢â€“Â¸Ã¢â€“Âº]\s+/, `${indent}- `)
+        .replace(/^(\s*)\d+[.)]\s+/, `${indent}- `);
+    }).join('\n');
+  }, []);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const { selectionStart: start, selectionEnd: end } = e.currentTarget;
+    const htmlData = e.clipboardData.getData('text/html');
+    const plainText = e.clipboardData.getData('text');
+    
+    // HTML content - convert to markdown
+    if (options.preserveHtml && htmlData) {
+      e.preventDefault();
+      const processed = normalizeListBullets(htmlToMarkdown(htmlData));
+      onUpdate(text.slice(0, start) + processed + text.slice(end));
+      setTimeout(() => { if (autoResizeRef.current) autoResizeRef.current.selectionStart = autoResizeRef.current.selectionEnd = start + processed.length; }, 0);
+      return;
+    }
+    
+    const trimmed = plainText.trim();
+    
+    // Single URL - wrap selection or create link
+    if (/^https?:\/\/[^\s]+$/.test(trimmed)) {
+      e.preventDefault();
+      const selectedText = text.slice(start, end);
+      const linkText = selectedText || new URL(trimmed).hostname.replace(/^www\./, '');
+      const markdownLink = `[${linkText}](${trimmed})`;
+      onUpdate(text.slice(0, start) + markdownLink + text.slice(end));
+      setTimeout(() => { if (autoResizeRef.current) autoResizeRef.current.selectionStart = autoResizeRef.current.selectionEnd = start + markdownLink.length; }, 0);
+      return;
+    }
+    
+    // Check for lists or bare URLs
+    const listPattern = /^[\s]*[-*Ã¢â‚¬Â¢Ã¢â€”Â¦Ã¢â€”â€¹Ã¢â€“ÂªÃ¢â€“Â¸Ã¢â€“Âº]\s+|^[\s]*\d+[.)]\s+/m;
+    const hasLists = listPattern.test(plainText);
+    const bareUrlPattern = /(?<!\]\()https?:\/\/[^\s\])<>]+/g;
+    const hasBareUrls = bareUrlPattern.test(plainText);
+    
+    if (hasLists || hasBareUrls) {
+      e.preventDefault();
+      let processed = plainText;
+      
+      if (hasLists) processed = normalizeListBullets(processed);
+      
+      if (hasBareUrls) {
+        processed = processed.replace(/(?<!\]\()https?:\/\/[^\s\])<>]+/g, url => {
+          try {
+            const cleanUrl = url.replace(/[.,;:!?)]+$/, '');
+            const hostname = new URL(cleanUrl).hostname.replace(/^www\./, '');
+            return `[${hostname}](${cleanUrl})${url.slice(cleanUrl.length)}`;
+          } catch { return url; }
+        });
+      }
+      
+      onUpdate(text.slice(0, start) + processed + text.slice(end));
+      setTimeout(() => { if (autoResizeRef.current) autoResizeRef.current.selectionStart = autoResizeRef.current.selectionEnd = start + processed.length; }, 0);
+    }
+  }, [text, onUpdate, htmlToMarkdown, normalizeListBullets, options.preserveHtml, autoResizeRef]);
+
+  return { ref: autoResizeRef, handlePaste };
+}
 
 function parseParagraphContent(text: string): React.ReactNode {
-  const lines = text.split('\n');
-  const elements: React.ReactNode[] = [];
-  let listItems: string[] = [];
-  let key = 0;
+  // Split by double newlines to get paragraphs
+  const paragraphs = text.split(/\n\n+/);
+  
+  const renderParagraph = (para: string, paraKey: number): React.ReactNode => {
+    const lines = para.split('\n');
+    const elements: React.ReactNode[] = [];
+    let listItems: string[] = [];
+    let key = 0;
 
-  const flushList = () => {
-    if (!listItems.length) return;
-    elements.push(
-      <ul key={key++} className="pl-6 list-disc stack-1 my-2">
-        {listItems.map((item, i) => <li key={i}>{parseInlineMarkdown(item)}</li>)}
-      </ul>
-    );
-    listItems = [];
-  };
+    const flushList = () => {
+      if (!listItems.length) return;
+      elements.push(
+        <ul key={key++} className="pl-6 list-disc stack-1 my-2">
+          {listItems.map((item, i) => <li key={i}>{parseInlineMarkdown(item)}</li>)}
+        </ul>
+      );
+      listItems = [];
+    };
 
-  for (const line of lines) {
-    const listMatch = line.match(LIST_ITEM_REGEX);
-    if (listMatch) {
-      listItems.push(listMatch[1]);
-    } else {
-      flushList();
-      if (line.trim()) {
-        elements.push(<span key={key++}>{parseInlineMarkdown(line)}</span>, <br key={key++} />);
-      } else if (elements.length) {
-        elements.push(<br key={key++} />);
+    for (const line of lines) {
+      const listMatch = line.match(LIST_ITEM_REGEX);
+      if (listMatch) {
+        listItems.push(listMatch[1]);
+      } else {
+        flushList();
+        if (line.trim()) {
+          elements.push(<span key={key++}>{parseInlineMarkdown(line)}</span>);
+          // Add line break for single newlines within a paragraph
+          elements.push(<br key={key++} />);
+        }
       }
     }
+    flushList();
+    // Remove trailing br
+    while (elements.length && (elements.at(-1) as React.ReactElement)?.type === 'br') elements.pop();
+    
+    return <div key={paraKey} className={paraKey > 0 ? 'mt-4' : ''}>{elements}</div>;
+  };
+
+  if (paragraphs.length === 1) {
+    return renderParagraph(paragraphs[0], 0);
   }
-  flushList();
-  while (elements.length && (elements.at(-1) as React.ReactElement)?.type === 'br') elements.pop();
-  return <>{elements}</>;
+
+  return <>{paragraphs.filter(p => p.trim()).map((para, i) => renderParagraph(para, i))}</>;
 }
 
 // Shared Hooks
@@ -108,12 +243,24 @@ function useBlockOperations<T extends Block>(blocks: T[], setBlocks: (blocks: T[
   return { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert };
 }
 
-function extractHeadings(content: BlockContent, maxDepth = 3): HeadingBlock[] {
-  const headings: HeadingBlock[] = [];
+function extractHeadings(content: BlockContent, maxDepth = 3): { text: string; level: number }[] {
+  const headings: { text: string; level: number }[] = [];
+  const headingRegex = /^(#{1,3})\s+(.+)$/gm;
+  
   const process = (blocks: Block[]) => {
     for (const block of blocks) {
-      if (block.type === 'heading' && block.level <= maxDepth && block.text.trim()) headings.push(block);
-      else if (block.type === 'columns') block.columns.forEach(col => process(col.blocks));
+      if (block.type === 'text' && block.text.trim()) {
+        let match;
+        while ((match = headingRegex.exec(block.text)) !== null) {
+          const level = match[1].length;
+          if (level <= maxDepth) {
+            headings.push({ text: match[2].trim(), level });
+          }
+        }
+        headingRegex.lastIndex = 0;
+      } else if (block.type === 'columns') {
+        block.columns.forEach(col => process(col.blocks));
+      }
     }
   };
   process(content);
@@ -171,12 +318,57 @@ function InsertButton({ onInsert, compact, allowColumns = true }: { onInsert: (t
 // Block Props type
 type BlockProps<T extends Block = Block> = { block: T; mode: 'edit' | 'view'; onUpdate?: (b: Block) => void; allContent?: BlockContent };
 
+// Parse rich text with headings and paragraphs
+function parseRichText(text: string): React.ReactNode {
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+  let currentParagraph: string[] = [];
+  let key = 0;
+
+  const flushParagraph = () => {
+    if (currentParagraph.length === 0) return;
+    const paraText = currentParagraph.join('\n');
+    elements.push(
+      <div key={key++} className="paragraph">
+        {parseParagraphContent(paraText)}
+      </div>
+    );
+    currentParagraph = [];
+  };
+
+  for (const line of lines) {
+    const h1Match = line.match(/^#\s+(.+)$/);
+    const h2Match = line.match(/^##\s+(.+)$/);
+    const h3Match = line.match(/^###\s+(.+)$/);
+
+    if (h3Match) {
+      flushParagraph();
+      elements.push(<h3 key={key++} id={slugify(h3Match[1])}>{h3Match[1]}</h3>);
+    } else if (h2Match) {
+      flushParagraph();
+      elements.push(<h2 key={key++} id={slugify(h2Match[1])}>{h2Match[1]}</h2>);
+    } else if (h1Match) {
+      flushParagraph();
+      elements.push(<h1 key={key++} id={slugify(h1Match[1])}>{h1Match[1]}</h1>);
+    } else if (line.trim() === '') {
+      flushParagraph();
+    } else {
+      currentParagraph.push(line);
+    }
+  }
+  flushParagraph();
+
+  return elements.length > 0 ? <div className="stack-4">{elements}</div> : null;
+}
+
 // Block Renderers - View Mode
 const ViewRenderers: Record<string, (block: Block, allContent: BlockContent) => React.ReactNode> = {
-  heading: (b) => { const h = b as HeadingBlock; const Tag = `h${h.level}` as 'h1' | 'h2' | 'h3'; return <Tag id={slugify(h.text)}>{h.text}</Tag>; },
-  paragraph: (b) => <div className="paragraph">{parseParagraphContent((b as Extract<Block, {type:'paragraph'}>).text)}</div>,
+  text: (b) => {
+    const t = b as TextBlock;
+    return parseRichText(t.text);
+  },
   divider: () => <hr />,
-  quote: (b) => { const q = b as Extract<Block, {type:'quote'}>; return <blockquote><p>{parseInlineMarkdown(q.text)}</p>{q.attribution && <cite className="block mt-2">— {q.attribution}</cite>}</blockquote>; },
+  quote: (b) => { const q = b as Extract<Block, {type:'quote'}>; return <blockquote><p>{parseInlineMarkdown(q.text)}</p>{q.attribution && <cite className="block mt-2">Ã¢â‚¬â€ {q.attribution}</cite>}</blockquote>; },
   callout: (b) => {
     const c = b as Extract<Block, {type:'callout'}>;
     const { cls, Icon, iconCls } = CALLOUT_STYLES[c.variant];
@@ -272,65 +464,37 @@ function PageListView({ block }: { block: Extract<Block, {type:'pageList'}> }) {
 }
 
 // Edit mode components
-function HeadingEdit({ block, onUpdate }: BlockProps<HeadingBlock>) {
-  return (
-    <div className="stack-2">
-      <div className="row">
-        {([1, 2, 3] as const).map(level => (
-          <button key={level} onClick={() => onUpdate?.({ ...block, level })}
-            className={cn('px-3 py-1 rounded-md border', block.level === level ? 'bg-accent text-text-inverted border-accent' : 'border-border hover:bg-surface-2')}>H{level}</button>
-        ))}
-      </div>
-      <input type="text" value={block.text} onChange={e => onUpdate?.({ ...block, text: e.target.value })} placeholder="Heading text..."
-        className={cn('input-ghost font-semibold', { 'text-h1': block.level === 1, 'text-h2': block.level === 2, 'text-h3': block.level === 3 })} />
-    </div>
-  );
-}
 
-function ParagraphEdit({ block, onUpdate }: BlockProps<Extract<Block, {type:'paragraph'}>>) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const updateWithCursor = useCallback((newText: string, cursorPos: number) => {
-    onUpdate?.({ ...block, text: newText });
-    setTimeout(() => { if (textareaRef.current) textareaRef.current.selectionStart = textareaRef.current.selectionEnd = cursorPos; }, 0);
-  }, [block, onUpdate]);
-
-  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const { selectionStart: start, selectionEnd: end } = e.currentTarget;
-    const pastedText = e.clipboardData.getData('text');
-    const trimmed = pastedText.trim();
-    
-    // Single URL pasted
-    if (/^https?:\/\/[^\s]+$/.test(trimmed)) {
-      e.preventDefault();
-      const selectedText = block.text.slice(start, end);
-      const linkText = selectedText || new URL(trimmed).hostname.replace(/^www\./, '');
-      const markdownLink = `[${linkText}](${trimmed})`;
-      updateWithCursor(block.text.slice(0, start) + markdownLink + block.text.slice(end), start + markdownLink.length);
-      return;
-    }
-    
-    // List normalization
-    if (/^[\s]*[-*•]\s|^[\s]*\d+[.)]\s/m.test(pastedText)) {
-      e.preventDefault();
-      const normalized = pastedText.split('\n').map(line => line.replace(/^[\s]*[-*•]\s/, '- ').replace(/^[\s]*\d+[.)]\s/, '- ')).join('\n');
-      updateWithCursor(block.text.slice(0, start) + normalized + block.text.slice(end), start + normalized.length);
-    }
-  };
+// Combined Text Block Editor (supports markdown headings and rich text)
+function TextEdit({ block, onUpdate }: BlockProps<TextBlock>) {
+  const { ref, handlePaste } = useRichPaste(block.text, text => onUpdate?.({ ...block, text }));
 
   return (
     <div className="stack-2">
-      <textarea ref={textareaRef} value={block.text} onChange={e => onUpdate?.({ ...block, text: e.target.value })} onPaste={handlePaste}
-        placeholder="Write paragraph... (supports **bold**, *italic*, `code`, [links](url), and - list items)" className="input-ghost min-h-15 resize-none" rows={3} />
-      <small>Supports: **bold**, *italic*, `code`, [link](url), - list items</small>
+      <textarea
+        ref={ref}
+        value={block.text}
+        onChange={e => onUpdate?.({ ...block, text: e.target.value })}
+        onPaste={handlePaste}
+        placeholder="Write content... Use # for H1, ## for H2, ### for H3"
+        className="input-ghost resize-none overflow-hidden min-h-20"
+        rows={3}
+      />
+      <small>Supports: # H1, ## H2, ### H3, **bold**, *italic*, `code`, [link](url), - list items</small>
     </div>
   );
 }
 
 function MediaEdit({ block, onUpdate }: BlockProps<MediaBlock>) {
   const detectMediaType = (url: string): 'image' | 'video' | 'embed' => {
-    if (/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(url)) return 'image';
-    if (/\.(mp4|webm|ogg)$/i.test(url)) return 'video';
+    try {
+      const pathname = new URL(url).pathname;
+      if (/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(pathname)) return 'image';
+      if (/\.(mp4|webm|ogg)$/i.test(pathname)) return 'video';
+    } catch {
+      if (/\.(jpg|jpeg|png|gif|webp|svg)/i.test(url)) return 'image';
+      if (/\.(mp4|webm|ogg)/i.test(url)) return 'video';
+    }
     return 'embed';
   };
 
@@ -347,11 +511,12 @@ function MediaEdit({ block, onUpdate }: BlockProps<MediaBlock>) {
 }
 
 function CalloutEdit({ block, onUpdate }: BlockProps<Extract<Block, {type:'callout'}>>) {
+  const { ref, handlePaste } = useRichPaste(block.text, text => onUpdate?.({ ...block, text }));
   return (
     <div className="stack">
       <Selector options={['info', 'warning', 'success', 'error'] as const} value={block.variant} onChange={variant => onUpdate?.({ ...block, variant })} />
       <Input label="Title (optional)" value={block.title || ''} onChange={e => onUpdate?.({ ...block, title: e.target.value })} placeholder="Callout title..." />
-      <textarea value={block.text} onChange={e => onUpdate?.({ ...block, text: e.target.value })} placeholder="Callout content..." className="input min-h-15 resize-none" rows={2} />
+      <textarea ref={ref} value={block.text} onChange={e => onUpdate?.({ ...block, text: e.target.value })} onPaste={handlePaste} placeholder="Callout content..." className="input min-h-15 resize-none" rows={2} />
     </div>
   );
 }
@@ -372,10 +537,11 @@ function CodeEdit({ block, onUpdate }: BlockProps<Extract<Block, {type:'code'}>>
 }
 
 function QuoteEdit({ block, onUpdate }: BlockProps<Extract<Block, {type:'quote'}>>) {
+  const { ref, handlePaste } = useRichPaste(block.text, text => onUpdate?.({ ...block, text }));
   return (
     <div className="stack border-l-4 border-accent pl-4">
-      <textarea value={block.text} onChange={e => onUpdate?.({ ...block, text: e.target.value })} placeholder="Quote text..." className="input-ghost min-h-15 italic resize-none" rows={2} />
-      <Input label="Attribution (optional)" value={block.attribution || ''} onChange={e => onUpdate?.({ ...block, attribution: e.target.value })} placeholder="— Author name" />
+      <textarea ref={ref} value={block.text} onChange={e => onUpdate?.({ ...block, text: e.target.value })} onPaste={handlePaste} placeholder="Quote text..." className="input-ghost min-h-15 italic resize-none" rows={2} />
+      <Input label="Attribution (optional)" value={block.attribution || ''} onChange={e => onUpdate?.({ ...block, attribution: e.target.value })} placeholder="Ã¢â‚¬â€ Author name" />
     </div>
   );
 }
@@ -403,7 +569,7 @@ function TableEdit({ block, onUpdate }: BlockProps<TableBlock>) {
       <div className="row">
         <button onClick={addRow} className="text-accent text-small hover:text-accent-hover">+ Add row</button>
         <button onClick={addColumn} className="text-accent text-small hover:text-accent-hover">+ Add column</button>
-        {block.rows[0]?.cells.length > 1 && <button onClick={() => deleteColumn(block.rows[0].cells.length - 1)} className="text-muted text-small hover:text-error">− Remove column</button>}
+        {block.rows[0]?.cells.length > 1 && <button onClick={() => deleteColumn(block.rows[0].cells.length - 1)} className="text-muted text-small hover:text-error">Ã¢Ë†â€™ Remove column</button>}
       </div>
     </div>
   );
@@ -515,8 +681,7 @@ function renderBlock(block: Block, mode: 'edit' | 'view', onUpdate?: (b: Block) 
 
   // Edit mode
   switch (block.type) {
-    case 'heading': return <HeadingEdit block={block} mode="edit" onUpdate={onUpdate} />;
-    case 'paragraph': return <ParagraphEdit block={block} mode="edit" onUpdate={onUpdate} />;
+    case 'text': return <TextEdit block={block} mode="edit" onUpdate={onUpdate} />;
     case 'media': return <MediaEdit block={block} mode="edit" onUpdate={onUpdate} />;
     case 'callout': return <CalloutEdit block={block} mode="edit" onUpdate={onUpdate} />;
     case 'divider': return <div className="py-2"><hr /><small className="block text-center mt-2">Horizontal divider</small></div>;

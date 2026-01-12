@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
 import { requireAuth } from '@/lib/radix/session';
-import { isValidTagPath } from '@/lib/tags';
+import { isValidTagPath, isAuthorOnlyPath } from '@/lib/tags';
 import { requireBalance } from '@/lib/radix/balance';
 import type { WikiPageInput } from '@/types';
 
@@ -51,8 +51,10 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     const existingPage = await prisma.page.findFirst({ where: { tagPath: parsed.tagPath, slug: parsed.slug } });
     if (!existingPage) return NextResponse.json({ error: 'Page not found' }, { status: 404 });
-    if (existingPage.authorId !== auth.session.userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+    // Author-only pages (community, rfps, blog) can only be edited by their owner
+    if (isAuthorOnlyPath(existingPage.tagPath) && existingPage.authorId !== auth.session.userId) {
+      return NextResponse.json({ error: 'You can only edit your own pages in this category' }, { status: 403 });
     }
 
     const balanceCheck = await requireBalance(auth.session, { type: 'edit', tagPath: parsed.tagPath });

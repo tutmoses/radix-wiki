@@ -1,16 +1,14 @@
 // src/lib/blocks.ts
 
 export type BlockType =
-  | 'heading' | 'paragraph' | 'media' | 'callout' | 'divider'
+  | 'text' | 'media' | 'callout' | 'divider'
   | 'code' | 'quote' | 'table' | 'toc' | 'recentPages' | 'pageList' | 'columns';
 
 interface BaseBlock { id: string; type: BlockType; }
 
-export interface HeadingBlock extends BaseBlock {
-  type: 'heading'; level: 1 | 2 | 3; text: string;
-}
-export interface ParagraphBlock extends BaseBlock {
-  type: 'paragraph'; text: string;
+export interface TextBlock extends BaseBlock {
+  type: 'text';
+  text: string;
 }
 export interface MediaBlock extends BaseBlock {
   type: 'media';
@@ -62,7 +60,7 @@ export interface ColumnsBlock extends BaseBlock {
 
 // Content blocks are blocks that can be placed inside columns
 export type ContentBlock =
-  | HeadingBlock | ParagraphBlock | MediaBlock | CalloutBlock | DividerBlock
+  | TextBlock | MediaBlock | CalloutBlock | DividerBlock
   | CodeBlock | QuoteBlock | TableBlock | TocBlock | RecentPagesBlock | PageListBlock;
 
 // All blocks including layout blocks
@@ -72,8 +70,7 @@ export type BlockContent = Block[];
 
 // Block metadata registry
 export const BLOCK_REGISTRY: Record<BlockType, { label: string; icon: string; create: () => Omit<Block, 'id'> }> = {
-  heading: { label: 'Heading', icon: 'Type', create: () => ({ type: 'heading', level: 2, text: '' }) },
-  paragraph: { label: 'Paragraph', icon: 'AlignLeft', create: () => ({ type: 'paragraph', text: '' }) },
+  text: { label: 'Text', icon: 'Type', create: () => ({ type: 'text', text: '' }) },
   media: { label: 'Media', icon: 'Image', create: () => ({ type: 'media', mediaType: 'image', src: '', alt: '' }) },
   callout: { label: 'Callout', icon: 'AlertCircle', create: () => ({ type: 'callout', variant: 'info', text: '' }) },
   divider: { label: 'Divider', icon: 'Minus', create: () => ({ type: 'divider' }) },
@@ -99,12 +96,12 @@ export const BLOCK_REGISTRY: Record<BlockType, { label: string; icon: string; cr
 };
 
 export const INSERTABLE_BLOCKS: BlockType[] = [
-  'paragraph', 'heading', 'columns', 'table', 'toc', 'media', 'callout', 'quote', 'code', 'divider', 'recentPages', 'pageList',
+  'text', 'columns', 'table', 'toc', 'media', 'callout', 'quote', 'code', 'divider', 'recentPages', 'pageList',
 ];
 
 // Content blocks that can go inside columns (no nested columns)
 export const CONTENT_BLOCK_TYPES: BlockType[] = [
-  'paragraph', 'heading', 'table', 'toc', 'media', 'callout', 'quote', 'code', 'divider', 'recentPages', 'pageList',
+  'text', 'table', 'toc', 'media', 'callout', 'quote', 'code', 'divider', 'recentPages', 'pageList',
 ];
 
 export function createBlock(type: BlockType): Block {
@@ -137,70 +134,6 @@ export function createColumn(): Column {
 
 export function createDefaultPageContent(): BlockContent {
   return [
-    {
-      id: crypto.randomUUID(),
-      type: 'paragraph',
-      text: 'This is the introduction paragraph for this page. Edit this text to provide an overview of the topic covered here.',
-    },
-    {
-      id: crypto.randomUUID(),
-      type: 'columns',
-      columns: [
-        {
-          id: crypto.randomUUID(),
-          blocks: [
-            {
-              id: crypto.randomUUID(),
-              type: 'toc',
-              title: 'Contents',
-              maxDepth: 3,
-            },
-          ],
-        },
-        {
-          id: crypto.randomUUID(),
-          blocks: [
-            {
-              id: crypto.randomUUID(),
-              type: 'table',
-              hasHeader: true,
-              rows: [
-                { cells: ['Property', 'Value'] },
-                { cells: ['Type', 'Category'] },
-                { cells: ['Status', 'Active'] },
-                { cells: ['Created', '2024'] },
-                { cells: ['Author', 'Unknown'] },
-              ],
-            },
-          ],
-        },
-        {
-          id: crypto.randomUUID(),
-          blocks: [
-            {
-              id: crypto.randomUUID(),
-              type: 'media',
-              mediaType: 'image',
-              src: '',
-              alt: 'Featured image',
-              caption: 'Add an image or embed a video here',
-            },
-          ],
-        },
-      ],
-      gap: 'md',
-      align: 'start',
-    },
-    {
-      id: crypto.randomUUID(),
-      type: 'heading',
-      level: 2,
-      text: 'Overview',
-    },
-    {
-      id: crypto.randomUUID(),
-      type: 'paragraph',
-      text: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
-    },
+    { id: crypto.randomUUID(), type: 'text', text: '## Getting Started\n\nStart writing your content here...' },
   ];
 }

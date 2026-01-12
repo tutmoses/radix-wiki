@@ -48,7 +48,9 @@ export const TAG_HIERARCHY: TagNode[] = [
   { name: 'Ecosystem', slug: 'ecosystem', xrd: { create: 20_000 },},
   { name: 'News', slug: 'news' },
   { name: 'Jobs', slug: 'jobs' },
-  { name: 'Community', slug: 'community' },
+  { name: 'Community', slug: 'community', children: [
+    { name: 'RFPs', slug: 'rfps' },
+  ]},
 ];
 
 export function getVisibleTags(hierarchy: TagNode[] = TAG_HIERARCHY): TagNode[] {
@@ -71,6 +73,13 @@ export function findTagByPath(pathSegments: string[], hierarchy: TagNode[] = TAG
 export function isValidTagPath(pathSegments: string[]): boolean {
   if (pathSegments.length === 0) return false;
   return findTagByPath(pathSegments) !== null;
+}
+
+// Paths where only the original author can edit their own pages
+const AUTHOR_ONLY_PATHS = ['community', 'community/rfps', 'contents/blog'] as const;
+
+export function isAuthorOnlyPath(tagPath: string): boolean {
+  return AUTHOR_ONLY_PATHS.some(p => tagPath === p || tagPath.startsWith(p + '/'));
 }
 
 // Walk up the tag tree collecting XRD requirements (child values override parent)

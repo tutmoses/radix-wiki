@@ -110,7 +110,7 @@ function CommentThread({ comment, depth, pageId, onReply, onDelete, currentUserI
       <div className="stack-1">
         <div className="row text-small">
           <span className="font-medium">{comment.author?.displayName || comment.author?.radixAddress?.slice(0, 12) + '...'}</span>
-          <span className="text-muted">Â·</span>
+          <span className="text-muted">·</span>
           <span className="text-muted">{formatRelativeTime(comment.createdAt)}</span>
           {hasReplies && (
             <button onClick={() => setCollapsed(!collapsed)} className="row text-muted hover:text-text ml-auto">
