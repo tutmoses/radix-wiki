@@ -34,7 +34,7 @@ export const TAG_HIERARCHY: TagNode[] = [
   { name: 'Ecosystem', slug: 'ecosystem' },
   { name: 'News', slug: 'news' },
   { name: 'Jobs', slug: 'jobs' },
-  { name: 'Talent', slug: 'talent' },
+  { name: 'Community', slug: 'community' },
 ];
 
 export function getVisibleTags(hierarchy: TagNode[] = TAG_HIERARCHY): TagNode[] {

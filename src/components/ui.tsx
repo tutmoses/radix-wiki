@@ -16,10 +16,10 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const btnVariants: Record<ButtonVariant, string> = {
-  primary: 'bg-accent text-text-inverted hover:bg-accent-hover',
+  primary: 'bg-accent text-text-inverted hover:bg-accent-hover hover:text-text-inverted',
   secondary: 'bg-surface-2 border-border hover:bg-surface-3',
   ghost: 'hover:bg-surface-2',
-  danger: 'bg-red-500 text-white hover:bg-red-600',
+  danger: 'bg-error/80 text-text hover:bg-error',
 };
 
 const btnSizes: Record<ButtonSize, string> = {
@@ -64,11 +64,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           id={inputId}
-          className={cn('input', error && 'border-red-500 focus:border-red-500', className)}
+          className={cn('input', error && 'border-error focus:border-error', className)}
           aria-invalid={!!error}
           {...props}
         />
-        {error && <p className="text-red-500">{error}</p>}
+        {error && <p className="text-error">{error}</p>}
         {hint && !error && <small>{hint}</small>}
       </div>
     );
@@ -102,9 +102,9 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 const badgeVariants: Record<BadgeVariant, string> = {
   default: 'badge-accent',
   secondary: '',
-  success: 'bg-green-500/15 text-green-500',
-  warning: 'bg-yellow-500/15 text-yellow-500',
-  danger: 'bg-red-500/15 text-red-500',
+  success: 'bg-success/15 text-success',
+  warning: 'bg-warning/15 text-warning',
+  danger: 'bg-error/15 text-error',
 };
 
 export function Badge({ className, variant = 'default', ...props }: BadgeProps) {
@@ -130,7 +130,7 @@ export function Spinner({ size = 'md', className }: SpinnerProps) {
 
 export function LoadingScreen({ message = 'Loading...' }: { message?: string }) {
   return (
-    <div className="center min-h-[400px]">
+    <div className="center min-h-100">
       <div className="stack-2 items-center">
         <Spinner size="lg" />
         <p className="text-muted">{message}</p>

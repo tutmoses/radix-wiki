@@ -7,42 +7,21 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Edit, Clock, User, ArrowLeft, ArrowRight, Trash2, Save, Eye, FileText, Plus } from 'lucide-react';
 import { WikiLayout } from '@/components/WikiLayout';
-import { BlockEditor } from '@/components/BlockEditor';
-import { BlockRenderer } from '@/components/BlockRenderer';
+import { BlockEditor, BlockRenderer } from '@/components/Blocks';
 import { Footer } from '@/components/Footer';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Button, Card, Badge, LoadingScreen, Input } from '@/components/ui';
 import { useAuth, useIsAuthenticated } from '@/hooks/useStore';
 import { formatRelativeTime, formatDate, slugify } from '@/lib/utils';
 import { isValidTagPath, findTagByPath } from '@/lib/tags';
 import type { WikiPage } from '@/types';
-import type { BlockContent } from '@/lib/blocks';
+import { type BlockContent, createDefaultPageContent } from '@/lib/blocks';
 
 interface WikiPageWithRevisions extends WikiPage {
   revisions?: { id: string }[];
 }
 
 // Shared Components
-function Breadcrumbs({ path, suffix }: { path: string[]; suffix?: string }) {
-  return (
-    <nav className="row wrap text-muted">
-      <Link href="/" className="link-muted">Home</Link>
-      {path.map((segment, i) => {
-        const href = '/' + path.slice(0, i + 1).join('/');
-        const tag = findTagByPath(path.slice(0, i + 1));
-        const isLast = i === path.length - 1 && !suffix;
-        return (
-          <span key={href} className="row">
-            <span>/</span>
-            {isLast ? <span className="text-text">{tag?.name || segment}</span> 
-              : <Link href={href} className="link-muted">{tag?.name || segment}</Link>}
-          </span>
-        );
-      })}
-      {suffix && <><span>/</span><span className="text-text">{suffix}</span></>}
-    </nav>
-  );
-}
-
 function BackLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
     <Link href={href} className="row link-muted">
@@ -178,7 +157,7 @@ function CategoryView({ tagPath }: { tagPath: string[] }) {
         {isLoading ? <LoadingScreen message="Loading pages..." /> : pages.length > 0 ? (
           <div className="row-4 wrap">
             {pages.map(p => (
-              <Link key={p.id} href={`/${p.tagPath}/${p.slug}`} className="flex-1 min-w-[300px] max-w-[calc(33.333%-1rem)]">
+              <Link key={p.id} href={`/${p.tagPath}/${p.slug}`} className="flex-1 min-w-75 max-w-[calc(33.333%-1rem)]">
                 <Card interactive className="h-full">
                   <div className="stack-2">
                     <h3>{p.title}</h3>
@@ -214,7 +193,7 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tag
 
   useEffect(() => {
     if (page) { setTitle(page.title); setContent(page.content as BlockContent); setIsPublished(page.isPublished); }
-    else { setTitle(''); setContent([]); setIsPublished(true); }
+    else { setTitle(''); setContent(createDefaultPageContent()); setIsPublished(true); }
   }, [page?.id, tagPath, slug]);
 
   const save = async () => {
@@ -243,28 +222,32 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tag
   return (
     <WikiLayout>
       <div className="row-4 items-start">
-        <div className="flex-1 stack-6">
-          <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix={isCreating ? 'Create' : 'Edit'} />
-          <div className="spread">
-            <BackLink href={backHref}>{isCreating ? 'Back to Category' : 'Back to Page'}</BackLink>
-            <div className="row">
-              {!isCreating && <Link href={viewPath}><Button variant="secondary" size="sm"><Eye size={16} />Preview</Button></Link>}
-              <Button onClick={save} disabled={isSaving || !canSave} size="sm"><Save size={16} />{saveLabel}</Button>
-            </div>
-          </div>
-          {isCreating && (
-            <div className="callout callout-info">
-              <p>Creating new page at <code>/{tagPath}/{slug}</code></p>
-            </div>
-          )}
-          <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title"
-            className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
-          <BlockEditor content={content} onChange={setContent} />
+        <div className="flex-1 min-w-0">
+          <article className="stack-6">
+            <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix={isCreating ? 'Create' : 'Edit'} />
+            <header className="stack pb-6 border-b border-border">
+              <div className="spread">
+                <BackLink href={backHref}>{isCreating ? 'Back to Category' : 'Back to Page'}</BackLink>
+                <div className="row">
+                  {!isCreating && <Link href={viewPath}><Button variant="secondary" size="sm"><Eye size={16} />Preview</Button></Link>}
+                  <Button onClick={save} disabled={isSaving || !canSave} size="sm"><Save size={16} />{saveLabel}</Button>
+                </div>
+              </div>
+              {isCreating && (
+                <div className="callout callout-info">
+                  <p>Creating new page at <code>/{tagPath}/{slug}</code></p>
+                </div>
+              )}
+              <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title"
+                className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
+            </header>
+            <BlockEditor content={content} onChange={setContent} />
+          </article>
         </div>
-        <div className="w-80 shrink-0">
+        <div className="w-64 shrink-0 hidden lg:block">
           <Card className="sticky-card">
             <div className="stack">
-              <h3>Page Settings</h3>
+              <h4 className="uppercase tracking-wider text-muted">Page Settings</h4>
               <label className="row">
                 <input type="checkbox" checked={isPublished} onChange={e => setIsPublished(e.target.checked)} className="w-4 h-4 rounded border-border" />
                 {isCreating ? 'Publish immediately' : 'Published'}
@@ -312,7 +295,7 @@ function PageView({ page }: { page: WikiPageWithRevisions }) {
                 {isAuthor && (
                   <div className="row">
                     <Link href={`/${page.tagPath}/${page.slug}/edit`}><Button variant="secondary" size="sm"><Edit size={16} />Edit</Button></Link>
-                    <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isDeleting} className="text-red-500 hover:bg-red-500/10">
+                    <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isDeleting} className="text-error hover:bg-error/10">
                       <Trash2 size={16} />{isDeleting ? 'Deleting...' : 'Delete'}
                     </Button>
                   </div>
@@ -322,9 +305,6 @@ function PageView({ page }: { page: WikiPageWithRevisions }) {
                 {page.author && <span className="row"><User size={14} />{page.author.displayName || page.author.radixAddress.slice(0, 16)}...</span>}
                 <span className="row"><Clock size={14} />Updated {formatRelativeTime(page.updatedAt)}</span>
               </div>
-              <div className="row">
-                {tagPathArray.map((s, i) => <Badge key={s} variant="secondary">{findTagByPath(tagPathArray.slice(0, i + 1))?.name || s}</Badge>)}
-              </div>
             </header>
             <BlockRenderer content={page.content} />
             <footer className="row-4 wrap pt-6 border-t border-border text-muted">
@@ -332,18 +312,6 @@ function PageView({ page }: { page: WikiPageWithRevisions }) {
               {page.revisions?.length ? <span>{page.revisions.length} revision{page.revisions.length !== 1 ? 's' : ''}</span> : null}
             </footer>
           </article>
-        </div>
-        <div className="w-64 shrink-0 hidden lg:block">
-          <Card className="sticky-card">
-            <div className="stack">
-              <h4 className="uppercase tracking-wider text-muted">Page Info</h4>
-              <div className="stack-2">
-                <div className="spread"><span className="text-muted">Created</span><span>{formatDate(page.createdAt)}</span></div>
-                <div className="spread"><span className="text-muted">Updated</span><span>{formatRelativeTime(page.updatedAt)}</span></div>
-                {page.revisions?.length ? <div className="spread"><span className="text-muted">Revisions</span><span>{page.revisions.length}</span></div> : null}
-              </div>
-            </div>
-          </Card>
         </div>
       </div>
     </WikiLayout>

@@ -11,6 +11,7 @@ interface AppStore {
   isLoading: boolean;
   isConnected: boolean;
   walletData: RadixWalletData | null;
+  sidebarOpen: boolean;
   _rdtDisconnect: (() => void) | null;
   _rdtConnect: (() => void) | null;
   _setRdtCallbacks: (connect: (() => void) | null, disconnect: (() => void) | null) => void;
@@ -18,6 +19,8 @@ interface AppStore {
   setLoading: (isLoading: boolean) => void;
   setConnected: (isConnected: boolean) => void;
   setWalletData: (walletData: RadixWalletData | null) => void;
+  setSidebarOpen: (open: boolean) => void;
+  toggleSidebar: () => void;
   connect: () => void;
   logout: () => Promise<void>;
 }
@@ -29,6 +32,7 @@ export const useStore = create<AppStore>()(
       isLoading: true,
       isConnected: false,
       walletData: null,
+      sidebarOpen: false,
       _rdtDisconnect: null,
       _rdtConnect: null,
       _setRdtCallbacks: (connect, disconnect) => set({ _rdtConnect: connect, _rdtDisconnect: disconnect }),
@@ -36,6 +40,8 @@ export const useStore = create<AppStore>()(
       setLoading: (isLoading) => set({ isLoading }),
       setConnected: (isConnected) => set({ isConnected }),
       setWalletData: (walletData) => set({ walletData, isConnected: !!walletData }),
+      setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+      toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       connect: () => get()._rdtConnect?.(),
       logout: async () => {
         const { _rdtDisconnect } = get();

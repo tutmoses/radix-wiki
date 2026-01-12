@@ -7,13 +7,8 @@ import { usePathname } from 'next/navigation';
 import { Home, ChevronRight, ChevronDown, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { useIsAuthenticated } from '@/hooks/useStore';
+import { useStore, useIsAuthenticated } from '@/hooks/useStore';
 import { getVisibleTags, type TagNode } from '@/lib/tags';
-
-interface SidebarProps {
-  isOpen?: boolean;
-  onClose?: () => void;
-}
 
 function NavItem({ href, icon, label, isActive, onClick }: { 
   href: string; 
@@ -90,30 +85,32 @@ function NavSection({ title, children }: { title: string; children: React.ReactN
   );
 }
 
-export function Sidebar({ isOpen, onClose }: SidebarProps) {
+export function Sidebar() {
   const pathname = usePathname();
   const isAuthenticated = useIsAuthenticated();
+  const { sidebarOpen, setSidebarOpen } = useStore();
   const visibleTags = getVisibleTags();
+  const closeSidebar = () => setSidebarOpen(false);
 
   return (
     <>
-      {isOpen && <div className="fixed inset-0 bg-black/50 z-40 animate-[fade-in_0.2s_ease-out]" onClick={onClose} />}
+      {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 animate-[fade-in_0.2s_ease-out]" onClick={closeSidebar} />}
       <aside className={cn(
         'fixed top-16 left-0 z-40 h-[calc(100vh-4rem)] w-72 max-w-[85vw] bg-surface-0 border-r border-border-muted transform transition-transform duration-200 ease-in-out',
-        isOpen ? 'translate-x-0' : '-translate-x-full'
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
         <div className="stack-6 p-4 h-full overflow-y-auto">
           <NavSection title="Navigation">
-            <NavItem href="/" icon={<Home size={18} />} label="Home" isActive={pathname === '/'} onClick={onClose} />
+            <NavItem href="/" icon={<Home size={18} />} label="Home" isActive={pathname === '/'} onClick={closeSidebar} />
           </NavSection>
           <NavSection title="Categories">
             {visibleTags.map(node => (
-              <TagNavItem key={node.slug} node={node} parentPath="" pathname={pathname} onClose={onClose} depth={0} />
+              <TagNavItem key={node.slug} node={node} parentPath="" pathname={pathname} onClose={closeSidebar} depth={0} />
             ))}
           </NavSection>
           {isAuthenticated && (
             <div className="mt-auto pt-4 border-t border-border-muted">
-              <NavItem href="/settings" icon={<Settings size={18} />} label="Settings" isActive={pathname === '/settings'} onClick={onClose} />
+              <NavItem href="/settings" icon={<Settings size={18} />} label="Settings" isActive={pathname === '/settings'} onClick={closeSidebar} />
             </div>
           )}
         </div>
