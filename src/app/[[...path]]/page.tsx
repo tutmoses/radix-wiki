@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { Edit, Clock, User, ArrowLeft, ArrowRight, Trash2, Save, Eye, FileText, Plus } from 'lucide-react';
 import { WikiLayout } from '@/components/WikiLayout';
 import { BlockEditor, BlockRenderer } from '@/components/Blocks';
+import { Discussion } from '@/components/Discussion';
 import { Footer } from '@/components/Footer';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Button, Card, Badge, LoadingScreen, Input } from '@/components/ui';
@@ -311,6 +312,7 @@ function PageView({ page }: { page: WikiPageWithRevisions }) {
               <span>Created {formatDate(page.createdAt)}</span>
               {page.revisions?.length ? <span>{page.revisions.length} revision{page.revisions.length !== 1 ? 's' : ''}</span> : null}
             </footer>
+            <Discussion pageId={page.id} />
           </article>
         </div>
       </div>

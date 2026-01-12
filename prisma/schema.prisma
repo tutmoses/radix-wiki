@@ -18,6 +18,7 @@ model User {
   
   pages           Page[]
   revisions       Revision[]
+  comments        Comment[]
   
   @@map("users")
 }
@@ -33,6 +34,7 @@ model Page {
   authorId    String    @map("author_id")
   author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
   revisions   Revision[]
+  comments    Comment[]
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
   
@@ -80,4 +82,22 @@ model Challenge {
   
   @@index([challenge])
   @@map("challenges")
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  pageId    String    @map("page_id")
+  page      Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  parentId  String?   @map("parent_id")
+  parent    Comment?  @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("Replies")
+  content   String
+  authorId  String    @map("author_id")
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  
+  @@index([pageId, parentId])
+  @@index([authorId])
+  @@map("comments")
 }

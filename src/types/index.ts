@@ -63,3 +63,20 @@ export interface PaginatedResponse<T> {
   pageSize: number;
   totalPages: number;
 }
+
+export interface WikiComment {
+  id: string;
+  pageId: string;
+  parentId: string | null;
+  content: string;
+  authorId: string;
+  author?: WikiAuthor;
+  replies?: WikiComment[];
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+export interface CommentInput {
+  content: string;
+  parentId?: string;
+}
