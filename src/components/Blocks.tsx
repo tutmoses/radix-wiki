@@ -172,16 +172,16 @@ function PageCard({ page, variant }: { page: WikiPage; variant: 'full' | 'compac
 
 const RecentPagesView: FC<BlockProps<Extract<Block, {type:'recentPages'}>>> = ({ block }) => {
   const { pages, isLoading } = usePages({ type: 'recent', tagPath: block.tagPath, limit: block.limit });
-  if (isLoading) return <div className="row-4 wrap">{Array.from({ length: Math.min(block.limit, 3) }, (_, i) => <div key={i} className="flex-1 h-32 skeleton" />)}</div>;
+  if (isLoading) return <div className="row-md wrap">{Array.from({ length: Math.min(block.limit, 3) }, (_, i) => <div key={i} className="flex-1 h-32 skeleton" />)}</div>;
   if (!pages.length) return <p className="text-muted">No pages found.</p>;
-  return <div className="row-4 wrap">{pages.map(p => <PageCard key={p.id} page={p} variant="full" />)}</div>;
+  return <div className="row-md wrap">{pages.map(p => <PageCard key={p.id} page={p} variant="full" />)}</div>;
 };
 
 const PageListView: FC<BlockProps<Extract<Block, {type:'pageList'}>>> = ({ block }) => {
   const { pages, isLoading } = usePages({ type: 'byIds', pageIds: block.pageIds });
-  if (isLoading) return <div className="row-4"><div className="flex-1 h-20 skeleton" /></div>;
+  if (isLoading) return <div className="row-md"><div className="flex-1 h-20 skeleton" /></div>;
   if (!pages.length) return <p className="text-muted">No pages selected.</p>;
-  return <div className="row-4 wrap">{pages.map(p => <PageCard key={p.id} page={p} variant="compact" />)}</div>;
+  return <div className="row-md wrap">{pages.map(p => <PageCard key={p.id} page={p} variant="compact" />)}</div>;
 };
 
 const ColumnsView: FC<BlockProps<ColumnsBlock>> = ({ block, allContent = [] }) => {
@@ -189,7 +189,7 @@ const ColumnsView: FC<BlockProps<ColumnsBlock>> = ({ block, allContent = [] }) =
   const alignClass = { start: 'items-start', center: 'items-center', end: 'items-end', stretch: 'items-stretch' }[block.align || 'start'];
   return (
     <div className={cn('flex flex-col md:flex-row', gapClass, alignClass)}>
-      {block.columns.map(col => <div key={col.id} className="flex-1 min-w-0 stack-md">{col.blocks.map(bl => <div key={bl.id}>{renderBlock(bl, 'view', undefined, allContent)}</div>)}</div>)}
+      {block.columns.map(col => <div key={col.id} className="flex-1 min-w-0 stack">{col.blocks.map(bl => <div key={bl.id}>{renderBlock(bl, 'view', undefined, allContent)}</div>)}</div>)}
     </div>
   );
 };
@@ -341,7 +341,7 @@ const ColumnsEdit: FC<BlockProps<ColumnsBlock>> = ({ block, onUpdate }) => {
         <div className="row"><button onClick={() => setShowSettings(!showSettings)} className={cn('icon-btn p-1', showSettings && 'bg-surface-2')}><Settings size={14} /></button>{block.columns.length < 4 && <button onClick={addColumn} className="text-accent text-small hover:text-accent-hover">+ Add Column</button>}</div>
       </div>
       {showSettings && (
-        <div className="row-4 p-3 bg-surface-2 rounded-lg">
+        <div className="row-md p-3 bg-surface-2 rounded-lg">
           <div className="row"><span className="text-small text-muted">Gap:</span><div className="row wrap">{gaps.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, gap: opt })} className={cn('px-3 py-1 rounded-md border capitalize', (block.gap || 'md') === opt ? 'bg-accent text-text-inverted border-accent' : 'border-border hover:bg-surface-2')}>{opt}</button>)}</div></div>
           <div className="row"><span className="text-small text-muted">Align:</span><div className="row wrap">{aligns.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, align: opt })} className={cn('px-3 py-1 rounded-md border capitalize', (block.align || 'start') === opt ? 'bg-accent text-text-inverted border-accent' : 'border-border hover:bg-surface-2')}>{opt}</button>)}</div></div>
         </div>
@@ -457,7 +457,7 @@ export function BlockEditor({ content, onChange }: { content: BlockContent; onCh
 
 export function BlockRenderer({ content, className }: { content: BlockContent | unknown; className?: string }) {
   if (!content || !Array.isArray(content)) return null;
-  return <div className={cn('stack-md', className)}>{(content as BlockContent).map(block => <div key={block.id}>{renderBlock(block, 'view', undefined, content as BlockContent)}</div>)}</div>;
+  return <div className={cn('stack', className)}>{(content as BlockContent).map(block => <div key={block.id}>{renderBlock(block, 'view', undefined, content as BlockContent)}</div>)}</div>;
 }
 
 export default BlockEditor;

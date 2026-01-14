@@ -92,7 +92,7 @@ function CommentThread({ comment, depth, pageId, onReply, onDelete, currentUserI
       </div>
       {showReplyForm && <CommentForm onSubmit={handleReply} onCancel={() => setShowReplyForm(false)} placeholder="Write a reply..." autoFocus compact />}
       {hasReplies && !collapsed && (
-        <div className="stack-md mt-2">
+        <div className="stack mt-2">
           {comment.replies!.map(reply => <CommentThread key={reply.id} comment={reply} depth={depth + 1} pageId={pageId} onReply={onReply} onDelete={onDelete} currentUserId={currentUserId} />)}
         </div>
       )}
@@ -138,17 +138,17 @@ export function Discussion({ pageId }: { pageId: string }) {
   }, 0);
 
   return (
-    <section className="stack-md pt-6 border-t border-border">
+    <section className="stack pt-6 border-t border-border">
       <button onClick={() => setExpanded(!expanded)} className="spread w-full text-left">
         <div className="row"><MessageSquare size={20} className="text-accent" /><h3 className="font-semibold">Discussion</h3><span className="text-muted">({totalCount})</span></div>
         {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
       </button>
       {expanded && (
-        <div className="stack-md">
+        <div className="stack">
           {isAuthenticated ? <CommentForm onSubmit={content => handlePost(content)} placeholder="Start a discussion..." />
             : <p className="text-muted surface p-4 text-center">Connect your wallet to join the discussion.</p>}
-          {isLoading ? <div className="stack-md">{[1, 2].map(i => <div key={i} className="h-20 skeleton" />)}</div>
-            : comments.length > 0 ? <div className="stack-md">{comments.map(c => <CommentThread key={c.id} comment={c} depth={0} pageId={pageId} onReply={(parentId, content) => handlePost(content, parentId)} onDelete={handleDelete} currentUserId={user?.id} />)}</div>
+          {isLoading ? <div className="stack">{[1, 2].map(i => <div key={i} className="h-20 skeleton" />)}</div>
+            : comments.length > 0 ? <div className="stack">{comments.map(c => <CommentThread key={c.id} comment={c} depth={0} pageId={pageId} onReply={(parentId, content) => handlePost(content, parentId)} onDelete={handleDelete} currentUserId={user?.id} />)}</div>
             : <p className="text-muted text-center py-4">No comments yet. Be the first to start the discussion!</p>}
         </div>
       )}

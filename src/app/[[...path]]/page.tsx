@@ -68,7 +68,7 @@ function HomepageView({ isEditing }: { isEditing: boolean }) {
 
   if (isEditing) {
     return (
-      <div className="stack-md">
+      <div className="stack">
         <div className="spread">
           <BackLink href="/">Back to Homepage</BackLink>
           <div className="row">
@@ -87,10 +87,10 @@ function HomepageView({ isEditing }: { isEditing: boolean }) {
   }
 
   return (
-    <div className="stack-md">
+    <div className="stack">
       {isAuthenticated && <div className="row justify-end"><Link href="/edit"><Button variant="secondary" size="sm"><Edit size={16} />Edit Homepage</Button></Link></div>}
       <BlockRenderer content={content} />
-      <div className="row-4 justify-center wrap">
+      <div className="row-md justify-center wrap">
         {!isAuthenticated && <Button size="lg" variant="primary" onClick={() => document.querySelector<HTMLButtonElement>('#radix-connect-btn button')?.click()}>Connect Radix Wallet<ArrowRight size={18} /></Button>}
         <Link href="/contents"><Button variant="secondary" size="lg">Browse Content</Button></Link>
       </div>
@@ -111,7 +111,7 @@ function CategoryView({ tagPath }: { tagPath: string[] }) {
   const handleCreate = () => { const s = slugify(newSlug); if (s) router.push(`/${pathStr}/${s}`); };
 
   return (
-    <div className="stack-md">
+    <div className="stack">
       <Breadcrumbs path={tagPath} />
       <div className="spread">
         <h1>{tag?.name || tagPath[tagPath.length - 1]}</h1>
@@ -127,9 +127,9 @@ function CategoryView({ tagPath }: { tagPath: string[] }) {
           </div>
         )}
       </div>
-      {tag?.children?.length ? <div className="row wrap">{tag.children.map(c => <Link key={c.slug} href={`/${pathStr}/${c.slug}`}><Badge variant="secondary" className="cursor-pointer hover:bg-surface-3">{c.name}</Badge></Link>)}</div> : null}
+      {tag?.children?.length ? <div className="row wrap">{tag.children.map(c => <Link key={c.slug} href={`/${pathStr}/${c.slug}`}><Badge variant="secondary" className="cursor-pointer hover:brightness-110">{c.name}</Badge></Link>)}</div> : null}
       {isLoading ? <LoadingScreen message="Loading pages..." /> : pages.length > 0 ? (
-        <div className="row-4 wrap">
+        <div className="row-md wrap">
           {pages.map(p => (
             <Link key={p.id} href={`/${p.tagPath}/${p.slug}`} className="flex-1 min-w-75 max-w-[calc(33.333%-1rem)]">
               <Card interactive className="h-full">
@@ -192,9 +192,9 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tag
   const saveLabel = isCreating ? (isSaving ? 'Creating...' : 'Create Page') : (isSaving ? 'Saving...' : 'Save Changes');
 
   return (
-    <div className="row-4 items-start">
+    <div className="row-md items-start">
       <div className="flex-1 min-w-0">
-        <article className="stack-md">
+        <article className="stack">
           <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix={isCreating ? 'Create' : 'Edit'} />
           <header className="stack pb-6 border-b border-border">
             <div className="spread">
@@ -246,9 +246,9 @@ function PageView({ page }: { page: WikiPageWithRevisions }) {
   };
 
   return (
-    <div className="row-4 items-start">
+    <div className="row-md items-start">
       <div className="flex-1 min-w-0">
-        <article className="stack-md">
+        <article className="stack">
           <Breadcrumbs path={[...tagPathArray, page.slug]} />
           <header className="stack pb-6 border-b border-border">
             <div className="spread">
@@ -258,13 +258,13 @@ function PageView({ page }: { page: WikiPageWithRevisions }) {
                 {isAuthor && <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isDeleting} className="text-error hover:bg-error/10"><Trash2 size={16} />{isDeleting ? 'Deleting...' : 'Delete'}</Button>}
               </div>
             </div>
-            <div className="row-4 wrap text-muted">
+            <div className="row-md wrap text-muted">
               {page.author && <span className="row"><User size={14} />{page.author.displayName || page.author.radixAddress.slice(0, 16)}...</span>}
               <span className="row"><Clock size={14} />Updated {formatRelativeTime(page.updatedAt)}</span>
             </div>
           </header>
           <BlockRenderer content={page.content} />
-          <footer className="row-4 wrap pt-6 border-t border-border text-muted">
+          <footer className="row-md wrap pt-6 border-t border-border text-muted">
             <span>Created {formatDate(page.createdAt)}</span>
             {page.revisions?.length ? <span>{page.revisions.length} revision{page.revisions.length !== 1 ? 's' : ''}</span> : null}
           </footer>

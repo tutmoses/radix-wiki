@@ -117,7 +117,7 @@ export function Header() {
               {isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted animate-spin" size={18} />}
               
               {searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-surface-1 border border-border rounded-lg shadow-lg overflow-hidden z-50">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-surface-1 border border-border rounded-lg shadow overflow-hidden z-50">
                   {searchResults.map(page => (
                     <button key={page.id} onClick={() => handleSearchSelect(page)} className="w-full row p-3 hover:bg-surface-2 transition-colors text-left">
                       <FileText size={16} className="text-accent shrink-0" />
@@ -131,7 +131,7 @@ export function Header() {
               )}
               
               {searchQuery.trim() && !isSearching && searchResults.length === 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-surface-1 border border-border rounded-lg shadow-lg p-4 text-center text-muted z-50">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-surface-1 border border-border rounded-lg shadow p-4 text-center text-muted z-50">
                   No pages found for "{searchQuery}"
                 </div>
               )}
