@@ -3,7 +3,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma/client';
-import { getSession, createSession, destroySession, verifySignedChallenge, RADIX_CONFIG } from '@/lib/auth';
+import { getSession, createSession, destroySession, verifySignedChallenge } from '@/lib/auth';
+import { RADIX_CONFIG } from '@/lib/radix/config';
 import { json, errors, handleRoute } from '@/lib/api';
 import type { SignedChallenge, RadixAccount, RadixPersona } from '@/types';
 import type { BlockContent } from '@/lib/blocks';
