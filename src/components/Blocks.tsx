@@ -4,19 +4,23 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { 
-  Plus, GripVertical, Trash2, Copy, ChevronUp, ChevronDown, Type, Image, 
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import TextareaAutosize from 'react-textarea-autosize';
+import TurndownService from 'turndown';
+import {
+  Plus, GripVertical, Trash2, Copy, ChevronUp, ChevronDown, Type, Image,
   AlertCircle, Minus, Code, Quote, Clock, FileText, Columns, Settings, Table, ListTree,
   AlertTriangle, CheckCircle, Info
 } from 'lucide-react';
-import { cn, formatRelativeTime, parseInlineMarkdown, slugify } from '@/lib/utils';
+import { cn, formatRelativeTime, slugify } from '@/lib/utils';
 import { findTagByPath } from '@/lib/tags';
 import { Button, Input, Badge } from '@/components/ui';
-import { 
-  type Block, type ContentBlock, type BlockContent, type BlockType, type Column, 
+import {
+  type Block, type ContentBlock, type BlockContent, type BlockType, type Column,
   type ColumnsBlock, type TableBlock, type TocBlock, type MediaBlock, type TextBlock,
-  createBlock, createContentBlock, duplicateBlock, createColumn, 
-  BLOCK_REGISTRY, INSERTABLE_BLOCKS, CONTENT_BLOCK_TYPES 
+  createBlock, createContentBlock, duplicateBlock, createColumn,
+  BLOCK_REGISTRY, INSERTABLE_BLOCKS, CONTENT_BLOCK_TYPES
 } from '@/lib/blocks';
 import type { WikiPage } from '@/types';
 
@@ -35,22 +39,12 @@ const CALLOUT_STYLES = {
   error: { cls: 'callout-error', Icon: AlertCircle, iconCls: 'status-error' },
 } as const;
 
-// List parsing for paragraphs
-const LIST_ITEM_REGEX = /^[\s]*[-*Ã¢â‚¬Â¢Ã¢â€”Â¦Ã¢â€”â€¹Ã¢â€“ÂªÃ¢â€“Â¸Ã¢â€“Âº]\s+(.+)$/;
-
-// Auto-resize textarea hook
-function useAutoResize(value: string) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-  
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${el.scrollHeight}px`;
-  }, [value]);
-  
-  return ref;
-}
+// Initialize Turndown service for HTML to Markdown conversion
+const turndownService = new TurndownService({
+  headingStyle: 'atx',
+  codeBlockStyle: 'fenced',
+  bulletListMarker: '-',
+});
 
 // Reusable rich paste hook for text blocks
 function useRichPaste(
@@ -58,153 +52,107 @@ function useRichPaste(
   onUpdate: (newText: string) => void,
   options: { preserveHtml?: boolean } = { preserveHtml: true }
 ) {
-  const autoResizeRef = useAutoResize(text);
-
-  const htmlToMarkdown = useCallback((html: string): string => {
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    
-    const processNode = (node: Node): string => {
-      if (node.nodeType === Node.TEXT_NODE) return node.textContent || '';
-      if (node.nodeType !== Node.ELEMENT_NODE) return '';
-      
-      const el = node as Element;
-      const tag = el.tagName.toLowerCase();
-      const children = Array.from(el.childNodes).map(processNode).join('');
-      
-      switch (tag) {
-        case 'a': {
-          const href = el.getAttribute('href');
-          return href ? `[${children}](${href})` : children;
-        }
-        case 'strong': case 'b': return `**${children}**`;
-        case 'em': case 'i': return `*${children}*`;
-        case 'code': return `\`${children}\``;
-        case 'br': return '\n';
-        case 'p': return children.trim() + '\n\n';
-        case 'div': return children + '\n';
-        case 'li': return `- ${children}\n`;
-        case 'ul': case 'ol': return children + '\n';
-        case 'h1': case 'h2': case 'h3': case 'h4': case 'h5': case 'h6': 
-          return children.trim() + '\n\n';
-        default: return children;
-      }
-    };
-    
-    return processNode(doc.body).replace(/\n{3,}/g, '\n\n').trim();
-  }, []);
-
-  const normalizeListBullets = useCallback((content: string): string => {
-    return content.split('\n').map(line => {
-      const indentMatch = line.match(/^(\s*)/);
-      const indent = indentMatch ? indentMatch[1] : '';
-      return line
-        .replace(/^(\s*)[-*Ã¢â‚¬Â¢Ã¢â€”Â¦Ã¢â€”â€¹Ã¢â€“ÂªÃ¢â€“Â¸Ã¢â€“Âº]\s+/, `${indent}- `)
-        .replace(/^(\s*)\d+[.)]\s+/, `${indent}- `);
-    }).join('\n');
-  }, []);
-
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const { selectionStart: start, selectionEnd: end } = e.currentTarget;
     const htmlData = e.clipboardData.getData('text/html');
     const plainText = e.clipboardData.getData('text');
-    
-    // HTML content - convert to markdown
+
+    // HTML content - convert to markdown using Turndown
     if (options.preserveHtml && htmlData) {
       e.preventDefault();
-      const processed = normalizeListBullets(htmlToMarkdown(htmlData));
-      onUpdate(text.slice(0, start) + processed + text.slice(end));
-      setTimeout(() => { if (autoResizeRef.current) autoResizeRef.current.selectionStart = autoResizeRef.current.selectionEnd = start + processed.length; }, 0);
+      const markdown = turndownService.turndown(htmlData);
+      const newText = text.slice(0, start) + markdown + text.slice(end);
+      onUpdate(newText);
+
+      // Set cursor position after the inserted text
+      setTimeout(() => {
+        const textarea = e.currentTarget;
+        if (textarea) {
+          textarea.selectionStart = textarea.selectionEnd = start + markdown.length;
+          textarea.focus();
+        }
+      }, 0);
       return;
     }
-    
+
     const trimmed = plainText.trim();
-    
+
     // Single URL - wrap selection or create link
     if (/^https?:\/\/[^\s]+$/.test(trimmed)) {
       e.preventDefault();
       const selectedText = text.slice(start, end);
       const linkText = selectedText || new URL(trimmed).hostname.replace(/^www\./, '');
       const markdownLink = `[${linkText}](${trimmed})`;
-      onUpdate(text.slice(0, start) + markdownLink + text.slice(end));
-      setTimeout(() => { if (autoResizeRef.current) autoResizeRef.current.selectionStart = autoResizeRef.current.selectionEnd = start + markdownLink.length; }, 0);
+      const newText = text.slice(0, start) + markdownLink + text.slice(end);
+      onUpdate(newText);
+
+      setTimeout(() => {
+        const textarea = e.currentTarget;
+        if (textarea) {
+          textarea.selectionStart = textarea.selectionEnd = start + markdownLink.length;
+          textarea.focus();
+        }
+      }, 0);
       return;
     }
-    
-    // Check for lists or bare URLs
-    const listPattern = /^[\s]*[-*Ã¢â‚¬Â¢Ã¢â€”Â¦Ã¢â€”â€¹Ã¢â€“ÂªÃ¢â€“Â¸Ã¢â€“Âº]\s+|^[\s]*\d+[.)]\s+/m;
-    const hasLists = listPattern.test(plainText);
+
+    // Check for bare URLs in text and auto-link them
     const bareUrlPattern = /(?<!\]\()https?:\/\/[^\s\])<>]+/g;
     const hasBareUrls = bareUrlPattern.test(plainText);
-    
-    if (hasLists || hasBareUrls) {
-      e.preventDefault();
-      let processed = plainText;
-      
-      if (hasLists) processed = normalizeListBullets(processed);
-      
-      if (hasBareUrls) {
-        processed = processed.replace(/(?<!\]\()https?:\/\/[^\s\])<>]+/g, url => {
-          try {
-            const cleanUrl = url.replace(/[.,;:!?)]+$/, '');
-            const hostname = new URL(cleanUrl).hostname.replace(/^www\./, '');
-            return `[${hostname}](${cleanUrl})${url.slice(cleanUrl.length)}`;
-          } catch { return url; }
-        });
-      }
-      
-      onUpdate(text.slice(0, start) + processed + text.slice(end));
-      setTimeout(() => { if (autoResizeRef.current) autoResizeRef.current.selectionStart = autoResizeRef.current.selectionEnd = start + processed.length; }, 0);
-    }
-  }, [text, onUpdate, htmlToMarkdown, normalizeListBullets, options.preserveHtml, autoResizeRef]);
 
-  return { ref: autoResizeRef, handlePaste };
+    if (hasBareUrls) {
+      e.preventDefault();
+      const processed = plainText.replace(/(?<!\]\()https?:\/\/[^\s\])<>]+/g, url => {
+        try {
+          const cleanUrl = url.replace(/[.,;:!?)]+$/, '');
+          const hostname = new URL(cleanUrl).hostname.replace(/^www\./, '');
+          return `[${hostname}](${cleanUrl})${url.slice(cleanUrl.length)}`;
+        } catch { return url; }
+      });
+
+      const newText = text.slice(0, start) + processed + text.slice(end);
+      onUpdate(newText);
+
+      setTimeout(() => {
+        const textarea = e.currentTarget;
+        if (textarea) {
+          textarea.selectionStart = textarea.selectionEnd = start + processed.length;
+          textarea.focus();
+        }
+      }, 0);
+    }
+  }, [text, onUpdate, options.preserveHtml]);
+
+  return { handlePaste };
 }
 
-function parseParagraphContent(text: string): React.ReactNode {
-  // Split by double newlines to get paragraphs
-  const paragraphs = text.split(/\n\n+/);
-  
-  const renderParagraph = (para: string, paraKey: number): React.ReactNode => {
-    const lines = para.split('\n');
-    const elements: React.ReactNode[] = [];
-    let listItems: string[] = [];
-    let key = 0;
-
-    const flushList = () => {
-      if (!listItems.length) return;
-      elements.push(
-        <ul key={key++} className="pl-6 list-disc stack-1 my-2">
-          {listItems.map((item, i) => <li key={i}>{parseInlineMarkdown(item)}</li>)}
-        </ul>
-      );
-      listItems = [];
-    };
-
-    for (const line of lines) {
-      const listMatch = line.match(LIST_ITEM_REGEX);
-      if (listMatch) {
-        listItems.push(listMatch[1]);
-      } else {
-        flushList();
-        if (line.trim()) {
-          elements.push(<span key={key++}>{parseInlineMarkdown(line)}</span>);
-          // Add line break for single newlines within a paragraph
-          elements.push(<br key={key++} />);
-        }
-      }
+// Custom components for ReactMarkdown to use internal Link and proper styling
+// Minimal overrides - let ReactMarkdown render standard HTML, styled by globals.css
+const markdownComponents = {
+  a: ({ href, children, ...props }: any) => {
+    if (href?.startsWith('http')) {
+      return <a href={href} target="_blank" rel="noopener noreferrer" className="link" {...props}>{children}</a>;
     }
-    flushList();
-    // Remove trailing br
-    while (elements.length && (elements.at(-1) as React.ReactElement)?.type === 'br') elements.pop();
-    
-    return <div key={paraKey} className={paraKey > 0 ? 'mt-4' : ''}>{elements}</div>;
-  };
+    return <Link href={href || '#'} className="link">{children}</Link>;
+  },
+  h1: ({ children, ...props }: any) => <h1 id={slugify(String(children))} {...props}>{children}</h1>,
+  h2: ({ children, ...props }: any) => <h2 id={slugify(String(children))} {...props}>{children}</h2>,
+  h3: ({ children, ...props }: any) => <h3 id={slugify(String(children))} {...props}>{children}</h3>,
+};
 
-  if (paragraphs.length === 1) {
-    return renderParagraph(paragraphs[0], 0);
-  }
+// For inline contexts (callouts, quotes, table cells) - strips paragraph wrapper
+const inlineMarkdownComponents = {
+  ...markdownComponents,
+  p: ({ children }: any) => <>{children}</>,
+};
 
-  return <>{paragraphs.filter(p => p.trim()).map((para, i) => renderParagraph(para, i))}</>;
+// Inline markdown component for simple text with markdown formatting
+export function InlineMarkdown({ children }: { children: string }) {
+  return (
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={inlineMarkdownComponents}>
+      {children}
+    </ReactMarkdown>
+  );
 }
 
 // Shared Hooks
@@ -318,61 +266,24 @@ function InsertButton({ onInsert, compact, allowColumns = true }: { onInsert: (t
 // Block Props type
 type BlockProps<T extends Block = Block> = { block: T; mode: 'edit' | 'view'; onUpdate?: (b: Block) => void; allContent?: BlockContent };
 
-// Parse rich text with headings and paragraphs
-function parseRichText(text: string): React.ReactNode {
-  const lines = text.split('\n');
-  const elements: React.ReactNode[] = [];
-  let currentParagraph: string[] = [];
-  let key = 0;
-
-  const flushParagraph = () => {
-    if (currentParagraph.length === 0) return;
-    const paraText = currentParagraph.join('\n');
-    elements.push(
-      <div key={key++} className="paragraph">
-        {parseParagraphContent(paraText)}
-      </div>
-    );
-    currentParagraph = [];
-  };
-
-  for (const line of lines) {
-    const h1Match = line.match(/^#\s+(.+)$/);
-    const h2Match = line.match(/^##\s+(.+)$/);
-    const h3Match = line.match(/^###\s+(.+)$/);
-
-    if (h3Match) {
-      flushParagraph();
-      elements.push(<h3 key={key++} id={slugify(h3Match[1])}>{h3Match[1]}</h3>);
-    } else if (h2Match) {
-      flushParagraph();
-      elements.push(<h2 key={key++} id={slugify(h2Match[1])}>{h2Match[1]}</h2>);
-    } else if (h1Match) {
-      flushParagraph();
-      elements.push(<h1 key={key++} id={slugify(h1Match[1])}>{h1Match[1]}</h1>);
-    } else if (line.trim() === '') {
-      flushParagraph();
-    } else {
-      currentParagraph.push(line);
-    }
-  }
-  flushParagraph();
-
-  return elements.length > 0 ? <div className="stack-4">{elements}</div> : null;
-}
 
 // Block Renderers - View Mode
 const ViewRenderers: Record<string, (block: Block, allContent: BlockContent) => React.ReactNode> = {
   text: (b) => {
     const t = b as TextBlock;
-    return parseRichText(t.text);
+    if (!t.text.trim()) return null;
+    return (
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+        {t.text}
+      </ReactMarkdown>
+    );
   },
   divider: () => <hr />,
-  quote: (b) => { const q = b as Extract<Block, {type:'quote'}>; return <blockquote><p>{parseInlineMarkdown(q.text)}</p>{q.attribution && <cite className="block mt-2">Ã¢â‚¬â€ {q.attribution}</cite>}</blockquote>; },
+  quote: (b) => { const q = b as Extract<Block, {type:'quote'}>; return <blockquote><p><InlineMarkdown>{q.text}</InlineMarkdown></p>{q.attribution && <cite className="block mt-2">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â {q.attribution}</cite>}</blockquote>; },
   callout: (b) => {
     const c = b as Extract<Block, {type:'callout'}>;
     const { cls, Icon, iconCls } = CALLOUT_STYLES[c.variant];
-    return <div className={cn('callout', cls)}><Icon size={20} className={cn('shrink-0 mt-0.5', iconCls)} /><div className="stack-2">{c.title && <strong>{c.title}</strong>}<p>{parseInlineMarkdown(c.text)}</p></div></div>;
+    return <div className={cn('callout', cls)}><Icon size={20} className={cn('shrink-0 mt-0.5', iconCls)} /><div className="stack-2">{c.title && <strong>{c.title}</strong>}<p><InlineMarkdown>{c.text}</InlineMarkdown></p></div></div>;
   },
   code: (b) => { const c = b as Extract<Block, {type:'code'}>; return <div className="relative">{c.language && <small className="absolute top-2 right-2">{c.language}</small>}<pre><code>{c.code}</code></pre></div>; },
   media: (b) => {
@@ -385,10 +296,9 @@ const ViewRenderers: Record<string, (block: Block, allContent: BlockContent) => 
       if (vm) return `https://player.vimeo.com/video/${vm[1]}`;
       return url;
     };
-    const aspectClass = { '16:9': 'aspect-video', '4:3': 'aspect-[4/3]', '1:1': 'aspect-square', auto: '' }[m.aspectRatio || '16:9'];
     const content = m.mediaType === 'image' ? <img src={m.src} alt={m.alt || ''} className="rounded-lg max-w-full" />
       : m.mediaType === 'video' ? <video src={m.src} className="rounded-lg max-w-full" controls />
-      : <div className={cn('w-full rounded-lg overflow-hidden surface', aspectClass)}><iframe src={getEmbedUrl(m.src)} className="w-full h-full border-0" allowFullScreen /></div>;
+      : <div className="w-full aspect-video rounded-lg overflow-hidden surface"><iframe src={getEmbedUrl(m.src)} className="w-full h-full border-0" allowFullScreen /></div>;
     return <figure className="stack-2">{content}{m.caption && <figcaption className="text-muted text-center">{m.caption}</figcaption>}</figure>;
   },
   table: (b) => {
@@ -398,8 +308,8 @@ const ViewRenderers: Record<string, (block: Block, allContent: BlockContent) => 
     return (
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
-          {headerRow && <thead><tr>{headerRow.cells.map((cell, i) => <th key={i} className="text-left p-2 border-b-2 border-border font-semibold bg-surface-1">{parseInlineMarkdown(cell)}</th>)}</tr></thead>}
-          <tbody>{bodyRows.map((row, i) => <tr key={i} className="border-b border-border-muted hover:bg-surface-1/50">{row.cells.map((cell, j) => <td key={j} className="p-2">{parseInlineMarkdown(cell)}</td>)}</tr>)}</tbody>
+          {headerRow && <thead><tr>{headerRow.cells.map((cell, i) => <th key={i} className="text-left p-2 border-b-2 border-border font-semibold bg-surface-1"><InlineMarkdown>{cell}</InlineMarkdown></th>)}</tr></thead>}
+          <tbody>{bodyRows.map((row, i) => <tr key={i} className="border-b border-border-muted hover:bg-surface-1/50">{row.cells.map((cell, j) => <td key={j} className="p-2"><InlineMarkdown>{cell}</InlineMarkdown></td>)}</tr>)}</tbody>
         </table>
       </div>
     );
@@ -467,18 +377,17 @@ function PageListView({ block }: { block: Extract<Block, {type:'pageList'}> }) {
 
 // Combined Text Block Editor (supports markdown headings and rich text)
 function TextEdit({ block, onUpdate }: BlockProps<TextBlock>) {
-  const { ref, handlePaste } = useRichPaste(block.text, text => onUpdate?.({ ...block, text }));
+  const { handlePaste } = useRichPaste(block.text, text => onUpdate?.({ ...block, text }));
 
   return (
     <div className="stack-2">
-      <textarea
-        ref={ref}
+      <TextareaAutosize
         value={block.text}
         onChange={e => onUpdate?.({ ...block, text: e.target.value })}
         onPaste={handlePaste}
         placeholder="Write content... Use # for H1, ## for H2, ### for H3"
         className="input-ghost resize-none overflow-hidden min-h-20"
-        rows={3}
+        minRows={3}
       />
       <small>Supports: # H1, ## H2, ### H3, **bold**, *italic*, `code`, [link](url), - list items</small>
     </div>
@@ -504,19 +413,18 @@ function MediaEdit({ block, onUpdate }: BlockProps<MediaBlock>) {
       <Input label={{ image: 'Image URL', video: 'Video URL', embed: 'Embed URL' }[block.mediaType]} type="url" value={block.src} onChange={e => onUpdate?.({ ...block, src: e.target.value, mediaType: detectMediaType(e.target.value) })} placeholder="https://..." />
       {block.mediaType === 'image' && <Input label="Alt text" value={block.alt || ''} onChange={e => onUpdate?.({ ...block, alt: e.target.value })} placeholder="Describe the image..." />}
       <Input label="Caption (optional)" value={block.caption || ''} onChange={e => onUpdate?.({ ...block, caption: e.target.value })} placeholder="Caption..." />
-      {block.mediaType !== 'image' && <div className="row"><span className="text-small text-muted">Aspect ratio:</span><Selector options={['auto', '16:9', '4:3', '1:1'] as const} value={block.aspectRatio || 'auto'} onChange={aspectRatio => onUpdate?.({ ...block, aspectRatio })} /></div>}
       {block.src && block.mediaType === 'image' && <img src={block.src} alt={block.alt || ''} className="rounded-lg max-h-48 object-contain" />}
     </div>
   );
 }
 
 function CalloutEdit({ block, onUpdate }: BlockProps<Extract<Block, {type:'callout'}>>) {
-  const { ref, handlePaste } = useRichPaste(block.text, text => onUpdate?.({ ...block, text }));
+  const { handlePaste } = useRichPaste(block.text, text => onUpdate?.({ ...block, text }));
   return (
     <div className="stack">
       <Selector options={['info', 'warning', 'success', 'error'] as const} value={block.variant} onChange={variant => onUpdate?.({ ...block, variant })} />
       <Input label="Title (optional)" value={block.title || ''} onChange={e => onUpdate?.({ ...block, title: e.target.value })} placeholder="Callout title..." />
-      <textarea ref={ref} value={block.text} onChange={e => onUpdate?.({ ...block, text: e.target.value })} onPaste={handlePaste} placeholder="Callout content..." className="input min-h-15 resize-none" rows={2} />
+      <TextareaAutosize value={block.text} onChange={e => onUpdate?.({ ...block, text: e.target.value })} onPaste={handlePaste} placeholder="Callout content..." className="input resize-none" minRows={2} />
     </div>
   );
 }
@@ -537,11 +445,11 @@ function CodeEdit({ block, onUpdate }: BlockProps<Extract<Block, {type:'code'}>>
 }
 
 function QuoteEdit({ block, onUpdate }: BlockProps<Extract<Block, {type:'quote'}>>) {
-  const { ref, handlePaste } = useRichPaste(block.text, text => onUpdate?.({ ...block, text }));
+  const { handlePaste } = useRichPaste(block.text, text => onUpdate?.({ ...block, text }));
   return (
     <div className="stack border-l-4 border-accent pl-4">
-      <textarea ref={ref} value={block.text} onChange={e => onUpdate?.({ ...block, text: e.target.value })} onPaste={handlePaste} placeholder="Quote text..." className="input-ghost min-h-15 italic resize-none" rows={2} />
-      <Input label="Attribution (optional)" value={block.attribution || ''} onChange={e => onUpdate?.({ ...block, attribution: e.target.value })} placeholder="Ã¢â‚¬â€ Author name" />
+      <TextareaAutosize value={block.text} onChange={e => onUpdate?.({ ...block, text: e.target.value })} onPaste={handlePaste} placeholder="Quote text..." className="input-ghost min-h-15 italic resize-none" minRows={2} />
+      <Input label="Attribution (optional)" value={block.attribution || ''} onChange={e => onUpdate?.({ ...block, attribution: e.target.value })} placeholder="ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Author name" />
     </div>
   );
 }
@@ -569,7 +477,7 @@ function TableEdit({ block, onUpdate }: BlockProps<TableBlock>) {
       <div className="row">
         <button onClick={addRow} className="text-accent text-small hover:text-accent-hover">+ Add row</button>
         <button onClick={addColumn} className="text-accent text-small hover:text-accent-hover">+ Add column</button>
-        {block.rows[0]?.cells.length > 1 && <button onClick={() => deleteColumn(block.rows[0].cells.length - 1)} className="text-muted text-small hover:text-error">Ã¢Ë†â€™ Remove column</button>}
+        {block.rows[0]?.cells.length > 1 && <button onClick={() => deleteColumn(block.rows[0].cells.length - 1)} className="text-muted text-small hover:text-error">- Remove column</button>}
       </div>
     </div>
   );

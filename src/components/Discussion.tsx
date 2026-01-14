@@ -4,8 +4,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { MessageSquare, Reply, Trash2, ChevronDown, ChevronUp, Send } from 'lucide-react';
-import { cn, formatRelativeTime, parseInlineMarkdown } from '@/lib/utils';
+import { cn, formatRelativeTime } from '@/lib/utils';
 import { Button } from '@/components/ui';
+import { InlineMarkdown } from '@/components/Blocks';
 import { useIsAuthenticated, useAuth } from '@/hooks/useStore';
 import type { WikiComment } from '@/types';
 
@@ -110,7 +111,7 @@ function CommentThread({ comment, depth, pageId, onReply, onDelete, currentUserI
       <div className="stack-1">
         <div className="row text-small">
           <span className="font-medium">{comment.author?.displayName || comment.author?.radixAddress?.slice(0, 12) + '...'}</span>
-          <span className="text-muted">·</span>
+          <span className="text-muted">Â·</span>
           <span className="text-muted">{formatRelativeTime(comment.createdAt)}</span>
           {hasReplies && (
             <button onClick={() => setCollapsed(!collapsed)} className="row text-muted hover:text-text ml-auto">
@@ -119,7 +120,7 @@ function CommentThread({ comment, depth, pageId, onReply, onDelete, currentUserI
             </button>
           )}
         </div>
-        <div className="paragraph text-text">{parseInlineMarkdown(comment.content)}</div>
+        <div className="paragraph text-text"><InlineMarkdown>{comment.content}</InlineMarkdown></div>
         <div className="row text-small">
           {canReply && (
             <button onClick={() => setShowReplyForm(!showReplyForm)} className="row text-muted hover:text-accent">

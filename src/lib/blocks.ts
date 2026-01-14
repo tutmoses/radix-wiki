@@ -16,7 +16,6 @@ export interface MediaBlock extends BaseBlock {
   src: string;
   alt?: string;
   caption?: string;
-  aspectRatio?: '16:9' | '4:3' | '1:1' | 'auto';
 }
 export interface CalloutBlock extends BaseBlock {
   type: 'callout'; variant: 'info' | 'warning' | 'success' | 'error'; title?: string; text: string;
