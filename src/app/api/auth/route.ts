@@ -3,9 +3,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma/client';
-import { verifySignedChallenge } from '@/lib/radix/rola';
-import { createSession, getSession, destroySession } from '@/lib/radix/session';
-import { RADIX_CONFIG } from '@/lib/radix/config';
+import { getSession, createSession, destroySession, verifySignedChallenge, RADIX_CONFIG } from '@/lib/auth';
+import { json, errors, handleRoute } from '@/lib/api';
 import type { SignedChallenge, RadixAccount, RadixPersona } from '@/types';
 import type { BlockContent } from '@/lib/blocks';
 
@@ -25,25 +24,22 @@ function addressToSlug(address: string): string {
 }
 
 export async function GET() {
-  try {
+  return handleRoute(async () => {
     const session = await getSession();
-    if (!session) return NextResponse.json(null);
+    if (!session) return json(null);
 
-    return NextResponse.json({
+    return json({
       userId: session.userId,
       radixAddress: session.radixAddress,
       personaAddress: session.personaAddress,
       displayName: session.displayName,
       expiresAt: session.expiresAt.toISOString(),
     });
-  } catch (error) {
-    console.error('Session check error:', error);
-    return NextResponse.json(null);
-  }
+  }, 'Session check error');
 }
 
 export async function POST(request: NextRequest) {
-  try {
+  return handleRoute(async () => {
     const body = await request.json();
     const { accounts, persona, signedChallenge } = body as {
       accounts?: RadixAccount[];
@@ -52,7 +48,7 @@ export async function POST(request: NextRequest) {
     };
 
     if (!accounts || accounts.length === 0) {
-      return NextResponse.json({ error: 'No accounts provided' }, { status: 400 });
+      return errors.badRequest('No accounts provided');
     }
 
     const primaryAccount = accounts[0];
@@ -60,7 +56,7 @@ export async function POST(request: NextRequest) {
     if (signedChallenge) {
       const verification = await verifySignedChallenge(signedChallenge, RADIX_CONFIG.applicationUrl);
       if (!verification.isValid) {
-        return NextResponse.json({ error: verification.error || 'Verification failed' }, { status: 401 });
+        return json({ error: verification.error || 'Verification failed' }, { status: 401 });
       }
     }
 
@@ -124,7 +120,7 @@ export async function POST(request: NextRequest) {
       user.displayName || undefined
     );
 
-    return NextResponse.json({
+    return json({
       userId: user.id,
       radixAddress: user.radixAddress,
       personaAddress: user.personaAddress,
@@ -132,18 +128,12 @@ export async function POST(request: NextRequest) {
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       token,
     });
-  } catch (error) {
-    console.error('Auth error:', error);
-    return NextResponse.json({ error: 'Authentication failed' }, { status: 500 });
-  }
+  }, 'Auth error');
 }
 
 export async function DELETE() {
-  try {
+  return handleRoute(async () => {
     await destroySession();
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Logout error:', error);
-    return NextResponse.json({ error: 'Logout failed' }, { status: 500 });
-  }
+    return json({ success: true });
+  }, 'Logout error');
 }

@@ -22,26 +22,11 @@ const btnVariants: Record<ButtonVariant, string> = {
   danger: 'bg-error/80 text-text hover:bg-error',
 };
 
-const btnSizes: Record<ButtonSize, string> = {
-  sm: 'px-3 py-1.5',
-  md: 'px-4 py-2',
-  lg: 'px-6 py-3',
-  icon: 'p-2',
-};
+const btnSizes: Record<ButtonSize, string> = { sm: 'px-3 py-1.5', md: 'px-4 py-2', lg: 'px-6 py-3', icon: 'p-2' };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', isLoading, disabled, children, ...props }, ref) => (
-    <button
-      ref={ref}
-      className={cn(
-        'row justify-center font-medium rounded-md border border-transparent cursor-pointer transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed',
-        btnVariants[variant],
-        btnSizes[size],
-        className
-      )}
-      disabled={disabled || isLoading}
-      {...props}
-    >
+    <button ref={ref} className={cn('row justify-center font-medium rounded-md border border-transparent cursor-pointer transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed', btnVariants[variant], btnSizes[size], className)} disabled={disabled || isLoading} {...props}>
       {isLoading ? <><Spinner size="sm" />Loading...</> : children}
     </button>
   )
@@ -59,15 +44,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, hint, id, ...props }, ref) => {
     const inputId = id || props.name;
     return (
-      <div className="stack-2">
+      <div className="stack-sm">
         {label && <label htmlFor={inputId} className="font-medium">{label}</label>}
-        <input
-          ref={ref}
-          id={inputId}
-          className={cn('input', error && 'border-error focus:border-error', className)}
-          aria-invalid={!!error}
-          {...props}
-        />
+        <input ref={ref} id={inputId} className={cn('input', error && 'border-error focus:border-error', className)} aria-invalid={!!error} {...props} />
         {error && <p className="text-error">{error}</p>}
         {hint && !error && <small>{hint}</small>}
       </div>
@@ -82,13 +61,7 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export const Card = forwardRef<HTMLDivElement, CardProps>(
-  ({ className, interactive, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(interactive ? 'surface-interactive p-6' : 'panel', className)}
-      {...props}
-    />
-  )
+  ({ className, interactive, ...props }, ref) => <div ref={ref} className={cn(interactive ? 'surface-interactive p-6' : 'panel', className)} {...props} />
 );
 Card.displayName = 'Card';
 
@@ -112,14 +85,9 @@ export function Badge({ className, variant = 'default', ...props }: BadgeProps) 
 }
 
 // Spinner
-interface SpinnerProps {
-  size?: 'sm' | 'md' | 'lg';
-  className?: string;
-}
-
 const spinnerSizes = { sm: 'h-4 w-4', md: 'h-6 w-6', lg: 'h-8 w-8' };
 
-export function Spinner({ size = 'md', className }: SpinnerProps) {
+export function Spinner({ size = 'md', className }: { size?: 'sm' | 'md' | 'lg'; className?: string }) {
   return (
     <svg className={cn('animate-spin text-accent', spinnerSizes[size], className)} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -131,10 +99,7 @@ export function Spinner({ size = 'md', className }: SpinnerProps) {
 export function LoadingScreen({ message = 'Loading...' }: { message?: string }) {
   return (
     <div className="center min-h-100">
-      <div className="stack-2 items-center">
-        <Spinner size="lg" />
-        <p className="text-muted">{message}</p>
-      </div>
+      <div className="stack-sm items-center"><Spinner size="lg" /><p className="text-muted">{message}</p></div>
     </div>
   );
 }

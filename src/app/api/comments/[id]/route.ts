@@ -1,33 +1,21 @@
 // src/app/api/comments/[id]/route.ts
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { requireAuth } from '@/lib/radix/session';
+import { json, errors, handleRoute, withAuth, type RouteContext } from '@/lib/api';
 
-type RouteContext = { params: Promise<{ id: string }> };
-
-export async function DELETE(request: NextRequest, context: RouteContext) {
-  try {
+export async function DELETE(request: NextRequest, context: RouteContext<{ id: string }>) {
+  return handleRoute(async () => {
     const { id } = await context.params;
 
-    const auth = await requireAuth(request);
-    if ('error' in auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await withAuth(request);
+    if ('error' in auth) return auth.error;
 
     const comment = await prisma.comment.findUnique({ where: { id } });
-
-    if (!comment) {
-      return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
-    }
-
-    if (comment.authorId !== auth.session.userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    if (!comment) return errors.notFound('Comment not found');
+    if (comment.authorId !== auth.session.userId) return errors.forbidden();
 
     await prisma.comment.delete({ where: { id } });
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Failed to delete comment:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
+    return json({ success: true });
+  }, 'Failed to delete comment');
 }

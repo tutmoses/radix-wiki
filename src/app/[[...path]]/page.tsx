@@ -6,13 +6,12 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Edit, Clock, User, ArrowLeft, ArrowRight, Trash2, Save, Eye, FileText, Plus } from 'lucide-react';
-import { WikiLayout } from '@/components/WikiLayout';
 import { BlockEditor, BlockRenderer } from '@/components/Blocks';
 import { Discussion } from '@/components/Discussion';
 import { Footer } from '@/components/Footer';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Button, Card, Badge, LoadingScreen, Input } from '@/components/ui';
-import { useAuth, useIsAuthenticated } from '@/hooks/useStore';
+import { useAuth, usePages } from '@/hooks';
 import { formatRelativeTime, formatDate, slugify } from '@/lib/utils';
 import { isValidTagPath, findTagByPath, isAuthorOnlyPath } from '@/lib/tags';
 import type { WikiPage } from '@/types';
@@ -22,36 +21,28 @@ interface WikiPageWithRevisions extends WikiPage {
   revisions?: { id: string }[];
 }
 
-// Shared Components
 function BackLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link href={href} className="row link-muted">
-      <ArrowLeft size={16} /><span>{children}</span>
-    </Link>
-  );
+  return <Link href={href} className="row link-muted"><ArrowLeft size={16} /><span>{children}</span></Link>;
 }
 
 function StatusCard({ title, message, backHref = '/', icon }: { title: string; message: string; backHref?: string; icon?: React.ReactNode }) {
   return (
-    <WikiLayout showSidebar={false}>
-      <div className="center">
-        <Card className="text-center max-w-md">
-          <div className="stack items-center py-12">
-            {icon && <div className="center w-16 h-16 rounded-2xl bg-surface-2 text-muted">{icon}</div>}
-            <h1>{title}</h1>
-            <p className="text-muted">{message}</p>
-            <Link href={backHref}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link>
-          </div>
-        </Card>
-      </div>
-    </WikiLayout>
+    <div className="center">
+      <Card className="text-center max-w-md">
+        <div className="stack items-center py-12">
+          {icon && <div className="center w-16 h-16 rounded-2xl bg-surface-2 text-muted">{icon}</div>}
+          <h1>{title}</h1>
+          <p className="text-muted">{message}</p>
+          <Link href={backHref}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link>
+        </div>
+      </Card>
+    </div>
   );
 }
 
-// Homepage View
 function HomepageView({ isEditing }: { isEditing: boolean }) {
   const router = useRouter();
-  const isAuthenticated = useIsAuthenticated();
+  const { isAuthenticated } = useAuth();
   const [content, setContent] = useState<BlockContent>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -73,117 +64,94 @@ function HomepageView({ isEditing }: { isEditing: boolean }) {
   };
 
   if (isEditing && !isAuthenticated) return <StatusCard title="Authentication Required" message="Please connect your Radix wallet to edit the homepage." icon={<FileText size={32} />} />;
-  if (isLoading) return <WikiLayout><LoadingScreen message="Loading..." /></WikiLayout>;
+  if (isLoading) return <LoadingScreen message="Loading..." />;
 
   if (isEditing) {
     return (
-      <WikiLayout>
-        <div className="stack-6">
-          <div className="spread">
-            <BackLink href="/">Back to Homepage</BackLink>
-            <div className="row">
-              <Link href="/"><Button variant="secondary" size="sm"><Eye size={16} />Preview</Button></Link>
-              <Button onClick={handleSave} disabled={isSaving} size="sm"><Save size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
-            </div>
-          </div>
-          <h1>Edit Homepage</h1>
-          <BlockEditor content={content} onChange={setContent} />
-          <div className="spread">
-            <Link href="/"><Button variant="ghost">Cancel</Button></Link>
-            <Button onClick={handleSave} disabled={isSaving}><Save size={18} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
+      <div className="stack-md">
+        <div className="spread">
+          <BackLink href="/">Back to Homepage</BackLink>
+          <div className="row">
+            <Link href="/"><Button variant="secondary" size="sm"><Eye size={16} />Preview</Button></Link>
+            <Button onClick={handleSave} disabled={isSaving} size="sm"><Save size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
           </div>
         </div>
-      </WikiLayout>
+        <h1>Edit Homepage</h1>
+        <BlockEditor content={content} onChange={setContent} />
+        <div className="spread">
+          <Link href="/"><Button variant="ghost">Cancel</Button></Link>
+          <Button onClick={handleSave} disabled={isSaving}><Save size={18} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <WikiLayout>
-      <div className="stack-6">
-        {isAuthenticated && <div className="row justify-end"><Link href="/edit"><Button variant="secondary" size="sm"><Edit size={16} />Edit Homepage</Button></Link></div>}
-        <BlockRenderer content={content} />
-        <div className="row-4 justify-center wrap">
-          {!isAuthenticated && <Button size="lg" variant="primary" onClick={() => document.querySelector<HTMLButtonElement>('#radix-connect-btn button')?.click()}>Connect Radix Wallet<ArrowRight size={18} /></Button>}
-          <Link href="/contents"><Button variant="secondary" size="lg">Browse Content</Button></Link>
-        </div>
-        <Footer />
+    <div className="stack-md">
+      {isAuthenticated && <div className="row justify-end"><Link href="/edit"><Button variant="secondary" size="sm"><Edit size={16} />Edit Homepage</Button></Link></div>}
+      <BlockRenderer content={content} />
+      <div className="row-4 justify-center wrap">
+        {!isAuthenticated && <Button size="lg" variant="primary" onClick={() => document.querySelector<HTMLButtonElement>('#radix-connect-btn button')?.click()}>Connect Radix Wallet<ArrowRight size={18} /></Button>}
+        <Link href="/contents"><Button variant="secondary" size="lg">Browse Content</Button></Link>
       </div>
-    </WikiLayout>
+      <Footer />
+    </div>
   );
 }
 
-// Category View
 function CategoryView({ tagPath }: { tagPath: string[] }) {
   const router = useRouter();
-  const isAuthenticated = useIsAuthenticated();
-  const [pages, setPages] = useState<WikiPage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { isAuthenticated } = useAuth();
+  const pathStr = tagPath.join('/');
+  const { pages, isLoading } = usePages({ type: 'recent', tagPath: pathStr, limit: 50 });
   const [newSlug, setNewSlug] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const tag = findTagByPath(tagPath);
-  const pathStr = tagPath.join('/');
-
-  useEffect(() => {
-    fetch(`/api/wiki?tagPath=${encodeURIComponent(pathStr)}&published=true`)
-      .then(r => r.ok ? r.json() : { items: [] })
-      .then(d => setPages(d.items))
-      .finally(() => setIsLoading(false));
-  }, [pathStr]);
-
+  const canCreatePages = isAuthenticated && pathStr !== 'community';
   const handleCreate = () => { const s = slugify(newSlug); if (s) router.push(`/${pathStr}/${s}`); };
 
-  // Don't allow creating new pages in community section (auto-created on signup)
-  const canCreatePages = isAuthenticated && pathStr !== 'community';
-
   return (
-    <WikiLayout>
-      <div className="stack-6">
-        <Breadcrumbs path={tagPath} />
-        <div className="spread">
-          <h1>{tag?.name || tagPath[tagPath.length - 1]}</h1>
-          {canCreatePages && (
-            <div className="row">
-              {showCreate ? (
-                <>
-                  <Input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="page-slug" className="w-48" onKeyDown={e => e.key === 'Enter' && handleCreate()} autoFocus />
-                  <Button size="sm" onClick={handleCreate} disabled={!newSlug.trim()}>Go</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
-                </>
-              ) : <Button size="sm" onClick={() => setShowCreate(true)}><Plus size={16} />New Page</Button>}
-            </div>
-          )}
-        </div>
-        {tag?.children?.length ? (
-          <div className="row wrap">
-            {tag.children.map(c => <Link key={c.slug} href={`/${pathStr}/${c.slug}`}><Badge variant="secondary" className="cursor-pointer hover:bg-surface-3">{c.name}</Badge></Link>)}
+    <div className="stack-md">
+      <Breadcrumbs path={tagPath} />
+      <div className="spread">
+        <h1>{tag?.name || tagPath[tagPath.length - 1]}</h1>
+        {canCreatePages && (
+          <div className="row">
+            {showCreate ? (
+              <>
+                <Input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="page-slug" className="w-48" onKeyDown={e => e.key === 'Enter' && handleCreate()} autoFocus />
+                <Button size="sm" onClick={handleCreate} disabled={!newSlug.trim()}>Go</Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
+              </>
+            ) : <Button size="sm" onClick={() => setShowCreate(true)}><Plus size={16} />New Page</Button>}
           </div>
-        ) : null}
-        {isLoading ? <LoadingScreen message="Loading pages..." /> : pages.length > 0 ? (
-          <div className="row-4 wrap">
-            {pages.map(p => (
-              <Link key={p.id} href={`/${p.tagPath}/${p.slug}`} className="flex-1 min-w-75 max-w-[calc(33.333%-1rem)]">
-                <Card interactive className="h-full">
-                  <div className="stack-2">
-                    <h3>{p.title}</h3>
-                    {p.excerpt && <p className="text-muted">{p.excerpt}</p>}
-                    <small>{formatRelativeTime(p.updatedAt)}</small>
-                  </div>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <Card className="text-center py-12">
-            <p className="text-muted">No pages in this category yet.</p>
-            {canCreatePages && <small className="mt-2 block">Click "New Page" above to create one.</small>}
-          </Card>
         )}
       </div>
-    </WikiLayout>
+      {tag?.children?.length ? <div className="row wrap">{tag.children.map(c => <Link key={c.slug} href={`/${pathStr}/${c.slug}`}><Badge variant="secondary" className="cursor-pointer hover:bg-surface-3">{c.name}</Badge></Link>)}</div> : null}
+      {isLoading ? <LoadingScreen message="Loading pages..." /> : pages.length > 0 ? (
+        <div className="row-4 wrap">
+          {pages.map(p => (
+            <Link key={p.id} href={`/${p.tagPath}/${p.slug}`} className="flex-1 min-w-75 max-w-[calc(33.333%-1rem)]">
+              <Card interactive className="h-full">
+                <div className="stack-sm">
+                  <h3>{p.title}</h3>
+                  {p.excerpt && <p className="text-muted">{p.excerpt}</p>}
+                  <small>{formatRelativeTime(p.updatedAt)}</small>
+                </div>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <Card className="text-center py-12">
+          <p className="text-muted">No pages in this category yet.</p>
+          {canCreatePages && <small className="mt-2 block">Click "New Page" above to create one.</small>}
+        </Card>
+      )}
+    </div>
   );
 }
 
-// Page Editor
 function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tagPath: string; slug: string }) {
   const router = useRouter();
   const { user } = useAuth();
@@ -215,7 +183,6 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tag
     finally { setIsSaving(false); }
   };
 
-  // Only block editing if it's an author-only page and user is not the author
   if (page && user && isAuthorOnlyPath(page.tagPath) && page.authorId !== user.id) {
     return <StatusCard title="Not Authorized" message="You can only edit your own pages in this category." backHref={viewPath} />;
   }
@@ -225,60 +192,46 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tag
   const saveLabel = isCreating ? (isSaving ? 'Creating...' : 'Create Page') : (isSaving ? 'Saving...' : 'Save Changes');
 
   return (
-    <WikiLayout>
-      <div className="row-4 items-start">
-        <div className="flex-1 min-w-0">
-          <article className="stack-6">
-            <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix={isCreating ? 'Create' : 'Edit'} />
-            <header className="stack pb-6 border-b border-border">
-              <div className="spread">
-                <BackLink href={backHref}>{isCreating ? 'Back to Category' : 'Back to Page'}</BackLink>
-                <div className="row">
-                  {!isCreating && <Link href={viewPath}><Button variant="secondary" size="sm"><Eye size={16} />Preview</Button></Link>}
-                  <Button onClick={save} disabled={isSaving || !canSave} size="sm"><Save size={16} />{saveLabel}</Button>
-                </div>
-              </div>
-              {isCreating && (
-                <div className="callout callout-info">
-                  <p>Creating new page at <code>/{tagPath}/{slug}</code></p>
-                </div>
-              )}
-              <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title"
-                className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
-            </header>
-            <BlockEditor content={content} onChange={setContent} />
-          </article>
-        </div>
-        <div className="w-64 shrink-0 hidden lg:block">
-          <Card className="sticky-card">
-            <div className="stack">
-              <h4 className="uppercase tracking-wider text-muted">Page Settings</h4>
-              <label className="row">
-                <input type="checkbox" checked={isPublished} onChange={e => setIsPublished(e.target.checked)} className="w-4 h-4 rounded border-border" />
-                {isCreating ? 'Publish immediately' : 'Published'}
-              </label>
-              <div className="stack-2 pt-4 border-t border-border">
-                <Button onClick={save} disabled={isSaving || !canSave}><Save size={18} />{saveLabel}</Button>
-                <Link href={backHref}><Button variant="ghost" className="w-full">Cancel</Button></Link>
+    <div className="row-4 items-start">
+      <div className="flex-1 min-w-0">
+        <article className="stack-md">
+          <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix={isCreating ? 'Create' : 'Edit'} />
+          <header className="stack pb-6 border-b border-border">
+            <div className="spread">
+              <BackLink href={backHref}>{isCreating ? 'Back to Category' : 'Back to Page'}</BackLink>
+              <div className="row">
+                {!isCreating && <Link href={viewPath}><Button variant="secondary" size="sm"><Eye size={16} />Preview</Button></Link>}
+                <Button onClick={save} disabled={isSaving || !canSave} size="sm"><Save size={16} />{saveLabel}</Button>
               </div>
             </div>
-          </Card>
-        </div>
+            {isCreating && <div className="callout"><p>Creating new page at <code>/{tagPath}/{slug}</code></p></div>}
+            <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
+          </header>
+          <BlockEditor content={content} onChange={setContent} />
+        </article>
       </div>
-    </WikiLayout>
+      <div className="w-64 shrink-0 hidden lg:block">
+        <Card className="sticky-card">
+          <div className="stack">
+            <h4 className="uppercase tracking-wider text-muted">Page Settings</h4>
+            <label className="row"><input type="checkbox" checked={isPublished} onChange={e => setIsPublished(e.target.checked)} className="w-4 h-4 rounded border-border" />{isCreating ? 'Publish immediately' : 'Published'}</label>
+            <div className="stack-sm pt-4 border-t border-border">
+              <Button onClick={save} disabled={isSaving || !canSave}><Save size={18} />{saveLabel}</Button>
+              <Link href={backHref}><Button variant="ghost" className="w-full">Cancel</Button></Link>
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
   );
 }
 
-// Page View
 function PageView({ page }: { page: WikiPageWithRevisions }) {
   const router = useRouter();
-  const { user } = useAuth();
-  const isAuthenticated = useIsAuthenticated();
+  const { user, isAuthenticated } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const isAuthor = user && page.authorId === user.id;
   const tagPathArray = page.tagPath.split('/');
-
-  // Can edit if authenticated AND (not an author-only page OR is the author)
   const canEdit = isAuthenticated && (!isAuthorOnlyPath(page.tagPath) || isAuthor);
 
   const handleDelete = async () => {
@@ -293,62 +246,61 @@ function PageView({ page }: { page: WikiPageWithRevisions }) {
   };
 
   return (
-    <WikiLayout>
-      <div className="row-4 items-start">
-        <div className="flex-1 min-w-0">
-          <article className="stack-6">
-            <Breadcrumbs path={[...tagPathArray, page.slug]} />
-            <header className="stack pb-6 border-b border-border">
-              <div className="spread">
-                <h1>{page.title}</h1>
-                <div className="row">
-                  {canEdit && (
-                    <Link href={`/${page.tagPath}/${page.slug}/edit`}><Button variant="secondary" size="sm"><Edit size={16} />Edit</Button></Link>
-                  )}
-                  {isAuthor && (
-                    <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isDeleting} className="text-error hover:bg-error/10">
-                      <Trash2 size={16} />{isDeleting ? 'Deleting...' : 'Delete'}
-                    </Button>
-                  )}
-                </div>
+    <div className="row-4 items-start">
+      <div className="flex-1 min-w-0">
+        <article className="stack-md">
+          <Breadcrumbs path={[...tagPathArray, page.slug]} />
+          <header className="stack pb-6 border-b border-border">
+            <div className="spread">
+              <h1>{page.title}</h1>
+              <div className="row">
+                {canEdit && <Link href={`/${page.tagPath}/${page.slug}/edit`}><Button variant="secondary" size="sm"><Edit size={16} />Edit</Button></Link>}
+                {isAuthor && <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isDeleting} className="text-error hover:bg-error/10"><Trash2 size={16} />{isDeleting ? 'Deleting...' : 'Delete'}</Button>}
               </div>
-              <div className="row-4 wrap text-muted">
-                {page.author && <span className="row"><User size={14} />{page.author.displayName || page.author.radixAddress.slice(0, 16)}...</span>}
-                <span className="row"><Clock size={14} />Updated {formatRelativeTime(page.updatedAt)}</span>
-              </div>
-            </header>
-            <BlockRenderer content={page.content} />
-            <footer className="row-4 wrap pt-6 border-t border-border text-muted">
-              <span>Created {formatDate(page.createdAt)}</span>
-              {page.revisions?.length ? <span>{page.revisions.length} revision{page.revisions.length !== 1 ? 's' : ''}</span> : null}
-            </footer>
-            <Discussion pageId={page.id} />
-          </article>
-        </div>
+            </div>
+            <div className="row-4 wrap text-muted">
+              {page.author && <span className="row"><User size={14} />{page.author.displayName || page.author.radixAddress.slice(0, 16)}...</span>}
+              <span className="row"><Clock size={14} />Updated {formatRelativeTime(page.updatedAt)}</span>
+            </div>
+          </header>
+          <BlockRenderer content={page.content} />
+          <footer className="row-4 wrap pt-6 border-t border-border text-muted">
+            <span>Created {formatDate(page.createdAt)}</span>
+            {page.revisions?.length ? <span>{page.revisions.length} revision{page.revisions.length !== 1 ? 's' : ''}</span> : null}
+          </footer>
+          <Discussion pageId={page.id} />
+        </article>
       </div>
-    </WikiLayout>
+    </div>
   );
 }
 
-// Main Router
+function PageRoute({ tagPath, slug, isEditMode }: { tagPath: string; slug: string; isEditMode: boolean }) {
+  const { isAuthenticated } = useAuth();
+  const { page, status } = usePages({ type: 'single', tagPath, slug }) as { page: WikiPageWithRevisions | null; status: 'loading' | 'found' | 'notfound' | 'error' };
+
+  if (isEditMode && !isAuthenticated) {
+    return <StatusCard title="Authentication Required" message="Please connect your Radix wallet to edit pages." backHref={`/${tagPath}/${slug}`} icon={<FileText size={32} />} />;
+  }
+  if (status === 'loading') return <LoadingScreen message="Loading page..." />;
+  if (status === 'error') return <StatusCard title="Error" message="Failed to load page" />;
+  if (status === 'notfound') return isAuthenticated ? <PageEditor tagPath={tagPath} slug={slug} /> : <StatusCard title="Page not found" message="The page you're looking for doesn't exist." />;
+  if (!page) return <StatusCard title="Page not found" message="The page you're looking for doesn't exist." />;
+  return isEditMode ? <PageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageView page={page} />;
+}
+
 export default function DynamicPage() {
   const params = useParams();
   const rawPath = (params.path as string[]) || [];
-  const isAuthenticated = useIsAuthenticated();
-  const [page, setPage] = useState<WikiPageWithRevisions | null>(null);
-  const [status, setStatus] = useState<'loading' | 'found' | 'notfound' | 'error'>('loading');
 
-  // Homepage routes
   if (rawPath.length === 0) return <HomepageView isEditing={false} />;
   if (rawPath.length === 1 && rawPath[0] === 'edit') return <HomepageView isEditing={true} />;
 
   const isEditMode = rawPath[rawPath.length - 1] === 'edit';
   const pathSegments = isEditMode ? rawPath.slice(0, -1) : rawPath;
 
-  // Category route
   if (isValidTagPath(pathSegments)) return <CategoryView tagPath={pathSegments} />;
 
-  // Page routes
   const tagPathSegments = pathSegments.slice(0, -1);
   const slug = pathSegments[pathSegments.length - 1];
   const tagPath = tagPathSegments.join('/');
@@ -357,19 +309,5 @@ export default function DynamicPage() {
     return <StatusCard title="Invalid path" message="The path you entered is not valid." />;
   }
 
-  useEffect(() => {
-    setStatus('loading');
-    fetch(`/api/wiki/${tagPath}/${slug}`)
-      .then(r => r.ok ? r.json().then(d => { setPage(d); setStatus('found'); }) : setStatus(r.status === 404 ? 'notfound' : 'error'))
-      .catch(() => setStatus('error'));
-  }, [tagPath, slug]);
-
-  if (isEditMode && !isAuthenticated) {
-    return <StatusCard title="Authentication Required" message="Please connect your Radix wallet to edit pages." backHref={`/${tagPath}/${slug}`} icon={<FileText size={32} />} />;
-  }
-  if (status === 'loading') return <WikiLayout><LoadingScreen message="Loading page..." /></WikiLayout>;
-  if (status === 'error') return <StatusCard title="Error" message="Failed to load page" />;
-  if (status === 'notfound') return isAuthenticated ? <PageEditor tagPath={tagPath} slug={slug} /> : <StatusCard title="Page not found" message="The page you're looking for doesn't exist." />;
-  if (!page) return <StatusCard title="Page not found" message="The page you're looking for doesn't exist." />;
-  return isEditMode ? <PageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageView page={page} />;
+  return <PageRoute tagPath={tagPath} slug={slug} isEditMode={isEditMode} />;
 }

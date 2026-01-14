@@ -3,7 +3,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { useStore } from '@/hooks/useStore';
+import { useStore } from '@/hooks';
 import { RADIX_CONFIG } from '@/lib/radix/config';
 import type { RadixWalletData } from '@/types';
 

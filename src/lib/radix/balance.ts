@@ -2,7 +2,6 @@
 
 import { NextResponse } from 'next/server';
 import { getGatewayUrl, RADIX_CONFIG, RadixNetworkId } from './config';
-import { getXrdRequirements, XRD_DEFAULTS } from '@/lib/tags';
 import { prisma } from '@/lib/prisma/client';
 import type { AuthSession } from '@/types';
 
@@ -11,60 +10,44 @@ const XRD_RESOURCE: Record<number, string> = {
   [RadixNetworkId.Stokenet]: 'resource_tdx_2_1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxtfd2jc',
 };
 
+// Single source of truth for XRD requirements
+export const XRD_DEFAULTS = {
+  homepage: { edit: 20_000 },
+  create: 5_000,
+  edit: 20_000,
+  comment: 10_000,
+} as const;
+
 export type BalanceAction =
   | { type: 'editHomepage' }
   | { type: 'edit'; tagPath: string }
   | { type: 'create'; tagPath: string }
   | { type: 'comment'; tagPath: string };
 
-export function getRequirement(action: BalanceAction): number {
-  if (action.type === 'editHomepage') {
-    return XRD_DEFAULTS.homepage.edit;
-  }
-
-  const pathSegments = action.tagPath.split('/').filter(Boolean);
-  const tagRequirements = getXrdRequirements(pathSegments);
-
-  switch (action.type) {
-    case 'create':
-      return tagRequirements.create ?? XRD_DEFAULTS.create;
-    case 'edit':
-      return tagRequirements.edit ?? XRD_DEFAULTS.edit;
-    case 'comment':
-      return tagRequirements.comment ?? XRD_DEFAULTS.comment;
-  }
+function getRequirement(action: BalanceAction): number {
+  if (action.type === 'editHomepage') return XRD_DEFAULTS.homepage.edit;
+  return XRD_DEFAULTS[action.type];
 }
 
-export async function getXrdBalance(address: string): Promise<number> {
+async function getXrdBalance(address: string): Promise<number> {
   try {
     const response = await fetch(`${getGatewayUrl(RADIX_CONFIG.networkId)}/state/entity/details`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        addresses: [address],
-        aggregation_level: 'Vault',
-        opt_ins: { explicit_metadata: [] },
-      }),
+      body: JSON.stringify({ addresses: [address], aggregation_level: 'Vault', opt_ins: { explicit_metadata: [] } }),
     });
-
     if (!response.ok) return 0;
 
     const data = await response.json();
     const fungibles = data.items?.[0]?.fungible_resources?.items || [];
-    const xrd = fungibles.find((r: { resource_address: string }) => 
-      r.resource_address === XRD_RESOURCE[RADIX_CONFIG.networkId]
-    );
-
-    return xrd?.vaults?.items?.reduce(
-      (sum: number, v: { amount: string }) => sum + parseFloat(v.amount || '0'),
-      0
-    ) || 0;
+    const xrd = fungibles.find((r: { resource_address: string }) => r.resource_address === XRD_RESOURCE[RADIX_CONFIG.networkId]);
+    return xrd?.vaults?.items?.reduce((sum: number, v: { amount: string }) => sum + parseFloat(v.amount || '0'), 0) || 0;
   } catch {
     return 0;
   }
 }
 
-type BalanceResult =
+export type BalanceResult =
   | { ok: true; user: { id: string; radixAddress: string }; balance: number }
   | { ok: false; response: NextResponse };
 
@@ -81,9 +64,7 @@ export async function requireBalance(session: AuthSession, action: BalanceAction
   const required = getRequirement(action);
   const balance = await getXrdBalance(user.radixAddress);
 
-  if (balance >= required) {
-    return { ok: true, user, balance };
-  }
+  if (balance >= required) return { ok: true, user, balance };
 
   return {
     ok: false,

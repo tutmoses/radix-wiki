@@ -1,14 +1,11 @@
 // src/app/api/wiki/[...path]/route.ts
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
-import { requireAuth } from '@/lib/radix/session';
 import { isValidTagPath, isAuthorOnlyPath } from '@/lib/tags';
-import { requireBalance } from '@/lib/radix/balance';
+import { json, errors, handleRoute, withAuth, withAuthAndBalance, type RouteContext } from '@/lib/api';
 import type { WikiPageInput } from '@/types';
-
-type RouteContext = { params: Promise<{ path: string[] }> };
 
 function parsePathParams(segments: string[]): { tagPath: string; slug: string } | null {
   if (segments.length < 2) return null;
@@ -18,11 +15,11 @@ function parsePathParams(segments: string[]): { tagPath: string; slug: string } 
   return { tagPath: tagPathSegments.join('/'), slug };
 }
 
-export async function GET(_request: NextRequest, context: RouteContext) {
-  try {
+export async function GET(_request: NextRequest, context: RouteContext<{ path: string[] }>) {
+  return handleRoute(async () => {
     const { path } = await context.params;
     const parsed = parsePathParams(path);
-    if (!parsed) return NextResponse.json({ error: 'Page not found' }, { status: 404 });
+    if (!parsed) return errors.notFound('Page not found');
 
     const page = await prisma.page.findFirst({
       where: { tagPath: parsed.tagPath, slug: parsed.slug },
@@ -32,33 +29,30 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       },
     });
 
-    if (!page) return NextResponse.json({ error: 'Page not found' }, { status: 404 });
-    return NextResponse.json(page);
-  } catch (error) {
-    console.error('Failed to fetch page:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
+    if (!page) return errors.notFound('Page not found');
+    return json(page);
+  }, 'Failed to fetch page');
 }
 
-export async function PUT(request: NextRequest, context: RouteContext) {
-  try {
+export async function PUT(request: NextRequest, context: RouteContext<{ path: string[] }>) {
+  return handleRoute(async () => {
     const { path } = await context.params;
     const parsed = parsePathParams(path);
-    if (!parsed) return NextResponse.json({ error: 'Page not found' }, { status: 404 });
-
-    const auth = await requireAuth(request);
-    if ('error' in auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!parsed) return errors.notFound('Page not found');
 
     const existingPage = await prisma.page.findFirst({ where: { tagPath: parsed.tagPath, slug: parsed.slug } });
-    if (!existingPage) return NextResponse.json({ error: 'Page not found' }, { status: 404 });
+    if (!existingPage) return errors.notFound('Page not found');
 
-    // Author-only pages (community, rfps, blog) can only be edited by their owner
+    const auth = await withAuth(request);
+    if ('error' in auth) return auth.error;
+
+    // Author-only pages can only be edited by their owner
     if (isAuthorOnlyPath(existingPage.tagPath) && existingPage.authorId !== auth.session.userId) {
-      return NextResponse.json({ error: 'You can only edit your own pages in this category' }, { status: 403 });
+      return errors.forbidden('You can only edit your own pages in this category');
     }
 
-    const balanceCheck = await requireBalance(auth.session, { type: 'edit', tagPath: parsed.tagPath });
-    if (!balanceCheck.ok) return balanceCheck.response;
+    const balanceAuth = await withAuthAndBalance(request, { type: 'edit', tagPath: parsed.tagPath });
+    if ('error' in balanceAuth) return balanceAuth.error;
 
     const body: Partial<WikiPageInput> & { revisionMessage?: string } = await request.json();
     const { title, content, excerpt, isPublished, revisionMessage } = body;
@@ -86,32 +80,24 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       });
     }
 
-    return NextResponse.json(page);
-  } catch (error) {
-    console.error('Failed to update page:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
+    return json(page);
+  }, 'Failed to update page');
 }
 
-export async function DELETE(request: NextRequest, context: RouteContext) {
-  try {
+export async function DELETE(request: NextRequest, context: RouteContext<{ path: string[] }>) {
+  return handleRoute(async () => {
     const { path } = await context.params;
     const parsed = parsePathParams(path);
-    if (!parsed) return NextResponse.json({ error: 'Page not found' }, { status: 404 });
+    if (!parsed) return errors.notFound('Page not found');
 
-    const auth = await requireAuth(request);
-    if ('error' in auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await withAuth(request);
+    if ('error' in auth) return auth.error;
 
     const existingPage = await prisma.page.findFirst({ where: { tagPath: parsed.tagPath, slug: parsed.slug } });
-    if (!existingPage) return NextResponse.json({ error: 'Page not found' }, { status: 404 });
-    if (existingPage.authorId !== auth.session.userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    if (!existingPage) return errors.notFound('Page not found');
+    if (existingPage.authorId !== auth.session.userId) return errors.forbidden();
 
     await prisma.page.delete({ where: { id: existingPage.id } });
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Failed to delete page:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
+    return json({ success: true });
+  }, 'Failed to delete page');
 }

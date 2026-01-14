@@ -1,16 +1,15 @@
 // src/app/api/wiki/route.ts
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
 import { slugify } from '@/lib/utils';
-import { requireAuth } from '@/lib/radix/session';
 import { isValidTagPath } from '@/lib/tags';
-import { requireBalance } from '@/lib/radix/balance';
+import { json, errors, handleRoute, withAuth, withAuthAndBalance } from '@/lib/api';
 import type { WikiPageInput } from '@/types';
 
 export async function GET(request: NextRequest) {
-  try {
+  return handleRoute(async () => {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
     const pageSize = parseInt(searchParams.get('pageSize') || '20', 10);
@@ -20,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     if (!search && !published && !tagPath && !searchParams.has('page') && !searchParams.has('pageSize')) {
       const homepage = await prisma.page.findFirst({ where: { tagPath: '', slug: '' } });
-      return NextResponse.json(homepage);
+      return json(homepage);
     }
 
     const where: Prisma.PageWhereInput = {};
@@ -40,28 +39,22 @@ export async function GET(request: NextRequest) {
       prisma.page.count({ where }),
     ]);
 
-    return NextResponse.json({ items: pages, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
-  } catch (error) {
-    console.error('Failed to fetch pages:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
+    return json({ items: pages, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
+  }, 'Failed to fetch pages');
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const auth = await requireAuth(request);
-    if ('error' in auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+  return handleRoute(async () => {
     const body: WikiPageInput = await request.json();
     const { title, content, excerpt, isPublished, tagPath } = body;
 
-    if (!title || !content) return NextResponse.json({ error: 'Title and content required' }, { status: 400 });
+    if (!title || !content) return errors.badRequest('Title and content required');
     if (!tagPath || !isValidTagPath(tagPath.split('/'))) {
-      return NextResponse.json({ error: 'Valid tag path required' }, { status: 400 });
+      return errors.badRequest('Valid tag path required');
     }
 
-    const balanceCheck = await requireBalance(auth.session, { type: 'create', tagPath });
-    if (!balanceCheck.ok) return balanceCheck.response;
+    const auth = await withAuthAndBalance(request, { type: 'create', tagPath });
+    if ('error' in auth) return auth.error;
 
     let slug = body.slug || slugify(title);
     const existing = await prisma.page.findFirst({ where: { tagPath, slug } });
@@ -90,20 +83,14 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(page, { status: 201 });
-  } catch (error) {
-    console.error('Failed to create page:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
+    return json(page, 201);
+  }, 'Failed to create page');
 }
 
 export async function PUT(request: NextRequest) {
-  try {
-    const auth = await requireAuth(request);
-    if ('error' in auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const balanceCheck = await requireBalance(auth.session, { type: 'editHomepage' });
-    if (!balanceCheck.ok) return balanceCheck.response;
+  return handleRoute(async () => {
+    const auth = await withAuthAndBalance(request, { type: 'editHomepage' });
+    if ('error' in auth) return auth.error;
 
     const body: Partial<WikiPageInput> = await request.json();
     const { title, content } = body;
@@ -118,7 +105,7 @@ export async function PUT(request: NextRequest) {
           content: content !== undefined ? (content as unknown as Prisma.InputJsonValue) : undefined,
         },
       });
-      return NextResponse.json(page);
+      return json(page);
     } else {
       const page = await prisma.page.create({
         data: {
@@ -130,10 +117,7 @@ export async function PUT(request: NextRequest) {
           authorId: auth.session.userId,
         },
       });
-      return NextResponse.json(page, { status: 201 });
+      return json(page, 201);
     }
-  } catch (error) {
-    console.error('Failed to update homepage:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
+  }, 'Failed to update homepage');
 }
