@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
 import { slugify } from '@/lib/utils';
 import { isValidTagPath } from '@/lib/tags';
-import { json, errors, handleRoute, withAuthAndBalance } from '@/lib/api';
+import { json, errors, handleRoute, requireAuth } from '@/lib/api';
 import type { WikiPageInput } from '@/types';
 
 export async function GET(request: NextRequest) {
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       return errors.badRequest('Valid tag path required');
     }
 
-    const auth = await withAuthAndBalance(request, { type: 'create', tagPath });
+    const auth = await requireAuth(request, { type: 'create', tagPath });
     if ('error' in auth) return auth.error;
 
     let slug = body.slug || slugify(title);
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   return handleRoute(async () => {
-    const auth = await withAuthAndBalance(request, { type: 'editHomepage' });
+    const auth = await requireAuth(request, { type: 'editHomepage' });
     if ('error' in auth) return auth.error;
 
     const body: Partial<WikiPageInput> = await request.json();

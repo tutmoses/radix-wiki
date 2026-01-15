@@ -1,21 +1,21 @@
 // src/app/api/auth/route.ts
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma/client';
 import { getSession, createSession, destroySession, verifySignedChallenge } from '@/lib/auth';
 import { RADIX_CONFIG } from '@/lib/radix/config';
 import { json, errors, handleRoute } from '@/lib/api';
 import type { SignedChallenge, RadixAccount, RadixPersona } from '@/types';
-import type { BlockContent } from '@/lib/blocks';
+import type { Block } from '@/lib/blocks';
 
-function createCommunityPageContent(displayName?: string): BlockContent {
-  const title = displayName ? `# Welcome to ${displayName}` : '# Welcome to My Page';
+function createCommunityPageContent(displayName?: string): Block[] {
+  const title = displayName ? `Welcome to ${displayName}` : 'Welcome to My Page';
   return [
     {
       id: crypto.randomUUID(),
       type: 'text',
-      text: `${title}\n\nThis is your personal community page. Edit it to share your thoughts, projects, and contributions with the RADIX community.\n\n## About Me\n\nTell the community about yourself...`,
+      text: `<h1>${title}</h1><p>This is your personal community page. Edit it to share your thoughts, projects, and contributions with the RADIX community.</p><h2>About Me</h2><p>Tell the community about yourself...</p>`,
     },
   ];
 }

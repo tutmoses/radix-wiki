@@ -2,11 +2,11 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useActionState } from 'react';
 import { MessageSquare, Reply, Trash2, ChevronDown, ChevronUp, Send } from 'lucide-react';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import { Button } from '@/components/ui';
-import { InlineMarkdown } from '@/components/Blocks';
+import { InlineHtml } from '@/components/Blocks';
 import { useAuth } from '@/hooks';
 import type { WikiComment } from '@/types';
 
@@ -24,29 +24,35 @@ function buildCommentTree(comments: WikiComment[]): WikiComment[] {
   return roots;
 }
 
+type FormState = { error?: string; success?: boolean };
+
 function CommentForm({ onSubmit, onCancel, placeholder = 'Write a comment...', autoFocus, compact }: {
   onSubmit: (content: string) => Promise<void>; onCancel?: () => void; placeholder?: string; autoFocus?: boolean; compact?: boolean;
 }) {
-  const [content, setContent] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleSubmit = async () => {
-    if (!content.trim() || isSubmitting) return;
-    setIsSubmitting(true);
-    try { await onSubmit(content.trim()); setContent(''); }
-    finally { setIsSubmitting(false); }
+  const submitAction = async (_prev: FormState, formData: FormData): Promise<FormState> => {
+    const content = formData.get('content') as string;
+    if (!content?.trim()) return { error: 'Content required' };
+    try {
+      await onSubmit(content.trim());
+      return { success: true };
+    } catch {
+      return { error: 'Failed to post' };
+    }
   };
 
+  const [state, action, isPending] = useActionState(submitAction, {});
+
   return (
-    <div className={cn('stack-sm', compact && 'pl-4')}>
-      <textarea value={content} onChange={e => setContent(e.target.value)} placeholder={placeholder}
+    <form action={action} className={cn('stack-sm', compact && 'pl-4')}>
+      <textarea name="content" placeholder={placeholder} defaultValue=""
         className={cn('input resize-none', compact ? 'min-h-16' : 'min-h-20')} rows={compact ? 2 : 3} autoFocus={autoFocus}
-        onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) handleSubmit(); }} />
+        key={state.success ? Date.now() : 'form'} />
+      {state.error && <p className="text-error text-small">{state.error}</p>}
       <div className="row justify-end">
-        {onCancel && <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>}
-        <Button size="sm" onClick={handleSubmit} disabled={!content.trim() || isSubmitting}><Send size={14} />{isSubmitting ? 'Posting...' : 'Post'}</Button>
+        {onCancel && <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>}
+        <Button type="submit" size="sm" disabled={isPending}><Send size={14} />{isPending ? 'Posting...' : 'Post'}</Button>
       </div>
-    </div>
+    </form>
   );
 }
 
@@ -57,18 +63,24 @@ function CommentThread({ comment, depth, pageId, onReply, onDelete, currentUserI
 }) {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const { isAuthenticated } = useAuth();
   const canReply = isAuthenticated && depth < MAX_DEPTH;
   const isAuthor = currentUserId === comment.authorId;
   const hasReplies = comment.replies && comment.replies.length > 0;
 
-  const handleReply = async (content: string) => { await onReply(comment.id, content); setShowReplyForm(false); };
-  const handleDelete = async () => {
-    if (!confirm('Delete this comment?')) return;
-    setIsDeleting(true);
-    try { await onDelete(comment.id); } finally { setIsDeleting(false); }
+  const deleteAction = async (_prev: FormState): Promise<FormState> => {
+    if (!confirm('Delete this comment?')) return {};
+    try {
+      await onDelete(comment.id);
+      return { success: true };
+    } catch {
+      return { error: 'Failed to delete' };
+    }
   };
+
+  const [deleteState, deleteFormAction, isDeleting] = useActionState(deleteAction, {});
+
+  const handleReply = async (content: string) => { await onReply(comment.id, content); setShowReplyForm(false); };
 
   return (
     <div className={cn('stack-sm', depth > 0 && 'pl-4 border-l border-border-muted')}>
@@ -84,16 +96,23 @@ function CommentThread({ comment, depth, pageId, onReply, onDelete, currentUserI
             </button>
           )}
         </div>
-        <div className="paragraph text-text"><InlineMarkdown>{comment.content}</InlineMarkdown></div>
+        <div className="paragraph text-text"><InlineHtml>{comment.content}</InlineHtml></div>
         <div className="row text-small">
           {canReply && <button onClick={() => setShowReplyForm(!showReplyForm)} className="row text-muted hover:text-accent"><Reply size={14} /><span>Reply</span></button>}
-          {isAuthor && <button onClick={handleDelete} disabled={isDeleting} className="row text-muted hover:text-error"><Trash2 size={14} /><span>{isDeleting ? 'Deleting...' : 'Delete'}</span></button>}
+          {isAuthor && (
+            <form action={deleteFormAction}>
+              <button type="submit" disabled={isDeleting} className="row text-muted hover:text-error">
+                <Trash2 size={14} /><span>{isDeleting ? 'Deleting...' : 'Delete'}</span>
+              </button>
+            </form>
+          )}
         </div>
+        {deleteState.error && <p className="text-error text-small">{deleteState.error}</p>}
       </div>
       {showReplyForm && <CommentForm onSubmit={handleReply} onCancel={() => setShowReplyForm(false)} placeholder="Write a reply..." autoFocus compact />}
       {hasReplies && !collapsed && (
         <div className="stack mt-2">
-          {comment.replies!.map(reply => <CommentThread key={reply.id} comment={reply} depth={depth + 1} pageId={pageId} onReply={onReply} onDelete={onDelete} currentUserId={currentUserId} />)}
+          {comment.replies!.map((reply: WikiComment) => <CommentThread key={reply.id} comment={reply} depth={depth + 1} pageId={pageId} onReply={onReply} onDelete={onDelete} currentUserId={currentUserId} />)}
         </div>
       )}
     </div>
@@ -123,17 +142,17 @@ export function Discussion({ pageId }: { pageId: string }) {
       body: JSON.stringify({ content, parentId, pageId }),
     });
     if (res.ok) await fetchComments();
-    else alert((await res.json()).error || 'Failed to post comment');
+    else throw new Error((await res.json()).error || 'Failed to post comment');
   };
 
   const handleDelete = async (id: string) => {
     const res = await fetch(`/api/comments/${id}`, { method: 'DELETE' });
     if (res.ok) await fetchComments();
-    else alert('Failed to delete comment');
+    else throw new Error('Failed to delete comment');
   };
 
   const totalCount = comments.reduce((acc, c) => {
-    const count = (comment: WikiComment): number => 1 + (comment.replies?.reduce((a, r) => a + count(r), 0) || 0);
+    const count = (comment: WikiComment): number => 1 + (comment.replies?.reduce((a: number, r: WikiComment) => a + count(r), 0) || 0);
     return acc + count(c);
   }, 0);
 

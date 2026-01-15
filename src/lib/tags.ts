@@ -43,39 +43,51 @@ export const TAG_HIERARCHY: TagNode[] = [
   ]},
 ];
 
-export function getVisibleTags(hierarchy: TagNode[] = TAG_HIERARCHY): TagNode[] {
-  return hierarchy.filter(node => !node.hidden);
-}
-
-export function findTagByPath(pathSegments: string[], hierarchy: TagNode[] = TAG_HIERARCHY): TagNode | null {
-  if (pathSegments.length === 0) return null;
-  const [current, ...rest] = pathSegments;
-  const node = hierarchy.find(n => n.slug === current);
-  if (!node) return null;
-  if (rest.length === 0) return node;
-  return node.children ? findTagByPath(rest, node.children) : null;
-}
-
-export function isValidTagPath(pathSegments: string[]): boolean {
-  return pathSegments.length > 0 && findTagByPath(pathSegments) !== null;
-}
-
 const AUTHOR_ONLY_PATHS = ['community', 'community/rfps', 'contents/blog'] as const;
 
-export function isAuthorOnlyPath(tagPath: string): boolean {
-  return AUTHOR_ONLY_PATHS.some(p => tagPath === p || tagPath.startsWith(p + '/'));
+// Single traversal that returns all needed context
+export interface TagPathContext {
+  node: TagNode | null;
+  isValid: boolean;
+  isAuthorOnly: boolean;
+  xrdRequirements: NonNullable<TagNode['xrd']>;
 }
 
-export function getXrdRequirements(pathSegments: string[]): NonNullable<TagNode['xrd']> {
+export function resolveTagPath(pathSegments: string[], hierarchy: TagNode[] = TAG_HIERARCHY): TagPathContext {
   const requirements: NonNullable<TagNode['xrd']> = {};
-  let current: TagNode[] = TAG_HIERARCHY;
+  let current: TagNode[] = hierarchy;
+  let node: TagNode | null = null;
 
   for (const segment of pathSegments) {
-    const node = current.find(n => n.slug === segment);
-    if (!node) break;
+    node = current.find(n => n.slug === segment) ?? null;
+    if (!node) return { node: null, isValid: false, isAuthorOnly: false, xrdRequirements: {} };
     if (node.xrd) Object.assign(requirements, node.xrd);
     current = node.children || [];
   }
 
-  return requirements;
+  const tagPath = pathSegments.join('/');
+  const isAuthorOnly = AUTHOR_ONLY_PATHS.some(p => tagPath === p || tagPath.startsWith(p + '/'));
+
+  return { node, isValid: pathSegments.length > 0, isAuthorOnly, xrdRequirements: requirements };
+}
+
+// Convenience wrappers for common use cases
+export function findTagByPath(pathSegments: string[]): TagNode | null {
+  return resolveTagPath(pathSegments).node;
+}
+
+export function isValidTagPath(pathSegments: string[]): boolean {
+  return resolveTagPath(pathSegments).isValid;
+}
+
+export function isAuthorOnlyPath(tagPath: string): boolean {
+  return resolveTagPath(tagPath.split('/')).isAuthorOnly;
+}
+
+export function getXrdRequirements(pathSegments: string[]): NonNullable<TagNode['xrd']> {
+  return resolveTagPath(pathSegments).xrdRequirements;
+}
+
+export function getVisibleTags(hierarchy: TagNode[] = TAG_HIERARCHY): TagNode[] {
+  return hierarchy.filter(node => !node.hidden);
 }

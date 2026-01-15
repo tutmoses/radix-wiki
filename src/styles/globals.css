@@ -89,7 +89,8 @@
   li:last-child { margin-bottom: 0; }
   ul ul, ol ol, ul ol, ol ul { margin-top: 0.25rem; margin-bottom: 0; }
 
-  a { color: inherit; text-decoration: none; }
+  a { color: var(--color-accent); text-decoration: none; }
+  a:hover { color: var(--color-accent-hover); }
 
   tbody {
     background: var(--color-surface-2);
@@ -243,12 +244,6 @@
   .text-accent { color: var(--color-accent); }
   .text-info { color: var(--color-info); }
   .text-small { font-size: var(--text-small); }
-
-  /* Links */
-  .link { color: var(--color-accent); text-decoration: underline; text-underline-offset: 2px; transition: color 0.15s; }
-  .link:hover { color: var(--color-accent-hover); }
-  .link-muted { color: var(--color-text-muted); transition: color 0.15s; }
-  .link-muted:hover { color: var(--color-text); }
 
   /* Surfaces */
   .surface { background: var(--color-surface-1); border: 1px solid var(--color-border-muted); border-radius: var(--radius-lg); }

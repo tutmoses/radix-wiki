@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
 import { isValidTagPath, isAuthorOnlyPath } from '@/lib/tags';
-import { json, errors, handleRoute, withAuth, withAuthAndBalance, type RouteContext } from '@/lib/api';
+import { json, errors, handleRoute, requireAuth, type RouteContext } from '@/lib/api';
 import type { WikiPageInput } from '@/types';
 
 function parsePathParams(segments: string[]): { tagPath: string; slug: string } | null {
@@ -43,7 +43,7 @@ export async function PUT(request: NextRequest, context: RouteContext<{ path: st
     const existingPage = await prisma.page.findFirst({ where: { tagPath: parsed.tagPath, slug: parsed.slug } });
     if (!existingPage) return errors.notFound('Page not found');
 
-    const auth = await withAuth(request);
+    const auth = await requireAuth(request);
     if ('error' in auth) return auth.error;
 
     // Author-only pages can only be edited by their owner
@@ -51,7 +51,7 @@ export async function PUT(request: NextRequest, context: RouteContext<{ path: st
       return errors.forbidden('You can only edit your own pages in this category');
     }
 
-    const balanceAuth = await withAuthAndBalance(request, { type: 'edit', tagPath: parsed.tagPath });
+    const balanceAuth = await requireAuth(request, { type: 'edit', tagPath: parsed.tagPath });
     if ('error' in balanceAuth) return balanceAuth.error;
 
     const body: Partial<WikiPageInput> & { revisionMessage?: string } = await request.json();
@@ -90,7 +90,7 @@ export async function DELETE(request: NextRequest, context: RouteContext<{ path:
     const parsed = parsePathParams(path);
     if (!parsed) return errors.notFound('Page not found');
 
-    const auth = await withAuth(request);
+    const auth = await requireAuth(request);
     if ('error' in auth) return auth.error;
 
     const existingPage = await prisma.page.findFirst({ where: { tagPath: parsed.tagPath, slug: parsed.slug } });

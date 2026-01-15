@@ -2,13 +2,13 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { json, errors, handleRoute, withAuth, type RouteContext } from '@/lib/api';
+import { json, errors, handleRoute, requireAuth, type RouteContext } from '@/lib/api';
 
 export async function DELETE(request: NextRequest, context: RouteContext<{ id: string }>) {
   return handleRoute(async () => {
     const { id } = await context.params;
 
-    const auth = await withAuth(request);
+    const auth = await requireAuth(request);
     if ('error' in auth) return auth.error;
 
     const comment = await prisma.comment.findUnique({ where: { id } });

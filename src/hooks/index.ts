@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { WikiPage, AuthSession, RadixWalletData } from '@/types';
@@ -136,17 +136,4 @@ export function usePages(mode: PageMode): SingleResult | ListResult {
 
   if (mode.type === 'single') return { page, status };
   return { pages, isLoading };
-}
-
-// ========== FORM HOOK ==========
-
-export function useFormSubmit<T>(submitFn: (data: T) => Promise<boolean | void>) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const handleSubmit = useCallback(async (data: T) => {
-    if (isSubmitting) return false;
-    setIsSubmitting(true);
-    try { return await submitFn(data); }
-    finally { setIsSubmitting(false); }
-  }, [submitFn, isSubmitting]);
-  return { isSubmitting, handleSubmit };
 }

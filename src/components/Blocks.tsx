@@ -1,53 +1,82 @@
-// src/components/Blocks.tsx - Unified Block System with Tiptap
+// src/components/Blocks.tsx - Unified Block System with Tiptap (HTML-based)
 
 'use client';
 
 import { useState, useCallback, useRef, useEffect, type FC } from 'react';
 import Link from 'next/link';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import TurndownService from 'turndown';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TiptapLink from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
-import { marked } from 'marked';
 import {
   Plus, Trash2, Copy, ChevronUp, ChevronDown, Type, Image,
   AlertCircle, Minus, Code, Quote, Clock, FileText, Columns, Settings, Table, ListTree, Info,
-  Bold, Italic, Link2, Heading2, Heading3, List
+  Bold, Italic, Link2, Heading2, Heading3, List, TrendingUp
 } from 'lucide-react';
 import { cn, formatRelativeTime, slugify } from '@/lib/utils';
 import { findTagByPath } from '@/lib/tags';
 import { usePages } from '@/hooks';
 import { Button, Input, Badge } from '@/components/ui';
 import {
-  type Block, type ContentBlock, type BlockContent, type BlockType, type Column,
-  type ColumnsBlock, type TableBlock, type TocBlock, type MediaBlock, type TextBlock,
+  type Block, type ContentBlock, type BlockType, type Column,
+  type ColumnsBlock, type TableBlock, type TocBlock, type MediaBlock, type TextBlock, type AssetPriceBlock,
   createBlock, duplicateBlock, createColumn, INSERTABLE_BLOCKS, CONTENT_BLOCK_TYPES
 } from '@/lib/blocks';
 import type { WikiPage } from '@/types';
 
-// Icons map
+type BlockContent = Block[];
+
 const ICONS: Record<string, React.ReactNode> = {
   Type: <Type size={18} />, Image: <Image size={18} />, AlertCircle: <AlertCircle size={18} />,
   Minus: <Minus size={18} />, Code: <Code size={18} />, Quote: <Quote size={18} />,
   Clock: <Clock size={18} />, FileText: <FileText size={18} />, Columns: <Columns size={18} />,
-  Table: <Table size={18} />, ListTree: <ListTree size={18} />,
+  Table: <Table size={18} />, ListTree: <ListTree size={18} />, TrendingUp: <TrendingUp size={18} />,
 };
 
-const turndownService = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced', bulletListMarker: '-' });
-marked.setOptions({ async: false });
-
-function markdownToHtml(markdown: string): string {
-  if (!markdown.trim()) return '';
-  return marked.parse(markdown, { async: false }) as string;
+// ========== HTML PROCESSING ==========
+interface ProcessedHtml {
+  html: string;
+  headings: { text: string; level: number; id: string }[];
 }
 
-function htmlToMarkdown(html: string): string {
-  if (!html.trim()) return '';
-  return turndownService.turndown(html);
+function processHtml(html: string): ProcessedHtml {
+  if (!html.trim()) return { html: '', headings: [] };
+  
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const headings: ProcessedHtml['headings'] = [];
+  
+  doc.querySelectorAll('h1, h2, h3').forEach(el => {
+    const text = el.textContent?.trim() || '';
+    const id = slugify(text);
+    el.id = id;
+    headings.push({ text, level: parseInt(el.tagName[1]), id });
+  });
+  
+  doc.querySelectorAll('a[href]').forEach(el => {
+    const href = el.getAttribute('href') || '';
+    el.classList.add('link');
+    if (href.startsWith('http')) {
+      el.setAttribute('target', '_blank');
+      el.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+  
+  return { html: doc.body.innerHTML, headings };
 }
+
+function HtmlContent({ html, className }: { html: string; className?: string }) {
+  const { html: processed } = processHtml(html);
+  if (!processed) return null;
+  return <div className={className} dangerouslySetInnerHTML={{ __html: processed }} />;
+}
+
+export function InlineHtml({ children }: { children: string }) {
+  const stripped = children.replace(/<\/?p>/g, '');
+  return <span dangerouslySetInnerHTML={{ __html: stripped }} />;
+}
+
+// Legacy alias for compatibility
+export const InlineMarkdown = InlineHtml;
 
 // ========== RICH TEXT EDITOR ==========
 interface RichTextEditorProps {
@@ -95,20 +124,17 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...', sho
       TiptapLink.configure({ openOnClick: false, HTMLAttributes: { class: 'link' } }),
       Placeholder.configure({ placeholder }),
     ],
-    content: markdownToHtml(value),
+    content: value,
     editorProps: {
       attributes: { class: cn('outline-none focus:outline-none', singleLine ? '' : 'prose prose-invert min-h-20') },
       handleKeyDown: singleLine ? (_, event) => { if (event.key === 'Enter') return true; return false; } : undefined,
     },
-    onUpdate: ({ editor }) => onChange(htmlToMarkdown(editor.getHTML())),
+    onUpdate: ({ editor }) => onChange(editor.getHTML()),
   });
 
   useEffect(() => {
-    if (editor && !editor.isFocused) {
-      const currentMarkdown = htmlToMarkdown(editor.getHTML());
-      if (currentMarkdown !== value) {
-        editor.commands.setContent(markdownToHtml(value));
-      }
+    if (editor && !editor.isFocused && editor.getHTML() !== value) {
+      editor.commands.setContent(value);
     }
   }, [value, editor]);
 
@@ -120,30 +146,6 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...', sho
       </div>
     </div>
   );
-}
-
-// Extract plain text from React children (handles formatted headings like "Hello **World**")
-function getTextContent(node: any): string {
-  if (typeof node === 'string') return node;
-  if (typeof node === 'number') return String(node);
-  if (Array.isArray(node)) return node.map(getTextContent).join('');
-  if (node?.props?.children) return getTextContent(node.props.children);
-  return '';
-}
-
-// Markdown view components
-const markdownComponents = {
-  a: ({ href, children, ...props }: any) => href?.startsWith('http')
-    ? <a href={href} target="_blank" rel="noopener noreferrer" className="link" {...props}>{children}</a>
-    : <Link href={href || '#'} className="link">{children}</Link>,
-  h2: ({ children, ...props }: any) => <h2 id={slugify(getTextContent(children))} {...props}>{children}</h2>,
-  h3: ({ children, ...props }: any) => <h3 id={slugify(getTextContent(children))} {...props}>{children}</h3>,
-};
-
-const inlineMarkdownComponents = { ...markdownComponents, p: ({ children }: any) => <>{children}</> };
-
-export function InlineMarkdown({ children }: { children: string }) {
-  return <ReactMarkdown remarkPlugins={[remarkGfm]} components={inlineMarkdownComponents}>{children}</ReactMarkdown>;
 }
 
 // Block operations hook
@@ -160,26 +162,17 @@ function useBlockOperations<T extends Block>(blocks: T[], setBlocks: (blocks: T[
   };
 }
 
-// Extract headings from HTML (works with Tiptap output)
+// Extract headings from all blocks
 function extractHeadings(content: BlockContent, maxDepth = 3) {
-  const headings: { text: string; level: number }[] = [];
-
-  const processMarkdown = (markdown: string) => {
-    const html = markdownToHtml(markdown);
-    const template = document.createElement('template');
-    template.innerHTML = html;
-    template.content.querySelectorAll('h1, h2, h3').forEach(el => {
-      const level = parseInt(el.tagName[1]);
-      if (level <= maxDepth) {
-        headings.push({ text: el.textContent?.trim() || '', level });
-      }
-    });
-  };
+  const headings: { text: string; level: number; id: string }[] = [];
 
   const processBlocks = (blocks: Block[]) => {
     for (const block of blocks) {
-      if (block.type === 'text') processMarkdown(block.text);
-      else if (block.type === 'columns') block.columns.forEach(c => processBlocks(c.blocks));
+      if (block.type === 'text') {
+        headings.push(...processHtml(block.text).headings.filter(h => h.level <= maxDepth));
+      } else if (block.type === 'columns') {
+        block.columns.forEach(c => processBlocks(c.blocks));
+      }
     }
   };
 
@@ -191,10 +184,10 @@ function extractHeadings(content: BlockContent, maxDepth = 3) {
 type BlockProps<T extends Block = Block> = { block: T; onUpdate?: (b: Block) => void; allContent?: BlockContent };
 
 // ========== VIEW COMPONENTS ==========
-const TextView: FC<BlockProps<TextBlock>> = ({ block }) => block.text.trim() ? <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{block.text}</ReactMarkdown> : null;
+const TextView: FC<BlockProps<TextBlock>> = ({ block }) => <HtmlContent html={block.text} />;
 const DividerView: FC<BlockProps> = () => <hr />;
-const QuoteView: FC<BlockProps<Extract<Block, {type:'quote'}>>> = ({ block }) => <blockquote><ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{block.text}</ReactMarkdown>{block.attribution && <cite className="block mt-2 not-italic text-muted">— {block.attribution}</cite>}</blockquote>;
-const CalloutView: FC<BlockProps<Extract<Block, {type:'callout'}>>> = ({ block }) => <div className="callout"><Info size={20} className="shrink-0 mt-0.5 text-info" /><div className="stack-sm flex-1 min-w-0">{block.title && <strong>{block.title}</strong>}<ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{block.text}</ReactMarkdown></div></div>;
+const QuoteView: FC<BlockProps<Extract<Block, {type:'quote'}>>> = ({ block }) => <blockquote><HtmlContent html={block.text} />{block.attribution && <cite className="block mt-2 not-italic text-muted">Ã¢â‚¬â€ {block.attribution}</cite>}</blockquote>;
+const CalloutView: FC<BlockProps<Extract<Block, {type:'callout'}>>> = ({ block }) => <div className="callout"><Info size={20} className="shrink-0 mt-0.5 text-info" /><div className="stack-sm flex-1 min-w-0">{block.title && <strong>{block.title}</strong>}<HtmlContent html={block.text} /></div></div>;
 const CodeView: FC<BlockProps<Extract<Block, {type:'code'}>>> = ({ block }) => <div className="relative">{block.language && <small className="absolute top-2 right-2">{block.language}</small>}<pre><code>{block.code}</code></pre></div>;
 
 const MediaView: FC<BlockProps<MediaBlock>> = ({ block }) => {
@@ -208,7 +201,7 @@ const MediaView: FC<BlockProps<MediaBlock>> = ({ block }) => {
   const content = block.mediaType === 'image' ? <img src={block.src} alt={block.alt || ''} className="rounded-lg max-w-full" />
     : block.mediaType === 'video' ? <video src={block.src} className="rounded-lg max-w-full" controls />
     : <div className="w-full aspect-video rounded-lg overflow-hidden surface"><iframe src={getEmbedUrl(block.src)} className="w-full h-full border-0" allowFullScreen /></div>;
-  return <figure className="stack-sm">{content}{block.caption && <figcaption className="text-muted text-center"><InlineMarkdown>{block.caption}</InlineMarkdown></figcaption>}</figure>;
+  return <figure className="stack-sm">{content}{block.caption && <figcaption className="text-muted text-center"><InlineHtml>{block.caption}</InlineHtml></figcaption>}</figure>;
 };
 
 const TableView: FC<BlockProps<TableBlock>> = ({ block }) => {
@@ -217,8 +210,8 @@ const TableView: FC<BlockProps<TableBlock>> = ({ block }) => {
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
-        {headerRow && <thead><tr>{headerRow.cells.map((cell, i) => <th key={i} className="text-left p-2 border-b-2 border-border font-semibold bg-surface-1"><InlineMarkdown>{cell}</InlineMarkdown></th>)}</tr></thead>}
-        <tbody>{bodyRows.map((row, i) => <tr key={i} className="border-b border-border-muted hover:bg-surface-1/50">{row.cells.map((cell, j) => <td key={j} className="p-2"><InlineMarkdown>{cell}</InlineMarkdown></td>)}</tr>)}</tbody>
+        {headerRow && <thead><tr>{headerRow.cells.map((cell, i) => <th key={i} className="text-left p-2 border-b-2 border-border font-semibold bg-surface-1"><InlineHtml>{cell}</InlineHtml></th>)}</tr></thead>}
+        <tbody>{bodyRows.map((row, i) => <tr key={i} className="border-b border-border-muted hover:bg-surface-1/50">{row.cells.map((cell, j) => <td key={j} className="p-2"><InlineHtml>{cell}</InlineHtml></td>)}</tr>)}</tbody>
       </table>
     </div>
   );
@@ -230,7 +223,7 @@ const TocView: FC<BlockProps<TocBlock>> = ({ block, allContent = [] }) => {
   return (
     <nav className="stack-sm">
       {block.title && <h4 className="font-semibold">{block.title}</h4>}
-      <ul className="stack-xs">{headings.map((h, i) => <li key={i} style={{ paddingLeft: `${(h.level - 1) * 0.75}rem` }}><a href={`#${slugify(h.text)}`} className="link-muted text-small hover:text-accent">{h.text}</a></li>)}</ul>
+      <ul className="stack-xs">{headings.map((h, i) => <li key={i} style={{ paddingLeft: `${(h.level - 1) * 0.75}rem` }}><a href={`#${h.id}`} className="link text-small">{h.text}</a></li>)}</ul>
     </nav>
   );
 };
@@ -265,6 +258,69 @@ const PageListView: FC<BlockProps<Extract<Block, {type:'pageList'}>>> = ({ block
   if (isLoading) return <div className="row-md"><div className="flex-1 h-20 skeleton" /></div>;
   if (!pages.length) return <p className="text-muted">No pages selected.</p>;
   return <div className="row-md wrap">{pages.map(p => <PageCard key={p.id} page={p} variant="compact" />)}</div>;
+};
+
+function useResourcePrice(resourceAddress?: string) {
+  const [data, setData] = useState<{ price: number; change24h?: number; symbol?: string; name?: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!resourceAddress) { setError('No resource address'); setIsLoading(false); return; }
+
+    const fetchPrice = async () => {
+      try {
+        const res = await fetch(`https://api.ociswap.com/tokens/${resourceAddress}`);
+        if (!res.ok) throw new Error('Token not found');
+        const json = await res.json();
+        
+        const priceNow = parseFloat(json.price?.usd?.now) || 0;
+        const price24h = parseFloat(json.price?.usd?.['24h']) || 0;
+        const change24h = price24h > 0 ? ((priceNow - price24h) / price24h) * 100 : undefined;
+        
+        setData({ price: priceNow, change24h, symbol: json.symbol, name: json.name });
+        setError(priceNow === 0 ? 'Price unavailable' : null);
+      } catch {
+        setError('Price unavailable');
+      }
+      finally { setIsLoading(false); }
+    };
+
+    setIsLoading(true);
+    fetchPrice();
+    const interval = setInterval(fetchPrice, 60000);
+    return () => clearInterval(interval);
+  }, [resourceAddress]);
+
+  return { data, isLoading, error };
+}
+
+const AssetPriceView: FC<BlockProps<AssetPriceBlock>> = ({ block }) => {
+  const { data, isLoading, error } = useResourcePrice(block.resourceAddress);
+
+  if (!block.resourceAddress) return <p className="text-muted">No resource address configured</p>;
+  if (isLoading) return <div className="surface p-4 animate-pulse"><div className="h-8 w-32 bg-surface-2 rounded" /></div>;
+  if (error || !data || typeof data.price !== 'number') return <p className="text-error text-small">{error || 'Price unavailable'}</p>;
+
+  const displayName = data.symbol || data.name || block.resourceAddress.slice(0, 20) + '...';
+  const isPositive = (data.change24h ?? 0) >= 0;
+  const priceStr = data.price < 0.01 
+    ? data.price.toFixed(6) 
+    : data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+
+  return (
+    <div className="surface p-4 inline-flex items-center gap-4">
+      <div className="stack-xs">
+        <span className="text-small text-muted">{displayName}</span>
+        <span className="text-h3 font-semibold">${priceStr}</span>
+      </div>
+      {block.showChange && typeof data.change24h === 'number' && (
+        <span className={cn('text-small font-medium', isPositive ? 'text-success' : 'text-error')}>
+          {isPositive ? '↑' : '↓'} {Math.abs(data.change24h).toFixed(2)}%
+        </span>
+      )}
+    </div>
+  );
 };
 
 const ColumnsView: FC<BlockProps<ColumnsBlock>> = ({ block, allContent = [] }) => {
@@ -329,7 +385,7 @@ const QuoteEdit: FC<BlockProps<Extract<Block, {type:'quote'}>>> = ({ block, onUp
     <RichTextEditor value={block.text} onChange={text => onUpdate?.({ ...block, text })} placeholder="Quote text..." showToolbar={false} />
     <div className="stack-sm">
       <label className="font-medium">Attribution (optional)</label>
-      <RichTextEditor value={block.attribution || ''} onChange={attribution => onUpdate?.({ ...block, attribution })} placeholder="— Author name" showToolbar={false} singleLine />
+      <RichTextEditor value={block.attribution || ''} onChange={attribution => onUpdate?.({ ...block, attribution })} placeholder="Ã¢â‚¬â€ Author name" showToolbar={false} singleLine />
     </div>
   </div>
 );
@@ -400,6 +456,27 @@ const PageListEdit: FC<BlockProps<Extract<Block, {type:'pageList'}>>> = ({ block
   );
 };
 
+const AssetPriceEdit: FC<BlockProps<AssetPriceBlock>> = ({ block, onUpdate }) => (
+  <div className="stack surface p-4 border-dashed">
+    <div className="row text-muted"><TrendingUp size={18} /><span className="font-medium">Asset Price Widget</span></div>
+    <div className="stack-sm">
+      <label className="font-medium">Resource Address</label>
+      <input
+        type="text"
+        value={block.resourceAddress || ''}
+        onChange={e => onUpdate?.({ ...block, resourceAddress: e.target.value })}
+        placeholder="resource_rdx1..."
+        className="input font-mono text-small"
+      />
+      <small className="text-muted">Enter any Radix resource address to fetch its price</small>
+    </div>
+    <label className="row">
+      <input type="checkbox" checked={block.showChange ?? true} onChange={e => onUpdate?.({ ...block, showChange: e.target.checked })} className="w-4 h-4 rounded border-border" />
+      Show 24h change
+    </label>
+  </div>
+);
+
 // Column Editor
 function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Column; onUpdate: (col: Column) => void; onDelete: () => void; canDelete: boolean }) {
   const setBlocks = useCallback((blocks: ContentBlock[]) => onUpdate({ ...column, blocks }), [column, onUpdate]);
@@ -455,6 +532,7 @@ const BLOCK_REGISTRY: Record<BlockType, { label: string; icon: string; View: Blo
   toc: { label: 'Table of Contents', icon: 'ListTree', View: TocView, Edit: TocEdit },
   recentPages: { label: 'Recent Pages', icon: 'Clock', View: RecentPagesView, Edit: RecentPagesEdit },
   pageList: { label: 'Page List', icon: 'FileText', View: PageListView, Edit: PageListEdit },
+  assetPrice: { label: 'Asset Price', icon: 'TrendingUp', View: AssetPriceView, Edit: AssetPriceEdit },
   columns: { label: 'Columns', icon: 'Columns', View: ColumnsView, Edit: ColumnsEdit },
 };
 

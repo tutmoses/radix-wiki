@@ -1,8 +1,8 @@
 // src/types/index.ts
 
-import type { User, Page, Revision } from '@prisma/client';
-import type { BlockContent } from '@/lib/blocks';
+import type { User, Page, Revision, Comment, Prisma } from '@prisma/client';
 
+// Auth types
 export interface AuthSession {
   userId: string;
   radixAddress: string;
@@ -37,46 +37,38 @@ export interface SignedChallenge {
   };
 }
 
+// Wiki types - derive from Prisma
 export type WikiAuthor = Pick<User, 'id' | 'displayName' | 'radixAddress'>;
 
-export interface WikiPage extends Omit<Page, 'content'> {
-  content: BlockContent;
+export type WikiPage = Omit<Page, 'content'> & {
+  content: Prisma.JsonValue;
   author?: WikiAuthor;
   revisions?: Pick<Revision, 'id'>[];
-  fullPath?: string;
-  tagPath: string;
-}
+};
 
-export interface WikiPageInput {
+export type WikiPageInput = {
   slug?: string;
   title: string;
-  content: BlockContent;
+  content: Prisma.JsonValue;
   excerpt?: string;
   isPublished?: boolean;
   tagPath: string;
-}
+};
 
-export interface PaginatedResponse<T> {
+export type WikiComment = Comment & {
+  author?: WikiAuthor;
+  replies?: WikiComment[];
+};
+
+export type CommentInput = {
+  content: string;
+  parentId?: string;
+};
+
+export type PaginatedResponse<T> = {
   items: T[];
   total: number;
   page: number;
   pageSize: number;
   totalPages: number;
-}
-
-export interface WikiComment {
-  id: string;
-  pageId: string;
-  parentId: string | null;
-  content: string;
-  authorId: string;
-  author?: WikiAuthor;
-  replies?: WikiComment[];
-  createdAt: Date | string;
-  updatedAt: Date | string;
-}
-
-export interface CommentInput {
-  content: string;
-  parentId?: string;
-}
+};

@@ -20,23 +20,26 @@ export const errors = {
 
 export type RouteContext<T = Record<string, string | string[]>> = { params: Promise<T> };
 
-type AuthResult = { session: AuthSession } | { error: NextResponse };
+// Unified auth helper - optionally checks balance
+type AuthResult<T extends BalanceAction | undefined> = T extends BalanceAction
+  ? { session: AuthSession; user: { id: string; radixAddress: string }; balance: number }
+  : { session: AuthSession };
 
-export async function withAuth(request?: NextRequest): Promise<AuthResult> {
+type AuthError = { error: NextResponse };
+
+export async function requireAuth(request?: NextRequest): Promise<{ session: AuthSession } | AuthError>;
+export async function requireAuth(request: NextRequest, action: BalanceAction): Promise<{ session: AuthSession; user: { id: string; radixAddress: string }; balance: number } | AuthError>;
+export async function requireAuth(request?: NextRequest, action?: BalanceAction): Promise<AuthResult<typeof action> | AuthError> {
   const session = await getSession(request);
-  return session ? { session } : { error: errors.unauthorized() };
-}
+  if (!session) return { error: errors.unauthorized() };
 
-type BalanceAuthResult = 
-  | { session: AuthSession; user: { id: string; radixAddress: string }; balance: number }
-  | { error: NextResponse };
+  if (action) {
+    const balanceCheck = await requireBalance(session, action);
+    if (!balanceCheck.ok) return { error: balanceCheck.response };
+    return { session, user: balanceCheck.user, balance: balanceCheck.balance };
+  }
 
-export async function withAuthAndBalance(request: NextRequest | undefined, action: BalanceAction): Promise<BalanceAuthResult> {
-  const auth = await withAuth(request);
-  if ('error' in auth) return auth;
-  const balanceCheck = await requireBalance(auth.session, action);
-  if (!balanceCheck.ok) return { error: balanceCheck.response };
-  return { session: auth.session, user: balanceCheck.user, balance: balanceCheck.balance };
+  return { session } as AuthResult<typeof action>;
 }
 
 export async function handleRoute(fn: () => Promise<NextResponse>, errorMsg = 'Internal server error'): Promise<NextResponse> {

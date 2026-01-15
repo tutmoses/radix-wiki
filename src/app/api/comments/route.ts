@@ -2,7 +2,7 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { json, errors, handleRoute, withAuthAndBalance } from '@/lib/api';
+import { json, errors, handleRoute, requireAuth } from '@/lib/api';
 import type { CommentInput } from '@/types';
 
 export async function GET(request: NextRequest) {
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const page = await prisma.page.findUnique({ where: { id: pageId }, select: { id: true, tagPath: true } });
     if (!page) return errors.notFound('Page not found');
 
-    const auth = await withAuthAndBalance(request, { type: 'comment', tagPath: page.tagPath });
+    const auth = await requireAuth(request, { type: 'comment', tagPath: page.tagPath });
     if ('error' in auth) return auth.error;
 
     if (parentId) {
