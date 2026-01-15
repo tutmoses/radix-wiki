@@ -1,4 +1,4 @@
-// src/components/Blocks.tsx - Unified Block System with Registry Pattern
+// src/components/Blocks.tsx - Unified Block System with Tiptap
 
 'use client';
 
@@ -6,11 +6,16 @@ import { useState, useCallback, useRef, useEffect, type FC } from 'react';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import TextareaAutosize from 'react-textarea-autosize';
 import TurndownService from 'turndown';
+import { useEditor, EditorContent, type Editor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import TiptapLink from '@tiptap/extension-link';
+import Placeholder from '@tiptap/extension-placeholder';
+import { marked } from 'marked';
 import {
-  Plus, GripVertical, Trash2, Copy, ChevronUp, ChevronDown, Type, Image,
-  AlertCircle, Minus, Code, Quote, Clock, FileText, Columns, Settings, Table, ListTree, Info
+  Plus, Trash2, Copy, ChevronUp, ChevronDown, Type, Image,
+  AlertCircle, Minus, Code, Quote, Clock, FileText, Columns, Settings, Table, ListTree, Info,
+  Bold, Italic, Link2, Heading2, Heading3, List
 } from 'lucide-react';
 import { cn, formatRelativeTime, slugify } from '@/lib/utils';
 import { findTagByPath } from '@/lib/tags';
@@ -32,41 +37,107 @@ const ICONS: Record<string, React.ReactNode> = {
 };
 
 const turndownService = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced', bulletListMarker: '-' });
+marked.setOptions({ async: false });
 
-// Rich paste hook
-function useRichPaste(text: string, onUpdate: (newText: string) => void) {
-  return {
-    handlePaste: useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-      const { selectionStart: start, selectionEnd: end } = e.currentTarget;
-      const htmlData = e.clipboardData.getData('text/html');
-      const plainText = e.clipboardData.getData('text');
-
-      if (htmlData) {
-        e.preventDefault();
-        const markdown = turndownService.turndown(htmlData);
-        onUpdate(text.slice(0, start) + markdown + text.slice(end));
-        return;
-      }
-
-      const trimmed = plainText.trim();
-      if (/^https?:\/\/[^\s]+$/.test(trimmed)) {
-        e.preventDefault();
-        const selectedText = text.slice(start, end);
-        const linkText = selectedText || new URL(trimmed).hostname.replace(/^www\./, '');
-        onUpdate(text.slice(0, start) + `[${linkText}](${trimmed})` + text.slice(end));
-      }
-    }, [text, onUpdate])
-  };
+function markdownToHtml(markdown: string): string {
+  if (!markdown.trim()) return '';
+  return marked.parse(markdown, { async: false }) as string;
 }
 
-// Markdown components
+function htmlToMarkdown(html: string): string {
+  if (!html.trim()) return '';
+  return turndownService.turndown(html);
+}
+
+// ========== RICH TEXT EDITOR ==========
+interface RichTextEditorProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  showToolbar?: boolean;
+  singleLine?: boolean;
+  className?: string;
+}
+
+function RichTextToolbar({ editor }: { editor: Editor | null }) {
+  if (!editor) return null;
+
+  const buttons: { action: () => void; isActive: boolean; icon: React.ReactNode; label: string }[] = [
+    { action: () => editor.chain().focus().toggleBold().run(), isActive: editor.isActive('bold'), icon: <Bold size={14} />, label: 'Bold' },
+    { action: () => editor.chain().focus().toggleItalic().run(), isActive: editor.isActive('italic'), icon: <Italic size={14} />, label: 'Italic' },
+    { action: () => editor.chain().focus().toggleCode().run(), isActive: editor.isActive('code'), icon: <Code size={14} />, label: 'Code' },
+    { action: () => { const url = window.prompt('URL'); if (url) editor.chain().focus().setLink({ href: url }).run(); }, isActive: editor.isActive('link'), icon: <Link2 size={14} />, label: 'Link' },
+    { action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), isActive: editor.isActive('heading', { level: 2 }), icon: <Heading2 size={14} />, label: 'H2' },
+    { action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), isActive: editor.isActive('heading', { level: 3 }), icon: <Heading3 size={14} />, label: 'H3' },
+    { action: () => editor.chain().focus().toggleBulletList().run(), isActive: editor.isActive('bulletList'), icon: <List size={14} />, label: 'List' },
+  ];
+
+  return (
+    <div className="flex flex-wrap gap-0.5 p-1 bg-surface-1 border border-border-muted rounded-md mb-2">
+      {buttons.map(({ action, isActive, icon, label }) => (
+        <button key={label} type="button" onClick={action} className={cn('p-1.5 rounded transition-colors', isActive ? 'bg-accent text-text-inverted' : 'text-muted hover:bg-surface-2 hover:text-text')} title={label}>{icon}</button>
+      ))}
+    </div>
+  );
+}
+
+function RichTextEditor({ value, onChange, placeholder = 'Write content...', showToolbar = true, singleLine = false, className }: RichTextEditorProps) {
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: singleLine ? false : { levels: [2, 3] },
+        bulletList: singleLine ? false : undefined,
+        orderedList: singleLine ? false : undefined,
+        blockquote: singleLine ? false : undefined,
+        codeBlock: false,
+        hardBreak: singleLine ? false : undefined,
+      }),
+      TiptapLink.configure({ openOnClick: false, HTMLAttributes: { class: 'link' } }),
+      Placeholder.configure({ placeholder }),
+    ],
+    content: markdownToHtml(value),
+    editorProps: {
+      attributes: { class: cn('outline-none focus:outline-none', singleLine ? '' : 'prose prose-invert min-h-20') },
+      handleKeyDown: singleLine ? (_, event) => { if (event.key === 'Enter') return true; return false; } : undefined,
+    },
+    onUpdate: ({ editor }) => onChange(htmlToMarkdown(editor.getHTML())),
+  });
+
+  useEffect(() => {
+    if (editor && !editor.isFocused) {
+      const currentMarkdown = htmlToMarkdown(editor.getHTML());
+      if (currentMarkdown !== value) {
+        editor.commands.setContent(markdownToHtml(value));
+      }
+    }
+  }, [value, editor]);
+
+  return (
+    <div className={cn('stack-sm', className)}>
+      {showToolbar && !singleLine && <RichTextToolbar editor={editor} />}
+      <div className={cn('tiptap-editor bg-surface-0 border border-border rounded-md focus-within:border-accent focus-within:ring-2 focus-within:ring-accent-muted', singleLine ? 'px-3 py-2' : 'p-3 min-h-20')}>
+        <EditorContent editor={editor} />
+      </div>
+    </div>
+  );
+}
+
+// Extract plain text from React children (handles formatted headings like "Hello **World**")
+function getTextContent(node: any): string {
+  if (typeof node === 'string') return node;
+  if (typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(getTextContent).join('');
+  if (node?.props?.children) return getTextContent(node.props.children);
+  return '';
+}
+
+// Markdown view components
 const markdownComponents = {
   a: ({ href, children, ...props }: any) => href?.startsWith('http')
     ? <a href={href} target="_blank" rel="noopener noreferrer" className="link" {...props}>{children}</a>
     : <Link href={href || '#'} className="link">{children}</Link>,
-  h1: ({ children, ...props }: any) => <h1 id={slugify(String(children))} {...props}>{children}</h1>,
-  h2: ({ children, ...props }: any) => <h2 id={slugify(String(children))} {...props}>{children}</h2>,
-  h3: ({ children, ...props }: any) => <h3 id={slugify(String(children))} {...props}>{children}</h3>,
+  h2: ({ children, ...props }: any) => <h2 id={slugify(getTextContent(children))} {...props}>{children}</h2>,
+  h3: ({ children, ...props }: any) => <h3 id={slugify(getTextContent(children))} {...props}>{children}</h3>,
 };
 
 const inlineMarkdownComponents = { ...markdownComponents, p: ({ children }: any) => <>{children}</> };
@@ -89,18 +160,30 @@ function useBlockOperations<T extends Block>(blocks: T[], setBlocks: (blocks: T[
   };
 }
 
+// Extract headings from HTML (works with Tiptap output)
 function extractHeadings(content: BlockContent, maxDepth = 3) {
   const headings: { text: string; level: number }[] = [];
-  const regex = /^(#{1,3})\s+(.+)$/gm;
-  const process = (blocks: Block[]) => {
+
+  const processMarkdown = (markdown: string) => {
+    const html = markdownToHtml(markdown);
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    template.content.querySelectorAll('h1, h2, h3').forEach(el => {
+      const level = parseInt(el.tagName[1]);
+      if (level <= maxDepth) {
+        headings.push({ text: el.textContent?.trim() || '', level });
+      }
+    });
+  };
+
+  const processBlocks = (blocks: Block[]) => {
     for (const block of blocks) {
-      if (block.type === 'text') {
-        let m; while ((m = regex.exec(block.text)) !== null) if (m[1].length <= maxDepth) headings.push({ text: m[2].trim(), level: m[1].length });
-        regex.lastIndex = 0;
-      } else if (block.type === 'columns') block.columns.forEach(c => process(c.blocks));
+      if (block.type === 'text') processMarkdown(block.text);
+      else if (block.type === 'columns') block.columns.forEach(c => processBlocks(c.blocks));
     }
   };
-  process(content);
+
+  processBlocks(content);
   return headings;
 }
 
@@ -110,8 +193,8 @@ type BlockProps<T extends Block = Block> = { block: T; onUpdate?: (b: Block) => 
 // ========== VIEW COMPONENTS ==========
 const TextView: FC<BlockProps<TextBlock>> = ({ block }) => block.text.trim() ? <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{block.text}</ReactMarkdown> : null;
 const DividerView: FC<BlockProps> = () => <hr />;
-const QuoteView: FC<BlockProps<Extract<Block, {type:'quote'}>>> = ({ block }) => <blockquote><p><InlineMarkdown>{block.text}</InlineMarkdown></p>{block.attribution && <cite className="block mt-2">— {block.attribution}</cite>}</blockquote>;
-const CalloutView: FC<BlockProps<Extract<Block, {type:'callout'}>>> = ({ block }) => <div className="callout"><Info size={20} className="shrink-0 mt-0.5 text-info" /><div className="stack-sm">{block.title && <strong>{block.title}</strong>}<p><InlineMarkdown>{block.text}</InlineMarkdown></p></div></div>;
+const QuoteView: FC<BlockProps<Extract<Block, {type:'quote'}>>> = ({ block }) => <blockquote><ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{block.text}</ReactMarkdown>{block.attribution && <cite className="block mt-2 not-italic text-muted">— {block.attribution}</cite>}</blockquote>;
+const CalloutView: FC<BlockProps<Extract<Block, {type:'callout'}>>> = ({ block }) => <div className="callout"><Info size={20} className="shrink-0 mt-0.5 text-info" /><div className="stack-sm flex-1 min-w-0">{block.title && <strong>{block.title}</strong>}<ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{block.text}</ReactMarkdown></div></div>;
 const CodeView: FC<BlockProps<Extract<Block, {type:'code'}>>> = ({ block }) => <div className="relative">{block.language && <small className="absolute top-2 right-2">{block.language}</small>}<pre><code>{block.code}</code></pre></div>;
 
 const MediaView: FC<BlockProps<MediaBlock>> = ({ block }) => {
@@ -125,7 +208,7 @@ const MediaView: FC<BlockProps<MediaBlock>> = ({ block }) => {
   const content = block.mediaType === 'image' ? <img src={block.src} alt={block.alt || ''} className="rounded-lg max-w-full" />
     : block.mediaType === 'video' ? <video src={block.src} className="rounded-lg max-w-full" controls />
     : <div className="w-full aspect-video rounded-lg overflow-hidden surface"><iframe src={getEmbedUrl(block.src)} className="w-full h-full border-0" allowFullScreen /></div>;
-  return <figure className="stack-sm">{content}{block.caption && <figcaption className="text-muted text-center">{block.caption}</figcaption>}</figure>;
+  return <figure className="stack-sm">{content}{block.caption && <figcaption className="text-muted text-center"><InlineMarkdown>{block.caption}</InlineMarkdown></figcaption>}</figure>;
 };
 
 const TableView: FC<BlockProps<TableBlock>> = ({ block }) => {
@@ -195,15 +278,9 @@ const ColumnsView: FC<BlockProps<ColumnsBlock>> = ({ block, allContent = [] }) =
 };
 
 // ========== EDIT COMPONENTS ==========
-const TextEdit: FC<BlockProps<TextBlock>> = ({ block, onUpdate }) => {
-  const { handlePaste } = useRichPaste(block.text, text => onUpdate?.({ ...block, text }));
-  return (
-    <div className="stack-sm">
-      <TextareaAutosize value={block.text} onChange={e => onUpdate?.({ ...block, text: e.target.value })} onPaste={handlePaste} placeholder="Write content... Use # for H1, ## for H2, ### for H3" className="input-ghost resize-none overflow-hidden min-h-20" minRows={3} />
-      <small>Supports: # H1, ## H2, ### H3, **bold**, *italic*, `code`, [link](url), - list items</small>
-    </div>
-  );
-};
+const TextEdit: FC<BlockProps<TextBlock>> = ({ block, onUpdate }) => (
+  <RichTextEditor value={block.text} onChange={text => onUpdate?.({ ...block, text })} placeholder="Write content..." />
+);
 
 const DividerEdit: FC<BlockProps> = () => <div className="py-2"><hr /><small className="block text-center mt-2">Horizontal divider</small></div>;
 
@@ -218,21 +295,24 @@ const MediaEdit: FC<BlockProps<MediaBlock>> = ({ block, onUpdate }) => {
       <div className="row"><span className="text-small text-muted">Type:</span><div className="row wrap">{mediaTypes.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, mediaType: opt })} className={cn('px-3 py-1 rounded-md border capitalize', block.mediaType === opt ? 'bg-accent text-text-inverted border-accent' : 'border-border hover:bg-surface-2')}>{opt}</button>)}</div></div>
       <Input label={{ image: 'Image URL', video: 'Video URL', embed: 'Embed URL' }[block.mediaType]} type="url" value={block.src} onChange={e => onUpdate?.({ ...block, src: e.target.value, mediaType: detectMediaType(e.target.value) })} placeholder="https://..." />
       {block.mediaType === 'image' && <Input label="Alt text" value={block.alt || ''} onChange={e => onUpdate?.({ ...block, alt: e.target.value })} placeholder="Describe the image..." />}
-      <Input label="Caption (optional)" value={block.caption || ''} onChange={e => onUpdate?.({ ...block, caption: e.target.value })} placeholder="Caption..." />
+      <div className="stack-sm">
+        <label className="font-medium">Caption (optional)</label>
+        <RichTextEditor value={block.caption || ''} onChange={caption => onUpdate?.({ ...block, caption })} placeholder="Add a caption..." showToolbar={false} singleLine />
+      </div>
       {block.src && block.mediaType === 'image' && <img src={block.src} alt={block.alt || ''} className="rounded-lg max-h-48 object-contain" />}
     </div>
   );
 };
 
-const CalloutEdit: FC<BlockProps<Extract<Block, {type:'callout'}>>> = ({ block, onUpdate }) => {
-  const { handlePaste } = useRichPaste(block.text, text => onUpdate?.({ ...block, text }));
-  return (
-    <div className="stack">
-      <Input label="Title (optional)" value={block.title || ''} onChange={e => onUpdate?.({ ...block, title: e.target.value })} placeholder="Callout title..." />
-      <TextareaAutosize value={block.text} onChange={e => onUpdate?.({ ...block, text: e.target.value })} onPaste={handlePaste} placeholder="Callout content..." className="input resize-none" minRows={2} />
+const CalloutEdit: FC<BlockProps<Extract<Block, {type:'callout'}>>> = ({ block, onUpdate }) => (
+  <div className="stack">
+    <div className="stack-sm">
+      <label className="font-medium">Title (optional)</label>
+      <RichTextEditor value={block.title || ''} onChange={title => onUpdate?.({ ...block, title })} placeholder="Callout title..." showToolbar={false} singleLine />
     </div>
-  );
-};
+    <RichTextEditor value={block.text} onChange={text => onUpdate?.({ ...block, text })} placeholder="Callout content..." showToolbar={false} />
+  </div>
+);
 
 const CodeEdit: FC<BlockProps<Extract<Block, {type:'code'}>>> = ({ block, onUpdate }) => {
   const languages = ['typescript', 'javascript', 'python', 'rust', 'sql', 'bash', 'json', 'css', 'html'];
@@ -244,15 +324,15 @@ const CodeEdit: FC<BlockProps<Extract<Block, {type:'code'}>>> = ({ block, onUpda
   );
 };
 
-const QuoteEdit: FC<BlockProps<Extract<Block, {type:'quote'}>>> = ({ block, onUpdate }) => {
-  const { handlePaste } = useRichPaste(block.text, text => onUpdate?.({ ...block, text }));
-  return (
-    <div className="stack border-l-4 border-accent pl-4">
-      <TextareaAutosize value={block.text} onChange={e => onUpdate?.({ ...block, text: e.target.value })} onPaste={handlePaste} placeholder="Quote text..." className="input-ghost min-h-15 italic resize-none" minRows={2} />
-      <Input label="Attribution (optional)" value={block.attribution || ''} onChange={e => onUpdate?.({ ...block, attribution: e.target.value })} placeholder="— Author name" />
+const QuoteEdit: FC<BlockProps<Extract<Block, {type:'quote'}>>> = ({ block, onUpdate }) => (
+  <div className="stack border-l-4 border-accent pl-4">
+    <RichTextEditor value={block.text} onChange={text => onUpdate?.({ ...block, text })} placeholder="Quote text..." showToolbar={false} />
+    <div className="stack-sm">
+      <label className="font-medium">Attribution (optional)</label>
+      <RichTextEditor value={block.attribution || ''} onChange={attribution => onUpdate?.({ ...block, attribution })} placeholder="— Author name" showToolbar={false} singleLine />
     </div>
-  );
-};
+  </div>
+);
 
 const TableEdit: FC<BlockProps<TableBlock>> = ({ block, onUpdate }) => {
   const updateCell = (ri: number, ci: number, v: string) => onUpdate?.({ ...block, rows: block.rows.map((row, r) => r === ri ? { ...row, cells: row.cells.map((c, i) => i === ci ? v : c) } : row) });
@@ -260,12 +340,22 @@ const TableEdit: FC<BlockProps<TableBlock>> = ({ block, onUpdate }) => {
   const addCol = () => onUpdate?.({ ...block, rows: block.rows.map(row => ({ ...row, cells: [...row.cells, ''] })) });
   const delRow = (i: number) => block.rows.length > 1 && onUpdate?.({ ...block, rows: block.rows.filter((_, j) => j !== i) });
   const delCol = (ci: number) => block.rows[0]?.cells.length > 1 && onUpdate?.({ ...block, rows: block.rows.map(row => ({ ...row, cells: row.cells.filter((_, i) => i !== ci) })) });
+
   return (
     <div className="stack">
       <label className="row"><input type="checkbox" checked={block.hasHeader ?? true} onChange={e => onUpdate?.({ ...block, hasHeader: e.target.checked })} className="rounded" /><span>First row is header</span></label>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse"><tbody>
-          {block.rows.map((row, ri) => <tr key={ri}>{row.cells.map((cell, ci) => <td key={ci} className="p-1"><input type="text" value={cell} onChange={e => updateCell(ri, ci, e.target.value)} placeholder={block.hasHeader && ri === 0 ? 'Header' : 'Cell'} className={cn('input w-full', block.hasHeader && ri === 0 && 'font-semibold')} /></td>)}<td className="p-1 w-8"><button onClick={() => delRow(ri)} className="icon-btn p-1 text-muted hover:text-error" disabled={block.rows.length <= 1}><Trash2 size={14} /></button></td></tr>)}
+          {block.rows.map((row, ri) => (
+            <tr key={ri}>
+              {row.cells.map((cell, ci) => (
+                <td key={ci} className="p-1">
+                  <RichTextEditor value={cell} onChange={v => updateCell(ri, ci, v)} placeholder={block.hasHeader && ri === 0 ? 'Header' : 'Cell'} showToolbar={false} singleLine className={cn(block.hasHeader && ri === 0 && 'font-semibold')} />
+                </td>
+              ))}
+              <td className="p-1 w-8"><button onClick={() => delRow(ri)} className="icon-btn p-1 text-muted hover:text-error" disabled={block.rows.length <= 1}><Trash2 size={14} /></button></td>
+            </tr>
+          ))}
         </tbody></table>
       </div>
       <div className="row">
@@ -284,7 +374,7 @@ const TocEdit: FC<BlockProps<TocBlock>> = ({ block, onUpdate }) => {
       <div className="row text-muted"><ListTree size={18} /><span className="font-medium">Table of Contents</span></div>
       <Input label="Title (optional)" value={block.title || ''} onChange={e => onUpdate?.({ ...block, title: e.target.value || undefined })} placeholder="Contents" />
       <div className="row"><span>Max heading depth:</span><div className="row wrap">{depths.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, maxDepth: parseInt(opt) as 1 | 2 | 3 })} className={cn('px-3 py-1 rounded-md border', String(block.maxDepth || 3) === opt ? 'bg-accent text-text-inverted border-accent' : 'border-border hover:bg-surface-2')}>{opt}</button>)}</div></div>
-      <small className="text-muted">Automatically generates from page headings (H1, H2, H3)</small>
+      <small className="text-muted">Automatically generates from page headings (H2, H3)</small>
     </div>
   );
 };
@@ -303,7 +393,7 @@ const PageListEdit: FC<BlockProps<Extract<Block, {type:'pageList'}>>> = ({ block
   return (
     <div className="stack surface p-4 border-dashed">
       <div className="row text-muted"><FileText size={18} /><span className="font-medium">Curated Page List</span></div>
-      {block.pageIds.length > 0 && <div className="stack-sm">{block.pageIds.map((id, i) => <div key={i} className="row"><span className="flex-1 font-mono text-small truncate">{id}</span><button onClick={() => onUpdate?.({ ...block, pageIds: block.pageIds.filter((_, j) => j !== i) })} className="icon-btn text-muted hover:text-error"><Trash2 size={14} /></button></div>)}</div>}
+      {block.pageIds.length > 0 && <div className="stack-sm">{block.pageIds.map((id, i) => <div key={i} className="row"><span className="flex-1 text-small truncate">{id}</span><button onClick={() => onUpdate?.({ ...block, pageIds: block.pageIds.filter((_, j) => j !== i) })} className="icon-btn text-muted hover:text-error"><Trash2 size={14} /></button></div>)}</div>}
       <div className="row"><input type="text" value={newPageId} onChange={e => setNewPageId(e.target.value)} placeholder="Page ID..." className="flex-1 input" /><Button size="sm" onClick={addPage} disabled={!newPageId.trim()}>Add</Button></div>
       <small>Add page IDs to create a curated list</small>
     </div>
@@ -354,18 +444,18 @@ const ColumnsEdit: FC<BlockProps<ColumnsBlock>> = ({ block, onUpdate }) => {
 // ========== UNIFIED BLOCK REGISTRY ==========
 type BlockComponent<T extends Block = Block> = FC<BlockProps<T>>;
 
-const BLOCK_REGISTRY: Record<BlockType, { label: string; icon: string; create: () => Omit<Block, 'id'>; View: BlockComponent<any>; Edit: BlockComponent<any> }> = {
-  text: { label: 'Text', icon: 'Type', create: () => ({ type: 'text', text: '' }), View: TextView, Edit: TextEdit },
-  media: { label: 'Media', icon: 'Image', create: () => ({ type: 'media', mediaType: 'image', src: '', alt: '' }), View: MediaView, Edit: MediaEdit },
-  callout: { label: 'Callout', icon: 'AlertCircle', create: () => ({ type: 'callout', text: '' }), View: CalloutView, Edit: CalloutEdit },
-  divider: { label: 'Divider', icon: 'Minus', create: () => ({ type: 'divider' }), View: DividerView, Edit: DividerEdit },
-  code: { label: 'Code', icon: 'Code', create: () => ({ type: 'code', language: 'typescript', code: '' }), View: CodeView, Edit: CodeEdit },
-  quote: { label: 'Quote', icon: 'Quote', create: () => ({ type: 'quote', text: '' }), View: QuoteView, Edit: QuoteEdit },
-  table: { label: 'Table', icon: 'Table', create: () => ({ type: 'table', rows: [{ cells: ['Header 1', 'Header 2'] }, { cells: ['Cell 1', 'Cell 2'] }], hasHeader: true }), View: TableView, Edit: TableEdit },
-  toc: { label: 'Table of Contents', icon: 'ListTree', create: () => ({ type: 'toc', title: 'Contents', maxDepth: 3 }), View: TocView, Edit: TocEdit },
-  recentPages: { label: 'Recent Pages', icon: 'Clock', create: () => ({ type: 'recentPages', limit: 5 }), View: RecentPagesView, Edit: RecentPagesEdit },
-  pageList: { label: 'Page List', icon: 'FileText', create: () => ({ type: 'pageList', pageIds: [] }), View: PageListView, Edit: PageListEdit },
-  columns: { label: 'Columns', icon: 'Columns', create: () => ({ type: 'columns', columns: [{ id: crypto.randomUUID(), blocks: [] }, { id: crypto.randomUUID(), blocks: [] }], gap: 'md', align: 'start' }), View: ColumnsView, Edit: ColumnsEdit },
+const BLOCK_REGISTRY: Record<BlockType, { label: string; icon: string; View: BlockComponent<any>; Edit: BlockComponent<any> }> = {
+  text: { label: 'Text', icon: 'Type', View: TextView, Edit: TextEdit },
+  media: { label: 'Media', icon: 'Image', View: MediaView, Edit: MediaEdit },
+  callout: { label: 'Callout', icon: 'AlertCircle', View: CalloutView, Edit: CalloutEdit },
+  divider: { label: 'Divider', icon: 'Minus', View: DividerView, Edit: DividerEdit },
+  code: { label: 'Code', icon: 'Code', View: CodeView, Edit: CodeEdit },
+  quote: { label: 'Quote', icon: 'Quote', View: QuoteView, Edit: QuoteEdit },
+  table: { label: 'Table', icon: 'Table', View: TableView, Edit: TableEdit },
+  toc: { label: 'Table of Contents', icon: 'ListTree', View: TocView, Edit: TocEdit },
+  recentPages: { label: 'Recent Pages', icon: 'Clock', View: RecentPagesView, Edit: RecentPagesEdit },
+  pageList: { label: 'Page List', icon: 'FileText', View: PageListView, Edit: PageListEdit },
+  columns: { label: 'Columns', icon: 'Columns', View: ColumnsView, Edit: ColumnsEdit },
 };
 
 function renderBlock(block: Block, mode: 'edit' | 'view', onUpdate?: (b: Block) => void, allContent: BlockContent = []): React.ReactNode {
@@ -428,7 +518,6 @@ function BlockWrapper({ block, index, total, isSelected, onSelect, onUpdate, onD
     )}>
       <div className={cn('spread', compact ? 'mb-2' : 'mb-3')}>
         <div className="row">
-          {!compact && <div className="row opacity-0 group-hover:opacity-100 transition-opacity mr-2"><button className="icon-btn p-1 text-muted cursor-grab"><GripVertical size={16} /></button></div>}
           {!(compact || block.type === 'columns') && <div className="row text-muted">{ICONS[reg.icon]}<span className="text-small font-medium uppercase">{reg.label}</span></div>}
         </div>
         <div className="row opacity-0 group-hover:opacity-100 transition-opacity">

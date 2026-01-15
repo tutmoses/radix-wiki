@@ -5,7 +5,6 @@
 @theme {
   /* Fonts */
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
 
   /* Surface colors */
   --color-surface-0: #393e50;
@@ -38,7 +37,6 @@
   --text-h3: 1.4rem;
   --text-h4: 1.2rem;
   --text-body: 1rem;
-  --text-small: 0.75rem;
 
   /* Spacing */
   --space-xs: 0.25rem;
@@ -63,7 +61,7 @@
 @layer base {
   html {
     font-size: 16px;
-    line-height: 1;
+    line-height: 1.2;
     -webkit-font-smoothing: antialiased;
     scroll-behavior: smooth;
   }
@@ -76,16 +74,15 @@
   }
 
   h1 { font-size: var(--text-h1); font-weight: 700; margin-top: 2rem; margin-bottom: 1rem; }
-  h2 { font-size: var(--text-h2); font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
-  h3 { font-size: var(--text-h3); font-weight: 600; margin-top: 1.5rem; margin-bottom: 1rem; }
-  h4 { font-size: var(--text-h4); font-weight: 600; margin-top: 1rem; margin-bottom: 1rem; }
+  h2 { font-size: var(--text-h2); font-weight: 500; margin-top: 2rem; margin-bottom: 1rem; border-bottom: 2px solid var(--color-border); scroll-margin-top: 5rem; }
+  h3 { font-size: var(--text-h3); font-weight: 400; margin-top: 1.5rem; margin-bottom: 1rem; scroll-margin-top: 5rem; }
+  h4 { font-size: var(--text-h4); font-weight: 300; margin-top: 1rem; margin-bottom: 1rem; scroll-margin-top: 5rem;  }
   h1:first-child, h2:first-child, h3:first-child, h4:first-child { margin-top: 0; }
-  small { font-size: var(--text-small); color: var(--color-text-muted); }
 
-  p { line-height: 1.25; margin-bottom: 1rem; }
+  p { margin-bottom: 1rem; }
   p:last-child { margin-bottom: 0; }
 
-  ul, ol { line-height: 1.6; margin-bottom: 1rem; padding-left: 1.5rem; }
+  ul, ol { margin-bottom: 1rem; padding-left: 2rem; }
   ul { list-style-type: disc; }
   ol { list-style-type: decimal; }
   li { margin-bottom: 0.25rem; }
@@ -115,7 +112,6 @@
   hr { border: none; border-top: 1px solid var(--color-border-muted); }
 
   code {
-    font-family: var(--font-mono);
     font-size: 0.9em;
     padding: 0.125rem 0.375rem;
     background: var(--color-surface-2);
@@ -123,7 +119,6 @@
   }
 
   pre {
-    font-family: var(--font-mono);
     font-size: var(--text-body);
     background: var(--color-surface-1);
     border: 1px solid var(--color-border-muted);
@@ -141,6 +136,90 @@
     padding-bottom: var(--space-xs);
     font-style: italic;
     color: var(--color-text-muted);
+  }
+
+  /* Tiptap Editor Styles */
+  .tiptap-editor .tiptap {
+    outline: none;
+  }
+
+  .tiptap-editor .tiptap p {
+    margin-bottom: 0.75rem;
+  }
+
+  .tiptap-editor .tiptap p:last-child {
+    margin-bottom: 0;
+  }
+
+  .tiptap-editor .tiptap h2 {
+    font-size: var(--text-h2);
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .tiptap-editor .tiptap h3 {
+    font-size: var(--text-h3);
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .tiptap-editor .tiptap h2:first-child,
+  .tiptap-editor .tiptap h3:first-child {
+    margin-top: 0;
+  }
+
+  .tiptap-editor .tiptap ul,
+  .tiptap-editor .tiptap ol {
+    padding-left: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .tiptap-editor .tiptap ul {
+    list-style-type: disc;
+  }
+
+  .tiptap-editor .tiptap ol {
+    list-style-type: decimal;
+  }
+
+  .tiptap-editor .tiptap li {
+    margin-bottom: 0.25rem;
+  }
+
+  .tiptap-editor .tiptap code {
+    font-size: 0.9em;
+    padding: 0.125rem 0.375rem;
+    background: var(--color-surface-2);
+    border-radius: var(--radius);
+  }
+
+  .tiptap-editor .tiptap blockquote {
+    border-left: 4px solid var(--color-accent);
+    padding-left: var(--space-md);
+    font-style: italic;
+    color: var(--color-text-muted);
+    margin: 0.75rem 0;
+  }
+
+  .tiptap-editor .tiptap a {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .tiptap-editor .tiptap a:hover {
+    color: var(--color-accent-hover);
+  }
+
+  .tiptap-editor .tiptap p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: var(--color-text-muted);
+    opacity: 0.6;
+    pointer-events: none;
+    height: 0;
   }
 }
 
@@ -164,7 +243,6 @@
   .text-accent { color: var(--color-accent); }
   .text-info { color: var(--color-info); }
   .text-small { font-size: var(--text-small); }
-  .paragraph { line-height: 1.6; }
 
   /* Links */
   .link { color: var(--color-accent); text-decoration: underline; text-underline-offset: 2px; transition: color 0.15s; }

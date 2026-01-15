@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
 import { slugify } from '@/lib/utils';
 import { isValidTagPath } from '@/lib/tags';
-import { json, errors, handleRoute, withAuth, withAuthAndBalance } from '@/lib/api';
+import { json, errors, handleRoute, withAuthAndBalance } from '@/lib/api';
 import type { WikiPageInput } from '@/types';
 
 export async function GET(request: NextRequest) {
