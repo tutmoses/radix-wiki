@@ -92,12 +92,18 @@
   a { color: var(--color-accent); text-decoration: none; }
   a:hover { color: var(--color-accent-hover); }
 
+  thead {
+    background: var(--color-surface-1);
+    th:first-child { border-radius: var(--radius) 0 0 0; }
+    th:last-child { border-radius: 0 var(--radius) 0 0; }
+    th:only-child { border-radius: var(--radius) var(--radius) 0 0; }
+  }
+
   tbody {
     background: var(--color-surface-2);
     td { border: none !important; vertical-align: baseline !important; }
-    tr:first-child td:only-child { border-radius: var(--radius) var(--radius) 0 0; }
-    tr:last-child td:first-child:not(:only-child) { border-radius: 0 0 0 var(--radius); }
-    tr:last-child td:last-child:not(:only-child) { border-radius: 0 0 var(--radius) 0; }
+    tr:last-child td:first-child { border-radius: 0 0 0 var(--radius); }
+    tr:last-child td:last-child { border-radius: 0 0 var(--radius) 0; }
     tr:last-child td:only-child { border-radius: 0 0 var(--radius) var(--radius); }
     tr:hover { background-color: #ddd; }
   }

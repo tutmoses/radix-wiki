@@ -82,36 +82,43 @@ export async function POST(request: NextRequest) {
     }
 
     // Create community page if user doesn't have one
-    const slug = addressToSlug(primaryAccount.address);
     const existingPage = await prisma.page.findFirst({
       where: { tagPath: 'community', authorId: user.id },
     });
 
     if (!existingPage) {
-      const displayName = user.displayName || undefined;
-      const pageTitle = displayName ? `${displayName}` : 'My Community Page';
-      const content = createCommunityPageContent(displayName);
+      try {
+        const baseSlug = addressToSlug(primaryAccount.address);
+        const slugExists = await prisma.page.findFirst({ where: { tagPath: 'community', slug: baseSlug } });
+        const slug = slugExists ? `${baseSlug}-${Date.now().toString(36)}` : baseSlug;
+        
+        const displayName = user.displayName || undefined;
+        const pageTitle = displayName || 'My Community Page';
+        const content = createCommunityPageContent(displayName);
 
-      const page = await prisma.page.create({
-        data: {
-          tagPath: 'community',
-          slug,
-          title: pageTitle,
-          content: content as unknown as Prisma.InputJsonValue,
-          isPublished: true,
-          authorId: user.id,
-        },
-      });
+        const page = await prisma.page.create({
+          data: {
+            tagPath: 'community',
+            slug,
+            title: pageTitle,
+            content: content as unknown as Prisma.InputJsonValue,
+            isPublished: true,
+            authorId: user.id,
+          },
+        });
 
-      await prisma.revision.create({
-        data: {
-          pageId: page.id,
-          title: pageTitle,
-          content: content as unknown as Prisma.InputJsonValue,
-          authorId: user.id,
-          message: 'Initial community page',
-        },
-      });
+        await prisma.revision.create({
+          data: {
+            pageId: page.id,
+            title: pageTitle,
+            content: content as unknown as Prisma.InputJsonValue,
+            authorId: user.id,
+            message: 'Initial community page',
+          },
+        });
+      } catch (error) {
+        console.error('Failed to create community page:', error);
+      }
     }
 
     const token = await createSession(

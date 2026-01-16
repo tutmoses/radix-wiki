@@ -3,18 +3,46 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { BookOpen, Search, Menu, X, Loader2, LogOut, ChevronDown, FileText } from 'lucide-react';
+import { useRouter, usePathname } from 'next/navigation';
+import { BookOpen, Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth } from '@/hooks';
 import { cn, shortenAddress } from '@/lib/utils';
 import { Button } from '@/components/ui';
+import { isValidTagPath } from '@/lib/tags';
 import type { WikiPage } from '@/types';
+
+function usePageContext() {
+  const pathname = usePathname();
+  const { isAuthenticated, user } = useAuth();
+  
+  const segments = pathname.split('/').filter(Boolean);
+  const lastSegment = segments[segments.length - 1];
+  const isEditMode = lastSegment === 'edit';
+  const isHistoryMode = lastSegment === 'history';
+  const viewSegments = (isEditMode || isHistoryMode) ? segments.slice(0, -1) : segments;
+  
+  const isHomepage = viewSegments.length === 0;
+  const isCategory = !isHomepage && isValidTagPath(viewSegments);
+  const isPage = !isHomepage && !isCategory && viewSegments.length >= 2;
+  
+  const tagPath = isPage ? viewSegments.slice(0, -1).join('/') : viewSegments.join('/');
+  const slug = isPage ? viewSegments[viewSegments.length - 1] : '';
+  const viewPath = isHomepage ? '/' : `/${viewSegments.join('/')}`;
+  const editPath = isHomepage ? '/edit' : `${viewPath}/edit`;
+  const historyPath = isPage ? `${viewPath}/history` : null;
+  
+  const canEdit = isAuthenticated && (isHomepage || isPage) && !isEditMode && !isHistoryMode;
+  const canShowHistory = isPage && !isHistoryMode;
+  
+  return { isHomepage, isCategory, isPage, isEditMode, isHistoryMode, canEdit, canShowHistory, viewPath, editPath, historyPath, tagPath, slug, user };
+}
 
 export function Header() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const { session, walletData, isConnected, isLoading, logout, connect, sidebarOpen, toggleSidebar } = useStore();
+  const pageContext = usePageContext();
   const [showSearch, setShowSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,6 +58,10 @@ export function Header() {
     (session?.radixAddress ? shortenAddress(session.radixAddress) : 'Connected');
 
   const showAsConnected = isAuthenticated || (isConnected && walletData?.accounts?.length);
+  
+  const userProfilePath = session?.radixAddress 
+    ? `/community/${session.radixAddress.slice(-16).toLowerCase()}`
+    : null;
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -82,6 +114,18 @@ export function Header() {
 
           <div className="row ml-auto">
             <button onClick={() => setShowSearch(!showSearch)} className="icon-btn" aria-label="Search"><Search size={20} /></button>
+            
+            {pageContext.canEdit && (
+              <Link href={pageContext.editPath} className="icon-btn" aria-label="Edit page"><Edit size={20} /></Link>
+            )}
+            
+            {pageContext.canShowHistory && pageContext.historyPath && (
+              <Link href={pageContext.historyPath} className="icon-btn" aria-label="Page history"><History size={20} /></Link>
+            )}
+            
+            {isAuthenticated && userProfilePath && (
+              <Link href={userProfilePath} className="icon-btn" aria-label="Your profile"><User size={20} /></Link>
+            )}
 
             <div id="radix-connect-btn" ref={menuRef} className="relative">
               {isLoading ? (

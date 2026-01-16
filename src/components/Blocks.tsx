@@ -186,7 +186,7 @@ type BlockProps<T extends Block = Block> = { block: T; onUpdate?: (b: Block) => 
 // ========== VIEW COMPONENTS ==========
 const TextView: FC<BlockProps<TextBlock>> = ({ block }) => <HtmlContent html={block.text} />;
 const DividerView: FC<BlockProps> = () => <hr />;
-const QuoteView: FC<BlockProps<Extract<Block, {type:'quote'}>>> = ({ block }) => <blockquote><HtmlContent html={block.text} />{block.attribution && <cite className="block mt-2 not-italic text-muted">Ã¢â‚¬â€ {block.attribution}</cite>}</blockquote>;
+const QuoteView: FC<BlockProps<Extract<Block, {type:'quote'}>>> = ({ block }) => <blockquote><HtmlContent html={block.text} />{block.attribution && <cite className="block mt-2 not-italic text-muted">ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â {block.attribution}</cite>}</blockquote>;
 const CalloutView: FC<BlockProps<Extract<Block, {type:'callout'}>>> = ({ block }) => <div className="callout"><Info size={20} className="shrink-0 mt-0.5 text-info" /><div className="stack-sm flex-1 min-w-0">{block.title && <strong>{block.title}</strong>}<HtmlContent html={block.text} /></div></div>;
 const CodeView: FC<BlockProps<Extract<Block, {type:'code'}>>> = ({ block }) => <div className="relative">{block.language && <small className="absolute top-2 right-2">{block.language}</small>}<pre><code>{block.code}</code></pre></div>;
 
@@ -210,8 +210,26 @@ const TableView: FC<BlockProps<TableBlock>> = ({ block }) => {
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
-        {headerRow && <thead><tr>{headerRow.cells.map((cell, i) => <th key={i} className="text-left p-2 border-b-2 border-border font-semibold bg-surface-1"><InlineHtml>{cell}</InlineHtml></th>)}</tr></thead>}
-        <tbody>{bodyRows.map((row, i) => <tr key={i} className="border-b border-border-muted hover:bg-surface-1/50">{row.cells.map((cell, j) => <td key={j} className="p-2"><InlineHtml>{cell}</InlineHtml></td>)}</tr>)}</tbody>
+        {headerRow && <thead><tr>{headerRow.cells.map((cell, i) => <th key={i} className="text-left p-2 font-semibold bg-surface-1"><InlineHtml>{cell}</InlineHtml></th>)}</tr></thead>}
+        <tbody>{bodyRows.map((row, ri) => {
+          const isFirst = ri === 0;
+          const isLast = ri === bodyRows.length - 1;
+          const needsTopRadius = !headerRow && isFirst;
+          return (
+            <tr key={ri} className={cn('hover:bg-surface-1/50', !isLast && 'border-b border-border-muted')}>
+              {row.cells.map((cell, ci) => {
+                const isFirstCell = ci === 0;
+                const isLastCell = ci === row.cells.length - 1;
+                return (
+                  <td key={ci} className={cn('p-2',
+                    needsTopRadius && isFirstCell && 'rounded-tl-(--radius)',
+                    needsTopRadius && isLastCell && 'rounded-tr-(--radius)'
+                  )}><InlineHtml>{cell}</InlineHtml></td>
+                );
+              })}
+            </tr>
+          );
+        })}</tbody>
       </table>
     </div>
   );
@@ -385,7 +403,7 @@ const QuoteEdit: FC<BlockProps<Extract<Block, {type:'quote'}>>> = ({ block, onUp
     <RichTextEditor value={block.text} onChange={text => onUpdate?.({ ...block, text })} placeholder="Quote text..." showToolbar={false} />
     <div className="stack-sm">
       <label className="font-medium">Attribution (optional)</label>
-      <RichTextEditor value={block.attribution || ''} onChange={attribution => onUpdate?.({ ...block, attribution })} placeholder="Ã¢â‚¬â€ Author name" showToolbar={false} singleLine />
+      <RichTextEditor value={block.attribution || ''} onChange={attribution => onUpdate?.({ ...block, attribution })} placeholder="ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Author name" showToolbar={false} singleLine />
     </div>
   </div>
 );
