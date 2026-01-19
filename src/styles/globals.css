@@ -74,7 +74,7 @@
     min-height: 100vh;
   }
 
-  /* Typography - shared by base and tiptap */
+  /* Typography */
   h1 { font-size: var(--text-h1); font-weight: 700; margin-top: 2rem; margin-bottom: 1rem; }
   h2 { font-size: var(--text-h2); font-weight: 500; margin-top: 2rem; margin-bottom: 1rem; border-bottom: 2px solid var(--color-border); scroll-margin-top: 5rem; }
   h3 { font-size: var(--text-h3); font-weight: 400; margin-top: 1.5rem; margin-bottom: 1rem; scroll-margin-top: 5rem; }
@@ -108,7 +108,6 @@
     border-radius: var(--radius-lg);
     padding: var(--space-md);
     overflow-x: auto;
-
     code { padding: 0; background: none; }
   }
 
@@ -151,10 +150,9 @@
   input, textarea, select { font: inherit; color: inherit; }
   hr { border: none; border-top: 1px solid var(--color-border-muted); }
 
-  /* Tiptap editor - only overrides, inherits base typography */
+  /* Tiptap editor overrides */
   .tiptap-editor .tiptap {
     outline: none;
-
     p { margin-bottom: 0.75rem; }
     h2, h3 { font-weight: 600; border-bottom: none; }
     h2 { margin-top: 1.5rem; margin-bottom: 0.75rem; }
@@ -176,7 +174,7 @@
 
 /* ===== COMPONENT LAYER ===== */
 @layer components {
-  /* Flex layouts */
+  /* Flex layouts - these use custom spacing vars so keep them */
   .stack { display: flex; flex-direction: column; gap: var(--space-md); }
   .stack-xs { display: flex; flex-direction: column; gap: var(--space-xs); }
   .stack-sm { display: flex; flex-direction: column; gap: var(--space-sm); }
@@ -185,15 +183,12 @@
   .row-md { display: flex; align-items: center; gap: var(--space-md); }
   .spread { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); flex-wrap: wrap; }
   .center { display: flex; align-items: center; justify-content: center; }
-  .wrap { flex-wrap: wrap; }
 
   /* Text utilities */
   .text-muted { color: var(--color-text-muted); }
-  .text-accent { color: var(--color-accent); }
-  .text-info { color: var(--color-info); }
   .text-small { font-size: var(--text-small); }
 
-  /* Surfaces - consolidated base */
+  /* Surfaces */
   .surface, .surface-interactive {
     background: var(--color-surface-1);
     border: 1px solid var(--color-border-muted);
@@ -287,11 +282,9 @@
   /* Skeleton */
   .skeleton { background: var(--color-surface-1); border-radius: var(--radius-lg); animation: pulse 2s infinite; }
 
-  /* Utility */
+  /* Utility - only keep custom ones */
   .sticky-card { position: sticky; top: 5rem; }
-  .shrink-0 { flex-shrink: 0; }
-  .min-w-0 { min-width: 0; }
-  .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .link-muted { color: var(--color-text-muted); &:hover { color: var(--color-text); } }
 }
 
 /* Radix Connect Button */
