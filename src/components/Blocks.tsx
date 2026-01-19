@@ -7,43 +7,65 @@ import Link from 'next/link';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TiptapLink from '@tiptap/extension-link';
+import TiptapImage from '@tiptap/extension-image';
+import TiptapTable from '@tiptap/extension-table';
+import TiptapTableRow from '@tiptap/extension-table-row';
+import TiptapTableCell from '@tiptap/extension-table-cell';
+import TiptapTableHeader from '@tiptap/extension-table-header';
+import TiptapYoutube from '@tiptap/extension-youtube';
 import Placeholder from '@tiptap/extension-placeholder';
+import { Node as TiptapNode, mergeAttributes } from '@tiptap/core';
+
+const Iframe = TiptapNode.create({
+  name: 'iframe',
+  group: 'block',
+  atom: true,
+  addAttributes() {
+    return {
+      src: { default: null },
+      width: { default: '100%' },
+      height: { default: '400' },
+    };
+  },
+  parseHTML() {
+    return [{ tag: 'iframe' }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['div', { 'data-iframe-embed': '', class: 'iframe-embed' }, ['iframe', mergeAttributes(HTMLAttributes, { frameborder: '0', allowfullscreen: 'true' })]];
+  },
+});
 import {
-  Plus, Trash2, Copy, ChevronUp, ChevronDown, Type, Image,
-  AlertCircle, Minus, Code, Quote, Clock, FileText, Columns, Settings, Table, Info,
-  Bold, Italic, Link2, Heading2, Heading3, List, TrendingUp
+  Plus, Trash2, Copy, ChevronUp, ChevronDown, Pencil, Image,
+  AlertCircle, Minus, Code, Quote, Clock, FileText, Columns, Settings, Info,
+  Bold, Italic, Link2, Heading2, Heading3, List, TrendingUp, TableIcon, Youtube, Code2
 } from 'lucide-react';
 import { cn, formatRelativeTime, slugify } from '@/lib/utils';
 import { findTagByPath } from '@/lib/tags';
 import { usePages } from '@/hooks';
 import { Button, Input, Badge } from '@/components/ui';
 import {
-  type Block, type ContentBlock, type BlockType, type Column,
-  type ColumnsBlock, type TableBlock, type MediaBlock, type TextBlock, type AssetPriceBlock,
-  createBlock, duplicateBlock, createColumn, INSERTABLE_BLOCKS, CONTENT_BLOCK_TYPES
+  type Block, type LeafBlock, type BlockType, type Column,
+  type ColumnsBlock, type ContentBlock, type AssetPriceBlock,
+  createBlock, duplicateBlock, createColumn, INSERTABLE_BLOCKS
 } from '@/lib/blocks';
 import type { WikiPage } from '@/types';
 
 type BlockContent = Block[];
 
 const ICONS: Record<string, React.ReactNode> = {
-  Type: <Type size={18} />, Image: <Image size={18} />, AlertCircle: <AlertCircle size={18} />,
+  Pencil: <Pencil size={18} />, AlertCircle: <AlertCircle size={18} />,
   Minus: <Minus size={18} />, Code: <Code size={18} />, Quote: <Quote size={18} />,
   Clock: <Clock size={18} />, FileText: <FileText size={18} />, Columns: <Columns size={18} />,
-  Table: <Table size={18} />, TrendingUp: <TrendingUp size={18} />,
+  TrendingUp: <TrendingUp size={18} />,
 };
 
 // ========== HTML PROCESSING ==========
 function processHtml(html: string): string {
   if (!html.trim()) return '';
-  
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  
   doc.querySelectorAll('h1, h2, h3').forEach(el => {
-    const text = el.textContent?.trim() || '';
-    el.id = slugify(text);
+    el.id = slugify(el.textContent?.trim() || '');
   });
-  
   doc.querySelectorAll('a[href]').forEach(el => {
     const href = el.getAttribute('href') || '';
     el.classList.add('link');
@@ -52,23 +74,17 @@ function processHtml(html: string): string {
       el.setAttribute('rel', 'noopener noreferrer');
     }
   });
-  
   return doc.body.innerHTML;
 }
 
 function HtmlContent({ html, className }: { html: string; className?: string }) {
   const processed = processHtml(html);
-  if (!processed) return null;
-  return <div className={className} dangerouslySetInnerHTML={{ __html: processed }} />;
+  return processed ? <div className={className} dangerouslySetInnerHTML={{ __html: processed }} /> : null;
 }
 
 export function InlineHtml({ children }: { children: string }) {
-  const stripped = children.replace(/<\/?p>/g, '');
-  return <span dangerouslySetInnerHTML={{ __html: stripped }} />;
+  return <span dangerouslySetInnerHTML={{ __html: children.replace(/<\/?p>/g, '') }} />;
 }
-
-// Legacy alias for compatibility
-export const InlineMarkdown = InlineHtml;
 
 // ========== RICH TEXT EDITOR ==========
 interface RichTextEditorProps {
@@ -91,6 +107,10 @@ function RichTextToolbar({ editor }: { editor: Editor | null }) {
     { action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), isActive: editor.isActive('heading', { level: 2 }), icon: <Heading2 size={14} />, label: 'H2' },
     { action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), isActive: editor.isActive('heading', { level: 3 }), icon: <Heading3 size={14} />, label: 'H3' },
     { action: () => editor.chain().focus().toggleBulletList().run(), isActive: editor.isActive('bulletList'), icon: <List size={14} />, label: 'List' },
+    { action: () => { const url = window.prompt('Image URL'); if (url) editor.chain().focus().setImage({ src: url }).run(); }, isActive: false, icon: <Image size={14} />, label: 'Image' },
+    { action: () => { const url = window.prompt('YouTube URL'); if (url) editor.chain().focus().setYoutubeVideo({ src: url }).run(); }, isActive: false, icon: <Youtube size={14} />, label: 'YouTube' },
+    { action: () => { const url = window.prompt('Embed URL (widget, iframe, etc.)'); if (url) editor.chain().focus().insertContent({ type: 'iframe', attrs: { src: url } }).run(); }, isActive: editor.isActive('iframe'), icon: <Code2 size={14} />, label: 'Embed' },
+    { action: () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), isActive: editor.isActive('table'), icon: <TableIcon size={14} />, label: 'Table' },
   ];
 
   return (
@@ -98,6 +118,16 @@ function RichTextToolbar({ editor }: { editor: Editor | null }) {
       {buttons.map(({ action, isActive, icon, label }) => (
         <button key={label} type="button" onClick={action} className={cn('p-1.5 rounded transition-colors', isActive ? 'bg-accent text-text-inverted' : 'text-muted hover:bg-surface-2 hover:text-text')} title={label}>{icon}</button>
       ))}
+      {editor.isActive('table') && (
+        <>
+          <div className="w-px h-6 bg-border-muted mx-1 self-center" />
+          <button type="button" onClick={() => editor.chain().focus().addColumnAfter().run()} className="p-1.5 rounded text-muted hover:bg-surface-2 hover:text-text text-xs" title="Add column">+Col</button>
+          <button type="button" onClick={() => editor.chain().focus().addRowAfter().run()} className="p-1.5 rounded text-muted hover:bg-surface-2 hover:text-text text-xs" title="Add row">+Row</button>
+          <button type="button" onClick={() => editor.chain().focus().deleteColumn().run()} className="p-1.5 rounded text-muted hover:bg-surface-2 hover:text-error text-xs" title="Delete column">-Col</button>
+          <button type="button" onClick={() => editor.chain().focus().deleteRow().run()} className="p-1.5 rounded text-muted hover:bg-surface-2 hover:text-error text-xs" title="Delete row">-Row</button>
+          <button type="button" onClick={() => editor.chain().focus().deleteTable().run()} className="p-1.5 rounded text-muted hover:bg-surface-2 hover:text-error text-xs" title="Delete table">Ã—Tbl</button>
+        </>
+      )}
     </div>
   );
 }
@@ -114,12 +144,21 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...', sho
         hardBreak: singleLine ? false : undefined,
       }),
       TiptapLink.configure({ openOnClick: false, HTMLAttributes: { class: 'link' } }),
+      ...(singleLine ? [] : [
+        TiptapImage.configure({ inline: false, allowBase64: true, HTMLAttributes: { class: 'rounded-lg max-w-full' } }),
+        TiptapYoutube.configure({ controls: true, nocookie: true, modestBranding: true }),
+        TiptapTable.configure({ resizable: false, HTMLAttributes: { class: 'tiptap-table' } }),
+        TiptapTableRow,
+        TiptapTableCell.configure({ HTMLAttributes: { class: 'p-2' } }),
+        TiptapTableHeader.configure({ HTMLAttributes: { class: 'p-2 font-semibold bg-surface-1' } }),
+        Iframe,
+      ]),
       Placeholder.configure({ placeholder }),
     ],
     content: value,
     editorProps: {
       attributes: { class: cn('outline-none focus:outline-none', singleLine ? '' : 'prose prose-invert min-h-20') },
-      handleKeyDown: singleLine ? (_, event) => { if (event.key === 'Enter') return true; return false; } : undefined,
+      handleKeyDown: singleLine ? (_, event) => event.key === 'Enter' : undefined,
     },
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
   });
@@ -154,73 +193,27 @@ function useBlockOperations<T extends Block>(blocks: T[], setBlocks: (blocks: T[
   };
 }
 
-// Block component props
 type BlockProps<T extends Block = Block> = { block: T; onUpdate?: (b: Block) => void; allContent?: BlockContent };
 
 // ========== VIEW COMPONENTS ==========
-const TextView: FC<BlockProps<TextBlock>> = ({ block }) => <HtmlContent html={block.text} />;
+const ContentView: FC<BlockProps<ContentBlock>> = ({ block }) => <HtmlContent html={block.text} className="prose-content" />;
 const DividerView: FC<BlockProps> = () => <hr />;
-const QuoteView: FC<BlockProps<Extract<Block, {type:'quote'}>>> = ({ block }) => <blockquote><HtmlContent html={block.text} />{block.attribution && <cite className="block mt-2 not-italic text-muted">— {block.attribution}</cite>}</blockquote>;
+const QuoteView: FC<BlockProps<Extract<Block, {type:'quote'}>>> = ({ block }) => <blockquote><HtmlContent html={block.text} />{block.attribution && <cite className="block mt-2 not-italic text-muted">â€” {block.attribution}</cite>}</blockquote>;
 const CalloutView: FC<BlockProps<Extract<Block, {type:'callout'}>>> = ({ block }) => <div className="callout"><Info size={20} className="shrink-0 mt-0.5 text-info" /><div className="stack-sm flex-1 min-w-0">{block.title && <strong>{block.title}</strong>}<HtmlContent html={block.text} /></div></div>;
 const CodeView: FC<BlockProps<Extract<Block, {type:'code'}>>> = ({ block }) => <div className="relative">{block.language && <small className="absolute top-2 right-2">{block.language}</small>}<pre><code>{block.code}</code></pre></div>;
 
-const MediaView: FC<BlockProps<MediaBlock>> = ({ block }) => {
-  if (!block.src) return null;
-  const getEmbedUrl = (url: string) => {
-    const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/);
-    if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
-    const vm = url.match(/vimeo\.com\/(\d+)/);
-    return vm ? `https://player.vimeo.com/video/${vm[1]}` : url;
-  };
-  const content = block.mediaType === 'image' ? <img src={block.src} alt={block.alt || ''} className="rounded-lg max-w-full" />
-    : block.mediaType === 'video' ? <video src={block.src} className="rounded-lg max-w-full" controls />
-    : <div className="w-full aspect-video rounded-lg overflow-hidden surface"><iframe src={getEmbedUrl(block.src)} className="w-full h-full border-0" allowFullScreen /></div>;
-  return <figure className="stack-sm">{content}{block.caption && <figcaption className="text-muted text-center"><InlineHtml>{block.caption}</InlineHtml></figcaption>}</figure>;
-};
-
-const TableView: FC<BlockProps<TableBlock>> = ({ block }) => {
-  if (!block.rows.length) return null;
-  const [headerRow, bodyRows] = block.hasHeader ? [block.rows[0], block.rows.slice(1)] : [null, block.rows];
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
-        {headerRow && <thead><tr>{headerRow.cells.map((cell, i) => <th key={i} className="text-left p-2 font-semibold bg-surface-1"><InlineHtml>{cell}</InlineHtml></th>)}</tr></thead>}
-        <tbody>{bodyRows.map((row, ri) => {
-          const isFirst = ri === 0;
-          const isLast = ri === bodyRows.length - 1;
-          const needsTopRadius = !headerRow && isFirst;
-          return (
-            <tr key={ri} className={cn('hover:bg-surface-1/50', !isLast && 'border-b border-border-muted')}>
-              {row.cells.map((cell, ci) => {
-                const isFirstCell = ci === 0;
-                const isLastCell = ci === row.cells.length - 1;
-                return (
-                  <td key={ci} className={cn('p-2',
-                    needsTopRadius && isFirstCell && 'rounded-tl-(--radius)',
-                    needsTopRadius && isLastCell && 'rounded-tr-(--radius)'
-                  )}><InlineHtml>{cell}</InlineHtml></td>
-                );
-              })}
-            </tr>
-          );
-        })}</tbody>
-      </table>
-    </div>
-  );
-};
-
-function PageCard({ page, variant }: { page: WikiPage; variant: 'full' | 'compact' }) {
+function PageCard({ page, compact }: { page: WikiPage; compact?: boolean }) {
   const leafTag = findTagByPath(page.tagPath.split('/'));
   const href = `/${page.tagPath}/${page.slug}`;
-  if (variant === 'compact') return <Link href={href} className="group row p-3 surface hover:bg-surface-2 transition-colors"><FileText size={16} className="text-accent" /><span className="group-hover:text-accent transition-colors">{page.title}</span></Link>;
+  if (compact) return <Link href={href} className="group row p-3 surface hover:bg-surface-2 transition-colors"><FileText size={16} className="text-accent" /><span className="group-hover:text-accent transition-colors">{page.title}</span></Link>;
   return (
-    <Link href={href} className="flex-1 min-w-70 max-w-[calc(33.333%-1rem)] group">
+    <Link href={href} className="group">
       <div className="row items-start gap-3 p-4 surface-interactive h-full">
         <FileText size={18} className="text-accent shrink-0 mt-0.5" />
-        <div className="stack-sm min-w-0">
+        <div className="stack-sm min-w-0 overflow-hidden">
           <span className="font-medium group-hover:text-accent transition-colors truncate">{page.title}</span>
           {page.excerpt && <p className="text-muted line-clamp-2">{page.excerpt}</p>}
-          <div className="row mt-auto pt-2"><small className="row"><Clock size={12} />{formatRelativeTime(page.updatedAt)}</small>{leafTag && <Badge variant="secondary">{leafTag.name}</Badge>}</div>
+          <div className="row flex-wrap mt-auto pt-2 overflow-hidden"><small className="row shrink-0"><Clock size={12} />{formatRelativeTime(page.updatedAt)}</small>{leafTag && <Badge variant="secondary" className="truncate max-w-full">{leafTag.name}</Badge>}</div>
         </div>
       </div>
     </Link>
@@ -229,16 +222,16 @@ function PageCard({ page, variant }: { page: WikiPage; variant: 'full' | 'compac
 
 const RecentPagesView: FC<BlockProps<Extract<Block, {type:'recentPages'}>>> = ({ block }) => {
   const { pages, isLoading } = usePages({ type: 'recent', tagPath: block.tagPath, limit: block.limit });
-  if (isLoading) return <div className="row-md wrap">{Array.from({ length: Math.min(block.limit, 3) }, (_, i) => <div key={i} className="flex-1 h-32 skeleton" />)}</div>;
+  if (isLoading) return <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-4">{Array.from({ length: Math.min(block.limit, 3) }, (_, i) => <div key={i} className="h-32 skeleton" />)}</div>;
   if (!pages.length) return <p className="text-muted">No pages found.</p>;
-  return <div className="row-md wrap">{pages.map(p => <PageCard key={p.id} page={p} variant="full" />)}</div>;
+  return <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-4">{pages.map(p => <PageCard key={p.id} page={p} />)}</div>;
 };
 
 const PageListView: FC<BlockProps<Extract<Block, {type:'pageList'}>>> = ({ block }) => {
   const { pages, isLoading } = usePages({ type: 'byIds', pageIds: block.pageIds });
   if (isLoading) return <div className="row-md"><div className="flex-1 h-20 skeleton" /></div>;
   if (!pages.length) return <p className="text-muted">No pages selected.</p>;
-  return <div className="row-md wrap">{pages.map(p => <PageCard key={p.id} page={p} variant="compact" />)}</div>;
+  return <div className="row-md wrap">{pages.map(p => <PageCard key={p.id} page={p} compact />)}</div>;
 };
 
 function useResourcePrice(resourceAddress?: string) {
@@ -254,17 +247,14 @@ function useResourcePrice(resourceAddress?: string) {
         const res = await fetch(`https://api.ociswap.com/tokens/${resourceAddress}`);
         if (!res.ok) throw new Error('Token not found');
         const json = await res.json();
-        
         const priceNow = parseFloat(json.price?.usd?.now) || 0;
         const price24h = parseFloat(json.price?.usd?.['24h']) || 0;
         const change24h = price24h > 0 ? ((priceNow - price24h) / price24h) * 100 : undefined;
-        
         setData({ price: priceNow, change24h, symbol: json.symbol, name: json.name });
         setError(priceNow === 0 ? 'Price unavailable' : null);
       } catch {
         setError('Price unavailable');
-      }
-      finally { setIsLoading(false); }
+      } finally { setIsLoading(false); }
     };
 
     setIsLoading(true);
@@ -285,9 +275,7 @@ const AssetPriceView: FC<BlockProps<AssetPriceBlock>> = ({ block }) => {
 
   const displayName = data.symbol || data.name || block.resourceAddress.slice(0, 20) + '...';
   const isPositive = (data.change24h ?? 0) >= 0;
-  const priceStr = data.price < 0.01 
-    ? data.price.toFixed(6) 
-    : data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  const priceStr = data.price < 0.01 ? data.price.toFixed(6) : data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 
   return (
     <div className="surface p-4 inline-flex items-center gap-4">
@@ -297,7 +285,7 @@ const AssetPriceView: FC<BlockProps<AssetPriceBlock>> = ({ block }) => {
       </div>
       {block.showChange && typeof data.change24h === 'number' && (
         <span className={cn('text-small font-medium', isPositive ? 'text-success' : 'text-error')}>
-          {isPositive ? '↑' : '↓'} {Math.abs(data.change24h).toFixed(2)}%
+          {isPositive ? 'â†‘' : 'â†“'} {Math.abs(data.change24h).toFixed(2)}%
         </span>
       )}
     </div>
@@ -315,31 +303,11 @@ const ColumnsView: FC<BlockProps<ColumnsBlock>> = ({ block, allContent = [] }) =
 };
 
 // ========== EDIT COMPONENTS ==========
-const TextEdit: FC<BlockProps<TextBlock>> = ({ block, onUpdate }) => (
-  <RichTextEditor value={block.text} onChange={text => onUpdate?.({ ...block, text })} placeholder="Write content..." />
+const ContentEdit: FC<BlockProps<ContentBlock>> = ({ block, onUpdate }) => (
+  <RichTextEditor value={block.text} onChange={text => onUpdate?.({ ...block, text })} placeholder="Write content... Use toolbar to add images, videos, and tables." />
 );
 
 const DividerEdit: FC<BlockProps> = () => <div className="py-2"><hr /><small className="block text-center mt-2">Horizontal divider</small></div>;
-
-const MediaEdit: FC<BlockProps<MediaBlock>> = ({ block, onUpdate }) => {
-  const detectMediaType = (url: string): 'image' | 'video' | 'embed' => {
-    try { const p = new URL(url).pathname; if (/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(p)) return 'image'; if (/\.(mp4|webm|ogg)$/i.test(p)) return 'video'; } catch {}
-    return 'embed';
-  };
-  const mediaTypes = ['image', 'video', 'embed'] as const;
-  return (
-    <div className="stack">
-      <div className="row"><span className="text-small text-muted">Type:</span><div className="row wrap">{mediaTypes.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, mediaType: opt })} className={cn('px-3 py-1 rounded-md border capitalize', block.mediaType === opt ? 'bg-accent text-text-inverted border-accent' : 'border-border hover:bg-surface-2')}>{opt}</button>)}</div></div>
-      <Input label={{ image: 'Image URL', video: 'Video URL', embed: 'Embed URL' }[block.mediaType]} type="url" value={block.src} onChange={e => onUpdate?.({ ...block, src: e.target.value, mediaType: detectMediaType(e.target.value) })} placeholder="https://..." />
-      {block.mediaType === 'image' && <Input label="Alt text" value={block.alt || ''} onChange={e => onUpdate?.({ ...block, alt: e.target.value })} placeholder="Describe the image..." />}
-      <div className="stack-sm">
-        <label className="font-medium">Caption (optional)</label>
-        <RichTextEditor value={block.caption || ''} onChange={caption => onUpdate?.({ ...block, caption })} placeholder="Add a caption..." showToolbar={false} singleLine />
-      </div>
-      {block.src && block.mediaType === 'image' && <img src={block.src} alt={block.alt || ''} className="rounded-lg max-h-48 object-contain" />}
-    </div>
-  );
-};
 
 const CalloutEdit: FC<BlockProps<Extract<Block, {type:'callout'}>>> = ({ block, onUpdate }) => (
   <div className="stack">
@@ -366,43 +334,10 @@ const QuoteEdit: FC<BlockProps<Extract<Block, {type:'quote'}>>> = ({ block, onUp
     <RichTextEditor value={block.text} onChange={text => onUpdate?.({ ...block, text })} placeholder="Quote text..." showToolbar={false} />
     <div className="stack-sm">
       <label className="font-medium">Attribution (optional)</label>
-      <RichTextEditor value={block.attribution || ''} onChange={attribution => onUpdate?.({ ...block, attribution })} placeholder="— Author name" showToolbar={false} singleLine />
+      <RichTextEditor value={block.attribution || ''} onChange={attribution => onUpdate?.({ ...block, attribution })} placeholder="â€” Author name" showToolbar={false} singleLine />
     </div>
   </div>
 );
-
-const TableEdit: FC<BlockProps<TableBlock>> = ({ block, onUpdate }) => {
-  const updateCell = (ri: number, ci: number, v: string) => onUpdate?.({ ...block, rows: block.rows.map((row, r) => r === ri ? { ...row, cells: row.cells.map((c, i) => i === ci ? v : c) } : row) });
-  const addRow = () => onUpdate?.({ ...block, rows: [...block.rows, { cells: Array(block.rows[0]?.cells.length || 2).fill('') }] });
-  const addCol = () => onUpdate?.({ ...block, rows: block.rows.map(row => ({ ...row, cells: [...row.cells, ''] })) });
-  const delRow = (i: number) => block.rows.length > 1 && onUpdate?.({ ...block, rows: block.rows.filter((_, j) => j !== i) });
-  const delCol = (ci: number) => block.rows[0]?.cells.length > 1 && onUpdate?.({ ...block, rows: block.rows.map(row => ({ ...row, cells: row.cells.filter((_, i) => i !== ci) })) });
-
-  return (
-    <div className="stack">
-      <label className="row"><input type="checkbox" checked={block.hasHeader ?? true} onChange={e => onUpdate?.({ ...block, hasHeader: e.target.checked })} className="rounded" /><span>First row is header</span></label>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse"><tbody>
-          {block.rows.map((row, ri) => (
-            <tr key={ri}>
-              {row.cells.map((cell, ci) => (
-                <td key={ci} className="p-1">
-                  <RichTextEditor value={cell} onChange={v => updateCell(ri, ci, v)} placeholder={block.hasHeader && ri === 0 ? 'Header' : 'Cell'} showToolbar={false} singleLine className={cn(block.hasHeader && ri === 0 && 'font-semibold')} />
-                </td>
-              ))}
-              <td className="p-1 w-8"><button onClick={() => delRow(ri)} className="icon-btn p-1 text-muted hover:text-error" disabled={block.rows.length <= 1}><Trash2 size={14} /></button></td>
-            </tr>
-          ))}
-        </tbody></table>
-      </div>
-      <div className="row">
-        <button onClick={addRow} className="text-accent text-small hover:text-accent-hover">+ Add row</button>
-        <button onClick={addCol} className="text-accent text-small hover:text-accent-hover">+ Add column</button>
-        {block.rows[0]?.cells.length > 1 && <button onClick={() => delCol(block.rows[0].cells.length - 1)} className="text-muted text-small hover:text-error">- Remove column</button>}
-      </div>
-    </div>
-  );
-};
 
 const RecentPagesEdit: FC<BlockProps<Extract<Block, {type:'recentPages'}>>> = ({ block, onUpdate }) => (
   <div className="stack surface p-4 border-dashed">
@@ -430,13 +365,7 @@ const AssetPriceEdit: FC<BlockProps<AssetPriceBlock>> = ({ block, onUpdate }) =>
     <div className="row text-muted"><TrendingUp size={18} /><span className="font-medium">Asset Price Widget</span></div>
     <div className="stack-sm">
       <label className="font-medium">Resource Address</label>
-      <input
-        type="text"
-        value={block.resourceAddress || ''}
-        onChange={e => onUpdate?.({ ...block, resourceAddress: e.target.value })}
-        placeholder="resource_rdx1..."
-        className="input font-mono text-small"
-      />
+      <input type="text" value={block.resourceAddress || ''} onChange={e => onUpdate?.({ ...block, resourceAddress: e.target.value })} placeholder="resource_rdx1..." className="input font-mono text-small" />
       <small className="text-muted">Enter any Radix resource address to fetch its price</small>
     </div>
     <label className="row">
@@ -446,17 +375,17 @@ const AssetPriceEdit: FC<BlockProps<AssetPriceBlock>> = ({ block, onUpdate }) =>
   </div>
 );
 
-// Column Editor
 function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Column; onUpdate: (col: Column) => void; onDelete: () => void; canDelete: boolean }) {
-  const setBlocks = useCallback((blocks: ContentBlock[]) => onUpdate({ ...column, blocks }), [column, onUpdate]);
-  const { selectedIndex, setSelectedIndex, update, remove, move, insert } = useBlockOperations(column.blocks, setBlocks, createBlock as (type: BlockType) => ContentBlock);
+  const setBlocks = useCallback((blocks: LeafBlock[]) => onUpdate({ ...column, blocks }), [column, onUpdate]);
+  const { selectedIndex, setSelectedIndex, update, remove, move, insert } = useBlockOperations(column.blocks, setBlocks, createBlock as (type: BlockType) => LeafBlock);
+  const contentBlockTypes = INSERTABLE_BLOCKS.filter(t => t !== 'columns');
   return (
     <div className="flex-1 min-w-0 stack-sm p-3 bg-surface-1/50 border border-dashed border-border-muted rounded-lg">
       <div className="spread"><span className="text-small text-muted uppercase tracking-wide">Column</span>{canDelete && <button onClick={onDelete} className="icon-btn p-1 text-muted hover:text-error"><Trash2 size={14} /></button>}</div>
-      {column.blocks.length === 0 ? <div className="py-6 text-center"><p className="text-muted text-small mb-2">Empty column</p><InsertButton onInsert={insert} compact allowColumns={false} /></div> : (
+      {column.blocks.length === 0 ? <div className="py-6 text-center"><p className="text-muted text-small mb-2">Empty column</p><InsertButton onInsert={insert} compact blockTypes={contentBlockTypes} /></div> : (
         <div className="stack-sm">
-          {column.blocks.map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={column.blocks.length} isSelected={selectedIndex === i} onSelect={() => setSelectedIndex(i)} onUpdate={b => update(i, b as ContentBlock)} onDelete={() => remove(i)} onMoveUp={() => move(i, i - 1)} onMoveDown={() => move(i, i + 1)} compact />)}
-          <InsertButton onInsert={insert} compact allowColumns={false} />
+          {column.blocks.map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={column.blocks.length} isSelected={selectedIndex === i} onSelect={() => setSelectedIndex(i)} onUpdate={b => update(i, b as LeafBlock)} onDelete={() => remove(i)} onMoveUp={() => move(i, i - 1)} onMoveDown={() => move(i, i + 1)} compact />)}
+          <InsertButton onInsert={insert} compact blockTypes={contentBlockTypes} />
         </div>
       )}
     </div>
@@ -491,13 +420,11 @@ const ColumnsEdit: FC<BlockProps<ColumnsBlock>> = ({ block, onUpdate }) => {
 type BlockComponent<T extends Block = Block> = FC<BlockProps<T>>;
 
 const BLOCK_REGISTRY: Record<BlockType, { label: string; icon: string; View: BlockComponent<any>; Edit: BlockComponent<any> }> = {
-  text: { label: 'Text', icon: 'Type', View: TextView, Edit: TextEdit },
-  media: { label: 'Media', icon: 'Image', View: MediaView, Edit: MediaEdit },
+  content: { label: 'Content', icon: 'Pencil', View: ContentView, Edit: ContentEdit },
   callout: { label: 'Callout', icon: 'AlertCircle', View: CalloutView, Edit: CalloutEdit },
   divider: { label: 'Divider', icon: 'Minus', View: DividerView, Edit: DividerEdit },
   code: { label: 'Code', icon: 'Code', View: CodeView, Edit: CodeEdit },
   quote: { label: 'Quote', icon: 'Quote', View: QuoteView, Edit: QuoteEdit },
-  table: { label: 'Table', icon: 'Table', View: TableView, Edit: TableEdit },
   recentPages: { label: 'Recent Pages', icon: 'Clock', View: RecentPagesView, Edit: RecentPagesEdit },
   pageList: { label: 'Page List', icon: 'FileText', View: PageListView, Edit: PageListEdit },
   assetPrice: { label: 'Asset Price', icon: 'TrendingUp', View: AssetPriceView, Edit: AssetPriceEdit },
@@ -511,11 +438,10 @@ function renderBlock(block: Block, mode: 'edit' | 'view', onUpdate?: (b: Block) 
   return <Component block={block} onUpdate={onUpdate} allContent={allContent} />;
 }
 
-// Insert menu
 function InsertBlockMenu({ onInsert, onClose, blockTypes }: { onInsert: (type: BlockType) => void; onClose: () => void; blockTypes: readonly BlockType[] }) {
   const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const handler = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose(); };
+    const handler = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as globalThis.Node)) onClose(); };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [onClose]);
@@ -530,19 +456,18 @@ function InsertBlockMenu({ onInsert, onClose, blockTypes }: { onInsert: (type: B
   );
 }
 
-function InsertButton({ onInsert, compact, allowColumns = true }: { onInsert: (type: BlockType) => void; compact?: boolean; allowColumns?: boolean }) {
+function InsertButton({ onInsert, compact, blockTypes = INSERTABLE_BLOCKS }: { onInsert: (type: BlockType) => void; compact?: boolean; blockTypes?: readonly BlockType[] }) {
   const [showMenu, setShowMenu] = useState(false);
   return (
     <div className="relative center">
       <button onClick={() => setShowMenu(!showMenu)} className={cn('row text-muted hover:text-text border border-dashed border-border-muted hover:border-border rounded-md transition-colors', compact ? 'px-2 py-1 text-small rounded' : 'px-3 py-1.5')}>
         <Plus size={compact ? 14 : 16} /><span>{compact ? 'Add' : 'Add block'}</span>
       </button>
-      {showMenu && <InsertBlockMenu onInsert={onInsert} onClose={() => setShowMenu(false)} blockTypes={allowColumns ? INSERTABLE_BLOCKS : CONTENT_BLOCK_TYPES} />}
+      {showMenu && <InsertBlockMenu onInsert={onInsert} onClose={() => setShowMenu(false)} blockTypes={blockTypes} />}
     </div>
   );
 }
 
-// Block Wrapper
 function BlockWrapper({ block, index, total, isSelected, onSelect, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveDown, compact }: {
   block: Block; index: number; total: number; isSelected: boolean;
   onSelect: () => void; onUpdate: (b: Block) => void; onDelete: () => void;
@@ -578,7 +503,6 @@ function BlockWrapper({ block, index, total, isSelected, onSelect, onUpdate, onD
   );
 }
 
-// Public Exports
 export function BlockEditor({ content, onChange }: { content: BlockContent; onChange: (content: BlockContent) => void }) {
   const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(content, onChange, createBlock);
   if (content.length === 0) return <div className="stack items-center py-12 text-center"><p className="text-muted">No content yet. Add your first block!</p><InsertButton onInsert={insert} /></div>;

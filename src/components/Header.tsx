@@ -4,78 +4,62 @@
 
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { BookOpen, Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, ListTree } from 'lucide-react';
+import { BookOpen, Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, ListTree, Info, Clock } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth } from '@/hooks';
-import { cn, shortenAddress, slugify } from '@/lib/utils';
+import { cn, shortenAddress, slugify, formatRelativeTime, formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui';
 import { isValidTagPath } from '@/lib/tags';
 import type { WikiPage } from '@/types';
 
-interface Heading { text: string; level: number; id: string }
-
 function usePageContext() {
   const pathname = usePathname();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   
   const segments = pathname.split('/').filter(Boolean);
-  const lastSegment = segments[segments.length - 1];
-  const isEditMode = lastSegment === 'edit';
-  const isHistoryMode = lastSegment === 'history';
-  const viewSegments = (isEditMode || isHistoryMode) ? segments.slice(0, -1) : segments;
+  const last = segments[segments.length - 1];
+  const isEdit = last === 'edit';
+  const isHistory = last === 'history';
+  const viewSegs = (isEdit || isHistory) ? segments.slice(0, -1) : segments;
   
-  const isHomepage = viewSegments.length === 0;
-  const isCategory = !isHomepage && isValidTagPath(viewSegments);
-  const isPage = !isHomepage && !isCategory && viewSegments.length >= 2;
+  const isHomepage = viewSegs.length === 0;
+  const isPage = !isHomepage && !isValidTagPath(viewSegs) && viewSegs.length >= 2;
+  const viewPath = isHomepage ? '/' : `/${viewSegs.join('/')}`;
   
-  const tagPath = isPage ? viewSegments.slice(0, -1).join('/') : viewSegments.join('/');
-  const slug = isPage ? viewSegments[viewSegments.length - 1] : '';
-  const viewPath = isHomepage ? '/' : `/${viewSegments.join('/')}`;
-  const editPath = isHomepage ? '/edit' : `${viewPath}/edit`;
-  const historyPath = isHomepage ? '/history' : isPage ? `${viewPath}/history` : null;
+  const tagPath = isPage ? viewSegs.slice(0, -1).join('/') : null;
+  const slug = isPage ? viewSegs[viewSegs.length - 1] : null;
   
-  const canEdit = isAuthenticated && (isHomepage || isPage) && !isEditMode && !isHistoryMode;
-  const canShowHistory = (isHomepage || isPage) && !isHistoryMode;
-  const canShowToc = (isHomepage || isPage) && !isEditMode && !isHistoryMode;
-  
-  return { isHomepage, isCategory, isPage, isEditMode, isHistoryMode, canEdit, canShowHistory, canShowToc, viewPath, editPath, historyPath, tagPath, slug, user };
+  return {
+    canEdit: isAuthenticated && (isHomepage || isPage) && !isEdit && !isHistory,
+    canShowHistory: (isHomepage || isPage) && !isHistory,
+    canShowToc: (isHomepage || isPage) && !isEdit && !isHistory,
+    canShowInfo: (isHomepage || isPage) && !isEdit && !isHistory,
+    editPath: isHomepage ? '/edit' : `${viewPath}/edit`,
+    historyPath: (isHomepage || isPage) ? (isHomepage ? '/history' : `${viewPath}/history`) : null,
+    isHomepage,
+    tagPath,
+    slug,
+  };
 }
 
 function TocDropdown({ onClose }: { onClose: () => void }) {
-  const [headings, setHeadings] = useState<Heading[]>([]);
   const ref = useRef<HTMLDivElement>(null);
+  const [headings, setHeadings] = useState<{ text: string; level: number; id: string }[]>([]);
 
   useEffect(() => {
-    // Scan DOM for headings in main content
-    const main = document.querySelector('main');
-    if (!main) return;
-    
-    const elements = main.querySelectorAll('h1, h2, h3');
-    const found: Heading[] = [];
-    
-    elements.forEach(el => {
+    const els = document.querySelector('main')?.querySelectorAll('h1, h2, h3') || [];
+    setHeadings(Array.from(els).map(el => {
       const text = el.textContent?.trim() || '';
-      if (!text) return;
-      // Ensure element has an id for linking
       if (!el.id) el.id = slugify(text);
-      found.push({ text, level: parseInt(el.tagName[1]), id: el.id });
-    });
-    
-    setHeadings(found);
+      return { text, level: parseInt(el.tagName[1]), id: el.id };
+    }).filter(h => h.text));
   }, []);
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    };
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [onClose]);
-
-  const handleClick = (id: string) => {
-    onClose();
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-  };
 
   return (
     <div ref={ref} className="dropdown w-72 max-h-80 overflow-y-auto">
@@ -84,14 +68,8 @@ function TocDropdown({ onClose }: { onClose: () => void }) {
       ) : (
         <nav className="py-1">
           {headings.map((h, i) => (
-            <button
-              key={i}
-              onClick={() => handleClick(h.id)}
-              className="dropdown-item text-small"
-              style={{ paddingLeft: `${0.75 + (h.level - 1) * 0.75}rem` }}
-            >
-              {h.text}
-            </button>
+            <button key={i} onClick={() => { onClose(); document.getElementById(h.id)?.scrollIntoView({ behavior: 'smooth' }); }}
+              className="dropdown-item text-small" style={{ paddingLeft: `${0.75 + (h.level - 1) * 0.75}rem` }}>{h.text}</button>
           ))}
         </nav>
       )}
@@ -99,14 +77,65 @@ function TocDropdown({ onClose }: { onClose: () => void }) {
   );
 }
 
+interface PageWithAuthor {
+  id: string;
+  updatedAt: string | Date;
+  createdAt: string | Date;
+  author?: { id: string; displayName?: string | null; radixAddress: string };
+  revisions?: { id: string }[];
+}
+
+function PageInfoDropdown({ page, onClose }: { page: PageWithAuthor; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  return (
+    <div ref={ref} className="dropdown w-64 p-3">
+      <div className="stack-sm text-small">
+        {page.author && (
+          <div className="row">
+            <User size={14} className="text-muted shrink-0" />
+            <span className="text-muted">Author:</span>
+            <span className="truncate">{page.author.displayName || page.author.radixAddress.slice(0, 16)}...</span>
+          </div>
+        )}
+        <div className="row">
+          <Clock size={14} className="text-muted shrink-0" />
+          <span className="text-muted">Updated:</span>
+          <span>{formatRelativeTime(page.updatedAt)}</span>
+        </div>
+        <div className="row">
+          <Clock size={14} className="text-muted shrink-0" />
+          <span className="text-muted">Created:</span>
+          <span>{formatDate(page.createdAt)}</span>
+        </div>
+        {page.revisions?.length ? (
+          <div className="row">
+            <FileText size={14} className="text-muted shrink-0" />
+            <span className="text-muted">Revisions:</span>
+            <span>{page.revisions.length}</span>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function Header() {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { session, walletData, isConnected, isLoading, logout, connect, sidebarOpen, toggleSidebar } = useStore();
-  const pageContext = usePageContext();
+  const { canEdit, canShowHistory, canShowToc, canShowInfo, editPath, historyPath, isHomepage, tagPath, slug } = usePageContext();
   const [showSearch, setShowSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showToc, setShowToc] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
+  const [pageData, setPageData] = useState<PageWithAuthor | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<WikiPage[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -114,25 +143,34 @@ export function Header() {
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const tocRef = useRef<HTMLDivElement>(null);
+  const infoRef = useRef<HTMLDivElement>(null);
 
-  const displayName = session?.displayName || 
-    walletData?.persona?.label ||
+  const displayName = session?.displayName || walletData?.persona?.label ||
     (walletData?.accounts?.[0]?.address ? shortenAddress(walletData.accounts[0].address) : null) ||
     (session?.radixAddress ? shortenAddress(session.radixAddress) : 'Connected');
 
   const showAsConnected = isAuthenticated || (isConnected && walletData?.accounts?.length);
-  
-  const userProfilePath = session?.radixAddress 
-    ? `/community/${session.radixAddress.slice(-16).toLowerCase()}`
-    : null;
+  const userProfilePath = session?.radixAddress ? `/community/${session.radixAddress.slice(-16).toLowerCase()}` : null;
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    if (canShowInfo) {
+      const url = isHomepage ? '/api/wiki' : `/api/wiki/${tagPath}/${slug}`;
+      fetch(url)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => setPageData(data))
+        .catch(() => setPageData(null));
+    } else {
+      setPageData(null);
+    }
+  }, [canShowInfo, isHomepage, tagPath, slug]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowUserMenu(false);
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchResults([]);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   useEffect(() => {
@@ -143,10 +181,9 @@ export function Header() {
     if (!query.trim()) { setSearchResults([]); return; }
     setIsSearching(true);
     try {
-      const params = new URLSearchParams({ search: query, published: 'true', pageSize: '5' });
-      const response = await fetch(`/api/wiki?${params}`);
-      if (response.ok) setSearchResults((await response.json()).items || []);
-    } catch (error) { console.error('Search failed:', error); }
+      const res = await fetch(`/api/wiki?${new URLSearchParams({ search: query, published: 'true', pageSize: '5' })}`);
+      if (res.ok) setSearchResults((await res.json()).items || []);
+    } catch (e) { console.error('Search failed:', e); }
     finally { setIsSearching(false); }
   }, []);
 
@@ -155,12 +192,7 @@ export function Header() {
     return () => clearTimeout(timer);
   }, [searchQuery, performSearch]);
 
-  const handleLogout = async () => { setShowUserMenu(false); await logout(); };
   const handleSearchSelect = (page: WikiPage) => { setSearchQuery(''); setSearchResults([]); setShowSearch(false); router.push(`/${page.tagPath}/${page.slug}`); };
-  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && searchResults.length > 0) handleSearchSelect(searchResults[0]);
-    else if (e.key === 'Escape') { setShowSearch(false); setSearchQuery(''); setSearchResults([]); }
-  };
 
   return (
     <header className="sticky top-0 z-50 bg-surface-0/80 backdrop-blur-md border-b border-border-muted">
@@ -178,26 +210,23 @@ export function Header() {
           <div className="row ml-auto">
             <button onClick={() => setShowSearch(!showSearch)} className="icon-btn" aria-label="Search"><Search size={20} /></button>
             
-            {pageContext.canShowToc && (
+            {canShowToc && (
               <div ref={tocRef} className="relative">
-                <button onClick={() => setShowToc(!showToc)} className="icon-btn" aria-label="Table of contents">
-                  <ListTree size={20} />
-                </button>
+                <button onClick={() => setShowToc(!showToc)} className="icon-btn" aria-label="Table of contents"><ListTree size={20} /></button>
                 {showToc && <TocDropdown onClose={() => setShowToc(false)} />}
               </div>
             )}
             
-            {pageContext.canEdit && (
-              <Link href={pageContext.editPath} className="icon-btn" aria-label="Edit page"><Edit size={20} /></Link>
+            {canShowInfo && pageData && (
+              <div ref={infoRef} className="relative">
+                <button onClick={() => setShowInfo(!showInfo)} className="icon-btn" aria-label="Page info"><Info size={20} /></button>
+                {showInfo && <PageInfoDropdown page={pageData} onClose={() => setShowInfo(false)} />}
+              </div>
             )}
             
-            {pageContext.canShowHistory && pageContext.historyPath && (
-              <Link href={pageContext.historyPath} className="icon-btn" aria-label="Page history"><History size={20} /></Link>
-            )}
-            
-            {isAuthenticated && userProfilePath && (
-              <Link href={userProfilePath} className="icon-btn" aria-label="Your profile"><User size={20} /></Link>
-            )}
+            {canEdit && <Link href={editPath} className="icon-btn" aria-label="Edit page"><Edit size={20} /></Link>}
+            {canShowHistory && historyPath && <Link href={historyPath} className="icon-btn" aria-label="Page history"><History size={20} /></Link>}
+            {isAuthenticated && userProfilePath && <Link href={userProfilePath} className="icon-btn" aria-label="Your profile"><User size={20} /></Link>}
 
             <div id="radix-connect-btn" ref={menuRef} className="relative">
               {isLoading ? (
@@ -211,7 +240,7 @@ export function Header() {
                   </button>
                   {showUserMenu && (
                     <div className="dropdown">
-                      <button onClick={handleLogout} className="dropdown-item text-error hover:text-error/80"><LogOut size={16} />Disconnect</button>
+                      <button onClick={async () => { setShowUserMenu(false); await logout(); }} className="dropdown-item text-error hover:text-error/80"><LogOut size={16} />Disconnect</button>
                     </div>
                   )}
                 </>
@@ -229,7 +258,9 @@ export function Header() {
           <div ref={searchRef} className="pb-4 animate-[slide-up_0.3s_ease-out]">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={18} />
-              <input ref={searchInputRef} type="search" placeholder="Search pages..." className="input pl-10" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={handleSearchKeyDown} />
+              <input ref={searchInputRef} type="search" placeholder="Search pages..." className="input pl-10" value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && searchResults.length) handleSearchSelect(searchResults[0]); else if (e.key === 'Escape') { setShowSearch(false); setSearchQuery(''); setSearchResults([]); } }} />
               {isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted animate-spin" size={18} />}
               
               {searchResults.length > 0 && (

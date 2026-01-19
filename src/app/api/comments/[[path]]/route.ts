@@ -1,9 +1,11 @@
-// src/app/api/comments/route.ts
+// src/app/api/comments/[[...path]]/route.ts
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { json, errors, handleRoute, requireAuth } from '@/lib/api';
+import { json, errors, handleRoute, requireAuth, type RouteContext } from '@/lib/api';
 import type { CommentInput } from '@/types';
+
+type PathParams = { path?: string[] };
 
 export async function GET(request: NextRequest) {
   return handleRoute(async () => {
@@ -56,4 +58,23 @@ export async function POST(request: NextRequest) {
 
     return json(comment, 201);
   }, 'Failed to create comment');
+}
+
+export async function DELETE(request: NextRequest, context: RouteContext<PathParams>) {
+  return handleRoute(async () => {
+    const { path } = await context.params;
+    const id = path?.[0];
+
+    if (!id) return errors.badRequest('Comment ID required');
+
+    const auth = await requireAuth(request);
+    if ('error' in auth) return auth.error;
+
+    const comment = await prisma.comment.findUnique({ where: { id } });
+    if (!comment) return errors.notFound('Comment not found');
+    if (comment.authorId !== auth.session.userId) return errors.forbidden();
+
+    await prisma.comment.delete({ where: { id } });
+    return json({ success: true });
+  }, 'Failed to delete comment');
 }

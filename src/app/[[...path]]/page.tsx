@@ -2,17 +2,17 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Clock, User, ArrowLeft, ArrowRight, Trash2, Save, Eye, FileText, Plus, RotateCcw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Trash2, Save, FileText, Plus, RotateCcw, User } from 'lucide-react';
 import { BlockEditor, BlockRenderer } from '@/components/Blocks';
 import { Discussion } from '@/components/Discussion';
 import { Footer } from '@/components/Footer';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Button, Card, Badge, LoadingScreen, Input } from '@/components/ui';
 import { useAuth, usePages } from '@/hooks';
-import { formatRelativeTime, formatDate, slugify } from '@/lib/utils';
+import { formatDate, slugify } from '@/lib/utils';
 import { isValidTagPath, findTagByPath, isAuthorOnlyPath } from '@/lib/tags';
 import type { WikiPage } from '@/types';
 import { type Block, createDefaultPageContent } from '@/lib/blocks';
@@ -21,11 +21,7 @@ interface WikiPageWithRevisions extends WikiPage {
   revisions?: { id: string }[];
 }
 
-function BackLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return <Link href={href} className="row link-muted"><ArrowLeft size={16} /><span>{children}</span></Link>;
-}
-
-function StatusCard({ title, message, backHref = '/', icon }: { title: string; message: string; backHref?: string; icon?: React.ReactNode }) {
+function StatusCard({ title, message, backHref, icon }: { title: string; message: string; backHref: string; icon?: ReactNode }) {
   return (
     <div className="center">
       <Card className="text-center max-w-md">
@@ -63,18 +59,17 @@ function HomepageView({ isEditing }: { isEditing: boolean }) {
     finally { setIsSaving(false); }
   };
 
-  if (isEditing && !isAuthenticated) return <StatusCard title="Authentication Required" message="Please connect your Radix wallet to edit the homepage." icon={<FileText size={32} />} />;
+  if (isEditing && !isAuthenticated) {
+    return <StatusCard title="Authentication Required" message="Please connect your Radix wallet to edit the homepage." backHref="/" icon={<FileText size={32} />} />;
+  }
   if (isLoading) return <LoadingScreen message="Loading..." />;
 
   if (isEditing) {
     return (
       <div className="stack">
         <div className="spread">
-          <BackLink href="/">Back to Homepage</BackLink>
-          <div className="row">
-            <Link href="/"><Button variant="secondary" size="sm"><Eye size={16} />Preview</Button></Link>
-            <Button onClick={handleSave} disabled={isSaving} size="sm"><Save size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
-          </div>
+          <Link href="/" className="row link-muted"><ArrowLeft size={16} /><span>Back to Homepage</span></Link>
+          <Button onClick={handleSave} disabled={isSaving} size="sm"><Save size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
         </div>
         <h1>Edit Homepage</h1>
         <BlockEditor content={content} onChange={setContent} />
@@ -128,14 +123,13 @@ function CategoryView({ tagPath }: { tagPath: string[] }) {
       </div>
       {tag?.children?.length ? <div className="row wrap">{tag.children.map(c => <Link key={c.slug} href={`/${pathStr}/${c.slug}`}><Badge variant="secondary" className="cursor-pointer hover:brightness-110">{c.name}</Badge></Link>)}</div> : null}
       {isLoading ? <LoadingScreen message="Loading pages..." /> : pages.length > 0 ? (
-        <div className="row-md wrap">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {pages.map(p => (
-            <Link key={p.id} href={`/${p.tagPath}/${p.slug}`} className="flex-1 min-w-75 max-w-[calc(33.333%-1rem)]">
+            <Link key={p.id} href={`/${p.tagPath}/${p.slug}`}>
               <Card interactive className="h-full">
                 <div className="stack-sm">
                   <h3>{p.title}</h3>
                   {p.excerpt && <p className="text-muted">{p.excerpt}</p>}
-                  <small>{formatRelativeTime(p.updatedAt)}</small>
                 </div>
               </Card>
             </Link>
@@ -159,12 +153,11 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tag
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState<Block[]>([]);
-  const [isPublished, setIsPublished] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (page) { setTitle(page.title); setContent(page.content as unknown as Block[]); setIsPublished(page.isPublished); }
-    else { setTitle(''); setContent(createDefaultPageContent()); setIsPublished(true); }
+    if (page) { setTitle(page.title); setContent(page.content as unknown as Block[]); }
+    else { setTitle(''); setContent(createDefaultPageContent()); }
   }, [page?.id, tagPath, slug]);
 
   const save = async () => {
@@ -174,7 +167,7 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tag
       const exists = page || (await fetch(`/api/wiki/${tagPath}/${slug}`).then(r => r.ok));
       const endpoint = exists ? `/api/wiki/${tagPath}/${slug}` : '/api/wiki';
       const method = exists ? 'PUT' : 'POST';
-      const body = exists ? { title, content, isPublished } : { title, content, isPublished, tagPath, slug };
+      const body = exists ? { title, content } : { title, content, tagPath, slug };
       const r = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (r.ok) { const d = await r.json(); router.push(`/${d.tagPath}/${d.slug}`); }
       else alert((await r.json()).error || 'Failed to save');
@@ -191,37 +184,18 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tag
   const saveLabel = isCreating ? (isSaving ? 'Creating...' : 'Create Page') : (isSaving ? 'Saving...' : 'Save Changes');
 
   return (
-    <div className="row-md items-start">
-      <div className="flex-1 min-w-0">
-        <article className="stack">
-          <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix={isCreating ? 'Create' : 'Edit'} />
-          <header className="stack pb-6 border-b border-border">
-            <div className="spread">
-              <BackLink href={backHref}>{isCreating ? 'Back to Category' : 'Back to Page'}</BackLink>
-              <div className="row">
-                {!isCreating && <Link href={viewPath}><Button variant="secondary" size="sm"><Eye size={16} />Preview</Button></Link>}
-                <Button onClick={save} disabled={isSaving || !canSave} size="sm"><Save size={16} />{saveLabel}</Button>
-              </div>
-            </div>
-            {isCreating && <div className="callout"><p>Creating new page at <code>/{tagPath}/{slug}</code></p></div>}
-            <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
-          </header>
-          <BlockEditor content={content} onChange={setContent} />
-        </article>
-      </div>
-      <div className="w-64 shrink-0 hidden lg:block">
-        <Card className="sticky-card">
-          <div className="stack">
-            <h4 className="uppercase tracking-wider text-muted">Page Settings</h4>
-            <label className="row"><input type="checkbox" checked={isPublished} onChange={e => setIsPublished(e.target.checked)} className="w-4 h-4 rounded border-border" />{isCreating ? 'Publish immediately' : 'Published'}</label>
-            <div className="stack-sm pt-4 border-t border-border">
-              <Button onClick={save} disabled={isSaving || !canSave}><Save size={18} />{saveLabel}</Button>
-              <Link href={backHref}><Button variant="ghost" className="w-full">Cancel</Button></Link>
-            </div>
-          </div>
-        </Card>
-      </div>
-    </div>
+    <article className="stack">
+      <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix={isCreating ? 'Create' : 'Edit'} />
+      <header className="stack pb-6 border-b border-border">
+        <div className="spread">
+          <Link href={backHref} className="row link-muted"><ArrowLeft size={16} /><span>{isCreating ? 'Back to Category' : 'Back to Page'}</span></Link>
+          <Button onClick={save} disabled={isSaving || !canSave} size="sm"><Save size={16} />{saveLabel}</Button>
+        </div>
+        {isCreating && <div className="callout"><p>Creating new page at <code>/{tagPath}/{slug}</code></p></div>}
+        <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
+      </header>
+      <BlockEditor content={content} onChange={setContent} />
+    </article>
   );
 }
 
@@ -230,7 +204,6 @@ function PageView({ page }: { page: WikiPageWithRevisions }) {
   const { user } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const isAuthor = user && page.authorId === user.id;
-  const tagPathArray = page.tagPath.split('/');
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this page?')) return;
@@ -244,33 +217,19 @@ function PageView({ page }: { page: WikiPageWithRevisions }) {
   };
 
   return (
-    <div className="row-md items-start">
-      <div className="flex-1 min-w-0">
-        <article className="stack">
-          <Breadcrumbs path={[...tagPathArray, page.slug]} />
-          <header className="stack pb-6 border-b border-border">
-            <div className="spread">
-              <h1>{page.title}</h1>
-              {isAuthor && (
-                <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isDeleting} className="text-error hover:bg-error/10">
-                  <Trash2 size={16} />{isDeleting ? 'Deleting...' : 'Delete'}
-                </Button>
-              )}
-            </div>
-            <div className="row-md wrap text-muted">
-              {page.author && <span className="row"><User size={14} />{page.author.displayName || page.author.radixAddress.slice(0, 16)}...</span>}
-              <span className="row"><Clock size={14} />Updated {formatRelativeTime(page.updatedAt)}</span>
-            </div>
-          </header>
-          <BlockRenderer content={page.content} />
-          <footer className="row-md wrap pt-6 border-t border-border text-muted">
-            <span>Created {formatDate(page.createdAt)}</span>
-            {page.revisions?.length ? <span>{page.revisions.length} revision{page.revisions.length !== 1 ? 's' : ''}</span> : null}
-          </footer>
-          <Discussion pageId={page.id} />
-        </article>
-      </div>
-    </div>
+    <article className="stack">
+      <Breadcrumbs path={[...page.tagPath.split('/'), page.slug]} />
+      <header className="spread pb-6 border-b border-border">
+        <h1>{page.title}</h1>
+        {isAuthor && (
+          <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isDeleting} className="text-error hover:bg-error/10">
+            <Trash2 size={16} />{isDeleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        )}
+      </header>
+      <BlockRenderer content={page.content} />
+      <Discussion pageId={page.id} />
+    </article>
   );
 }
 
@@ -282,9 +241,13 @@ function PageRoute({ tagPath, slug, isEditMode }: { tagPath: string; slug: strin
     return <StatusCard title="Authentication Required" message="Please connect your Radix wallet to edit pages." backHref={`/${tagPath}/${slug}`} icon={<FileText size={32} />} />;
   }
   if (status === 'loading') return <LoadingScreen message="Loading page..." />;
-  if (status === 'error') return <StatusCard title="Error" message="Failed to load page" />;
-  if (status === 'notfound') return isAuthenticated ? <PageEditor tagPath={tagPath} slug={slug} /> : <StatusCard title="Page not found" message="The page you're looking for doesn't exist." />;
-  if (!page) return <StatusCard title="Page not found" message="The page you're looking for doesn't exist." />;
+  if (status === 'error') return <StatusCard title="Error" message="Failed to load page" backHref="/" />;
+  if (status === 'notfound') {
+    return isAuthenticated 
+      ? <PageEditor tagPath={tagPath} slug={slug} /> 
+      : <StatusCard title="Page not found" message="The page you're looking for doesn't exist." backHref="/" />;
+  }
+  if (!page) return <StatusCard title="Page not found" message="The page you're looking for doesn't exist." backHref="/" />;
   return isEditMode ? <PageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageView page={page} />;
 }
 
@@ -311,10 +274,7 @@ function HistoryView({ tagPath, slug, isHomepage }: { tagPath: string; slug: str
   useEffect(() => {
     (async () => {
       try {
-        const [pageRes, historyRes] = await Promise.all([
-          fetch(apiBase),
-          fetch(`${apiBase}/history`)
-        ]);
+        const [pageRes, historyRes] = await Promise.all([fetch(apiBase), fetch(`${apiBase}/history`)]);
         if (pageRes.ok) setPageTitle((await pageRes.json()).title);
         if (historyRes.ok) setRevisions(await historyRes.json());
         else setError('Failed to load history');
@@ -327,11 +287,7 @@ function HistoryView({ tagPath, slug, isHomepage }: { tagPath: string; slug: str
     if (!confirm('Restore this revision? This will replace the current content.')) return;
     setRestoringId(revisionId);
     try {
-      const r = await fetch(`${apiBase}/history`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ revisionId }),
-      });
+      const r = await fetch(`${apiBase}/history`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ revisionId }) });
       if (r.ok) router.push(viewPath);
       else alert((await r.json()).error || 'Failed to restore');
     } catch { alert('Failed to restore'); }
@@ -341,29 +297,17 @@ function HistoryView({ tagPath, slug, isHomepage }: { tagPath: string; slug: str
   if (isLoading) return <LoadingScreen message="Loading history..." />;
   
   const title = isHomepage ? 'Homepage History' : (pageTitle ? `History: ${pageTitle}` : 'Page History');
-  const backLabel = isHomepage ? 'Back to Homepage' : 'Back to Page';
-  
-  if (error) {
-    return (
-      <div className="stack">
-        {!isHomepage && <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix="History" />}
-        <div className="spread">
-          <h1>{title}</h1>
-          <Link href={viewPath}><Button variant="secondary" size="sm"><ArrowLeft size={16} />{backLabel}</Button></Link>
-        </div>
-        <Card className="text-center py-12"><p className="text-error">{error}</p></Card>
-      </div>
-    );
-  }
 
   return (
     <div className="stack">
       {!isHomepage && <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix="History" />}
       <div className="spread">
         <h1>{title}</h1>
-        <Link href={viewPath}><Button variant="secondary" size="sm"><ArrowLeft size={16} />{backLabel}</Button></Link>
+        <Link href={viewPath}><Button variant="secondary" size="sm"><ArrowLeft size={16} />{isHomepage ? 'Back to Homepage' : 'Back to Page'}</Button></Link>
       </div>
-      {revisions.length > 0 ? (
+      {error ? (
+        <Card className="text-center py-12"><p className="text-error">{error}</p></Card>
+      ) : revisions.length > 0 ? (
         <div className="stack">
           {revisions.map((rev, i) => (
             <Card key={rev.id} className={i === 0 ? 'border-accent' : ''}>
@@ -418,12 +362,9 @@ export default function DynamicPage() {
   const tagPath = tagPathSegments.join('/');
 
   if (!isValidTagPath(tagPathSegments)) {
-    return <StatusCard title="Invalid path" message="The path you entered is not valid." />;
+    return <StatusCard title="Invalid path" message="The path you entered is not valid." backHref="/" />;
   }
 
-  if (isHistoryMode) {
-    return <HistoryView tagPath={tagPath} slug={slug} />;
-  }
-
+  if (isHistoryMode) return <HistoryView tagPath={tagPath} slug={slug} />;
   return <PageRoute tagPath={tagPath} slug={slug} isEditMode={isEditMode} />;
 }

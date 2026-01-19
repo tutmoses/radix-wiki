@@ -36,15 +36,6 @@ function TagNavItem({ node, parentPath, pathname, onClose, depth }: { node: TagN
   );
 }
 
-function NavSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="stack-sm">
-      <h4 className="uppercase tracking-wider px-3 py-1 text-muted">{title}</h4>
-      <nav className="stack-sm">{children}</nav>
-    </div>
-  );
-}
-
 export function Sidebar() {
   const pathname = usePathname();
   const { isAuthenticated } = useAuth();
@@ -57,12 +48,18 @@ export function Sidebar() {
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 animate-[fade-in_0.2s_ease-out]" onClick={closeSidebar} />}
       <aside className={cn('fixed top-16 left-0 z-40 h-[calc(100vh-4rem)] w-72 max-w-[85vw] bg-surface-0 border-r border-border-muted transform transition-transform duration-200 ease-in-out', sidebarOpen ? 'translate-x-0' : '-translate-x-full')}>
         <div className="stack-lg p-4 h-full overflow-y-auto">
-          <NavSection title="Navigation">
-            <NavItem href="/" icon={<Home size={18} />} label="Home" isActive={pathname === '/'} onClick={closeSidebar} />
-          </NavSection>
-          <NavSection title="Categories">
-            {visibleTags.map(node => <TagNavItem key={node.slug} node={node} parentPath="" pathname={pathname} onClose={closeSidebar} depth={0} />)}
-          </NavSection>
+          <div className="stack-sm">
+            <h4 className="uppercase tracking-wider px-3 py-1 text-muted">Navigation</h4>
+            <nav className="stack-sm">
+              <NavItem href="/" icon={<Home size={18} />} label="Home" isActive={pathname === '/'} onClick={closeSidebar} />
+            </nav>
+          </div>
+          <div className="stack-sm">
+            <h4 className="uppercase tracking-wider px-3 py-1 text-muted">Categories</h4>
+            <nav className="stack-sm">
+              {visibleTags.map(node => <TagNavItem key={node.slug} node={node} parentPath="" pathname={pathname} onClose={closeSidebar} depth={0} />)}
+            </nav>
+          </div>
           {isAuthenticated && (
             <div className="mt-auto pt-4 border-t border-border-muted">
               <NavItem href="/settings" icon={<Settings size={18} />} label="Settings" isActive={pathname === '/settings'} onClick={closeSidebar} />
