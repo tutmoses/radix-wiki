@@ -10,7 +10,7 @@ import TiptapLink from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import {
   Plus, Trash2, Copy, ChevronUp, ChevronDown, Type, Image,
-  AlertCircle, Minus, Code, Quote, Clock, FileText, Columns, Settings, Table, ListTree, Info,
+  AlertCircle, Minus, Code, Quote, Clock, FileText, Columns, Settings, Table, Info,
   Bold, Italic, Link2, Heading2, Heading3, List, TrendingUp
 } from 'lucide-react';
 import { cn, formatRelativeTime, slugify } from '@/lib/utils';
@@ -19,7 +19,7 @@ import { usePages } from '@/hooks';
 import { Button, Input, Badge } from '@/components/ui';
 import {
   type Block, type ContentBlock, type BlockType, type Column,
-  type ColumnsBlock, type TableBlock, type TocBlock, type MediaBlock, type TextBlock, type AssetPriceBlock,
+  type ColumnsBlock, type TableBlock, type MediaBlock, type TextBlock, type AssetPriceBlock,
   createBlock, duplicateBlock, createColumn, INSERTABLE_BLOCKS, CONTENT_BLOCK_TYPES
 } from '@/lib/blocks';
 import type { WikiPage } from '@/types';
@@ -30,26 +30,18 @@ const ICONS: Record<string, React.ReactNode> = {
   Type: <Type size={18} />, Image: <Image size={18} />, AlertCircle: <AlertCircle size={18} />,
   Minus: <Minus size={18} />, Code: <Code size={18} />, Quote: <Quote size={18} />,
   Clock: <Clock size={18} />, FileText: <FileText size={18} />, Columns: <Columns size={18} />,
-  Table: <Table size={18} />, ListTree: <ListTree size={18} />, TrendingUp: <TrendingUp size={18} />,
+  Table: <Table size={18} />, TrendingUp: <TrendingUp size={18} />,
 };
 
 // ========== HTML PROCESSING ==========
-interface ProcessedHtml {
-  html: string;
-  headings: { text: string; level: number; id: string }[];
-}
-
-function processHtml(html: string): ProcessedHtml {
-  if (!html.trim()) return { html: '', headings: [] };
+function processHtml(html: string): string {
+  if (!html.trim()) return '';
   
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const headings: ProcessedHtml['headings'] = [];
   
   doc.querySelectorAll('h1, h2, h3').forEach(el => {
     const text = el.textContent?.trim() || '';
-    const id = slugify(text);
-    el.id = id;
-    headings.push({ text, level: parseInt(el.tagName[1]), id });
+    el.id = slugify(text);
   });
   
   doc.querySelectorAll('a[href]').forEach(el => {
@@ -61,11 +53,11 @@ function processHtml(html: string): ProcessedHtml {
     }
   });
   
-  return { html: doc.body.innerHTML, headings };
+  return doc.body.innerHTML;
 }
 
 function HtmlContent({ html, className }: { html: string; className?: string }) {
-  const { html: processed } = processHtml(html);
+  const processed = processHtml(html);
   if (!processed) return null;
   return <div className={className} dangerouslySetInnerHTML={{ __html: processed }} />;
 }
@@ -162,31 +154,13 @@ function useBlockOperations<T extends Block>(blocks: T[], setBlocks: (blocks: T[
   };
 }
 
-// Extract headings from all blocks
-function extractHeadings(content: BlockContent, maxDepth = 3) {
-  const headings: { text: string; level: number; id: string }[] = [];
-
-  const processBlocks = (blocks: Block[]) => {
-    for (const block of blocks) {
-      if (block.type === 'text') {
-        headings.push(...processHtml(block.text).headings.filter(h => h.level <= maxDepth));
-      } else if (block.type === 'columns') {
-        block.columns.forEach(c => processBlocks(c.blocks));
-      }
-    }
-  };
-
-  processBlocks(content);
-  return headings;
-}
-
 // Block component props
 type BlockProps<T extends Block = Block> = { block: T; onUpdate?: (b: Block) => void; allContent?: BlockContent };
 
 // ========== VIEW COMPONENTS ==========
 const TextView: FC<BlockProps<TextBlock>> = ({ block }) => <HtmlContent html={block.text} />;
 const DividerView: FC<BlockProps> = () => <hr />;
-const QuoteView: FC<BlockProps<Extract<Block, {type:'quote'}>>> = ({ block }) => <blockquote><HtmlContent html={block.text} />{block.attribution && <cite className="block mt-2 not-italic text-muted">ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â {block.attribution}</cite>}</blockquote>;
+const QuoteView: FC<BlockProps<Extract<Block, {type:'quote'}>>> = ({ block }) => <blockquote><HtmlContent html={block.text} />{block.attribution && <cite className="block mt-2 not-italic text-muted">— {block.attribution}</cite>}</blockquote>;
 const CalloutView: FC<BlockProps<Extract<Block, {type:'callout'}>>> = ({ block }) => <div className="callout"><Info size={20} className="shrink-0 mt-0.5 text-info" /><div className="stack-sm flex-1 min-w-0">{block.title && <strong>{block.title}</strong>}<HtmlContent html={block.text} /></div></div>;
 const CodeView: FC<BlockProps<Extract<Block, {type:'code'}>>> = ({ block }) => <div className="relative">{block.language && <small className="absolute top-2 right-2">{block.language}</small>}<pre><code>{block.code}</code></pre></div>;
 
@@ -232,17 +206,6 @@ const TableView: FC<BlockProps<TableBlock>> = ({ block }) => {
         })}</tbody>
       </table>
     </div>
-  );
-};
-
-const TocView: FC<BlockProps<TocBlock>> = ({ block, allContent = [] }) => {
-  const headings = extractHeadings(allContent, block.maxDepth || 3);
-  if (!headings.length) return <p className="text-muted text-small">No headings found.</p>;
-  return (
-    <nav className="stack-sm">
-      {block.title && <h4 className="font-semibold">{block.title}</h4>}
-      <ul className="stack-xs">{headings.map((h, i) => <li key={i} style={{ paddingLeft: `${(h.level - 1) * 0.75}rem` }}><a href={`#${h.id}`} className="link text-small">{h.text}</a></li>)}</ul>
-    </nav>
   );
 };
 
@@ -403,7 +366,7 @@ const QuoteEdit: FC<BlockProps<Extract<Block, {type:'quote'}>>> = ({ block, onUp
     <RichTextEditor value={block.text} onChange={text => onUpdate?.({ ...block, text })} placeholder="Quote text..." showToolbar={false} />
     <div className="stack-sm">
       <label className="font-medium">Attribution (optional)</label>
-      <RichTextEditor value={block.attribution || ''} onChange={attribution => onUpdate?.({ ...block, attribution })} placeholder="ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Author name" showToolbar={false} singleLine />
+      <RichTextEditor value={block.attribution || ''} onChange={attribution => onUpdate?.({ ...block, attribution })} placeholder="— Author name" showToolbar={false} singleLine />
     </div>
   </div>
 );
@@ -437,18 +400,6 @@ const TableEdit: FC<BlockProps<TableBlock>> = ({ block, onUpdate }) => {
         <button onClick={addCol} className="text-accent text-small hover:text-accent-hover">+ Add column</button>
         {block.rows[0]?.cells.length > 1 && <button onClick={() => delCol(block.rows[0].cells.length - 1)} className="text-muted text-small hover:text-error">- Remove column</button>}
       </div>
-    </div>
-  );
-};
-
-const TocEdit: FC<BlockProps<TocBlock>> = ({ block, onUpdate }) => {
-  const depths = ['1', '2', '3'] as const;
-  return (
-    <div className="stack surface p-4 border-dashed">
-      <div className="row text-muted"><ListTree size={18} /><span className="font-medium">Table of Contents</span></div>
-      <Input label="Title (optional)" value={block.title || ''} onChange={e => onUpdate?.({ ...block, title: e.target.value || undefined })} placeholder="Contents" />
-      <div className="row"><span>Max heading depth:</span><div className="row wrap">{depths.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, maxDepth: parseInt(opt) as 1 | 2 | 3 })} className={cn('px-3 py-1 rounded-md border', String(block.maxDepth || 3) === opt ? 'bg-accent text-text-inverted border-accent' : 'border-border hover:bg-surface-2')}>{opt}</button>)}</div></div>
-      <small className="text-muted">Automatically generates from page headings (H2, H3)</small>
     </div>
   );
 };
@@ -547,7 +498,6 @@ const BLOCK_REGISTRY: Record<BlockType, { label: string; icon: string; View: Blo
   code: { label: 'Code', icon: 'Code', View: CodeView, Edit: CodeEdit },
   quote: { label: 'Quote', icon: 'Quote', View: QuoteView, Edit: QuoteEdit },
   table: { label: 'Table', icon: 'Table', View: TableView, Edit: TableEdit },
-  toc: { label: 'Table of Contents', icon: 'ListTree', View: TocView, Edit: TocEdit },
   recentPages: { label: 'Recent Pages', icon: 'Clock', View: RecentPagesView, Edit: RecentPagesEdit },
   pageList: { label: 'Page List', icon: 'FileText', View: PageListView, Edit: PageListEdit },
   assetPrice: { label: 'Asset Price', icon: 'TrendingUp', View: AssetPriceView, Edit: AssetPriceEdit },

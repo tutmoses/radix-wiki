@@ -105,6 +105,18 @@ export async function PUT(request: NextRequest) {
           content: content !== undefined ? (content as unknown as Prisma.InputJsonValue) : undefined,
         },
       });
+
+      if (content || title) {
+        await prisma.revision.create({
+          data: {
+            pageId: page.id,
+            title: title || existing.title,
+            content: content ? (content as unknown as Prisma.InputJsonValue) : (existing.content as Prisma.InputJsonValue),
+            authorId: auth.session.userId,
+          },
+        });
+      }
+
       return json(page);
     } else {
       const page = await prisma.page.create({
@@ -117,6 +129,17 @@ export async function PUT(request: NextRequest) {
           authorId: auth.session.userId,
         },
       });
+
+      await prisma.revision.create({
+        data: {
+          pageId: page.id,
+          title: title || 'Homepage',
+          content: (content as unknown as Prisma.InputJsonValue) || {},
+          authorId: auth.session.userId,
+          message: 'Initial version',
+        },
+      });
+
       return json(page, 201);
     }
   }, 'Failed to update homepage');

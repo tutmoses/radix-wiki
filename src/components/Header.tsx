@@ -4,13 +4,15 @@
 
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { BookOpen, Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User } from 'lucide-react';
+import { BookOpen, Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, ListTree } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth } from '@/hooks';
-import { cn, shortenAddress } from '@/lib/utils';
+import { cn, shortenAddress, slugify } from '@/lib/utils';
 import { Button } from '@/components/ui';
 import { isValidTagPath } from '@/lib/tags';
 import type { WikiPage } from '@/types';
+
+interface Heading { text: string; level: number; id: string }
 
 function usePageContext() {
   const pathname = usePathname();
@@ -30,12 +32,71 @@ function usePageContext() {
   const slug = isPage ? viewSegments[viewSegments.length - 1] : '';
   const viewPath = isHomepage ? '/' : `/${viewSegments.join('/')}`;
   const editPath = isHomepage ? '/edit' : `${viewPath}/edit`;
-  const historyPath = isPage ? `${viewPath}/history` : null;
+  const historyPath = isHomepage ? '/history' : isPage ? `${viewPath}/history` : null;
   
   const canEdit = isAuthenticated && (isHomepage || isPage) && !isEditMode && !isHistoryMode;
-  const canShowHistory = isPage && !isHistoryMode;
+  const canShowHistory = (isHomepage || isPage) && !isHistoryMode;
+  const canShowToc = (isHomepage || isPage) && !isEditMode && !isHistoryMode;
   
-  return { isHomepage, isCategory, isPage, isEditMode, isHistoryMode, canEdit, canShowHistory, viewPath, editPath, historyPath, tagPath, slug, user };
+  return { isHomepage, isCategory, isPage, isEditMode, isHistoryMode, canEdit, canShowHistory, canShowToc, viewPath, editPath, historyPath, tagPath, slug, user };
+}
+
+function TocDropdown({ onClose }: { onClose: () => void }) {
+  const [headings, setHeadings] = useState<Heading[]>([]);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Scan DOM for headings in main content
+    const main = document.querySelector('main');
+    if (!main) return;
+    
+    const elements = main.querySelectorAll('h1, h2, h3');
+    const found: Heading[] = [];
+    
+    elements.forEach(el => {
+      const text = el.textContent?.trim() || '';
+      if (!text) return;
+      // Ensure element has an id for linking
+      if (!el.id) el.id = slugify(text);
+      found.push({ text, level: parseInt(el.tagName[1]), id: el.id });
+    });
+    
+    setHeadings(found);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  const handleClick = (id: string) => {
+    onClose();
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  return (
+    <div ref={ref} className="dropdown w-72 max-h-80 overflow-y-auto">
+      {headings.length === 0 ? (
+        <p className="p-3 text-muted text-small">No headings found.</p>
+      ) : (
+        <nav className="py-1">
+          {headings.map((h, i) => (
+            <button
+              key={i}
+              onClick={() => handleClick(h.id)}
+              className="dropdown-item text-small"
+              style={{ paddingLeft: `${0.75 + (h.level - 1) * 0.75}rem` }}
+            >
+              {h.text}
+            </button>
+          ))}
+        </nav>
+      )}
+    </div>
+  );
 }
 
 export function Header() {
@@ -45,12 +106,14 @@ export function Header() {
   const pageContext = usePageContext();
   const [showSearch, setShowSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showToc, setShowToc] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<WikiPage[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const tocRef = useRef<HTMLDivElement>(null);
 
   const displayName = session?.displayName || 
     walletData?.persona?.label ||
@@ -114,6 +177,15 @@ export function Header() {
 
           <div className="row ml-auto">
             <button onClick={() => setShowSearch(!showSearch)} className="icon-btn" aria-label="Search"><Search size={20} /></button>
+            
+            {pageContext.canShowToc && (
+              <div ref={tocRef} className="relative">
+                <button onClick={() => setShowToc(!showToc)} className="icon-btn" aria-label="Table of contents">
+                  <ListTree size={20} />
+                </button>
+                {showToc && <TocDropdown onClose={() => setShowToc(false)} />}
+              </div>
+            )}
             
             {pageContext.canEdit && (
               <Link href={pageContext.editPath} className="icon-btn" aria-label="Edit page"><Edit size={20} /></Link>

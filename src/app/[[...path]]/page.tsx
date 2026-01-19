@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Clock, User, ArrowLeft, ArrowRight, Trash2, Save, Eye, FileText, Plus } from 'lucide-react';
+import { Clock, User, ArrowLeft, ArrowRight, Trash2, Save, Eye, FileText, Plus, RotateCcw } from 'lucide-react';
 import { BlockEditor, BlockRenderer } from '@/components/Blocks';
 import { Discussion } from '@/components/Discussion';
 import { Footer } from '@/components/Footer';
@@ -296,62 +296,72 @@ interface Revision {
   author?: { id: string; displayName?: string; radixAddress: string };
 }
 
-function HistoryView({ tagPath, slug }: { tagPath: string; slug: string }) {
+function HistoryView({ tagPath, slug, isHomepage }: { tagPath: string; slug: string; isHomepage?: boolean }) {
+  const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const [revisions, setRevisions] = useState<Revision[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pageTitle, setPageTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const viewPath = `/${tagPath}/${slug}`;
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+  
+  const apiBase = isHomepage ? '/api/wiki' : `/api/wiki/${tagPath}/${slug}`;
+  const viewPath = isHomepage ? '/' : `/${tagPath}/${slug}`;
 
   useEffect(() => {
     (async () => {
       try {
         const [pageRes, historyRes] = await Promise.all([
-          fetch(`/api/wiki/${tagPath}/${slug}`),
-          fetch(`/api/wiki/${tagPath}/${slug}/history`)
+          fetch(apiBase),
+          fetch(`${apiBase}/history`)
         ]);
-        if (pageRes.ok) {
-          const page = await pageRes.json();
-          setPageTitle(page.title);
-        }
-        if (historyRes.ok) {
-          const data = await historyRes.json();
-          setRevisions(Array.isArray(data) ? data : []);
-        } else {
-          setError('Failed to load history');
-        }
-      } catch (e) {
-        console.error('Failed to fetch history:', e);
-        setError('Failed to load history');
-      } finally {
-        setIsLoading(false);
-      }
+        if (pageRes.ok) setPageTitle((await pageRes.json()).title);
+        if (historyRes.ok) setRevisions(await historyRes.json());
+        else setError('Failed to load history');
+      } catch { setError('Failed to load history'); }
+      finally { setIsLoading(false); }
     })();
-  }, [tagPath, slug]);
+  }, [apiBase]);
+
+  const handleRestore = async (revisionId: string) => {
+    if (!confirm('Restore this revision? This will replace the current content.')) return;
+    setRestoringId(revisionId);
+    try {
+      const r = await fetch(`${apiBase}/history`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ revisionId }),
+      });
+      if (r.ok) router.push(viewPath);
+      else alert((await r.json()).error || 'Failed to restore');
+    } catch { alert('Failed to restore'); }
+    finally { setRestoringId(null); }
+  };
 
   if (isLoading) return <LoadingScreen message="Loading history..." />;
+  
+  const title = isHomepage ? 'Homepage History' : (pageTitle ? `History: ${pageTitle}` : 'Page History');
+  const backLabel = isHomepage ? 'Back to Homepage' : 'Back to Page';
   
   if (error) {
     return (
       <div className="stack">
-        <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix="History" />
+        {!isHomepage && <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix="History" />}
         <div className="spread">
-          <h1>Page History</h1>
-          <Link href={viewPath}><Button variant="secondary" size="sm"><ArrowLeft size={16} />Back to Page</Button></Link>
+          <h1>{title}</h1>
+          <Link href={viewPath}><Button variant="secondary" size="sm"><ArrowLeft size={16} />{backLabel}</Button></Link>
         </div>
-        <Card className="text-center py-12">
-          <p className="text-error">{error}</p>
-        </Card>
+        <Card className="text-center py-12"><p className="text-error">{error}</p></Card>
       </div>
     );
   }
 
   return (
     <div className="stack">
-      <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix="History" />
+      {!isHomepage && <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix="History" />}
       <div className="spread">
-        <h1>{pageTitle ? `History: ${pageTitle}` : 'Page History'}</h1>
-        <Link href={viewPath}><Button variant="secondary" size="sm"><ArrowLeft size={16} />Back to Page</Button></Link>
+        <h1>{title}</h1>
+        <Link href={viewPath}><Button variant="secondary" size="sm"><ArrowLeft size={16} />{backLabel}</Button></Link>
       </div>
       {revisions.length > 0 ? (
         <div className="stack">
@@ -363,7 +373,14 @@ function HistoryView({ tagPath, slug }: { tagPath: string; slug: string }) {
                     <span className="font-medium">{rev.title}</span>
                     {i === 0 && <Badge variant="default">Current</Badge>}
                   </div>
-                  <span className="text-muted text-small">{formatDate(rev.createdAt, { hour: '2-digit', minute: '2-digit' })}</span>
+                  <div className="row">
+                    <span className="text-muted text-small">{formatDate(rev.createdAt, { hour: '2-digit', minute: '2-digit' })}</span>
+                    {i > 0 && isAuthenticated && (
+                      <Button variant="ghost" size="sm" onClick={() => handleRestore(rev.id)} disabled={restoringId === rev.id}>
+                        <RotateCcw size={14} />{restoringId === rev.id ? 'Restoring...' : 'Restore'}
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 {rev.message && <p className="text-muted">{rev.message}</p>}
                 <div className="row text-small text-muted">
@@ -375,9 +392,7 @@ function HistoryView({ tagPath, slug }: { tagPath: string; slug: string }) {
           ))}
         </div>
       ) : (
-        <Card className="text-center py-12">
-          <p className="text-muted">No revision history available.</p>
-        </Card>
+        <Card className="text-center py-12"><p className="text-muted">No revision history available.</p></Card>
       )}
     </div>
   );
@@ -389,6 +404,7 @@ export default function DynamicPage() {
 
   if (rawPath.length === 0) return <HomepageView isEditing={false} />;
   if (rawPath.length === 1 && rawPath[0] === 'edit') return <HomepageView isEditing={true} />;
+  if (rawPath.length === 1 && rawPath[0] === 'history') return <HistoryView tagPath="" slug="" isHomepage />;
 
   const lastSegment = rawPath[rawPath.length - 1];
   const isEditMode = lastSegment === 'edit';
