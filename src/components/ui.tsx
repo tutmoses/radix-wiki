@@ -2,8 +2,32 @@
 
 'use client';
 
-import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type HTMLAttributes } from 'react';
+import { forwardRef, useRef, useEffect, type ButtonHTMLAttributes, type InputHTMLAttributes, type HTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+
+// Dropdown (reusable click-outside handler)
+export interface DropdownProps extends HTMLAttributes<HTMLDivElement> {
+  onClose: () => void;
+  children: ReactNode;
+}
+
+export function Dropdown({ onClose, children, className, ...props }: DropdownProps) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  return (
+    <div ref={ref} className={cn('dropdown', className)} {...props}>
+      {children}
+    </div>
+  );
+}
 
 // Button
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';

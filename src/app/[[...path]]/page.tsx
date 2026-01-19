@@ -6,7 +6,7 @@ import { useState, useEffect, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Trash2, Save, FileText, Plus, RotateCcw, User } from 'lucide-react';
-import { BlockEditor, BlockRenderer } from '@/components/Blocks';
+import { BlockEditor, BlockRenderer, type Block, createDefaultPageContent } from '@/components/Blocks';
 import { Discussion } from '@/components/Discussion';
 import { Footer } from '@/components/Footer';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
@@ -15,7 +15,6 @@ import { useAuth, usePages } from '@/hooks';
 import { formatDate, slugify } from '@/lib/utils';
 import { isValidTagPath, findTagByPath, isAuthorOnlyPath } from '@/lib/tags';
 import type { WikiPage } from '@/types';
-import { type Block, createDefaultPageContent } from '@/lib/blocks';
 
 interface WikiPageWithRevisions extends WikiPage {
   revisions?: { id: string }[];

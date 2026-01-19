@@ -8,7 +8,7 @@ import { BookOpen, Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth } from '@/hooks';
 import { cn, shortenAddress, slugify, formatRelativeTime, formatDate } from '@/lib/utils';
-import { Button } from '@/components/ui';
+import { Button, Dropdown } from '@/components/ui';
 import { isValidTagPath } from '@/lib/tags';
 import type { WikiPage } from '@/types';
 
@@ -43,7 +43,6 @@ function usePageContext() {
 }
 
 function TocDropdown({ onClose }: { onClose: () => void }) {
-  const ref = useRef<HTMLDivElement>(null);
   const [headings, setHeadings] = useState<{ text: string; level: number; id: string }[]>([]);
 
   useEffect(() => {
@@ -55,14 +54,8 @@ function TocDropdown({ onClose }: { onClose: () => void }) {
     }).filter(h => h.text));
   }, []);
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
-
   return (
-    <div ref={ref} className="dropdown w-72 max-h-80 overflow-y-auto">
+    <Dropdown onClose={onClose} className="w-72 max-h-80 overflow-y-auto">
       {headings.length === 0 ? (
         <p className="p-3 text-muted text-small">No headings found.</p>
       ) : (
@@ -73,7 +66,7 @@ function TocDropdown({ onClose }: { onClose: () => void }) {
           ))}
         </nav>
       )}
-    </div>
+    </Dropdown>
   );
 }
 
@@ -86,16 +79,8 @@ interface PageWithAuthor {
 }
 
 function PageInfoDropdown({ page, onClose }: { page: PageWithAuthor; onClose: () => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
-
   return (
-    <div ref={ref} className="dropdown w-64 p-3">
+    <Dropdown onClose={onClose} className="w-64 p-3">
       <div className="stack-sm text-small">
         {page.author && (
           <div className="row">
@@ -122,7 +107,17 @@ function PageInfoDropdown({ page, onClose }: { page: PageWithAuthor; onClose: ()
           </div>
         ) : null}
       </div>
-    </div>
+    </Dropdown>
+  );
+}
+
+function UserMenuDropdown({ onClose, onLogout }: { onClose: () => void; onLogout: () => void }) {
+  return (
+    <Dropdown onClose={onClose}>
+      <button onClick={() => { onClose(); onLogout(); }} className="dropdown-item text-error hover:text-error/80">
+        <LogOut size={16} />Disconnect
+      </button>
+    </Dropdown>
   );
 }
 
@@ -139,11 +134,8 @@ export function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<WikiPage[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const tocRef = useRef<HTMLDivElement>(null);
-  const infoRef = useRef<HTMLDivElement>(null);
 
   const displayName = session?.displayName || walletData?.persona?.label ||
     (walletData?.accounts?.[0]?.address ? shortenAddress(walletData.accounts[0].address) : null) ||
@@ -166,7 +158,6 @@ export function Header() {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowUserMenu(false);
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchResults([]);
     };
     document.addEventListener('mousedown', handler);
@@ -194,6 +185,11 @@ export function Header() {
 
   const handleSearchSelect = (page: WikiPage) => { setSearchQuery(''); setSearchResults([]); setShowSearch(false); router.push(`/${page.tagPath}/${page.slug}`); };
 
+  const handleLogout = async () => {
+    setShowUserMenu(false);
+    await logout();
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-surface-0/80 backdrop-blur-md border-b border-border-muted">
       <div className="w-full px-4 sm:px-6 lg:px-8">
@@ -211,14 +207,14 @@ export function Header() {
             <button onClick={() => setShowSearch(!showSearch)} className="icon-btn" aria-label="Search"><Search size={20} /></button>
             
             {canShowToc && (
-              <div ref={tocRef} className="relative">
+              <div className="relative">
                 <button onClick={() => setShowToc(!showToc)} className="icon-btn" aria-label="Table of contents"><ListTree size={20} /></button>
                 {showToc && <TocDropdown onClose={() => setShowToc(false)} />}
               </div>
             )}
             
             {canShowInfo && pageData && (
-              <div ref={infoRef} className="relative">
+              <div className="relative">
                 <button onClick={() => setShowInfo(!showInfo)} className="icon-btn" aria-label="Page info"><Info size={20} /></button>
                 {showInfo && <PageInfoDropdown page={pageData} onClose={() => setShowInfo(false)} />}
               </div>
@@ -228,7 +224,7 @@ export function Header() {
             {canShowHistory && historyPath && <Link href={historyPath} className="icon-btn" aria-label="Page history"><History size={20} /></Link>}
             {isAuthenticated && userProfilePath && <Link href={userProfilePath} className="icon-btn" aria-label="Your profile"><User size={20} /></Link>}
 
-            <div id="radix-connect-btn" ref={menuRef} className="relative">
+            <div id="radix-connect-btn" className="relative">
               {isLoading ? (
                 <div className="row surface px-3 py-1.5"><Loader2 size={14} className="animate-spin" /><span className="hidden sm:inline">Connecting...</span></div>
               ) : showAsConnected ? (
@@ -238,11 +234,7 @@ export function Header() {
                     <span className="font-medium hidden sm:inline">{displayName}</span>
                     <ChevronDown size={14} className={cn('transition-transform', showUserMenu && 'rotate-180')} />
                   </button>
-                  {showUserMenu && (
-                    <div className="dropdown">
-                      <button onClick={async () => { setShowUserMenu(false); await logout(); }} className="dropdown-item text-error hover:text-error/80"><LogOut size={16} />Disconnect</button>
-                    </div>
-                  )}
+                  {showUserMenu && <UserMenuDropdown onClose={() => setShowUserMenu(false)} onLogout={handleLogout} />}
                 </>
               ) : (
                 <Button variant="primary" size="sm" onClick={connect}>
