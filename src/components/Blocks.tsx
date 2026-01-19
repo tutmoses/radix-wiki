@@ -34,9 +34,10 @@ const Iframe = TiptapNode.create({
     return ['div', { 'data-iframe-embed': '', class: 'iframe-embed' }, ['iframe', mergeAttributes(HTMLAttributes, { frameborder: '0', allowfullscreen: 'true' })]];
   },
 });
+
 import {
   Plus, Trash2, Copy, ChevronUp, ChevronDown, Pencil, Image,
-  AlertCircle, Minus, Code, Quote, Clock, FileText, Columns, Settings, Info,
+  Minus, Code, Quote, Clock, FileText, Columns, Settings,
   Bold, Italic, Link2, Heading2, Heading3, List, TrendingUp, TableIcon, Youtube, Code2
 } from 'lucide-react';
 import { cn, formatRelativeTime, slugify } from '@/lib/utils';
@@ -53,9 +54,10 @@ import type { WikiPage } from '@/types';
 type BlockContent = Block[];
 
 const ICONS: Record<string, React.ReactNode> = {
-  Pencil: <Pencil size={18} />, AlertCircle: <AlertCircle size={18} />,
-  Minus: <Minus size={18} />, Code: <Code size={18} />, Quote: <Quote size={18} />,
-  Clock: <Clock size={18} />, FileText: <FileText size={18} />, Columns: <Columns size={18} />,
+  Pencil: <Pencil size={18} />,
+  Clock: <Clock size={18} />,
+  FileText: <FileText size={18} />,
+  Columns: <Columns size={18} />,
   TrendingUp: <TrendingUp size={18} />,
 };
 
@@ -102,11 +104,14 @@ function RichTextToolbar({ editor }: { editor: Editor | null }) {
   const buttons: { action: () => void; isActive: boolean; icon: React.ReactNode; label: string }[] = [
     { action: () => editor.chain().focus().toggleBold().run(), isActive: editor.isActive('bold'), icon: <Bold size={14} />, label: 'Bold' },
     { action: () => editor.chain().focus().toggleItalic().run(), isActive: editor.isActive('italic'), icon: <Italic size={14} />, label: 'Italic' },
-    { action: () => editor.chain().focus().toggleCode().run(), isActive: editor.isActive('code'), icon: <Code size={14} />, label: 'Code' },
+    { action: () => editor.chain().focus().toggleCode().run(), isActive: editor.isActive('code'), icon: <Code size={14} />, label: 'Inline Code' },
     { action: () => { const url = window.prompt('URL'); if (url) editor.chain().focus().setLink({ href: url }).run(); }, isActive: editor.isActive('link'), icon: <Link2 size={14} />, label: 'Link' },
     { action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), isActive: editor.isActive('heading', { level: 2 }), icon: <Heading2 size={14} />, label: 'H2' },
     { action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), isActive: editor.isActive('heading', { level: 3 }), icon: <Heading3 size={14} />, label: 'H3' },
     { action: () => editor.chain().focus().toggleBulletList().run(), isActive: editor.isActive('bulletList'), icon: <List size={14} />, label: 'List' },
+    { action: () => editor.chain().focus().toggleBlockquote().run(), isActive: editor.isActive('blockquote'), icon: <Quote size={14} />, label: 'Quote' },
+    { action: () => editor.chain().focus().toggleCodeBlock().run(), isActive: editor.isActive('codeBlock'), icon: <Code2 size={14} />, label: 'Code Block' },
+    { action: () => editor.chain().focus().setHorizontalRule().run(), isActive: false, icon: <Minus size={14} />, label: 'Divider' },
     { action: () => { const url = window.prompt('Image URL'); if (url) editor.chain().focus().setImage({ src: url }).run(); }, isActive: false, icon: <Image size={14} />, label: 'Image' },
     { action: () => { const url = window.prompt('YouTube URL'); if (url) editor.chain().focus().setYoutubeVideo({ src: url }).run(); }, isActive: false, icon: <Youtube size={14} />, label: 'YouTube' },
     { action: () => { const url = window.prompt('Embed URL (widget, iframe, etc.)'); if (url) editor.chain().focus().insertContent({ type: 'iframe', attrs: { src: url } }).run(); }, isActive: editor.isActive('iframe'), icon: <Code2 size={14} />, label: 'Embed' },
@@ -125,7 +130,7 @@ function RichTextToolbar({ editor }: { editor: Editor | null }) {
           <button type="button" onClick={() => editor.chain().focus().addRowAfter().run()} className="p-1.5 rounded text-muted hover:bg-surface-2 hover:text-text text-xs" title="Add row">+Row</button>
           <button type="button" onClick={() => editor.chain().focus().deleteColumn().run()} className="p-1.5 rounded text-muted hover:bg-surface-2 hover:text-error text-xs" title="Delete column">-Col</button>
           <button type="button" onClick={() => editor.chain().focus().deleteRow().run()} className="p-1.5 rounded text-muted hover:bg-surface-2 hover:text-error text-xs" title="Delete row">-Row</button>
-          <button type="button" onClick={() => editor.chain().focus().deleteTable().run()} className="p-1.5 rounded text-muted hover:bg-surface-2 hover:text-error text-xs" title="Delete table">Ã—Tbl</button>
+          <button type="button" onClick={() => editor.chain().focus().deleteTable().run()} className="p-1.5 rounded text-muted hover:bg-surface-2 hover:text-error text-xs" title="Delete table">×Tbl</button>
         </>
       )}
     </div>
@@ -140,7 +145,8 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...', sho
         bulletList: singleLine ? false : undefined,
         orderedList: singleLine ? false : undefined,
         blockquote: singleLine ? false : undefined,
-        codeBlock: false,
+        codeBlock: singleLine ? false : undefined,
+        horizontalRule: singleLine ? false : undefined,
         hardBreak: singleLine ? false : undefined,
       }),
       TiptapLink.configure({ openOnClick: false, HTMLAttributes: { class: 'link' } }),
@@ -197,10 +203,6 @@ type BlockProps<T extends Block = Block> = { block: T; onUpdate?: (b: Block) => 
 
 // ========== VIEW COMPONENTS ==========
 const ContentView: FC<BlockProps<ContentBlock>> = ({ block }) => <HtmlContent html={block.text} className="prose-content" />;
-const DividerView: FC<BlockProps> = () => <hr />;
-const QuoteView: FC<BlockProps<Extract<Block, {type:'quote'}>>> = ({ block }) => <blockquote><HtmlContent html={block.text} />{block.attribution && <cite className="block mt-2 not-italic text-muted">â€” {block.attribution}</cite>}</blockquote>;
-const CalloutView: FC<BlockProps<Extract<Block, {type:'callout'}>>> = ({ block }) => <div className="callout"><Info size={20} className="shrink-0 mt-0.5 text-info" /><div className="stack-sm flex-1 min-w-0">{block.title && <strong>{block.title}</strong>}<HtmlContent html={block.text} /></div></div>;
-const CodeView: FC<BlockProps<Extract<Block, {type:'code'}>>> = ({ block }) => <div className="relative">{block.language && <small className="absolute top-2 right-2">{block.language}</small>}<pre><code>{block.code}</code></pre></div>;
 
 function PageCard({ page, compact }: { page: WikiPage; compact?: boolean }) {
   const leafTag = findTagByPath(page.tagPath.split('/'));
@@ -285,7 +287,7 @@ const AssetPriceView: FC<BlockProps<AssetPriceBlock>> = ({ block }) => {
       </div>
       {block.showChange && typeof data.change24h === 'number' && (
         <span className={cn('text-small font-medium', isPositive ? 'text-success' : 'text-error')}>
-          {isPositive ? 'â†‘' : 'â†“'} {Math.abs(data.change24h).toFixed(2)}%
+          {isPositive ? '↑' : '↓'} {Math.abs(data.change24h).toFixed(2)}%
         </span>
       )}
     </div>
@@ -304,39 +306,7 @@ const ColumnsView: FC<BlockProps<ColumnsBlock>> = ({ block, allContent = [] }) =
 
 // ========== EDIT COMPONENTS ==========
 const ContentEdit: FC<BlockProps<ContentBlock>> = ({ block, onUpdate }) => (
-  <RichTextEditor value={block.text} onChange={text => onUpdate?.({ ...block, text })} placeholder="Write content... Use toolbar to add images, videos, and tables." />
-);
-
-const DividerEdit: FC<BlockProps> = () => <div className="py-2"><hr /><small className="block text-center mt-2">Horizontal divider</small></div>;
-
-const CalloutEdit: FC<BlockProps<Extract<Block, {type:'callout'}>>> = ({ block, onUpdate }) => (
-  <div className="stack">
-    <div className="stack-sm">
-      <label className="font-medium">Title (optional)</label>
-      <RichTextEditor value={block.title || ''} onChange={title => onUpdate?.({ ...block, title })} placeholder="Callout title..." showToolbar={false} singleLine />
-    </div>
-    <RichTextEditor value={block.text} onChange={text => onUpdate?.({ ...block, text })} placeholder="Callout content..." showToolbar={false} />
-  </div>
-);
-
-const CodeEdit: FC<BlockProps<Extract<Block, {type:'code'}>>> = ({ block, onUpdate }) => {
-  const languages = ['typescript', 'javascript', 'python', 'rust', 'sql', 'bash', 'json', 'css', 'html'];
-  return (
-    <div className="stack">
-      <div className="row wrap">{languages.map(lang => <button key={lang} onClick={() => onUpdate?.({ ...block, language: lang })} className={cn('px-2 py-1 text-small rounded border', block.language === lang ? 'bg-accent text-text-inverted border-accent' : 'border-border hover:bg-surface-2')}>{lang}</button>)}</div>
-      <textarea value={block.code} onChange={e => onUpdate?.({ ...block, code: e.target.value })} placeholder="// Enter code..." className="input min-h-30 resize-none font-mono" rows={6} spellCheck={false} />
-    </div>
-  );
-};
-
-const QuoteEdit: FC<BlockProps<Extract<Block, {type:'quote'}>>> = ({ block, onUpdate }) => (
-  <div className="stack border-l-4 border-accent pl-4">
-    <RichTextEditor value={block.text} onChange={text => onUpdate?.({ ...block, text })} placeholder="Quote text..." showToolbar={false} />
-    <div className="stack-sm">
-      <label className="font-medium">Attribution (optional)</label>
-      <RichTextEditor value={block.attribution || ''} onChange={attribution => onUpdate?.({ ...block, attribution })} placeholder="â€” Author name" showToolbar={false} singleLine />
-    </div>
-  </div>
+  <RichTextEditor value={block.text} onChange={text => onUpdate?.({ ...block, text })} placeholder="Write content... Use toolbar for formatting, quotes, code blocks, and dividers." />
 );
 
 const RecentPagesEdit: FC<BlockProps<Extract<Block, {type:'recentPages'}>>> = ({ block, onUpdate }) => (
@@ -421,10 +391,6 @@ type BlockComponent<T extends Block = Block> = FC<BlockProps<T>>;
 
 const BLOCK_REGISTRY: Record<BlockType, { label: string; icon: string; View: BlockComponent<any>; Edit: BlockComponent<any> }> = {
   content: { label: 'Content', icon: 'Pencil', View: ContentView, Edit: ContentEdit },
-  callout: { label: 'Callout', icon: 'AlertCircle', View: CalloutView, Edit: CalloutEdit },
-  divider: { label: 'Divider', icon: 'Minus', View: DividerView, Edit: DividerEdit },
-  code: { label: 'Code', icon: 'Code', View: CodeView, Edit: CodeEdit },
-  quote: { label: 'Quote', icon: 'Quote', View: QuoteView, Edit: QuoteEdit },
   recentPages: { label: 'Recent Pages', icon: 'Clock', View: RecentPagesView, Edit: RecentPagesEdit },
   pageList: { label: 'Page List', icon: 'FileText', View: PageListView, Edit: PageListEdit },
   assetPrice: { label: 'Asset Price', icon: 'TrendingUp', View: AssetPriceView, Edit: AssetPriceEdit },
