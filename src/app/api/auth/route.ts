@@ -14,7 +14,7 @@ function createCommunityPageContent(displayName?: string): Block[] {
   return [
     {
       id: crypto.randomUUID(),
-      type: 'text',
+      type: 'content',
       text: `<h1>${title}</h1><p>This is your personal community page. Edit it to share your thoughts, projects, and contributions with the RADIX community.</p><h2>About Me</h2><p>Tell the community about yourself...</p>`,
     },
   ];
