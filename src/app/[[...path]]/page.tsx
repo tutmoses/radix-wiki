@@ -146,7 +146,6 @@ function CategoryView({ tagPath }: { tagPath: string[] }) {
 }
 
 function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tagPath: string; slug: string }) {
-  const router = useRouter();
   const { user } = useAuth();
   const isCreating = !page;
   const viewPath = `/${tagPath}/${slug}`;
@@ -165,14 +164,14 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tag
     setIsSaving(true);
     try {
       const exists = page || (await fetch(`/api/wiki/${tagPath}/${slug}`).then(r => r.ok));
-      const endpoint = exists ? `/api/wiki/${tagPath}/${slug}` : '/api/wiki';
       const method = exists ? 'PUT' : 'POST';
+      const endpoint = exists ? `/api/wiki/${tagPath}/${slug}` : '/api/wiki';
       const body = exists ? { title, content } : { title, content, tagPath, slug };
-      const r = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (r.ok) { const d = await r.json(); router.push(`/${d.tagPath}/${d.slug}`); }
-      else alert((await r.json()).error || 'Failed to save');
-    } catch { alert('Failed to save'); }
-    finally { setIsSaving(false); }
+      const res = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (res.ok) window.location.href = `/${data.tagPath}/${data.slug}`;
+      else { alert(data.error || 'Failed to save'); setIsSaving(false); }
+    } catch { alert('Failed to save'); setIsSaving(false); }
   };
 
   if (page && user && isAuthorOnlyPath(page.tagPath) && page.authorId !== user.id) {

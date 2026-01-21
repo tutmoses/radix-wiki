@@ -51,7 +51,6 @@ export type WikiPageInput = {
   title: string;
   content: Prisma.JsonValue;
   excerpt?: string;
-  isPublished?: boolean;
   tagPath: string;
 };
 

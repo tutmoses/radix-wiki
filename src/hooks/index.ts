@@ -118,10 +118,10 @@ export function usePages(mode: PageMode): SingleResult | ListResult {
           if (res.ok) { setPage(await res.json()); setStatus('found'); }
           else setStatus(res.status === 404 ? 'notfound' : 'error');
         } else if (mode.type === 'recent') {
-          const params = new URLSearchParams({ pageSize: mode.limit.toString(), published: 'true' });
+          const params = new URLSearchParams({ pageSize: mode.limit.toString() });
           if (mode.tagPath) params.set('tagPath', mode.tagPath);
           const res = await fetch(`/api/wiki?${params}`);
-          if (res.ok) setPages((await res.json()).items);
+          if (res.ok) setPages((await res.json()).items || []);
         } else {
           const results = await Promise.all(mode.pageIds.map(id => fetch(`/api/wiki/by-id/${id}`).then(r => r.ok ? r.json() : null)));
           setPages(results.filter(Boolean));

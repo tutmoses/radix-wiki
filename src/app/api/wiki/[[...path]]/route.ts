@@ -47,16 +47,13 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     const { searchParams } = new URL(request.url);
 
     // List mode: has pagination/search params and no specific path
-    if (!path?.length && (searchParams.has('page') || searchParams.has('search') || searchParams.has('published') || searchParams.has('tagPath'))) {
+    if (!path?.length && (searchParams.has('page') || searchParams.has('pageSize') || searchParams.has('search') || searchParams.has('tagPath'))) {
       const page = parseInt(searchParams.get('page') || '1', 10);
       const pageSize = parseInt(searchParams.get('pageSize') || '20', 10);
       const search = searchParams.get('search') || '';
-      const published = searchParams.get('published');
       const tagPath = searchParams.get('tagPath');
 
       const where: Prisma.PageWhereInput = {};
-      if (published === 'true') where.isPublished = true;
-      else if (published === 'false') where.isPublished = false;
       if (search) where.title = { contains: search, mode: 'insensitive' };
       if (tagPath) where.tagPath = { startsWith: tagPath };
 
@@ -165,7 +162,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
 
     // Create new page
     const body: WikiPageInput = await request.json();
-    const { title, content, excerpt, isPublished, tagPath } = body;
+    const { title, content, excerpt, tagPath } = body;
 
     if (!title || !content) return errors.badRequest('Title and content required');
     if (!tagPath || !isValidTagPath(tagPath.split('/'))) {
@@ -185,7 +182,6 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
         title,
         content: content as unknown as Prisma.InputJsonValue,
         excerpt,
-        isPublished: isPublished ?? false,
         tagPath,
         authorId: auth.session.userId,
       },
@@ -218,7 +214,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     if ('error' in auth) return auth.error;
 
     const body: Partial<WikiPageInput> & { revisionMessage?: string } = await request.json();
-    const { title, content, excerpt, isPublished, revisionMessage } = body;
+    const { title, content, excerpt, revisionMessage } = body;
 
     const existing = await prisma.page.findFirst({ where: { tagPath: parsed.tagPath, slug: parsed.slug } });
 
@@ -230,7 +226,6 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
           slug: '',
           title: title || 'Homepage',
           content: (content as unknown as Prisma.InputJsonValue) || {},
-          isPublished: true,
           authorId: auth.session.userId,
         },
       });
@@ -261,7 +256,6 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
         title: title ?? undefined,
         content: content !== undefined ? (content as unknown as Prisma.InputJsonValue) : undefined,
         excerpt: excerpt ?? undefined,
-        isPublished: isPublished ?? undefined,
       },
       include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
     });

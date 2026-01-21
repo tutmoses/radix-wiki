@@ -172,7 +172,7 @@ export function Header() {
     if (!query.trim()) { setSearchResults([]); return; }
     setIsSearching(true);
     try {
-      const res = await fetch(`/api/wiki?${new URLSearchParams({ search: query, published: 'true', pageSize: '5' })}`);
+      const res = await fetch(`/api/wiki?${new URLSearchParams({ search: query, pageSize: '5' })}`);
       if (res.ok) setSearchResults((await res.json()).items || []);
     } catch (e) { console.error('Search failed:', e); }
     finally { setIsSearching(false); }

@@ -102,7 +102,6 @@ export async function POST(request: NextRequest) {
             slug,
             title: pageTitle,
             content: content as unknown as Prisma.InputJsonValue,
-            isPublished: true,
             authorId: user.id,
           },
         });
