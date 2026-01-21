@@ -10,6 +10,7 @@ import { BlockEditor, BlockRenderer, type Block, createDefaultPageContent } from
 import { Discussion } from '@/components/Discussion';
 import { Footer } from '@/components/Footer';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
+import { UserStats } from '@/components/UserStats';
 import { Button, Card, Badge, LoadingScreen, Input } from '@/components/ui';
 import { useAuth, usePages } from '@/hooks';
 import { formatDate, slugify } from '@/lib/utils';
@@ -203,6 +204,7 @@ function PageView({ page }: { page: WikiPageWithRevisions }) {
   const { user } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const isAuthor = user && page.authorId === user.id;
+  const isCommunityPage = page.tagPath === 'community' || page.tagPath.startsWith('community/');
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this page?')) return;
@@ -227,6 +229,7 @@ function PageView({ page }: { page: WikiPageWithRevisions }) {
         )}
       </header>
       <BlockRenderer content={page.content} />
+      {isCommunityPage && <UserStats authorId={page.authorId} />}
       <Discussion pageId={page.id} />
     </article>
   );

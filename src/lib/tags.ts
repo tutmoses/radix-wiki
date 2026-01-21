@@ -14,11 +14,6 @@ export interface TagNode {
 
 export const TAG_HIERARCHY: TagNode[] = [
   {
-    name: 'System',
-    slug: 'system',
-    hidden: true,
-  },
-  {
     name: 'Contents',
     slug: 'contents',
     children: [
@@ -38,9 +33,8 @@ export const TAG_HIERARCHY: TagNode[] = [
   },
   { name: 'Ecosystem', slug: 'ecosystem', xrd: { create: 20_000 } },
   { name: 'Jobs', slug: 'jobs' },
-  { name: 'Community', slug: 'community', children: [
-    { name: 'RFPs', slug: 'rfps' },
-  ]},
+  { name: 'Community', slug: 'community', children: [{ name: 'RFPs', slug: 'rfps' },]},
+  { name: 'Meta', slug: 'meta' },
 ];
 
 const AUTHOR_ONLY_PATHS = ['community', 'community/rfps', 'contents/blog'] as const;
