@@ -162,7 +162,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
 
     // Create new page
     const body: WikiPageInput = await request.json();
-    const { title, content, excerpt, tagPath } = body;
+    const { title, content, excerpt, bannerImage, tagPath } = body;
 
     if (!title || !content) return errors.badRequest('Title and content required');
     if (!tagPath || !isValidTagPath(tagPath.split('/'))) {
@@ -182,6 +182,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
         title,
         content: content as unknown as Prisma.InputJsonValue,
         excerpt,
+        bannerImage,
         tagPath,
         authorId: auth.session.userId,
       },
@@ -214,7 +215,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     if ('error' in auth) return auth.error;
 
     const body: Partial<WikiPageInput> & { revisionMessage?: string } = await request.json();
-    const { title, content, excerpt, revisionMessage } = body;
+    const { title, content, excerpt, bannerImage, revisionMessage } = body;
 
     const existing = await prisma.page.findFirst({ where: { tagPath: parsed.tagPath, slug: parsed.slug } });
 
@@ -226,6 +227,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
           slug: '',
           title: title || 'Homepage',
           content: (content as unknown as Prisma.InputJsonValue) || {},
+          bannerImage,
           authorId: auth.session.userId,
         },
       });
@@ -256,6 +258,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
         title: title ?? undefined,
         content: content !== undefined ? (content as unknown as Prisma.InputJsonValue) : undefined,
         excerpt: excerpt ?? undefined,
+        bannerImage: bannerImage ?? undefined,
       },
       include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
     });

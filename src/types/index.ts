@@ -42,6 +42,7 @@ export type WikiAuthor = Pick<User, 'id' | 'displayName' | 'radixAddress'>;
 
 export type WikiPage = Omit<Page, 'content'> & {
   content: Prisma.JsonValue;
+  bannerImage?: string | null;
   author?: WikiAuthor;
   revisions?: Pick<Revision, 'id'>[];
 };
@@ -51,6 +52,7 @@ export type WikiPageInput = {
   title: string;
   content: Prisma.JsonValue;
   excerpt?: string;
+  bannerImage?: string;
   tagPath: string;
 };
 

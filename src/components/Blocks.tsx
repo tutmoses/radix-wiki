@@ -155,7 +155,7 @@ function RichTextToolbar({ editor, onUploadImage }: { editor: Editor; onUploadIm
       {editor.isActive('table') && (
         <>
           <div className="w-px h-6 bg-border-muted mx-1 self-center" />
-          {[['addColumnAfter', '+Col'], ['addRowAfter', '+Row'], ['deleteColumn', '-Col', true], ['deleteRow', '-Row', true], ['deleteTable', '×Tbl', true]].map(([cmd, txt, danger]) => (
+          {[['addColumnAfter', '+Col'], ['addRowAfter', '+Row'], ['deleteColumn', '-Col', true], ['deleteRow', '-Row', true], ['deleteTable', 'Ã—Tbl', true]].map(([cmd, txt, danger]) => (
             <button key={cmd as string} type="button" onClick={() => (editor.chain().focus() as any)[cmd as string]().run()} className={cn('p-1.5 rounded text-muted hover:bg-surface-2 text-xs', danger && 'hover:text-error')}>{txt}</button>
           ))}
         </>
@@ -184,6 +184,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
     content: value,
     editorProps: { attributes: { class: 'outline-none focus:outline-none prose prose-invert min-h-20' } },
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    immediatelyRender: false,
   });
 
   useEffect(() => {
@@ -328,7 +329,7 @@ function AssetPriceBlock({ block, mode, onUpdate }: BlockProps<AssetPriceBlock>)
         </div>
         {block.showChange && typeof data.change24h === 'number' && (
           <span className={cn('text-small font-medium', isPositive ? 'text-success' : 'text-error')}>
-            {isPositive ? '↑' : '↓'} {Math.abs(data.change24h).toFixed(2)}%
+            {isPositive ? 'â†‘' : 'â†“'} {Math.abs(data.change24h).toFixed(2)}%
           </span>
         )}
       </div>

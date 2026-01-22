@@ -29,6 +29,7 @@ model Page {
   title       String
   content     Json      @default("{}")
   excerpt     String?
+  bannerImage String?   @map("banner_image")
   tagPath     String    @map("tag_path") // e.g., "contents/tech/core-protocols"
   authorId    String    @map("author_id")
   author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
