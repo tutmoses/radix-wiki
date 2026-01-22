@@ -329,7 +329,7 @@ function AssetPriceBlock({ block, mode, onUpdate }: BlockProps<AssetPriceBlock>)
         </div>
         {block.showChange && typeof data.change24h === 'number' && (
           <span className={cn('text-small font-medium', isPositive ? 'text-success' : 'text-error')}>
-            {isPositive ? 'â†‘' : 'â†“'} {Math.abs(data.change24h).toFixed(2)}%
+            {isPositive ? '↑' : '↓'} {Math.abs(data.change24h).toFixed(2)}%
           </span>
         )}
       </div>
