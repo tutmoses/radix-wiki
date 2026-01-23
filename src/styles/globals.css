@@ -123,7 +123,7 @@
   .stack { display: flex; flex-direction: column; gap: var(--space-md); }
   .stack-xs { display: flex; flex-direction: column; gap: var(--space-xs); }
   .stack-sm { display: flex; flex-direction: column; gap: var(--space-sm); }
-  .stack-lg { display: flex; flex-direction: column; gap: var(--space-lg); }
+  .stack-lg { display: flex; flex-direction: column; gap: var(--space-sm); }
   .row { display: flex; align-items: center; gap: var(--space-sm); }
   .row-md { display: flex; align-items: center; gap: var(--space-md); }
   .spread { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); flex-wrap: wrap; }

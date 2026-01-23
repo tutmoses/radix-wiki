@@ -17,8 +17,8 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { Node as TiptapNode, mergeAttributes } from '@tiptap/core';
 import {
   Plus, Trash2, Copy, ChevronUp, ChevronDown, Pencil, Image, Upload,
-  Minus, Code, Quote, Clock, FileText, Columns, Settings,
-  Bold, Italic, Link2, Heading2, Heading3, List, TrendingUp, TableIcon, Youtube, Code2
+  Minus, Code, Quote, Clock, FileText, Columns, Settings, ListTree,
+  Bold, Italic, Link2, Heading2, Heading3, List, TrendingUp, TableIcon, Globe
 } from 'lucide-react';
 import { cn, formatRelativeTime, slugify } from '@/lib/utils';
 import { findTagByPath } from '@/lib/tags';
@@ -41,15 +41,16 @@ const Iframe = TiptapNode.create({
 });
 
 // ========== BLOCK TYPES ==========
-export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice';
+export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice' | 'toc';
 interface BaseBlock { id: string; type: BlockType; }
 export interface ContentBlock extends BaseBlock { type: 'content'; text: string; }
 export interface RecentPagesBlock extends BaseBlock { type: 'recentPages'; tagPath?: string; limit: number; }
 export interface PageListBlock extends BaseBlock { type: 'pageList'; pageIds: string[]; }
 export interface AssetPriceBlock extends BaseBlock { type: 'assetPrice'; resourceAddress?: string; showChange?: boolean; }
+export interface TocBlock extends BaseBlock { type: 'toc'; }
 export interface Column { id: string; width?: 'auto' | '1/2' | '1/3' | '2/3' | '1/4' | '3/4'; blocks: LeafBlock[]; }
 export interface ColumnsBlock extends BaseBlock { type: 'columns'; columns: Column[]; gap?: 'sm' | 'md' | 'lg'; align?: 'start' | 'center' | 'end' | 'stretch'; }
-export type LeafBlock = ContentBlock | RecentPagesBlock | PageListBlock | AssetPriceBlock;
+export type LeafBlock = ContentBlock | RecentPagesBlock | PageListBlock | AssetPriceBlock | TocBlock;
 export type Block = LeafBlock | ColumnsBlock;
 type BlockContent = Block[];
 type Mode = 'view' | 'edit';
@@ -60,6 +61,7 @@ const BLOCK_META: Record<BlockType, { label: string; icon: typeof Pencil }> = {
   recentPages: { label: 'Recent Pages', icon: Clock },
   pageList: { label: 'Page List', icon: FileText },
   assetPrice: { label: 'Asset Price', icon: TrendingUp },
+  toc: { label: 'Table of Contents', icon: ListTree },
   columns: { label: 'Columns', icon: Columns },
 };
 
@@ -68,19 +70,23 @@ const BLOCK_DEFAULTS: Record<BlockType, () => Omit<Block, 'id'>> = {
   recentPages: () => ({ type: 'recentPages', limit: 5 }),
   pageList: () => ({ type: 'pageList', pageIds: [] }),
   assetPrice: () => ({ type: 'assetPrice', resourceAddress: 'resource_rdx1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxradxrd', showChange: true }),
+  toc: () => ({ type: 'toc' }),
   columns: () => ({ type: 'columns', columns: [{ id: crypto.randomUUID(), blocks: [] }, { id: crypto.randomUUID(), blocks: [] }], gap: 'md', align: 'start' }),
 };
 
-const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'columns', 'recentPages', 'pageList', 'assetPrice'];
+const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'columns', 'toc', 'recentPages', 'pageList', 'assetPrice'];
 
 export const createBlock = (type: BlockType): Block => ({ id: crypto.randomUUID(), ...BLOCK_DEFAULTS[type]() } as Block);
 const createColumn = (): Column => ({ id: crypto.randomUUID(), blocks: [] });
 
-export const createDefaultPageContent = (): Block[] => [{
-  id: crypto.randomUUID(),
-  type: 'content',
-  text: '<h2>Getting Started</h2><p>Start writing your content here...</p>',
-}];
+export const createDefaultPageContent = (): Block[] => [
+  { id: crypto.randomUUID(), type: 'content', text: '' },
+  { id: crypto.randomUUID(), type: 'columns', columns: [
+    { id: crypto.randomUUID(), blocks: [{ id: crypto.randomUUID(), type: 'toc' }] },
+    { id: crypto.randomUUID(), blocks: [{ id: crypto.randomUUID(), type: 'content', text: '<h2>Getting Started</h2><p>Start writing your content here...</p>' }] },
+  ], gap: 'md', align: 'start' },
+  { id: crypto.randomUUID(), type: 'content', text: '' },
+];
 
 function duplicateBlock(block: Block): Block {
   if (block.type === 'columns') {
@@ -128,7 +134,25 @@ async function uploadImage(file: File): Promise<string | null> {
 // ========== RICH TEXT EDITOR ==========
 type ToolbarActive = string | [string, Record<string, unknown>] | null;
 
+function parseEmbedUrl(url: string): { type: 'youtube' | 'twitter' | 'iframe'; src: string } {
+  const youtubeMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+  if (youtubeMatch) return { type: 'youtube', src: url };
+  
+  const twitterMatch = url.match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/);
+  if (twitterMatch) return { type: 'twitter', src: `https://platform.twitter.com/embed/Tweet.html?id=${twitterMatch[1]}` };
+  
+  return { type: 'iframe', src: url };
+}
+
 function RichTextToolbar({ editor, onUploadImage }: { editor: Editor; onUploadImage: () => void }) {
+  const handleEmbed = () => {
+    const url = window.prompt('Embed URL (YouTube, Twitter/X, or any iframe)');
+    if (!url) return;
+    const { type, src } = parseEmbedUrl(url);
+    if (type === 'youtube') editor.chain().focus().setYoutubeVideo({ src }).run();
+    else editor.chain().focus().insertContent({ type: 'iframe', attrs: { src } }).run();
+  };
+
   const buttons: { cmd: () => void; active: ToolbarActive; icon: typeof Bold; label: string }[] = [
     { cmd: () => editor.chain().focus().toggleBold().run(), active: 'bold', icon: Bold, label: 'Bold' },
     { cmd: () => editor.chain().focus().toggleItalic().run(), active: 'italic', icon: Italic, label: 'Italic' },
@@ -138,11 +162,10 @@ function RichTextToolbar({ editor, onUploadImage }: { editor: Editor; onUploadIm
     { cmd: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), active: ['heading', { level: 3 }] as [string, Record<string, unknown>], icon: Heading3, label: 'H3' },
     { cmd: () => editor.chain().focus().toggleBulletList().run(), active: 'bulletList', icon: List, label: 'List' },
     { cmd: () => editor.chain().focus().toggleBlockquote().run(), active: 'blockquote', icon: Quote, label: 'Quote' },
-    { cmd: () => editor.chain().focus().toggleCodeBlock().run(), active: 'codeBlock', icon: Code2, label: 'Code Block' },
+    { cmd: () => editor.chain().focus().toggleCodeBlock().run(), active: 'codeBlock', icon: Code, label: 'Code Block' },
     { cmd: () => editor.chain().focus().setHorizontalRule().run(), active: null, icon: Minus, label: 'Divider' },
     { cmd: onUploadImage, active: null, icon: Upload, label: 'Upload Image' },
-    { cmd: () => { const url = window.prompt('YouTube URL'); if (url) editor.chain().focus().setYoutubeVideo({ src: url }).run(); }, active: null, icon: Youtube, label: 'YouTube' },
-    { cmd: () => { const url = window.prompt('Embed URL'); if (url) editor.chain().focus().insertContent({ type: 'iframe', attrs: { src: url } }).run(); }, active: 'iframe', icon: Code2, label: 'Embed' },
+    { cmd: handleEmbed, active: null, icon: Globe, label: 'Embed' },
     { cmd: () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), active: 'table', icon: TableIcon, label: 'Table' },
   ];
 
@@ -155,7 +178,7 @@ function RichTextToolbar({ editor, onUploadImage }: { editor: Editor; onUploadIm
       {editor.isActive('table') && (
         <>
           <div className="w-px h-6 bg-border-muted mx-1 self-center" />
-          {[['addColumnAfter', '+Col'], ['addRowAfter', '+Row'], ['deleteColumn', '-Col', true], ['deleteRow', '-Row', true], ['deleteTable', 'Ã—Tbl', true]].map(([cmd, txt, danger]) => (
+          {[['addColumnAfter', '+Col'], ['addRowAfter', '+Row'], ['deleteColumn', '-Col', true], ['deleteRow', '-Row', true], ['deleteTable', '—Tbl', true]].map(([cmd, txt, danger]) => (
             <button key={cmd as string} type="button" onClick={() => (editor.chain().focus() as any)[cmd as string]().run()} className={cn('p-1.5 rounded text-muted hover:bg-surface-2 text-xs', danger && 'hover:text-error')}>{txt}</button>
           ))}
         </>
@@ -217,16 +240,37 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
 function PageCard({ page, compact }: { page: WikiPage; compact?: boolean }) {
   const leafTag = findTagByPath(page.tagPath.split('/'));
   const href = `/${page.tagPath}/${page.slug}`;
-  if (compact) return <Link href={href} className="group row p-3 surface hover:bg-surface-2 transition-colors"><FileText size={16} className="text-accent" /><span className="group-hover:text-accent transition-colors">{page.title}</span></Link>;
+  
+  if (compact) {
+    return (
+      <Link href={href} className="group row p-3 surface hover:bg-surface-2 transition-colors">
+        {page.bannerImage ? (
+          <img src={page.bannerImage} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+        ) : (
+          <FileText size={16} className="text-accent shrink-0" />
+        )}
+        <span className="group-hover:text-accent transition-colors truncate">{page.title}</span>
+      </Link>
+    );
+  }
+  
   return (
     <Link href={href} className="group">
-      <div className="row items-start gap-3 p-4 surface-interactive h-full">
-        <FileText size={18} className="text-accent shrink-0 mt-0.5" />
-        <div className="stack-sm min-w-0 overflow-hidden">
+      <div className="surface-interactive h-full overflow-hidden">
+        {page.bannerImage ? (
+          <div className="aspect-4/1 overflow-hidden">
+            <img src={page.bannerImage} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          </div>
+        ) : (
+          <div className="aspect-4/1 bg-surface-2 center">
+            <FileText size={24} className="text-muted" />
+          </div>
+        )}
+        <div className="stack-sm p-4">
           <span className="font-medium group-hover:text-accent transition-colors truncate">{page.title}</span>
-          {page.excerpt && <p className="text-muted line-clamp-2">{page.excerpt}</p>}
-          <div className="row flex-wrap mt-auto pt-2 overflow-hidden">
-            <small className="row shrink-0"><Clock size={12} />{formatRelativeTime(page.updatedAt)}</small>
+          {page.excerpt && <p className="text-muted line-clamp-2 text-small">{page.excerpt}</p>}
+          <div className="row flex-wrap mt-auto pt-1">
+            <small className="row text-muted"><Clock size={12} />{formatRelativeTime(page.updatedAt)}</small>
             {leafTag && <Badge variant="secondary" className="truncate max-w-full">{leafTag.name}</Badge>}
           </div>
         </div>
@@ -328,7 +372,7 @@ function AssetPriceBlock({ block, mode, onUpdate }: BlockProps<AssetPriceBlock>)
           <span className="text-h3 font-semibold">${priceStr}</span>
         </div>
         {block.showChange && typeof data.change24h === 'number' && (
-          <span className={cn('text-small font-medium', isPositive ? 'text-success' : 'text-error')}>
+          <span className={cn('font-medium', isPositive ? 'text-success' : 'text-error')}>
             {isPositive ? '↑' : '↓'} {Math.abs(data.change24h).toFixed(2)}%
           </span>
         )}
@@ -340,13 +384,58 @@ function AssetPriceBlock({ block, mode, onUpdate }: BlockProps<AssetPriceBlock>)
       <div className="row text-muted"><TrendingUp size={18} /><span className="font-medium">Asset Price Widget</span></div>
       <div className="stack-sm">
         <label className="font-medium">Resource Address</label>
-        <input type="text" value={block.resourceAddress || ''} onChange={e => onUpdate?.({ ...block, resourceAddress: e.target.value })} placeholder="resource_rdx1..." className="input font-mono text-small" />
+        <input type="text" value={block.resourceAddress || ''} onChange={e => onUpdate?.({ ...block, resourceAddress: e.target.value })} placeholder="resource_rdx1..." className="input font-mono" />
         <small className="text-muted">Enter any Radix resource address to fetch its price</small>
       </div>
       <label className="row">
         <input type="checkbox" checked={block.showChange ?? true} onChange={e => onUpdate?.({ ...block, showChange: e.target.checked })} className="w-4 h-4 rounded border-border" />
         Show 24h change
       </label>
+    </div>
+  );
+}
+
+function extractHeadings(content: BlockContent): { text: string; level: number; id: string }[] {
+  const headings: { text: string; level: number; id: string }[] = [];
+  const extractFromBlocks = (blocks: Block[]) => {
+    for (const block of blocks) {
+      if (block.type === 'content' && block.text) {
+        const doc = new DOMParser().parseFromString(block.text, 'text/html');
+        doc.querySelectorAll('h1, h2, h3').forEach(el => {
+          const text = el.textContent?.trim() || '';
+          if (text) headings.push({ text, level: parseInt(el.tagName[1]), id: slugify(text) });
+        });
+      } else if (block.type === 'columns') {
+        for (const col of block.columns) extractFromBlocks(col.blocks);
+      }
+    }
+  };
+  extractFromBlocks(content);
+  return headings;
+}
+
+function TocBlock({ block, mode, allContent = [] }: BlockProps<TocBlock>) {
+  const headings = extractHeadings(allContent);
+
+  if (mode === 'view') {
+    if (!headings.length) return null;
+    return (
+      <nav className="surface p-2 pt-8 rounded-lg">
+        <ul className="stack-lg list-none pl-0">
+          {headings.map((h, i) => (
+            <li key={i} style={{ paddingLeft: `${(h.level - 1) * 3}rem` }}>
+              <a href={`#${h.id}`} className=" hover:text-accent transition-colors">{h.text}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    );
+  }
+
+  return (
+    <div className="stack surface p-4 border-dashed">
+      <div className="row text-muted"><ListTree size={18} /><span className="font-medium">Table of Contents</span></div>
+      <p className="text-small text-muted">Auto-generated from page headings</p>
     </div>
   );
 }
@@ -429,6 +518,7 @@ const BLOCK_COMPONENTS: Record<BlockType, React.ComponentType<BlockProps<any>>> 
   recentPages: RecentPagesBlock,
   pageList: PageListBlock,
   assetPrice: AssetPriceBlock,
+  toc: TocBlock,
   columns: ColumnsBlock,
 };
 

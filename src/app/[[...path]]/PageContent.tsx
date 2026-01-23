@@ -222,10 +222,19 @@ function CategoryView({ tagPath }: { tagPath: string[] }) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {pages.map(p => (
             <Link key={p.id} href={`/${p.tagPath}/${p.slug}`}>
-              <Card interactive className="h-full">
-                <div className="stack-sm">
-                  <h3>{p.title}</h3>
-                  {p.excerpt && <p className="text-muted">{p.excerpt}</p>}
+              <Card interactive className="h-full overflow-hidden p-0!">
+                {p.bannerImage ? (
+                  <div className="aspect-4/1 overflow-hidden">
+                    <img src={p.bannerImage} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  </div>
+                ) : (
+                  <div className="aspect-4/1 bg-surface-2 center">
+                    <FileText size={24} className="text-muted" />
+                  </div>
+                )}
+                <div className="stack-sm p-4">
+                  <h3 className="m-0!">{p.title}</h3>
+                  {p.excerpt && <p className="text-muted text-small line-clamp-2">{p.excerpt}</p>}
                 </div>
               </Card>
             </Link>
