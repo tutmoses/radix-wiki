@@ -14,11 +14,12 @@ import TiptapTableCell from '@tiptap/extension-table-cell';
 import TiptapTableHeader from '@tiptap/extension-table-header';
 import TiptapYoutube from '@tiptap/extension-youtube';
 import Placeholder from '@tiptap/extension-placeholder';
+import TiptapCodeBlock from '@tiptap/extension-code-block';
 import { Node as TiptapNode, mergeAttributes } from '@tiptap/core';
 import {
   Plus, Trash2, Copy, ChevronUp, ChevronDown, Pencil, Upload,
   Minus, Code, Quote, Clock, FileText, Columns, Settings, ListTree,
-  Bold, Italic, Link2, Heading2, Heading3, List, TrendingUp, TableIcon, Globe, LayoutList, X,
+  Bold, Italic, Link2, Heading2, Heading3, List, TrendingUp, TableIcon, Globe, LayoutList, X, Check,
   type LucideIcon
 } from 'lucide-react';
 import { cn, formatRelativeTime, slugify } from '@/lib/utils';
@@ -181,6 +182,45 @@ function TabGroupView({ node, getPos, editor, updateAttributes }: { node: any; g
   );
 }
 
+function CodeBlockView({ node, updateAttributes }: { node: any; updateAttributes: (attrs: Record<string, any>) => void }) {
+  const [showLangs, setShowLangs] = useState(false);
+  const lang = node.attrs.language || DEFAULT_LANG;
+
+  return (
+    <NodeViewWrapper className="code-block-wrapper relative">
+      <div className="absolute top-2 right-2 z-10">
+        <button onClick={() => setShowLangs(!showLangs)} className="row gap-1 px-2 py-1 bg-surface-2/80 hover:bg-surface-2 rounded text-xs text-muted hover:text-text transition-colors backdrop-blur-sm">
+          <Code size={12} />
+          <span>{lang}</span>
+          <ChevronDown size={12} className={cn('transition-transform', showLangs && 'rotate-180')} />
+        </button>
+        {showLangs && (
+          <div className="absolute top-full right-0 mt-1 bg-surface-1 border border-border rounded shadow-lg max-h-48 overflow-y-auto min-w-28 z-50">
+            {SHIKI_LANGS.map(l => (
+              <button key={l} onClick={() => { updateAttributes({ language: l }); setShowLangs(false); }}
+                className={cn('w-full px-3 py-1.5 text-left text-xs hover:bg-surface-2 transition-colors flex items-center justify-between', l === lang && 'text-accent')}>
+                {l}
+                {l === lang && <Check size={12} />}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <pre><NodeViewContent as="code" className={`language-${lang}`} /></pre>
+    </NodeViewWrapper>
+  );
+}
+
+const CodeBlock = TiptapCodeBlock.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      language: { default: DEFAULT_LANG, parseHTML: el => el.querySelector('code')?.className?.match(/language-(\w+)/)?.[1] || DEFAULT_LANG },
+    };
+  },
+  addNodeView() { return ReactNodeViewRenderer(CodeBlockView); },
+});
+
 // ========== BLOCK TYPES ==========
 export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice' | 'toc';
 interface BaseBlock { id: string; type: BlockType; }
@@ -309,7 +349,7 @@ const TOOLBAR_BUTTONS: { key: string; icon: LucideIcon; active?: string | [strin
   }).run() },
 ];
 
-const TABLE_ACTIONS: [string, string, boolean?][] = [['addColumnAfter', '+Col'], ['addRowAfter', '+Row'], ['deleteColumn', '-Col', true], ['deleteRow', '-Row', true], ['deleteTable', 'Ã¢Ë†â€™Tbl', true]];
+const TABLE_ACTIONS: [string, string, boolean?][] = [['addColumnAfter', '+Col'], ['addRowAfter', '+Row'], ['deleteColumn', '-Col', true], ['deleteRow', '-Row', true], ['deleteTable', 'ÃƒÂ¢Ã‹â€ Ã¢â‚¬â„¢Tbl', true]];
 
 function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -317,14 +357,14 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [2, 3] } }),
+      StarterKit.configure({ heading: { levels: [2, 3] }, codeBlock: false }),
       TiptapLink.configure({ openOnClick: false, HTMLAttributes: { class: 'link' } }),
       TiptapImage.configure({ inline: false, allowBase64: true, HTMLAttributes: { class: 'rounded-lg max-w-full' } }),
       TiptapYoutube.configure({ controls: true, nocookie: true, modestBranding: true }),
       TiptapTable.configure({ resizable: false, HTMLAttributes: { class: 'tiptap-table' } }),
       TiptapTableRow, TiptapTableCell.configure({ HTMLAttributes: { class: 'p-2' } }),
       TiptapTableHeader.configure({ HTMLAttributes: { class: 'p-2 font-semibold bg-surface-1' } }),
-      Iframe, TabGroup, TabItem, Placeholder.configure({ placeholder }),
+      Iframe, TabGroup, TabItem, CodeBlock, Placeholder.configure({ placeholder }),
     ],
     content: value,
     editorProps: { attributes: { class: 'outline-none focus:outline-none prose prose-invert min-h-20' } },
@@ -517,7 +557,7 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
         <span className="text-h3 font-semibold">${priceStr}</span>
       </div>
       {block.showChange && typeof data.change24h === 'number' && (
-        <span className={cn('font-medium', isPositive ? 'text-success' : 'text-error')}>{isPositive ? 'Ã¢â€ â€˜' : 'Ã¢â€ â€œ'} {Math.abs(data.change24h).toFixed(2)}%</span>
+        <span className={cn('font-medium', isPositive ? 'text-success' : 'text-error')}>{isPositive ? 'ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬Ëœ' : 'ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬Å“'} {Math.abs(data.change24h).toFixed(2)}%</span>
       )}
     </div>
   );
