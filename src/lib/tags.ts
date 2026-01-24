@@ -31,6 +31,7 @@ export const TAG_HIERARCHY: TagNode[] = [
       { name: 'Blog', slug: 'blog', xrd: { create: 50_000 } },
     ],
   },
+  { name: 'Developers', slug: 'developers' },
   { name: 'Ecosystem', slug: 'ecosystem', xrd: { create: 20_000 } },
   { name: 'Jobs', slug: 'jobs' },
   { name: 'Community', slug: 'community', children: [{ name: 'RFPs', slug: 'rfps' },]},

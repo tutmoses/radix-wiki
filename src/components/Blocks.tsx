@@ -368,7 +368,7 @@ function AssetPriceBlock({ block, mode, onUpdate }: BlockProps<AssetPriceBlock>)
     return (
       <div className="surface p-4 inline-flex items-center gap-4">
         <div className="stack-xs">
-          <span className="text-small text-muted">{displayName}</span>
+          <span className="text-small text-muted">${displayName}</span>
           <span className="text-h3 font-semibold">${priceStr}</span>
         </div>
         {block.showChange && typeof data.change24h === 'number' && (
@@ -420,10 +420,10 @@ function TocBlock({ block, mode, allContent = [] }: BlockProps<TocBlock>) {
   if (mode === 'view') {
     if (!headings.length) return null;
     return (
-      <nav className="surface p-2 pt-8 rounded-lg">
+      <nav className="surface pt-8 pb-4 pl-8 pr-4 rounded-lg">
         <ul className="stack-lg list-none pl-0">
           {headings.map((h, i) => (
-            <li key={i} style={{ paddingLeft: `${(h.level - 1) * 3}rem` }}>
+            <li key={i} style={{ paddingLeft: `${(h.level - 2) * 3}rem` }}>
               <a href={`#${h.id}`} className=" hover:text-accent transition-colors">{h.text}</a>
             </li>
           ))}

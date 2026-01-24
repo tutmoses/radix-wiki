@@ -49,13 +49,11 @@ export function Sidebar() {
       <aside className={cn('fixed top-16 left-0 z-40 h-[calc(100vh-4rem)] w-72 max-w-[85vw] bg-surface-0 border-r border-border-muted transform transition-transform duration-200 ease-in-out', sidebarOpen ? 'translate-x-0' : '-translate-x-full')}>
         <div className="stack-lg p-4 h-full overflow-y-auto">
           <div className="stack-sm">
-            <h4 className="uppercase tracking-wider px-3 py-1 text-muted">Navigation</h4>
             <nav className="stack-sm">
               <NavItem href="/" icon={<Home size={18} />} label="Home" isActive={pathname === '/'} onClick={closeSidebar} />
             </nav>
           </div>
           <div className="stack-sm">
-            <h4 className="uppercase tracking-wider px-3 py-1 text-muted">Categories</h4>
             <nav className="stack-sm">
               {visibleTags.map(node => <TagNavItem key={node.slug} node={node} parentPath="" pathname={pathname} onClose={closeSidebar} depth={0} />)}
             </nav>
