@@ -366,7 +366,7 @@ function AssetPriceBlock({ block, mode, onUpdate }: BlockProps<AssetPriceBlock>)
     const isPositive = (data.change24h ?? 0) >= 0;
     const priceStr = data.price < 0.01 ? data.price.toFixed(6) : data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
     return (
-      <div className="surface p-4 inline-flex items-center gap-4">
+      <div className="surface p-4 flex items-center gap-4">
         <div className="stack-xs">
           <span className="text-small text-muted">${displayName}</span>
           <span className="text-h3 font-semibold">${priceStr}</span>
@@ -424,7 +424,7 @@ function TocBlock({ block, mode, allContent = [] }: BlockProps<TocBlock>) {
         <ul className="stack-lg list-none pl-0">
           {headings.map((h, i) => (
             <li key={i} style={{ paddingLeft: `${(h.level - 2) * 3}rem` }}>
-              <a href={`#${h.id}`} className=" hover:text-accent transition-colors">{h.text}</a>
+              <a href={`#${h.id}`} className=" hover:text-accent transition-colors font-semibold">{h.text}</a>
             </li>
           ))}
         </ul>
