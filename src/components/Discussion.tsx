@@ -17,34 +17,26 @@ function buildCommentTree(comments: WikiComment[]): WikiComment[] {
   const roots: WikiComment[] = [];
   comments.forEach(c => map.set(c.id, { ...c, replies: [] }));
   comments.forEach(c => {
-    const comment = map.get(c.id)!;
-    if (c.parentId && map.has(c.parentId)) map.get(c.parentId)!.replies!.push(comment);
-    else roots.push(comment);
+    const node = map.get(c.id)!;
+    c.parentId && map.has(c.parentId) ? map.get(c.parentId)!.replies!.push(node) : roots.push(node);
   });
   return roots;
 }
 
-type FormState = { error?: string; success?: boolean };
-
-function useFormAction(handler: (content: string) => Promise<void>) {
-  return useActionState(async (_prev: FormState, formData: FormData): Promise<FormState> => {
-    const content = formData.get('content') as string;
-    if (!content?.trim()) return { error: 'Content required' };
-    try { await handler(content.trim()); return { success: true }; }
-    catch { return { error: 'Failed to post' }; }
-  }, {});
-}
+type FormState = { error?: string; ok?: boolean };
 
 function CommentForm({ onSubmit, onCancel, placeholder = 'Write a comment...', autoFocus, compact }: {
   onSubmit: (content: string) => Promise<void>; onCancel?: () => void; placeholder?: string; autoFocus?: boolean; compact?: boolean;
 }) {
-  const [state, action, isPending] = useFormAction(onSubmit);
+  const [state, action, isPending] = useActionState<FormState, FormData>(async (_, fd) => {
+    const content = (fd.get('content') as string)?.trim();
+    if (!content) return { error: 'Content required' };
+    try { await onSubmit(content); return { ok: true }; } catch { return { error: 'Failed to post' }; }
+  }, {});
 
   return (
     <form action={action} className={cn('stack-sm', compact && 'pl-4')}>
-      <textarea name="content" placeholder={placeholder} defaultValue=""
-        className={cn('input resize-none', compact ? 'min-h-16' : 'min-h-20')} rows={compact ? 2 : 3} autoFocus={autoFocus}
-        key={state.success ? Date.now() : 'form'} />
+      <textarea name="content" placeholder={placeholder} defaultValue="" className={cn('input resize-none', compact ? 'min-h-16' : 'min-h-20')} rows={compact ? 2 : 3} autoFocus={autoFocus} key={state.ok ? Date.now() : 'form'} />
       {state.error && <p className="text-error text-small">{state.error}</p>}
       <div className="row justify-end">
         {onCancel && <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>}
@@ -54,10 +46,8 @@ function CommentForm({ onSubmit, onCancel, placeholder = 'Write a comment...', a
   );
 }
 
-function CommentThread({ comment, depth, pageId, onReply, onDelete, currentUserId }: {
-  comment: WikiComment; depth: number; pageId: string;
-  onReply: (parentId: string, content: string) => Promise<void>;
-  onDelete: (id: string) => Promise<void>; currentUserId?: string;
+function CommentThread({ comment, depth, onReply, onDelete, currentUserId }: {
+  comment: WikiComment; depth: number; onReply: (parentId: string, content: string) => Promise<void>; onDelete: (id: string) => Promise<void>; currentUserId?: string;
 }) {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -66,13 +56,10 @@ function CommentThread({ comment, depth, pageId, onReply, onDelete, currentUserI
   const isAuthor = currentUserId === comment.authorId;
   const hasReplies = comment.replies && comment.replies.length > 0;
 
-  const [deleteState, deleteAction, isDeleting] = useActionState(async (_prev: FormState): Promise<FormState> => {
+  const [delState, delAction, isDeleting] = useActionState<FormState, FormData>(async (_prev, _fd) => {
     if (!confirm('Delete this comment?')) return {};
-    try { await onDelete(comment.id); return { success: true }; }
-    catch { return { error: 'Failed to delete' }; }
+    try { await onDelete(comment.id); return { ok: true }; } catch { return { error: 'Failed to delete' }; }
   }, {});
-
-  const handleReply = async (content: string) => { await onReply(comment.id, content); setShowReplyForm(false); };
 
   return (
     <div className={cn('stack-sm', depth > 0 && 'pl-4 border-l border-border-muted')}>
@@ -92,19 +79,19 @@ function CommentThread({ comment, depth, pageId, onReply, onDelete, currentUserI
         <div className="row text-small">
           {canReply && <button onClick={() => setShowReplyForm(!showReplyForm)} className="row text-muted hover:text-accent"><Reply size={14} /><span>Reply</span></button>}
           {isAuthor && (
-            <form action={deleteAction}>
+            <form action={delAction}>
               <button type="submit" disabled={isDeleting} className="row text-muted hover:text-error">
                 <Trash2 size={14} /><span>{isDeleting ? 'Deleting...' : 'Delete'}</span>
               </button>
             </form>
           )}
         </div>
-        {deleteState.error && <p className="text-error text-small">{deleteState.error}</p>}
+        {delState.error && <p className="text-error text-small">{delState.error}</p>}
       </div>
-      {showReplyForm && <CommentForm onSubmit={handleReply} onCancel={() => setShowReplyForm(false)} placeholder="Write a reply..." autoFocus compact />}
+      {showReplyForm && <CommentForm onSubmit={c => onReply(comment.id, c).then(() => setShowReplyForm(false))} onCancel={() => setShowReplyForm(false)} placeholder="Write a reply..." autoFocus compact />}
       {hasReplies && !collapsed && (
         <div className="stack mt-2">
-          {comment.replies!.map((reply: WikiComment) => <CommentThread key={reply.id} comment={reply} depth={depth + 1} pageId={pageId} onReply={onReply} onDelete={onDelete} currentUserId={currentUserId} />)}
+          {comment.replies!.map(r => <CommentThread key={r.id} comment={r} depth={depth + 1} onReply={onReply} onDelete={onDelete} currentUserId={currentUserId} />)}
         </div>
       )}
     </div>
@@ -128,11 +115,7 @@ export function Discussion({ pageId }: { pageId: string }) {
   useEffect(() => { fetchComments(); }, [fetchComments]);
 
   const handlePost = async (content: string, parentId?: string) => {
-    const res = await fetch('/api/comments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, parentId, pageId }),
-    });
+    const res = await fetch('/api/comments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, parentId, pageId }) });
     if (res.ok) await fetchComments();
     else throw new Error((await res.json()).error || 'Failed to post comment');
   };
@@ -143,23 +126,20 @@ export function Discussion({ pageId }: { pageId: string }) {
     else throw new Error('Failed to delete comment');
   };
 
-  const totalCount = comments.reduce((acc, c) => {
-    const count = (comment: WikiComment): number => 1 + (comment.replies?.reduce((a: number, r: WikiComment) => a + count(r), 0) || 0);
-    return acc + count(c);
-  }, 0);
+  const countComments = (list: WikiComment[]): number => list.reduce((acc, c) => acc + 1 + countComments(c.replies || []), 0);
 
   return (
     <section className="stack pt-6 border-t border-border">
       <button onClick={() => setExpanded(!expanded)} className="spread w-full text-left">
-        <div className="row"><MessageSquare size={20} className="text-accent" /><h3 className="font-semibold">Discussion</h3><span className="text-muted">({totalCount})</span></div>
+        <div className="row"><MessageSquare size={20} className="text-accent" /><h3 className="font-semibold">Discussion</h3><span className="text-muted">({countComments(comments)})</span></div>
         {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
       </button>
       {expanded && (
         <div className="stack">
-          {isAuthenticated ? <CommentForm onSubmit={content => handlePost(content)} placeholder="Start a discussion..." />
+          {isAuthenticated ? <CommentForm onSubmit={c => handlePost(c)} placeholder="Start a discussion..." />
             : <p className="text-muted surface p-4 text-center">Connect your wallet to join the discussion.</p>}
           {isLoading ? <div className="stack">{[1, 2].map(i => <div key={i} className="h-20 skeleton" />)}</div>
-            : comments.length > 0 ? <div className="stack">{comments.map(c => <CommentThread key={c.id} comment={c} depth={0} pageId={pageId} onReply={(parentId, content) => handlePost(content, parentId)} onDelete={handleDelete} currentUserId={user?.id} />)}</div>
+            : comments.length > 0 ? <div className="stack">{comments.map(c => <CommentThread key={c.id} comment={c} depth={0} onReply={handlePost} onDelete={handleDelete} currentUserId={user?.id} />)}</div>
             : <p className="text-muted text-center py-4">No comments yet. Be the first to start the discussion!</p>}
         </div>
       )}

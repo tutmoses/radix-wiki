@@ -21,53 +21,59 @@ interface WikiPageWithRevisions extends WikiPage {
   revisions?: { id: string }[];
 }
 
+// Shared status messages
+const STATUS = {
+  authRequired: { title: 'Authentication Required', message: 'Please connect your Radix wallet.' },
+  notFound: { title: 'Page not found', message: "The page you're looking for doesn't exist." },
+  notAuthorized: { title: 'Not Authorized', message: 'You can only edit your own pages in this category.' },
+  invalidPath: { title: 'Invalid path', message: 'The path you entered is not valid.' },
+  error: { title: 'Error', message: 'Failed to load page' },
+} as const;
+
+function StatusCard({ status, backHref }: { status: keyof typeof STATUS; backHref: string }) {
+  const { title, message } = STATUS[status];
+  return (
+    <div className="center">
+      <Card className="text-center max-w-md">
+        <div className="stack items-center py-12">
+          <div className="center w-16 h-16 rounded-2xl bg-surface-2 text-muted"><FileText size={32} /></div>
+          <h1>{title}</h1>
+          <p className="text-muted">{message}</p>
+          <Link href={backHref}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 function Banner({ src, editable, onUpload, onRemove, children }: { 
-  src?: string | null; 
-  editable?: boolean; 
-  onUpload?: (url: string) => void; 
-  onRemove?: () => void;
-  children?: ReactNode;
+  src?: string | null; editable?: boolean; onUpload?: (url: string) => void; onRemove?: () => void; children?: ReactNode;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !onUpload) return;
-    
     setIsUploading(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
       const res = await fetch('/api/upload', { method: 'POST', body: formData });
-      if (res.ok) {
-        const { url } = await res.json();
-        onUpload(url);
-      } else {
-        const { error } = await res.json();
-        alert(error || 'Upload failed');
-      }
-    } catch {
-      alert('Upload failed');
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+      if (res.ok) onUpload((await res.json()).url);
+      else alert((await res.json()).error || 'Upload failed');
+    } catch { alert('Upload failed'); }
+    finally { setIsUploading(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
   };
+
+  const FileInput = <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />;
 
   if (editable && !src) {
     return (
       <div className="banner-container border-2 border-dashed border-border-muted rounded-lg bg-surface-1/50">
-        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-        <button 
-          onClick={() => fileInputRef.current?.click()} 
-          disabled={isUploading}
-          className="w-full h-full center text-muted hover:text-text hover:bg-surface-2/50 transition-colors"
-        >
-          <div className="stack-sm items-center">
-            <ImageIcon size={32} />
-            <span>{isUploading ? 'Uploading...' : 'Add Banner Image'}</span>
-          </div>
+        {FileInput}
+        <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="w-full h-full center text-muted hover:text-text hover:bg-surface-2/50 transition-colors">
+          <div className="stack-sm items-center"><ImageIcon size={32} /><span>{isUploading ? 'Uploading...' : 'Add Banner Image'}</span></div>
         </button>
         {children && <div className="banner-overlay">{children}</div>}
       </div>
@@ -78,87 +84,57 @@ function Banner({ src, editable, onUpload, onRemove, children }: {
 
   return (
     <div className="banner-container relative rounded-lg overflow-hidden">
-      {src && <img src={src} alt="Page banner" className="banner-image" />}
-      {!src && <div className="banner-placeholder" />}
+      {src ? <img src={src} alt="Page banner" className="banner-image" /> : <div className="banner-placeholder" />}
       {children && <div className="banner-overlay">{children}</div>}
       {editable && (
         <div className="absolute top-2 right-2 row z-10">
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-          <button 
-            onClick={() => fileInputRef.current?.click()} 
-            disabled={isUploading}
-            className="icon-btn bg-surface-0/80 backdrop-blur-sm"
-            title="Change banner"
-          >
-            <Upload size={16} />
-          </button>
-          {onRemove && src && (
-            <button 
-              onClick={onRemove} 
-              className="icon-btn bg-surface-0/80 backdrop-blur-sm text-error hover:text-error"
-              title="Remove banner"
-            >
-              <X size={16} />
-            </button>
-          )}
+          {FileInput}
+          <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="icon-btn bg-surface-0/80 backdrop-blur-sm" title="Change banner"><Upload size={16} /></button>
+          {onRemove && src && <button onClick={onRemove} className="icon-btn bg-surface-0/80 backdrop-blur-sm text-error hover:text-error" title="Remove banner"><X size={16} /></button>}
         </div>
       )}
     </div>
   );
 }
 
-function StatusCard({ title, message, backHref, icon }: { title: string; message: string; backHref: string; icon?: ReactNode }) {
-  return (
-    <div className="center">
-      <Card className="text-center max-w-md">
-        <div className="stack items-center py-12">
-          {icon && <div className="center w-16 h-16 rounded-2xl bg-surface-2 text-muted">{icon}</div>}
-          <h1>{title}</h1>
-          <p className="text-muted">{message}</p>
-          <Link href={backHref}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link>
-        </div>
-      </Card>
-    </div>
-  );
+// Shared save handler hook
+function useSave(endpoint: string, redirectTo: string, validate?: () => string | null) {
+  const router = useRouter();
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const save = async (body: Record<string, unknown>, method = 'PUT') => {
+    const error = validate?.();
+    if (error) { alert(error); return; }
+    setIsSaving(true);
+    try {
+      const res = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (res.ok) method === 'PUT' ? router.push(redirectTo) : (window.location.href = `/${data.tagPath}/${data.slug}`);
+      else { alert(data.error || 'Failed to save'); setIsSaving(false); }
+    } catch { alert('Failed to save'); setIsSaving(false); }
+  };
+  
+  return { save, isSaving };
 }
 
 function HomepageView({ isEditing }: { isEditing: boolean }) {
-  const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [content, setContent] = useState<Block[]>([]);
   const [bannerImage, setBannerImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const { save, isSaving } = useSave('/api/wiki', '/');
 
   useEffect(() => {
     fetch('/api/wiki').then(r => r.ok ? r.json() : null)
-      .then(page => {
-        setContent(page?.content || []);
-        setBannerImage(page?.bannerImage || null);
-      })
+      .then(page => { setContent(page?.content || []); setBannerImage(page?.bannerImage || null); })
       .finally(() => setIsLoading(false));
   }, []);
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const r = await fetch('/api/wiki', { 
-        method: 'PUT', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ title: 'Homepage', content, bannerImage }) 
-      });
-      if (r.ok) router.push('/');
-      else alert((await r.json()).error || 'Failed to save');
-    } catch { alert('Failed to save'); }
-    finally { setIsSaving(false); }
-  };
-
-  if (isEditing && !isAuthenticated) {
-    return <StatusCard title="Authentication Required" message="Please connect your Radix wallet to edit the homepage." backHref="/" icon={<FileText size={32} />} />;
-  }
+  if (isEditing && !isAuthenticated) return <StatusCard status="authRequired" backHref="/" />;
   if (isLoading) return <LoadingScreen message="Loading..." />;
 
   if (isEditing) {
+    const handleSave = () => save({ title: 'Homepage', content, bannerImage });
     return (
       <div className="stack">
         <div className="spread">
@@ -198,7 +174,6 @@ function CategoryView({ tagPath }: { tagPath: string[] }) {
   const [showCreate, setShowCreate] = useState(false);
   const tag = findTagByPath(tagPath);
   const canCreatePages = isAuthenticated && pathStr !== 'community';
-  const handleCreate = () => { const s = slugify(newSlug); if (s) router.push(`/${pathStr}/${s}`); };
 
   return (
     <div className="stack">
@@ -209,8 +184,8 @@ function CategoryView({ tagPath }: { tagPath: string[] }) {
           <div className="row">
             {showCreate ? (
               <>
-                <Input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="page-slug" className="w-48" onKeyDown={e => e.key === 'Enter' && handleCreate()} autoFocus />
-                <Button size="sm" onClick={handleCreate} disabled={!newSlug.trim()}>Go</Button>
+                <Input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="page-slug" className="w-48" onKeyDown={e => e.key === 'Enter' && newSlug.trim() && router.push(`/${pathStr}/${slugify(newSlug)}`)} autoFocus />
+                <Button size="sm" onClick={() => { const s = slugify(newSlug); if (s) router.push(`/${pathStr}/${s}`); }} disabled={!newSlug.trim()}>Go</Button>
                 <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
               </>
             ) : <Button size="sm" onClick={() => setShowCreate(true)}><Plus size={16} />New Page</Button>}
@@ -223,15 +198,8 @@ function CategoryView({ tagPath }: { tagPath: string[] }) {
           {pages.map(p => (
             <Link key={p.id} href={`/${p.tagPath}/${p.slug}`}>
               <Card interactive className="h-full overflow-hidden p-0!">
-                {p.bannerImage ? (
-                  <div className="aspect-4/1 overflow-hidden">
-                    <img src={p.bannerImage} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                  </div>
-                ) : (
-                  <div className="aspect-4/1 bg-surface-2 center">
-                    <FileText size={24} className="text-muted" />
-                  </div>
-                )}
+                {p.bannerImage ? <div className="aspect-4/1 overflow-hidden"><img src={p.bannerImage} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" /></div>
+                  : <div className="aspect-4/1 bg-surface-2 center"><FileText size={24} className="text-muted" /></div>}
                 <div className="stack-sm p-4">
                   <h3 className="m-0!">{p.title}</h3>
                   {p.excerpt && <p className="text-muted text-small line-clamp-2">{p.excerpt}</p>}
@@ -254,22 +222,14 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tag
   const { user } = useAuth();
   const isCreating = !page;
   const viewPath = `/${tagPath}/${slug}`;
-
   const [title, setTitle] = useState('');
   const [content, setContent] = useState<Block[]>([]);
   const [bannerImage, setBannerImage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (page) { 
-      setTitle(page.title); 
-      setContent(page.content as unknown as Block[]); 
-      setBannerImage(page.bannerImage || null);
-    } else { 
-      setTitle(''); 
-      setContent(createDefaultPageContent()); 
-      setBannerImage(null);
-    }
+    if (page) { setTitle(page.title); setContent(page.content as unknown as Block[]); setBannerImage(page.bannerImage || null); }
+    else { setTitle(''); setContent(createDefaultPageContent()); setBannerImage(null); }
   }, [page?.id, tagPath, slug]);
 
   const save = async () => {
@@ -288,7 +248,7 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tag
   };
 
   if (page && user && isAuthorOnlyPath(page.tagPath) && page.authorId !== user.id) {
-    return <StatusCard title="Not Authorized" message="You can only edit your own pages in this category." backHref={viewPath} />;
+    return <StatusCard status="notAuthorized" backHref={viewPath} />;
   }
 
   const canSave = isCreating ? title.trim() : true;
@@ -317,7 +277,7 @@ function PageView({ page }: { page: WikiPageWithRevisions }) {
   const { user } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const isAuthor = user && page.authorId === user.id;
-  const isCommunityPage = page.tagPath === 'community' || page.tagPath.startsWith('community/');
+  const isCommunityPage = page.tagPath.startsWith('community');
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this page?')) return;
@@ -353,33 +313,20 @@ function PageView({ page }: { page: WikiPageWithRevisions }) {
 function PageRoute({ tagPath, slug, isEditMode }: { tagPath: string; slug: string; isEditMode: boolean }) {
   const { isAuthenticated } = useAuth();
   const { page, status } = usePages({ type: 'single', tagPath, slug }) as { page: WikiPageWithRevisions | null; status: 'loading' | 'found' | 'notfound' | 'error' };
+  const viewPath = `/${tagPath}/${slug}`;
 
-  if (isEditMode && !isAuthenticated) {
-    return <StatusCard title="Authentication Required" message="Please connect your Radix wallet to edit pages." backHref={`/${tagPath}/${slug}`} icon={<FileText size={32} />} />;
-  }
+  if (isEditMode && !isAuthenticated) return <StatusCard status="authRequired" backHref={viewPath} />;
   if (status === 'loading') return <LoadingScreen message="Loading page..." />;
-  if (status === 'error') return <StatusCard title="Error" message="Failed to load page" backHref="/" />;
-  if (status === 'notfound') {
-    return isAuthenticated 
-      ? <PageEditor tagPath={tagPath} slug={slug} /> 
-      : <StatusCard title="Page not found" message="The page you're looking for doesn't exist." backHref="/" />;
-  }
-  if (!page) return <StatusCard title="Page not found" message="The page you're looking for doesn't exist." backHref="/" />;
+  if (status === 'error') return <StatusCard status="error" backHref="/" />;
+  if (status === 'notfound') return isAuthenticated ? <PageEditor tagPath={tagPath} slug={slug} /> : <StatusCard status="notFound" backHref="/" />;
+  if (!page) return <StatusCard status="notFound" backHref="/" />;
   return isEditMode ? <PageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageView page={page} />;
-}
-
-interface Revision {
-  id: string;
-  title: string;
-  message?: string;
-  createdAt: string;
-  author?: { id: string; displayName?: string; radixAddress: string };
 }
 
 function HistoryView({ tagPath, slug, isHomepage }: { tagPath: string; slug: string; isHomepage?: boolean }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const [revisions, setRevisions] = useState<Revision[]>([]);
+  const [revisions, setRevisions] = useState<{ id: string; title: string; message?: string; createdAt: string; author?: { id: string; displayName?: string; radixAddress: string } }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pageTitle, setPageTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -389,15 +336,14 @@ function HistoryView({ tagPath, slug, isHomepage }: { tagPath: string; slug: str
   const viewPath = isHomepage ? '/' : `/${tagPath}/${slug}`;
 
   useEffect(() => {
-    (async () => {
-      try {
-        const [pageRes, historyRes] = await Promise.all([fetch(apiBase), fetch(`${apiBase}/history`)]);
+    Promise.all([fetch(apiBase), fetch(`${apiBase}/history`)])
+      .then(async ([pageRes, historyRes]) => {
         if (pageRes.ok) setPageTitle((await pageRes.json()).title);
         if (historyRes.ok) setRevisions(await historyRes.json());
         else setError('Failed to load history');
-      } catch { setError('Failed to load history'); }
-      finally { setIsLoading(false); }
-    })();
+      })
+      .catch(() => setError('Failed to load history'))
+      .finally(() => setIsLoading(false));
   }, [apiBase]);
 
   const handleRestore = async (revisionId: string) => {
@@ -412,49 +358,34 @@ function HistoryView({ tagPath, slug, isHomepage }: { tagPath: string; slug: str
   };
 
   if (isLoading) return <LoadingScreen message="Loading history..." />;
-  
-  const title = isHomepage ? 'Homepage History' : (pageTitle ? `History: ${pageTitle}` : 'Page History');
 
   return (
     <div className="stack">
       {!isHomepage && <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix="History" />}
       <div className="spread">
-        <h1>{title}</h1>
+        <h1>{isHomepage ? 'Homepage History' : (pageTitle ? `History: ${pageTitle}` : 'Page History')}</h1>
         <Link href={viewPath}><Button variant="secondary" size="sm"><ArrowLeft size={16} />{isHomepage ? 'Back to Homepage' : 'Back to Page'}</Button></Link>
       </div>
-      {error ? (
-        <Card className="text-center py-12"><p className="text-error">{error}</p></Card>
-      ) : revisions.length > 0 ? (
-        <div className="stack">
-          {revisions.map((rev, i) => (
-            <Card key={rev.id} className={i === 0 ? 'border-accent' : ''}>
-              <div className="stack-sm">
-                <div className="spread">
-                  <div className="row">
-                    <span className="font-medium">{rev.title}</span>
-                    {i === 0 && <Badge variant="default">Current</Badge>}
+      {error ? <Card className="text-center py-12"><p className="text-error">{error}</p></Card>
+        : revisions.length > 0 ? (
+          <div className="stack">
+            {revisions.map((rev, i) => (
+              <Card key={rev.id} className={i === 0 ? 'border-accent' : ''}>
+                <div className="stack-sm">
+                  <div className="spread">
+                    <div className="row"><span className="font-medium">{rev.title}</span>{i === 0 && <Badge variant="default">Current</Badge>}</div>
+                    <div className="row">
+                      <span className="text-muted text-small">{formatDate(rev.createdAt, { hour: '2-digit', minute: '2-digit' })}</span>
+                      {i > 0 && isAuthenticated && <Button variant="ghost" size="sm" onClick={() => handleRestore(rev.id)} disabled={restoringId === rev.id}><RotateCcw size={14} />{restoringId === rev.id ? 'Restoring...' : 'Restore'}</Button>}
+                    </div>
                   </div>
-                  <div className="row">
-                    <span className="text-muted text-small">{formatDate(rev.createdAt, { hour: '2-digit', minute: '2-digit' })}</span>
-                    {i > 0 && isAuthenticated && (
-                      <Button variant="ghost" size="sm" onClick={() => handleRestore(rev.id)} disabled={restoringId === rev.id}>
-                        <RotateCcw size={14} />{restoringId === rev.id ? 'Restoring...' : 'Restore'}
-                      </Button>
-                    )}
-                  </div>
+                  {rev.message && <p className="text-muted">{rev.message}</p>}
+                  <div className="row text-small text-muted"><User size={14} /><span>{rev.author?.displayName || rev.author?.radixAddress.slice(0, 16) + '...'}</span></div>
                 </div>
-                {rev.message && <p className="text-muted">{rev.message}</p>}
-                <div className="row text-small text-muted">
-                  <User size={14} />
-                  <span>{rev.author?.displayName || rev.author?.radixAddress.slice(0, 16) + '...'}</span>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <Card className="text-center py-12"><p className="text-muted">No revision history available.</p></Card>
-      )}
+              </Card>
+            ))}
+          </div>
+        ) : <Card className="text-center py-12"><p className="text-muted">No revision history available.</p></Card>}
     </div>
   );
 }
@@ -477,10 +408,7 @@ export function PageContent({ path }: { path?: string[] }) {
   const slug = pathSegments[pathSegments.length - 1];
   const tagPath = tagPathSegments.join('/');
 
-  if (!isValidTagPath(tagPathSegments)) {
-    return <StatusCard title="Invalid path" message="The path you entered is not valid." backHref="/" />;
-  }
-
+  if (!isValidTagPath(tagPathSegments)) return <StatusCard status="invalidPath" backHref="/" />;
   if (isHistoryMode) return <HistoryView tagPath={tagPath} slug={slug} />;
   return <PageRoute tagPath={tagPath} slug={slug} isEditMode={isEditMode} />;
 }

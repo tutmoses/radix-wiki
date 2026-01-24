@@ -5,33 +5,28 @@
 import { forwardRef, useRef, useEffect, type ButtonHTMLAttributes, type InputHTMLAttributes, type HTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-// Dropdown (reusable click-outside handler)
-export interface DropdownProps extends HTMLAttributes<HTMLDivElement> {
-  onClose: () => void;
-  children: ReactNode;
-}
-
-export function Dropdown({ onClose, children, className, ...props }: DropdownProps) {
+// Dropdown
+export function Dropdown({ onClose, children, className, ...props }: HTMLAttributes<HTMLDivElement> & { onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    };
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [onClose]);
-
-  return (
-    <div ref={ref} className={cn('dropdown', className)} {...props}>
-      {children}
-    </div>
-  );
+  return <div ref={ref} className={cn('dropdown', className)} {...props}>{children}</div>;
 }
 
 // Button
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
+
+const btnStyles: Record<ButtonVariant, string> = {
+  primary: 'bg-accent text-text-inverted hover:bg-accent-hover hover:text-text-inverted',
+  secondary: 'bg-surface-2 border-border hover:brightness-110',
+  ghost: 'hover:bg-surface-2',
+  danger: 'bg-error/80 text-text hover:bg-error',
+};
+const btnSizes: Record<ButtonSize, string> = { sm: 'px-3 py-1.5', md: 'px-4 py-2', lg: 'px-6 py-3', icon: 'p-2' };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -39,19 +34,10 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   isLoading?: boolean;
 }
 
-const btnVariants: Record<ButtonVariant, string> = {
-  primary: 'bg-accent text-text-inverted hover:bg-accent-hover hover:text-text-inverted',
-  secondary: 'bg-surface-2 border-border hover:brightness-110',
-  ghost: 'hover:bg-surface-2',
-  danger: 'bg-error/80 text-text hover:bg-error',
-};
-
-const btnSizes: Record<ButtonSize, string> = { sm: 'px-3 py-1.5', md: 'px-4 py-2', lg: 'px-6 py-3', icon: 'p-2' };
-
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', isLoading, disabled, children, ...props }, ref) => (
-    <button ref={ref} className={cn('row justify-center font-medium rounded-md border border-transparent cursor-pointer transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed', btnVariants[variant], btnSizes[size], className)} disabled={disabled || isLoading} {...props}>
-      {isLoading ? <><Spinner size="sm" />Loading...</> : children}
+    <button ref={ref} className={cn('row justify-center font-medium rounded-md border border-transparent cursor-pointer transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed', btnStyles[variant], btnSizes[size], className)} disabled={disabled || isLoading} {...props}>
+      {isLoading ? <><span className="spinner h-4 w-4 text-current" />Loading...</> : children}
     </button>
   )
 );
@@ -65,59 +51,35 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, hint, id, ...props }, ref) => {
-    const inputId = id || props.name;
-    return (
-      <div className="stack-sm">
-        {label && <label htmlFor={inputId} className="font-medium">{label}</label>}
-        <input ref={ref} id={inputId} className={cn('input', error && 'border-error focus:border-error', className)} aria-invalid={!!error} {...props} />
-        {error && <p className="text-error">{error}</p>}
-        {hint && !error && <small>{hint}</small>}
-      </div>
-    );
-  }
+  ({ className, label, error, hint, id, ...props }, ref) => (
+    <div className="stack-sm">
+      {label && <label htmlFor={id || props.name} className="font-medium">{label}</label>}
+      <input ref={ref} id={id || props.name} className={cn('input', error && 'border-error focus:border-error', className)} aria-invalid={!!error} {...props} />
+      {error ? <p className="text-error">{error}</p> : hint && <small>{hint}</small>}
+    </div>
+  )
 );
 Input.displayName = 'Input';
 
 // Card
-export interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  interactive?: boolean;
-}
-
-export const Card = forwardRef<HTMLDivElement, CardProps>(
+export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { interactive?: boolean }>(
   ({ className, interactive, ...props }, ref) => <div ref={ref} className={cn(interactive ? 'surface-interactive p-6' : 'panel', className)} {...props} />
 );
 Card.displayName = 'Card';
 
-// Badge
+// Badge - simplified with computed classes
 type BadgeVariant = 'default' | 'secondary' | 'success' | 'warning' | 'danger';
 
-export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?: BadgeVariant;
+export function Badge({ className, variant = 'default', ...props }: HTMLAttributes<HTMLSpanElement> & { variant?: BadgeVariant }) {
+  const variantClass = variant === 'default' ? 'badge-accent' : variant === 'secondary' ? '' : `bg-${variant === 'danger' ? 'error' : variant}/15 text-${variant === 'danger' ? 'error' : variant}`;
+  return <span className={cn('badge', variantClass, className)} {...props} />;
 }
 
-const badgeVariants: Record<BadgeVariant, string> = {
-  default: 'badge-accent',
-  secondary: '',
-  success: 'bg-success/15 text-success',
-  warning: 'bg-warning/15 text-warning',
-  danger: 'bg-error/15 text-error',
-};
-
-export function Badge({ className, variant = 'default', ...props }: BadgeProps) {
-  return <span className={cn('badge', badgeVariants[variant], className)} {...props} />;
-}
-
-// Spinner
+// Spinner - CSS-only
 const spinnerSizes = { sm: 'h-4 w-4', md: 'h-6 w-6', lg: 'h-8 w-8' };
 
 export function Spinner({ size = 'md', className }: { size?: 'sm' | 'md' | 'lg'; className?: string }) {
-  return (
-    <svg className={cn('animate-spin text-accent', spinnerSizes[size], className)} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-    </svg>
-  );
+  return <span className={cn('spinner text-accent', spinnerSizes[size], className)} />;
 }
 
 export function LoadingScreen({ message = 'Loading...' }: { message?: string }) {
