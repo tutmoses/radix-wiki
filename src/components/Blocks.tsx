@@ -28,52 +28,80 @@ import { Button, Input, Badge, Dropdown } from '@/components/ui';
 import type { WikiPage } from '@/types';
 
 // ========== SHIKI HIGHLIGHTER ==========
-type HighlightFn = (code: string, lang: string) => string;
-let highlighterInstance: HighlightFn | null = null;
-let highlighterLoading: Promise<HighlightFn> | null = null;
+type Highlighter = Awaited<ReturnType<typeof import('shiki').createHighlighter>>;
+const SHIKI_LANGS = ['javascript', 'typescript', 'css', 'json', 'bash', 'python', 'rust', 'sql', 'html', 'xml', 'jsx', 'tsx', 'markdown', 'yaml', 'toml'] as const;
+const VALID_LANGS = new Set<string>(SHIKI_LANGS);
+const DEFAULT_LANG = 'rust';
 
-async function getHighlighter(): Promise<HighlightFn> {
-  if (highlighterInstance) return highlighterInstance;
-  if (highlighterLoading) return highlighterLoading;
-  
-  highlighterLoading = import('shiki').then(async ({ createHighlighter }) => {
-    const highlighter = await createHighlighter({
-      themes: ['github-dark'],
-      langs: ['javascript', 'typescript', 'css', 'json', 'bash', 'python', 'rust', 'sql', 'html', 'xml', 'jsx', 'tsx', 'markdown', 'yaml', 'toml'],
+let shikiInstance: Highlighter | null = null;
+let shikiPromise: Promise<Highlighter> | null = null;
+
+function getShiki(): Promise<Highlighter> {
+  if (shikiInstance) return Promise.resolve(shikiInstance);
+  if (!shikiPromise) {
+    shikiPromise = import('shiki').then(async ({ createHighlighter }) => {
+      shikiInstance = await createHighlighter({ themes: ['github-dark'], langs: [...SHIKI_LANGS] });
+      return shikiInstance;
     });
-    highlighterInstance = (code: string, lang: string) => highlighter.codeToHtml(code, { lang: lang || 'text', theme: 'github-dark' });
-    return highlighterInstance;
-  });
-  
-  return highlighterLoading;
+  }
+  return shikiPromise;
 }
 
-async function highlightCodeBlocks(container: HTMLElement) {
-  const codeBlocks = container.querySelectorAll('pre code:not([data-highlighted])');
-  if (!codeBlocks.length) return;
+function highlightElement(el: Element, highlighter: Highlighter): boolean {
+  const pre = el.tagName === 'PRE' ? el : el.parentElement;
+  if (!pre || pre.hasAttribute('data-highlighted')) return false;
 
-  const highlight = await getHighlighter();
-  
-  for (const el of codeBlocks) {
-    const code = el.textContent || '';
-    const langMatch = el.className.match(/language-(\w+)/);
-    const lang = langMatch?.[1] || 'text';
-    
-    try {
-      const html = highlight(code, lang);
-      const pre = el.parentElement;
-      if (pre) {
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = html;
-        const newPre = wrapper.querySelector('pre');
-        if (newPre) {
-          pre.replaceWith(newPre);
-        }
-      }
-    } catch {
-      el.setAttribute('data-highlighted', 'true');
-    }
+  const code = el.textContent || '';
+  if (!code.trim()) return false;
+
+  const langMatch = el.className?.match(/language-(\w+)/);
+  const lang = VALID_LANGS.has(langMatch?.[1] || '') ? langMatch![1] : DEFAULT_LANG;
+
+  const html = highlighter.codeToHtml(code, { lang, theme: 'github-dark' });
+  const temp = document.createElement('div');
+  temp.innerHTML = html;
+  const newPre = temp.firstElementChild;
+  if (newPre) {
+    newPre.setAttribute('data-highlighted', 'true');
+    pre.replaceWith(newPre);
+    return true;
   }
+  return false;
+}
+
+function highlightContainer(container: HTMLElement, highlighter: Highlighter) {
+  const codeEls = container.querySelectorAll('pre:not([data-highlighted]) code, pre:not([data-highlighted]):not(:has(code))');
+  codeEls.forEach(el => highlightElement(el, highlighter));
+}
+
+function useShikiHighlight(containerRef: React.RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let observer: MutationObserver | null = null;
+    let cancelled = false;
+
+    getShiki().then(highlighter => {
+      if (cancelled) return;
+      
+      // Initial highlight
+      highlightContainer(container, highlighter);
+
+      // Watch for DOM changes and re-highlight
+      observer = new MutationObserver(() => {
+        highlightContainer(container, highlighter);
+      });
+
+      observer.observe(container, { childList: true, subtree: true });
+    });
+
+    return () => { 
+      cancelled = true;
+      observer?.disconnect(); 
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 }
 
 // ========== TIPTAP EXTENSIONS ==========
@@ -281,7 +309,7 @@ const TOOLBAR_BUTTONS: { key: string; icon: LucideIcon; active?: string | [strin
   }).run() },
 ];
 
-const TABLE_ACTIONS: [string, string, boolean?][] = [['addColumnAfter', '+Col'], ['addRowAfter', '+Row'], ['deleteColumn', '-Col', true], ['deleteRow', '-Row', true], ['deleteTable', '−Tbl', true]];
+const TABLE_ACTIONS: [string, string, boolean?][] = [['addColumnAfter', '+Col'], ['addRowAfter', '+Row'], ['deleteColumn', '-Col', true], ['deleteRow', '-Row', true], ['deleteTable', 'Ã¢Ë†â€™Tbl', true]];
 
 function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -322,7 +350,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
     <div className="stack-sm">
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={handleFileChange} />
       {editor && (
-        <div className="flex flex-wrap gap-0.5 p-1 bg-surface-1 border border-border-muted rounded-md mb-2">
+        <div className="sticky top-16 z-40 flex flex-wrap gap-0.5 p-1 bg-surface-1 border border-border-muted rounded-md mb-2">
           {TOOLBAR_BUTTONS.map(({ key, icon: Icon, active, action }) => (
             <button key={key} type="button" onClick={() => action(editor, () => fileInputRef.current?.click())} className={cn('p-1.5 rounded transition-colors', isActive(active) ? 'bg-accent text-text-inverted' : 'text-muted hover:bg-surface-2 hover:text-text')} title={key}><Icon size={14} /></button>
           ))}
@@ -489,7 +517,7 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
         <span className="text-h3 font-semibold">${priceStr}</span>
       </div>
       {block.showChange && typeof data.change24h === 'number' && (
-        <span className={cn('font-medium', isPositive ? 'text-success' : 'text-error')}>{isPositive ? '↑' : '↓'} {Math.abs(data.change24h).toFixed(2)}%</span>
+        <span className={cn('font-medium', isPositive ? 'text-success' : 'text-error')}>{isPositive ? 'Ã¢â€ â€˜' : 'Ã¢â€ â€œ'} {Math.abs(data.change24h).toFixed(2)}%</span>
       )}
     </div>
   );
@@ -674,10 +702,9 @@ export function BlockEditor({ content, onChange }: { content: Block[]; onChange:
 export function BlockRenderer({ content, className }: { content: Block[] | unknown; className?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Handle tabs
   useEffect(() => {
     if (!containerRef.current) return;
-    
-    // Handle tabs
     containerRef.current.querySelectorAll('[data-tabs]').forEach(tabGroup => {
       const items = tabGroup.querySelectorAll('[data-tab-item]');
       if (items.length === 0) return;
@@ -706,10 +733,10 @@ export function BlockRenderer({ content, className }: { content: Block[] | unkno
       tabGroup.appendChild(tabList);
       tabGroup.appendChild(tabPanels);
     });
-    
-    // Syntax highlight code blocks with Shiki
-    highlightCodeBlocks(containerRef.current);
   }, [content]);
+
+  // Syntax highlight code blocks
+  useShikiHighlight(containerRef);
 
   if (!content || !Array.isArray(content)) return null;
   return (
