@@ -58,11 +58,6 @@ export function Sidebar() {
               {visibleTags.map(node => <TagNavItem key={node.slug} node={node} parentPath="" pathname={pathname} onClose={closeSidebar} depth={0} />)}
             </nav>
           </div>
-          {isAuthenticated && (
-            <div className="mt-auto pt-4 border-t border-border-muted">
-              <NavItem href="/settings" icon={<Settings size={18} />} label="Settings" isActive={pathname === '/settings'} onClick={closeSidebar} />
-            </div>
-          )}
         </div>
       </aside>
     </>

@@ -448,7 +448,7 @@ function ColumnsBlock({ block, mode, onUpdate, allContent = [] }: BlockProps<Col
   if (mode === 'view') {
     return (
       <div className={cn('flex flex-col md:flex-row', gapClass, alignClass)}>
-        {block.columns.map(col => <div key={col.id} className="flex-1 min-w-0 stack">{col.blocks.map(bl => <div key={bl.id}>{renderBlock(bl, 'view', undefined, allContent)}</div>)}</div>)}
+        {block.columns.map(col => <div key={col.id} className="flex-1 stack">{col.blocks.map(bl => <div key={bl.id}>{renderBlock(bl, 'view', undefined, allContent)}</div>)}</div>)}
       </div>
     );
   }
@@ -498,7 +498,7 @@ function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Colum
   const { selectedIndex, setSelectedIndex, update, remove, move, insert } = useBlockOperations(column.blocks, setBlocks, createBlock as (type: BlockType) => LeafBlock);
   const contentBlockTypes = INSERTABLE_BLOCKS.filter(t => t !== 'columns');
   return (
-    <div className="flex-1 min-w-0 stack-sm p-3 bg-surface-1/50 border border-dashed border-border-muted rounded-lg">
+    <div className="flex-1 stack-sm p-3 bg-surface-1/50 border border-dashed border-border-muted rounded-lg">
       <div className="spread"><span className="text-small text-muted uppercase tracking-wide">Column</span>{canDelete && <button onClick={onDelete} className="icon-btn p-1 text-muted hover:text-error"><Trash2 size={14} /></button>}</div>
       {column.blocks.length === 0 ? (
         <div className="py-6 text-center"><p className="text-muted text-small mb-2">Empty column</p><InsertButton onInsert={insert} compact blockTypes={contentBlockTypes} /></div>
