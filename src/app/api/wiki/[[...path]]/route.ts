@@ -47,21 +47,24 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     const { searchParams } = new URL(request.url);
 
     // List mode: has pagination/search params and no specific path
-    if (!path?.length && (searchParams.has('page') || searchParams.has('pageSize') || searchParams.has('search') || searchParams.has('tagPath'))) {
+    if (!path?.length && (searchParams.has('page') || searchParams.has('pageSize') || searchParams.has('search') || searchParams.has('tagPath') || searchParams.has('sort'))) {
       const page = parseInt(searchParams.get('page') || '1', 10);
       const pageSize = parseInt(searchParams.get('pageSize') || '20', 10);
       const search = searchParams.get('search') || '';
       const tagPath = searchParams.get('tagPath');
+      const sort = searchParams.get('sort') || 'updatedAt';
 
       const where: Prisma.PageWhereInput = {};
       if (search) where.title = { contains: search, mode: 'insensitive' };
       if (tagPath) where.tagPath = { startsWith: tagPath };
 
+      const orderBy = sort === 'title' ? { title: 'asc' as const } : { updatedAt: 'desc' as const };
+
       const [pages, total] = await Promise.all([
         prisma.page.findMany({
           where,
           include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
-          orderBy: { updatedAt: 'desc' },
+          orderBy,
           skip: (page - 1) * pageSize,
           take: pageSize,
         }),

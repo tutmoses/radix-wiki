@@ -19,7 +19,7 @@ import { Node as TiptapNode, mergeAttributes } from '@tiptap/core';
 import {
   Plus, Trash2, Copy, ChevronUp, ChevronDown, Pencil, Upload,
   Minus, Code, Quote, Clock, FileText, Columns, Settings, ListTree,
-  Bold, Italic, Link2, Heading2, Heading3, List, TrendingUp, TableIcon, Globe, LayoutList, X, Check,
+  Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, X, Check,
   type LucideIcon
 } from 'lucide-react';
 import { cn, formatRelativeTime, slugify } from '@/lib/utils';
@@ -276,7 +276,7 @@ function duplicateBlock(block: Block): Block {
 function processHtml(html: string): string {
   if (!html.trim()) return '';
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  doc.querySelectorAll('h1, h2, h3').forEach(el => { el.id = slugify(el.textContent?.trim() || ''); });
+  doc.querySelectorAll('h1, h2, h3, h4').forEach(el => { el.id = slugify(el.textContent?.trim() || ''); });
   doc.querySelectorAll('a[href]').forEach(el => {
     const href = el.getAttribute('href') || '';
     el.classList.add('link');
@@ -305,7 +305,7 @@ function extractHeadings(content: Block[]): { text: string; level: number; id: s
     for (const block of blocks) {
       if (block.type === 'content' && block.text) {
         const doc = new DOMParser().parseFromString(block.text, 'text/html');
-        doc.querySelectorAll('h1, h2, h3').forEach(el => {
+        doc.querySelectorAll('h1, h2, h3, h4').forEach(el => {
           const text = el.textContent?.trim() || '';
           if (text) headings.push({ text, level: parseInt(el.tagName[1]), id: slugify(text) });
         });
@@ -326,6 +326,7 @@ const TOOLBAR_BUTTONS: { key: string; icon: LucideIcon; active?: string | [strin
   { key: 'link', icon: Link2, active: 'link', action: e => { const url = window.prompt('URL'); if (url) e.chain().focus().setLink({ href: url }).run(); } },
   { key: 'h2', icon: Heading2, active: ['heading', { level: 2 }], action: e => e.chain().focus().toggleHeading({ level: 2 }).run() },
   { key: 'h3', icon: Heading3, active: ['heading', { level: 3 }], action: e => e.chain().focus().toggleHeading({ level: 3 }).run() },
+  { key: 'h4', icon: Heading4, active: ['heading', { level: 4 }], action: e => e.chain().focus().toggleHeading({ level: 4 }).run() },
   { key: 'list', icon: List, active: 'bulletList', action: e => e.chain().focus().toggleBulletList().run() },
   { key: 'quote', icon: Quote, active: 'blockquote', action: e => e.chain().focus().toggleBlockquote().run() },
   { key: 'codeBlock', icon: Code, active: 'codeBlock', action: e => e.chain().focus().toggleCodeBlock().run() },
@@ -349,7 +350,7 @@ const TOOLBAR_BUTTONS: { key: string; icon: LucideIcon; active?: string | [strin
   }).run() },
 ];
 
-const TABLE_ACTIONS: [string, string, boolean?][] = [['addColumnAfter', '+Col'], ['addRowAfter', '+Row'], ['deleteColumn', '-Col', true], ['deleteRow', '-Row', true], ['deleteTable', 'ÃƒÂ¢Ã‹â€ Ã¢â‚¬â„¢Tbl', true]];
+const TABLE_ACTIONS: [string, string, boolean?][] = [['addColumnAfter', '+Col'], ['addRowAfter', '+Row'], ['deleteColumn', '-Col', true], ['deleteRow', '-Row', true], ['deleteTable', '-Tbl', true]];
 
 function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -557,7 +558,7 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
         <span className="text-h3 font-semibold">${priceStr}</span>
       </div>
       {block.showChange && typeof data.change24h === 'number' && (
-        <span className={cn('font-medium', isPositive ? 'text-success' : 'text-error')}>{isPositive ? 'ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬Ëœ' : 'ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬Å“'} {Math.abs(data.change24h).toFixed(2)}%</span>
+        <span className={cn('font-medium', isPositive ? 'text-success' : 'text-error')}>{isPositive ? '↑' : '↓'} {Math.abs(data.change24h).toFixed(2)}%</span>
       )}
     </div>
   );

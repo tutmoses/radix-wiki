@@ -83,14 +83,14 @@ export const useAuth = () => {
 
 type PageMode = 
   | { type: 'single'; tagPath: string; slug: string }
-  | { type: 'recent'; tagPath?: string; limit: number }
+  | { type: 'recent'; tagPath?: string; limit: number; sort?: 'updatedAt' | 'title' }
   | { type: 'byIds'; pageIds: string[] };
 
 type SingleResult = { page: WikiPage | null; status: 'loading' | 'found' | 'notfound' | 'error' };
 type ListResult = { pages: WikiPage[]; isLoading: boolean };
 
 export function usePages(mode: { type: 'single'; tagPath: string; slug: string }): SingleResult;
-export function usePages(mode: { type: 'recent'; tagPath?: string; limit: number }): ListResult;
+export function usePages(mode: { type: 'recent'; tagPath?: string; limit: number; sort?: 'updatedAt' | 'title' }): ListResult;
 export function usePages(mode: { type: 'byIds'; pageIds: string[] }): ListResult;
 export function usePages(mode: PageMode): SingleResult | ListResult {
   const [pages, setPages] = useState<WikiPage[]>([]);
@@ -99,7 +99,7 @@ export function usePages(mode: PageMode): SingleResult | ListResult {
   const [status, setStatus] = useState<'loading' | 'found' | 'notfound' | 'error'>('loading');
 
   const modeKey = mode.type === 'single' ? `${mode.tagPath}/${mode.slug}`
-    : mode.type === 'recent' ? `${mode.tagPath || ''}:${mode.limit}`
+    : mode.type === 'recent' ? `${mode.tagPath || ''}:${mode.limit}:${mode.sort || 'updatedAt'}`
     : mode.pageIds.join(',');
 
   useEffect(() => {
@@ -120,6 +120,7 @@ export function usePages(mode: PageMode): SingleResult | ListResult {
         } else if (mode.type === 'recent') {
           const params = new URLSearchParams({ pageSize: mode.limit.toString() });
           if (mode.tagPath) params.set('tagPath', mode.tagPath);
+          if (mode.sort) params.set('sort', mode.sort);
           const res = await fetch(`/api/wiki?${params}`);
           if (res.ok) setPages((await res.json()).items || []);
         } else {

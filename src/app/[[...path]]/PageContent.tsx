@@ -169,7 +169,7 @@ function CategoryView({ tagPath }: { tagPath: string[] }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const pathStr = tagPath.join('/');
-  const { pages, isLoading } = usePages({ type: 'recent', tagPath: pathStr, limit: 50 });
+  const { pages, isLoading } = usePages({ type: 'recent', tagPath: pathStr, limit: 50, sort: 'title' });
   const [newSlug, setNewSlug] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const tag = findTagByPath(tagPath);
