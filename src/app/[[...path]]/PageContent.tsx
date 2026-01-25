@@ -5,23 +5,32 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { ArrowLeft, ArrowRight, Trash2, Save, FileText, Plus, RotateCcw, User, Upload, X, Image as ImageIcon } from 'lucide-react';
-import { BlockEditor, BlockRenderer, type Block, createDefaultPageContent } from '@/components/Blocks';
+import { BlockRenderer, createDefaultPageContentSync as createDefaultPageContent } from '@/components/Blocks';
 import { Discussion } from '@/components/Discussion';
 import { Footer } from '@/components/Footer';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { UserStats } from '@/components/UserStats';
-import { Button, Card, Badge, LoadingScreen, Input } from '@/components/ui';
-import { useAuth, usePages } from '@/hooks';
+import { Button, Card, Badge, Input } from '@/components/ui';
+import { useAuth } from '@/hooks';
 import { formatDate, slugify } from '@/lib/utils';
-import { isValidTagPath, findTagByPath, isAuthorOnlyPath } from '@/lib/tags';
+import { findTagByPath, isAuthorOnlyPath } from '@/lib/tags';
 import type { WikiPage } from '@/types';
+import type { Block } from '@/components/BlockRenderer';
 
-interface WikiPageWithRevisions extends WikiPage {
+// Lazy load BlockEditor - only when editing
+const BlockEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.BlockEditor), {
+  ssr: false,
+  loading: () => <div className="h-64 skeleton rounded-lg" />,
+});
+
+export interface WikiPageWithRevisions extends WikiPage {
   revisions?: { id: string }[];
 }
 
-// Shared status messages
+// ========== STATUS CARDS ==========
 const STATUS = {
   authRequired: { title: 'Authentication Required', message: 'Please connect your Radix wallet.' },
   notFound: { title: 'Page not found', message: "The page you're looking for doesn't exist." },
@@ -30,7 +39,7 @@ const STATUS = {
   error: { title: 'Error', message: 'Failed to load page' },
 } as const;
 
-function StatusCard({ status, backHref }: { status: keyof typeof STATUS; backHref: string }) {
+export function StatusCard({ status, backHref }: { status: keyof typeof STATUS; backHref: string }) {
   const { title, message } = STATUS[status];
   return (
     <div className="center">
@@ -46,6 +55,18 @@ function StatusCard({ status, backHref }: { status: keyof typeof STATUS; backHre
   );
 }
 
+export function PageSkeleton() {
+  return (
+    <div className="stack">
+      <div className="h-8 w-48 skeleton rounded" />
+      <div className="h-48 skeleton rounded-lg" />
+      <div className="h-6 w-3/4 skeleton rounded" />
+      <div className="h-6 w-1/2 skeleton rounded" />
+    </div>
+  );
+}
+
+// ========== BANNER ==========
 function Banner({ src, editable, onUpload, onRemove, children }: { 
   src?: string | null; editable?: boolean; onUpload?: (url: string) => void; onRemove?: () => void; children?: ReactNode;
 }) {
@@ -84,7 +105,11 @@ function Banner({ src, editable, onUpload, onRemove, children }: {
 
   return (
     <div className="banner-container relative rounded-lg overflow-hidden">
-      {src ? <img src={src} alt="Page banner" className="banner-image" /> : <div className="banner-placeholder" />}
+      {src ? (
+        <Image src={src} alt="Page banner" fill className="banner-image object-cover" sizes="100vw" priority />
+      ) : (
+        <div className="banner-placeholder" />
+      )}
       {children && <div className="banner-overlay">{children}</div>}
       {editable && (
         <div className="absolute top-2 right-2 row z-10">
@@ -97,44 +122,34 @@ function Banner({ src, editable, onUpload, onRemove, children }: {
   );
 }
 
-// Shared save handler hook
-function useSave(endpoint: string, redirectTo: string, validate?: () => string | null) {
+// ========== HOMEPAGE VIEW ==========
+export function HomepageView({ page, isEditing }: { page: WikiPageWithRevisions | null; isEditing: boolean }) {
   const router = useRouter();
-  const [isSaving, setIsSaving] = useState(false);
-  
-  const save = async (body: Record<string, unknown>, method = 'PUT') => {
-    const error = validate?.();
-    if (error) { alert(error); return; }
-    setIsSaving(true);
-    try {
-      const res = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      const data = await res.json();
-      if (res.ok) method === 'PUT' ? router.push(redirectTo) : (window.location.href = `/${data.tagPath}/${data.slug}`);
-      else { alert(data.error || 'Failed to save'); setIsSaving(false); }
-    } catch { alert('Failed to save'); setIsSaving(false); }
-  };
-  
-  return { save, isSaving };
-}
-
-function HomepageView({ isEditing }: { isEditing: boolean }) {
   const { isAuthenticated } = useAuth();
-  const [content, setContent] = useState<Block[]>([]);
-  const [bannerImage, setBannerImage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const { save, isSaving } = useSave('/api/wiki', '/');
+  const [content, setContent] = useState<Block[]>((page?.content as unknown as Block[]) || []);
+  const [bannerImage, setBannerImage] = useState<string | null>(page?.bannerImage || null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    fetch('/api/wiki').then(r => r.ok ? r.json() : null)
-      .then(page => { setContent(page?.content || []); setBannerImage(page?.bannerImage || null); })
-      .finally(() => setIsLoading(false));
-  }, []);
+    if (page) {
+      setContent((page.content as unknown as Block[]) || []);
+      setBannerImage(page.bannerImage || null);
+    }
+  }, [page]);
 
   if (isEditing && !isAuthenticated) return <StatusCard status="authRequired" backHref="/" />;
-  if (isLoading) return <LoadingScreen message="Loading..." />;
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/wiki', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'Homepage', content, bannerImage }) });
+      if (res.ok) router.push('/');
+      else alert((await res.json()).error || 'Failed to save');
+    } catch { alert('Failed to save'); }
+    finally { setIsSaving(false); }
+  };
 
   if (isEditing) {
-    const handleSave = () => save({ title: 'Homepage', content, bannerImage });
     return (
       <div className="stack">
         <div className="spread">
@@ -165,11 +180,11 @@ function HomepageView({ isEditing }: { isEditing: boolean }) {
   );
 }
 
-function CategoryView({ tagPath }: { tagPath: string[] }) {
+// ========== CATEGORY VIEW ==========
+export function CategoryView({ tagPath, pages }: { tagPath: string[]; pages: WikiPage[] }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const pathStr = tagPath.join('/');
-  const { pages, isLoading } = usePages({ type: 'recent', tagPath: pathStr, limit: 50, sort: 'title' });
   const [newSlug, setNewSlug] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const tag = findTagByPath(tagPath);
@@ -193,13 +208,18 @@ function CategoryView({ tagPath }: { tagPath: string[] }) {
         )}
       </div>
       {tag?.children?.length ? <div className="row wrap">{tag.children.map(c => <Link key={c.slug} href={`/${pathStr}/${c.slug}`}><Badge variant="secondary" className="cursor-pointer hover:brightness-110">{c.name}</Badge></Link>)}</div> : null}
-      {isLoading ? <LoadingScreen message="Loading pages..." /> : pages.length > 0 ? (
+      {pages.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {pages.map(p => (
             <Link key={p.id} href={`/${p.tagPath}/${p.slug}`}>
               <Card interactive className="h-full overflow-hidden p-0!">
-                {p.bannerImage ? <div className="aspect-4/1 overflow-hidden"><img src={p.bannerImage} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" /></div>
-                  : <div className="aspect-4/1 bg-surface-2 center"><FileText size={24} className="text-muted" /></div>}
+                {p.bannerImage ? (
+                  <div className="aspect-4/1 overflow-hidden relative">
+                    <Image src={p.bannerImage} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
+                  </div>
+                ) : (
+                  <div className="aspect-4/1 bg-surface-2 center"><FileText size={24} className="text-muted" /></div>
+                )}
                 <div className="stack-sm p-4">
                   <h3 className="m-0!">{p.title}</h3>
                   {p.excerpt && <p className="text-muted text-small line-clamp-2">{p.excerpt}</p>}
@@ -218,6 +238,7 @@ function CategoryView({ tagPath }: { tagPath: string[] }) {
   );
 }
 
+// ========== PAGE EDITOR ==========
 function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tagPath: string; slug: string }) {
   const { user } = useAuth();
   const isCreating = !page;
@@ -272,7 +293,8 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tag
   );
 }
 
-function PageView({ page }: { page: WikiPageWithRevisions }) {
+// ========== PAGE VIEW (Read-only) ==========
+function PageViewContent({ page }: { page: WikiPageWithRevisions }) {
   const router = useRouter();
   const { user } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -310,41 +332,37 @@ function PageView({ page }: { page: WikiPageWithRevisions }) {
   );
 }
 
-function PageRoute({ tagPath, slug, isEditMode }: { tagPath: string; slug: string; isEditMode: boolean }) {
+// ========== PAGE VIEW WRAPPER ==========
+export function PageView({ page, tagPath, slug, isEditMode }: { page: WikiPageWithRevisions | null; tagPath: string; slug: string; isEditMode: boolean }) {
   const { isAuthenticated } = useAuth();
-  const { page, status } = usePages({ type: 'single', tagPath, slug }) as { page: WikiPageWithRevisions | null; status: 'loading' | 'found' | 'notfound' | 'error' };
   const viewPath = `/${tagPath}/${slug}`;
 
   if (isEditMode && !isAuthenticated) return <StatusCard status="authRequired" backHref={viewPath} />;
-  if (status === 'loading') return <LoadingScreen message="Loading page..." />;
-  if (status === 'error') return <StatusCard status="error" backHref="/" />;
-  if (status === 'notfound') return isAuthenticated ? <PageEditor tagPath={tagPath} slug={slug} /> : <StatusCard status="notFound" backHref="/" />;
+  if (!page && !isAuthenticated) return <StatusCard status="notFound" backHref="/" />;
+  if (!page && isAuthenticated) return <PageEditor tagPath={tagPath} slug={slug} />;
   if (!page) return <StatusCard status="notFound" backHref="/" />;
-  return isEditMode ? <PageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageView page={page} />;
+  return isEditMode ? <PageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} />;
 }
 
-function HistoryView({ tagPath, slug, isHomepage }: { tagPath: string; slug: string; isHomepage?: boolean }) {
+// ========== HISTORY VIEW ==========
+type HistoryData = { page: { id: string; title: string }; revisions: { id: string; title: string; message?: string | null; createdAt: Date; author?: { id: string; displayName?: string | null; radixAddress: string } }[] } | null;
+
+export function HistoryView({ data, tagPath, slug, isHomepage }: { data: HistoryData; tagPath: string; slug: string; isHomepage?: boolean }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const [revisions, setRevisions] = useState<{ id: string; title: string; message?: string; createdAt: string; author?: { id: string; displayName?: string; radixAddress: string } }[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [pageTitle, setPageTitle] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const [restoringId, setRestoringId] = useState<string | null>(null);
   
   const apiBase = isHomepage ? '/api/wiki' : `/api/wiki/${tagPath}/${slug}`;
   const viewPath = isHomepage ? '/' : `/${tagPath}/${slug}`;
 
-  useEffect(() => {
-    Promise.all([fetch(apiBase), fetch(`${apiBase}/history`)])
-      .then(async ([pageRes, historyRes]) => {
-        if (pageRes.ok) setPageTitle((await pageRes.json()).title);
-        if (historyRes.ok) setRevisions(await historyRes.json());
-        else setError('Failed to load history');
-      })
-      .catch(() => setError('Failed to load history'))
-      .finally(() => setIsLoading(false));
-  }, [apiBase]);
+  if (!data) {
+    return (
+      <div className="stack">
+        {!isHomepage && <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix="History" />}
+        <Card className="text-center py-12"><p className="text-error">Page not found</p></Card>
+      </div>
+    );
+  }
 
   const handleRestore = async (revisionId: string) => {
     if (!confirm('Restore this revision? This will replace the current content.')) return;
@@ -357,58 +375,32 @@ function HistoryView({ tagPath, slug, isHomepage }: { tagPath: string; slug: str
     finally { setRestoringId(null); }
   };
 
-  if (isLoading) return <LoadingScreen message="Loading history..." />;
-
   return (
     <div className="stack">
       {!isHomepage && <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix="History" />}
       <div className="spread">
-        <h1>{isHomepage ? 'Homepage History' : (pageTitle ? `History: ${pageTitle}` : 'Page History')}</h1>
+        <h1>{isHomepage ? 'Homepage History' : `History: ${data.page.title}`}</h1>
         <Link href={viewPath}><Button variant="secondary" size="sm"><ArrowLeft size={16} />{isHomepage ? 'Back to Homepage' : 'Back to Page'}</Button></Link>
       </div>
-      {error ? <Card className="text-center py-12"><p className="text-error">{error}</p></Card>
-        : revisions.length > 0 ? (
-          <div className="stack">
-            {revisions.map((rev, i) => (
-              <Card key={rev.id} className={i === 0 ? 'border-accent' : ''}>
-                <div className="stack-sm">
-                  <div className="spread">
-                    <div className="row"><span className="font-medium">{rev.title}</span>{i === 0 && <Badge variant="default">Current</Badge>}</div>
-                    <div className="row">
-                      <span className="text-muted text-small">{formatDate(rev.createdAt, { hour: '2-digit', minute: '2-digit' })}</span>
-                      {i > 0 && isAuthenticated && <Button variant="ghost" size="sm" onClick={() => handleRestore(rev.id)} disabled={restoringId === rev.id}><RotateCcw size={14} />{restoringId === rev.id ? 'Restoring...' : 'Restore'}</Button>}
-                    </div>
+      {data.revisions.length > 0 ? (
+        <div className="stack">
+          {data.revisions.map((rev, i) => (
+            <Card key={rev.id} className={i === 0 ? 'border-accent' : ''}>
+              <div className="stack-sm">
+                <div className="spread">
+                  <div className="row"><span className="font-medium">{rev.title}</span>{i === 0 && <Badge variant="default">Current</Badge>}</div>
+                  <div className="row">
+                    <span className="text-muted text-small">{formatDate(rev.createdAt, { hour: '2-digit', minute: '2-digit' })}</span>
+                    {i > 0 && isAuthenticated && <Button variant="ghost" size="sm" onClick={() => handleRestore(rev.id)} disabled={restoringId === rev.id}><RotateCcw size={14} />{restoringId === rev.id ? 'Restoring...' : 'Restore'}</Button>}
                   </div>
-                  {rev.message && <p className="text-muted">{rev.message}</p>}
-                  <div className="row text-small text-muted"><User size={14} /><span>{rev.author?.displayName || rev.author?.radixAddress.slice(0, 16) + '...'}</span></div>
                 </div>
-              </Card>
-            ))}
-          </div>
-        ) : <Card className="text-center py-12"><p className="text-muted">No revision history available.</p></Card>}
+                {rev.message && <p className="text-muted">{rev.message}</p>}
+                <div className="row text-small text-muted"><User size={14} /><span>{rev.author?.displayName || rev.author?.radixAddress.slice(0, 16) + '...'}</span></div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : <Card className="text-center py-12"><p className="text-muted">No revision history available.</p></Card>}
     </div>
   );
-}
-
-export function PageContent({ path }: { path?: string[] }) {
-  const rawPath = path || [];
-
-  if (rawPath.length === 0) return <HomepageView isEditing={false} />;
-  if (rawPath.length === 1 && rawPath[0] === 'edit') return <HomepageView isEditing={true} />;
-  if (rawPath.length === 1 && rawPath[0] === 'history') return <HistoryView tagPath="" slug="" isHomepage />;
-
-  const lastSegment = rawPath[rawPath.length - 1];
-  const isEditMode = lastSegment === 'edit';
-  const isHistoryMode = lastSegment === 'history';
-  const pathSegments = (isEditMode || isHistoryMode) ? rawPath.slice(0, -1) : rawPath;
-
-  if (isValidTagPath(pathSegments)) return <CategoryView tagPath={pathSegments} />;
-
-  const tagPathSegments = pathSegments.slice(0, -1);
-  const slug = pathSegments[pathSegments.length - 1];
-  const tagPath = tagPathSegments.join('/');
-
-  if (!isValidTagPath(tagPathSegments)) return <StatusCard status="invalidPath" backHref="/" />;
-  if (isHistoryMode) return <HistoryView tagPath={tagPath} slug={slug} />;
-  return <PageRoute tagPath={tagPath} slug={slug} isEditMode={isEditMode} />;
 }

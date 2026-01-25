@@ -67,12 +67,19 @@ export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & 
 );
 Card.displayName = 'Card';
 
-// Badge - simplified with computed classes
+// Badge - with static class mappings for Tailwind JIT
 type BadgeVariant = 'default' | 'secondary' | 'success' | 'warning' | 'danger';
 
+const badgeVariants: Record<BadgeVariant, string> = {
+  default: 'badge-accent',
+  secondary: '',
+  success: 'bg-success/15 text-success',
+  warning: 'bg-warning/15 text-warning',
+  danger: 'bg-error/15 text-error',
+};
+
 export function Badge({ className, variant = 'default', ...props }: HTMLAttributes<HTMLSpanElement> & { variant?: BadgeVariant }) {
-  const variantClass = variant === 'default' ? 'badge-accent' : variant === 'secondary' ? '' : `bg-${variant === 'danger' ? 'error' : variant}/15 text-${variant === 'danger' ? 'error' : variant}`;
-  return <span className={cn('badge', variantClass, className)} {...props} />;
+  return <span className={cn('badge', badgeVariants[variant], className)} {...props} />;
 }
 
 // Spinner - CSS-only

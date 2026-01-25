@@ -1,40 +1,24 @@
 // src/app/[[...path]]/page.tsx
 
 import type { Metadata } from 'next';
-import { PageContent } from './PageContent';
+import { Suspense } from 'react';
+import { parsePath, getHomepage, getPage, getCategoryPages, getPageHistory } from '@/lib/wiki';
+import { PageView, HomepageView, CategoryView, HistoryView, PageSkeleton, StatusCard } from './PageContent';
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 type Props = { params: Promise<{ path?: string[] }> };
 
-async function fetchPageData(path: string[] = []) {
-  if (path.length === 0) return null;
-  
-  const lastSegment = path[path.length - 1];
-  const isEditMode = lastSegment === 'edit';
-  const isHistoryMode = lastSegment === 'history';
-  const pathSegments = (isEditMode || isHistoryMode) ? path.slice(0, -1) : path;
-  
-  if (pathSegments.length < 2) return null;
-  
-  const tagPath = pathSegments.slice(0, -1).join('/');
-  const slug = pathSegments[pathSegments.length - 1];
-  
-  try {
-    const res = await fetch(`${BASE_URL}/api/wiki/${tagPath}/${slug}`, { 
-      next: { revalidate: 60 },
-      cache: 'no-store'
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { path } = await params;
-  const page = await fetchPageData(path);
+  const parsed = parsePath(path);
+  
+  let page = null;
+  if (parsed.type === 'homepage') {
+    page = await getHomepage();
+  } else if (parsed.type === 'page' || parsed.type === 'edit') {
+    page = await getPage(parsed.tagPath, parsed.slug);
+  }
   
   const title = page?.title || 'RADIX Wiki';
   const description = page?.excerpt || 'A decentralized wiki powered by Radix DLT';
@@ -43,22 +27,82 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
-    openGraph: {
-      title,
-      description,
-      type: 'article',
-      images: [{ url: ogImage, width: 1200, height: 630 }],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title,
-      description,
-      images: [ogImage],
-    },
+    openGraph: { title, description, type: 'article', images: [{ url: ogImage, width: 1200, height: 630 }] },
+    twitter: { card: 'summary_large_image', title, description, images: [ogImage] },
   };
 }
 
+// Server Component - fetches data before render
 export default async function DynamicPage({ params }: Props) {
   const { path } = await params;
-  return <PageContent path={path} />;
+  const parsed = parsePath(path);
+
+  // Invalid path
+  if (parsed.type === 'invalid') {
+    return <StatusCard status="invalidPath" backHref="/" />;
+  }
+
+  // Homepage
+  if (parsed.type === 'homepage') {
+    const page = await getHomepage();
+    return (
+      <Suspense fallback={<PageSkeleton />}>
+        <HomepageView page={page} isEditing={false} />
+      </Suspense>
+    );
+  }
+
+  // Homepage edit
+  if (parsed.type === 'edit' && !parsed.tagPath && !parsed.slug) {
+    const page = await getHomepage();
+    return (
+      <Suspense fallback={<PageSkeleton />}>
+        <HomepageView page={page} isEditing={true} />
+      </Suspense>
+    );
+  }
+
+  // Homepage history
+  if (parsed.type === 'history' && !parsed.tagPath && !parsed.slug) {
+    const data = await getPageHistory('', '');
+    return (
+      <Suspense fallback={<PageSkeleton />}>
+        <HistoryView data={data} tagPath="" slug="" isHomepage />
+      </Suspense>
+    );
+  }
+
+  // Category view
+  if (parsed.type === 'category') {
+    const pages = await getCategoryPages(parsed.tagPath);
+    return (
+      <Suspense fallback={<PageSkeleton />}>
+        <CategoryView tagPath={parsed.tagPath.split('/')} pages={pages} />
+      </Suspense>
+    );
+  }
+
+  // Page history
+  if (parsed.type === 'history') {
+    const data = await getPageHistory(parsed.tagPath, parsed.slug);
+    return (
+      <Suspense fallback={<PageSkeleton />}>
+        <HistoryView data={data} tagPath={parsed.tagPath} slug={parsed.slug} />
+      </Suspense>
+    );
+  }
+
+  // Page view or edit
+  const page = await getPage(parsed.tagPath, parsed.slug);
+  
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <PageView 
+        page={page} 
+        tagPath={parsed.tagPath} 
+        slug={parsed.slug} 
+        isEditMode={parsed.isEditMode} 
+      />
+    </Suspense>
+  );
 }

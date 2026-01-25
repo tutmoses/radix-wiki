@@ -4,7 +4,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, ChevronRight, ChevronDown, Settings } from 'lucide-react';
+import { Home, ChevronRight, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useStore, useAuth } from '@/hooks';
@@ -38,7 +38,6 @@ function TagNavItem({ node, parentPath, pathname, onClose, depth }: { node: TagN
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { isAuthenticated } = useAuth();
   const { sidebarOpen, setSidebarOpen } = useStore();
   const visibleTags = getVisibleTags();
   const closeSidebar = () => setSidebarOpen(false);

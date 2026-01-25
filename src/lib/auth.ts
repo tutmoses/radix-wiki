@@ -189,8 +189,10 @@ async function verifySignature(
       const key = await crypto.subtle.importKey('raw', publicKeyBytes.buffer as ArrayBuffer, { name: 'Ed25519' }, false, ['verify']);
       return crypto.subtle.verify('Ed25519', key, signatureBytes.buffer as ArrayBuffer, messageBytes);
     } else {
-      const key = await crypto.subtle.importKey('raw', publicKeyBytes.buffer as ArrayBuffer, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
-      return crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, key, signatureBytes.buffer as ArrayBuffer, messageBytes);
+      // Web Crypto API does not support secp256k1 (Bitcoin curve)
+      // It only supports P-256 (secp256r1), P-384, and P-521
+      console.warn('secp256k1 signature verification is not supported by Web Crypto API');
+      return false;
     }
   } catch {
     return false;

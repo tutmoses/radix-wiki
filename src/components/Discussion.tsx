@@ -6,7 +6,6 @@ import { useState, useEffect, useCallback, useActionState } from 'react';
 import { MessageSquare, Reply, Trash2, ChevronDown, ChevronUp, Send } from 'lucide-react';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import { Button } from '@/components/ui';
-import { InlineHtml } from '@/components/Blocks';
 import { useAuth } from '@/hooks';
 import type { WikiComment } from '@/types';
 
@@ -75,7 +74,7 @@ function CommentThread({ comment, depth, onReply, onDelete, currentUserId }: {
             </button>
           )}
         </div>
-        <div className="paragraph text-text"><InlineHtml>{comment.content}</InlineHtml></div>
+        <p className="text-text">{comment.content}</p>
         <div className="row text-small">
           {canReply && <button onClick={() => setShowReplyForm(!showReplyForm)} className="row text-muted hover:text-accent"><Reply size={14} /><span>Reply</span></button>}
           {isAuthor && (

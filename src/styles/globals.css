@@ -37,18 +37,17 @@
   html { font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
   body { @apply bg-surface-0 text-text text-base min-h-screen; }
 
+  h1, h2, h3, h4 { &:first-child { @apply mt-0; } }
   h1 { @apply text-h1 font-bold mt-8 mb-4; }
   h2 { @apply text-h2 font-semibold mt-8 mb-4 border-b-2 border-border scroll-mt-20; }
   h3 { @apply text-h3 font-normal mt-6 mb-4 scroll-mt-20; }
   h4 { @apply text-h4 font-light mt-4 mb-4 scroll-mt-20; }
-  :is(h1, h2, h3, h4):first-child { @apply mt-0; }
 
   p { @apply mb-4 last:mb-0; }
-  ul, ol { @apply mb-4 pl-8; }
+  ul, ol { @apply mb-4 pl-8; :is(ul, ol) { @apply mt-1 mb-0; } }
   ul { list-style-type: disc; }
   ol { list-style-type: decimal; }
   li { @apply mb-1 last:mb-0; }
-  :is(ul, ol) :is(ul, ol) { @apply mt-1 mb-0; }
 
   a { @apply text-accent no-underline hover:text-accent-hover; }
   code { @apply text-[0.9em] px-1.5 py-0.5 bg-surface-2 rounded; }
@@ -70,8 +69,7 @@
   
   ::-webkit-scrollbar { @apply w-2 h-2; }
   ::-webkit-scrollbar-track { @apply bg-surface-1; }
-  ::-webkit-scrollbar-thumb { @apply bg-border rounded; }
-  ::-webkit-scrollbar-thumb:hover { @apply bg-text-muted; }
+  ::-webkit-scrollbar-thumb { @apply bg-border rounded; &:hover { @apply bg-text-muted; } }
 
   input, textarea, select { font: inherit; color: inherit; }
   hr { @apply border-0 border-t border-border-muted; }
@@ -86,7 +84,7 @@
     ul, ol { @apply pl-6 mb-3; }
     blockquote { @apply my-3 py-0; }
     a { @apply underline underline-offset-2; }
-    pre { background-color: #24292e; } /* Match Shiki github-dark */
+    pre { background-color: #24292e; }
     p.is-editor-empty:first-child::before { content: attr(data-placeholder); @apply float-left text-text-muted opacity-60 pointer-events-none h-0; }
     .selectedCell { @apply bg-accent-muted; }
     &.ProseMirror-selectednode .iframe-embed { @apply outline-2 outline-accent outline-offset-2 rounded-lg; }
@@ -101,28 +99,41 @@
   /* Code block with language selector */
   .code-block-wrapper { @apply relative my-4; pre { @apply m-0 border border-border-muted rounded-lg p-4 pr-24 overflow-x-auto; background-color: #24292e; } code { @apply bg-transparent p-0; } }
 
-  /* Tabs */
-  [data-tabs] { .tabs-list { @apply flex gap-1 border-b border-border-muted mb-4; } .tab-button { @apply py-2 px-4 bg-transparent border-b-2 border-transparent text-text-muted cursor-pointer transition-all hover:text-text; &.active { @apply text-accent border-accent; } } .tab-panel, [data-tab-item] { @apply hidden; &.active { @apply block; } } }
-  .tabs-editor { @apply border border-border-muted rounded-lg overflow-hidden; .tabs-list { @apply flex items-center gap-1 p-2 bg-surface-1 border-b border-border-muted mb-0; } .tab-button-edit { @apply flex items-center gap-1 py-1 px-2 bg-surface-2 rounded border border-transparent; &.active { @apply bg-accent-muted border-accent; } } .tab-title-input { @apply bg-transparent border-0 outline-none w-24 text-small text-text placeholder:text-text-muted; } .tab-remove { @apply p-0.5 rounded-sm text-text-muted cursor-pointer hover:text-error hover:bg-surface-2; } .tab-add { @apply py-1 px-2 text-text-muted cursor-pointer rounded hover:text-accent hover:bg-surface-2; } .tabs-content { @apply p-4; } }
-  [data-tabs][data-active-tab="0"] [data-tab-item]:nth-of-type(1), [data-tabs][data-active-tab="1"] [data-tab-item]:nth-of-type(2), [data-tabs][data-active-tab="2"] [data-tab-item]:nth-of-type(3), [data-tabs][data-active-tab="3"] [data-tab-item]:nth-of-type(4), [data-tabs][data-active-tab="4"] [data-tab-item]:nth-of-type(5), [data-tabs][data-active-tab="5"] [data-tab-item]:nth-of-type(6) { @apply block; }
+  /* Tabs - consolidated */
+  [data-tabs] {
+    .tabs-list { @apply flex gap-1 border-b border-border-muted mb-4; }
+    .tab-button { @apply py-2 px-4 bg-transparent border-b-2 border-transparent text-text-muted cursor-pointer transition-all hover:text-text; &.active { @apply text-accent border-accent; } }
+    .tab-panel, [data-tab-item] { @apply hidden; &.active { @apply block; } }
+  }
+  .tabs-editor {
+    @apply border border-border-muted rounded-lg overflow-hidden;
+    .tabs-list { @apply flex items-center gap-1 p-2 bg-surface-1 border-b border-border-muted mb-0; }
+    .tab-button-edit { @apply flex items-center gap-1 py-1 px-2 bg-surface-2 rounded border border-transparent; &.active { @apply bg-accent-muted border-accent; } }
+    .tab-title-input { @apply bg-transparent border-0 outline-none w-24 text-small text-text placeholder:text-text-muted; }
+    .tab-remove { @apply p-0.5 rounded-sm text-text-muted cursor-pointer hover:text-error hover:bg-surface-2; }
+    .tab-add { @apply py-1 px-2 text-text-muted cursor-pointer rounded hover:text-accent hover:bg-surface-2; }
+    .tabs-content { @apply p-4; }
+  }
+  [data-tabs][data-active-tab="0"] [data-tab-item]:nth-of-type(1),
+  [data-tabs][data-active-tab="1"] [data-tab-item]:nth-of-type(2),
+  [data-tabs][data-active-tab="2"] [data-tab-item]:nth-of-type(3),
+  [data-tabs][data-active-tab="3"] [data-tab-item]:nth-of-type(4),
+  [data-tabs][data-active-tab="4"] [data-tab-item]:nth-of-type(5),
+  [data-tabs][data-active-tab="5"] [data-tab-item]:nth-of-type(6) { @apply block; }
 
   /* Shiki code blocks */
-  .shiki { @apply border border-border-muted rounded-lg p-4 overflow-x-auto; }
-  .shiki code { @apply p-0 bg-transparent; }
+  .shiki { @apply border border-border-muted rounded-lg p-4 overflow-x-auto; code { @apply p-0 bg-transparent; } }
 }
 
 @layer components {
-  .stack { @apply flex flex-col gap-4;}
+  .stack { @apply flex flex-col gap-4; }
   .stack-xs { @apply flex flex-col gap-1; }
-  .stack-sm { @apply flex flex-col gap-1; }
+  .stack-sm { @apply flex flex-col gap-2; }
   .stack-lg { @apply flex flex-col; }
   .row { @apply flex items-center gap-2; }
   .row-md { @apply flex items-center gap-4; }
   .spread { @apply flex items-center justify-between gap-4 flex-wrap; }
   .center { @apply flex items-center justify-center; }
-
-  .text-muted { @apply text-text-muted; }
-  .text-small { @apply text-small; }
 
   .surface { @apply bg-surface-1 border border-border-muted rounded-lg; }
   .surface-interactive { @apply bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5 hover:shadow; }
@@ -140,7 +151,6 @@
   .badge-accent { @apply bg-accent-muted text-accent; }
 
   .skeleton { @apply bg-surface-1 rounded-lg animate-pulse; }
-  .sticky-card { @apply sticky top-20; }
   .link-muted { @apply text-text-muted hover:text-text; }
 
   .banner-container { @apply relative w-full aspect-8/1 overflow-hidden bg-surface-1 rounded-lg; }
