@@ -20,7 +20,11 @@ interface SessionPayload extends JWTPayload {
   displayName?: string;
 }
 
-// Session Management
+const hexToBytes = (hex: string): Uint8Array => 
+  Uint8Array.from((hex.startsWith('0x') ? hex.slice(2) : hex).match(/.{2}/g)!, b => parseInt(b, 16));
+
+const bytesToHex = (bytes: Uint8Array): string => 
+  Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
 
 async function verifyToken(token: string): Promise<AuthSession | null> {
   try {
@@ -94,12 +98,10 @@ export async function destroySession(): Promise<void> {
   cookieStore.delete(SESSION_COOKIE);
 }
 
-// ROLA Verification
-
 export async function generateChallenge(): Promise<{ challenge: string; expiresAt: Date }> {
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
-  const challenge = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+  const challenge = bytesToHex(array);
   const expiresAt = new Date(Date.now() + parseInt(process.env.CHALLENGE_EXPIRATION || '300', 10) * 1000);
 
   await prisma.challenge.create({ data: { challenge, expiresAt } });
@@ -144,73 +146,40 @@ export async function verifySignedChallenge(
     if (!ownerKeysEntry) return { isValid: false, error: 'No owner_keys metadata found' };
 
     const ownerKeys = ownerKeysEntry.value?.typed?.values || [];
-    const providedKeyHash = await hashPublicKey(signedChallenge.proof.publicKey);
+    const keyBytes = hexToBytes(signedChallenge.proof.publicKey);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', keyBytes.buffer as ArrayBuffer);
+    const providedKeyHash = bytesToHex(new Uint8Array(hashBuffer).slice(-29));
+    
     const keyMatches = ownerKeys.some((key: { value: string }) =>
       key.value === providedKeyHash || key.value === signedChallenge.proof.publicKey
     );
 
     if (!keyMatches) return { isValid: false, error: 'Public key does not match owner keys' };
 
-    const messageToVerify = `ROLA${signedChallenge.challenge}${RADIX_CONFIG.dAppDefinitionAddress}${expectedOrigin}`;
-    const signatureValid = await verifySignature(
-      messageToVerify,
-      signedChallenge.proof.signature,
-      signedChallenge.proof.publicKey,
-      signedChallenge.proof.curve
+    // Only Ed25519 (curve25519) is supported by Web Crypto API
+    if (signedChallenge.proof.curve !== 'curve25519') {
+      return { isValid: false, error: 'Unsupported signature curve' };
+    }
+
+    const messageBytes = new TextEncoder().encode(
+      `ROLA${signedChallenge.challenge}${RADIX_CONFIG.dAppDefinitionAddress}${expectedOrigin}`
+    );
+    const signatureBytes = hexToBytes(signedChallenge.proof.signature);
+    const publicKeyBytes = hexToBytes(signedChallenge.proof.publicKey);
+
+    const key = await crypto.subtle.importKey(
+      'raw', publicKeyBytes.buffer as ArrayBuffer, { name: 'Ed25519' }, false, ['verify']
+    );
+    const isValid = await crypto.subtle.verify(
+      'Ed25519', key, signatureBytes.buffer as ArrayBuffer, messageBytes
     );
 
-    return signatureValid ? { isValid: true } : { isValid: false, error: 'Invalid signature' };
+    return isValid ? { isValid: true } : { isValid: false, error: 'Invalid signature' };
   } catch (error) {
     console.error('ROLA verification error:', error);
     return { isValid: false, error: 'Verification failed' };
   }
 }
-
-// Crypto helpers
-
-async function hashPublicKey(publicKey: string): Promise<string> {
-  const keyBytes = hexToBytes(publicKey);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', keyBytes.buffer as ArrayBuffer);
-  return bytesToHex(new Uint8Array(hashBuffer).slice(-29));
-}
-
-async function verifySignature(
-  message: string,
-  signature: string,
-  publicKey: string,
-  curve: 'curve25519' | 'secp256k1'
-): Promise<boolean> {
-  try {
-    const messageBytes = new TextEncoder().encode(message);
-    const signatureBytes = hexToBytes(signature);
-    const publicKeyBytes = hexToBytes(publicKey);
-
-    if (curve === 'curve25519') {
-      const key = await crypto.subtle.importKey('raw', publicKeyBytes.buffer as ArrayBuffer, { name: 'Ed25519' }, false, ['verify']);
-      return crypto.subtle.verify('Ed25519', key, signatureBytes.buffer as ArrayBuffer, messageBytes);
-    } else {
-      // Web Crypto API does not support secp256k1 (Bitcoin curve)
-      // It only supports P-256 (secp256r1), P-384, and P-521
-      console.warn('secp256k1 signature verification is not supported by Web Crypto API');
-      return false;
-    }
-  } catch {
-    return false;
-  }
-}
-
-function hexToBytes(hex: string): Uint8Array {
-  const cleanHex = hex.startsWith('0x') ? hex.slice(2) : hex;
-  const bytes = new Uint8Array(cleanHex.length / 2);
-  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(cleanHex.substr(i * 2, 2), 16);
-  return bytes;
-}
-
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Cleanup
 
 export async function cleanupExpiredSessions(): Promise<number> {
   const result = await prisma.session.deleteMany({ where: { expiresAt: { lt: new Date() } } });

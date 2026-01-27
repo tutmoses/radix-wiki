@@ -16,11 +16,6 @@ export interface ParsedPath {
   isHistoryMode: boolean;
 }
 
-export interface SiblingPages {
-  prev: { title: string; href: string } | null;
-  next: { title: string; href: string } | null;
-}
-
 export function parsePath(segments: string[] = []): ParsedPath {
   if (segments.length === 0) return { type: 'homepage', tagPath: '', slug: '', isEditMode: false, isHistoryMode: false };
   if (segments.length === 1 && segments[0] === 'edit') return { type: 'edit', tagPath: '', slug: '', isEditMode: true, isHistoryMode: false };
@@ -97,24 +92,4 @@ export async function getPageHistory(tagPath: string, slug: string) {
   });
 
   return { page, revisions };
-}
-
-export async function getSiblingPages(tagPath: string, slug: string): Promise<SiblingPages> {
-  // Single query to get all pages in the same category, ordered by title
-  const pages = await prisma.page.findMany({
-    where: { tagPath },
-    orderBy: { title: 'asc' },
-    select: { title: true, slug: true, tagPath: true },
-  });
-
-  const currentIndex = pages.findIndex(p => p.slug === slug);
-  if (currentIndex === -1) return { prev: null, next: null };
-
-  const prev = currentIndex > 0 ? pages[currentIndex - 1] : null;
-  const next = currentIndex < pages.length - 1 ? pages[currentIndex + 1] : null;
-
-  return {
-    prev: prev ? { title: prev.title, href: `/${prev.tagPath}/${prev.slug}` } : null,
-    next: next ? { title: next.title, href: `/${next.tagPath}/${next.slug}` } : null,
-  };
 }

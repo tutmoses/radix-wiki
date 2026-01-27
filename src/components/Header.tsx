@@ -4,10 +4,10 @@
 
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { BookOpen, Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, ListTree, Info, Clock } from 'lucide-react';
+import { BookOpen, Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, Info, Clock } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth } from '@/hooks';
-import { cn, shortenAddress, slugify, formatRelativeTime, formatDate } from '@/lib/utils';
+import { cn, shortenAddress, formatRelativeTime, formatDate } from '@/lib/utils';
 import { Button, Dropdown } from '@/components/ui';
 import { isValidTagPath } from '@/lib/tags';
 import type { WikiPage } from '@/types';
@@ -32,7 +32,6 @@ function usePageContext() {
   return {
     canEdit: isAuthenticated && (isHomepage || isPage) && !isEdit && !isHistory,
     canShowHistory: (isHomepage || isPage) && !isHistory,
-    canShowToc: (isHomepage || isPage) && !isEdit && !isHistory,
     canShowInfo: (isHomepage || isPage) && !isEdit && !isHistory,
     editPath: isHomepage ? '/edit' : `${viewPath}/edit`,
     historyPath: (isHomepage || isPage) ? (isHomepage ? '/history' : `${viewPath}/history`) : null,
@@ -40,34 +39,6 @@ function usePageContext() {
     tagPath,
     slug,
   };
-}
-
-function TocDropdown({ onClose }: { onClose: () => void }) {
-  const [headings, setHeadings] = useState<{ text: string; level: number; id: string }[]>([]);
-
-  useEffect(() => {
-    const els = document.querySelector('main')?.querySelectorAll('h1, h2, h3') || [];
-    setHeadings(Array.from(els).map(el => {
-      const text = el.textContent?.trim() || '';
-      if (!el.id) el.id = slugify(text);
-      return { text, level: parseInt(el.tagName[1]), id: el.id };
-    }).filter(h => h.text));
-  }, []);
-
-  return (
-    <Dropdown onClose={onClose} className="w-72 max-h-80 overflow-y-auto">
-      {headings.length === 0 ? (
-        <p className="p-3 text-muted text-small">No headings found.</p>
-      ) : (
-        <nav className="py-1">
-          {headings.map((h, i) => (
-            <button key={i} onClick={() => { onClose(); document.getElementById(h.id)?.scrollIntoView({ behavior: 'smooth' }); }}
-              className="dropdown-item text-small" style={{ paddingLeft: `${0.75 + (h.level - 1) * 0.75}rem` }}>{h.text}</button>
-          ))}
-        </nav>
-      )}
-    </Dropdown>
-  );
 }
 
 interface PageWithAuthor {
@@ -125,10 +96,9 @@ export function Header() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
   const { session, walletData, isConnected, isLoading, logout, connect, sidebarOpen, toggleSidebar } = useStore();
-  const { canEdit, canShowHistory, canShowToc, canShowInfo, editPath, historyPath, isHomepage, tagPath, slug } = usePageContext();
+  const { canEdit, canShowHistory, canShowInfo, editPath, historyPath, isHomepage, tagPath, slug } = usePageContext();
   const [showSearch, setShowSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showToc, setShowToc] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [pageData, setPageData] = useState<PageWithAuthor | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -205,13 +175,6 @@ export function Header() {
 
           <div className="row ml-auto">
             <button onClick={() => setShowSearch(!showSearch)} className="icon-btn" aria-label="Search"><Search size={20} /></button>
-            
-            {canShowToc && (
-              <div className="relative">
-                <button onClick={() => setShowToc(!showToc)} className="icon-btn" aria-label="Table of contents"><ListTree size={20} /></button>
-                {showToc && <TocDropdown onClose={() => setShowToc(false)} />}
-              </div>
-            )}
             
             {canShowInfo && pageData && (
               <div className="relative">

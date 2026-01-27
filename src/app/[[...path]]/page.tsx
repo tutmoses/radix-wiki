@@ -2,7 +2,7 @@
 
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { parsePath, getHomepage, getPage, getCategoryPages, getPageHistory, getSiblingPages } from '@/lib/wiki';
+import { parsePath, getHomepage, getPage, getCategoryPages, getPageHistory } from '@/lib/wiki';
 import { PageView, HomepageView, CategoryView, HistoryView, PageSkeleton, StatusCard } from './PageContent';
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -92,9 +92,8 @@ export default async function DynamicPage({ params }: Props) {
     );
   }
 
-  // Page view or edit - sequential to avoid connection pool exhaustion
+  // Page view or edit
   const page = await getPage(parsed.tagPath, parsed.slug);
-  const siblings = await getSiblingPages(parsed.tagPath, parsed.slug);
   
   return (
     <Suspense fallback={<PageSkeleton />}>
@@ -103,7 +102,6 @@ export default async function DynamicPage({ params }: Props) {
         tagPath={parsed.tagPath} 
         slug={parsed.slug} 
         isEditMode={parsed.isEditMode}
-        siblings={siblings}
       />
     </Suspense>
   );

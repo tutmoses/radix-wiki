@@ -35,7 +35,7 @@ export const useStore = create<AppStore>()(
       isLoading: true,
       isConnected: false,
       walletData: null,
-      sidebarOpen: false,
+      sidebarOpen: true,
       _rdtDisconnect: null,
       _rdtConnect: null,
       _setRdtCallbacks: (connect, disconnect) => set({ _rdtConnect: connect, _rdtDisconnect: disconnect }),
