@@ -19,6 +19,7 @@ import { formatDate, slugify } from '@/lib/utils';
 import { findTagByPath, isAuthorOnlyPath } from '@/lib/tags';
 import type { WikiPage } from '@/types';
 import type { Block } from '@/components/BlockRenderer';
+import type { SiblingPages } from '@/lib/wiki';
 
 // Lazy load BlockEditor - only when editing
 const BlockEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.BlockEditor), {
@@ -63,6 +64,27 @@ export function PageSkeleton() {
       <div className="h-6 w-3/4 skeleton rounded" />
       <div className="h-6 w-1/2 skeleton rounded" />
     </div>
+  );
+}
+
+// ========== ARTICLE NAVIGATION ==========
+function ArticleNav({ siblings }: { siblings: SiblingPages }) {
+  if (!siblings.prev && !siblings.next) return null;
+  return (
+    <nav className="grid grid-cols-2 gap-4 pt-6 border-t border-border">
+      {siblings.prev ? (
+        <Link href={siblings.prev.href} className="group surface p-4 hover:border-accent transition-colors">
+          <div className="row text-small text-muted mb-1"><ArrowLeft size={14} /><span>Previous Article</span></div>
+          <span className="font-medium group-hover:text-accent transition-colors">{siblings.prev.title}</span>
+        </Link>
+      ) : <div />}
+      {siblings.next && (
+        <Link href={siblings.next.href} className="group surface p-4 hover:border-accent transition-colors text-right">
+          <div className="row justify-end text-small text-muted mb-1"><span>Next Article</span><ArrowRight size={14} /></div>
+          <span className="font-medium group-hover:text-accent transition-colors">{siblings.next.title}</span>
+        </Link>
+      )}
+    </nav>
   );
 }
 
@@ -294,7 +316,7 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPageWithRevisions; tag
 }
 
 // ========== PAGE VIEW (Read-only) ==========
-function PageViewContent({ page }: { page: WikiPageWithRevisions }) {
+function PageViewContent({ page, siblings }: { page: WikiPageWithRevisions; siblings: SiblingPages }) {
   const router = useRouter();
   const { user } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -319,6 +341,7 @@ function PageViewContent({ page }: { page: WikiPageWithRevisions }) {
         <h1 className="m-0!">{page.title}</h1>
       </Banner>
       <BlockRenderer content={page.content} />
+      <ArticleNav siblings={siblings} />
       {isCommunityPage && <UserStats authorId={page.authorId} />}
       <Discussion pageId={page.id} />
       {isAuthor && (
@@ -333,7 +356,7 @@ function PageViewContent({ page }: { page: WikiPageWithRevisions }) {
 }
 
 // ========== PAGE VIEW WRAPPER ==========
-export function PageView({ page, tagPath, slug, isEditMode }: { page: WikiPageWithRevisions | null; tagPath: string; slug: string; isEditMode: boolean }) {
+export function PageView({ page, tagPath, slug, isEditMode, siblings }: { page: WikiPageWithRevisions | null; tagPath: string; slug: string; isEditMode: boolean; siblings: SiblingPages }) {
   const { isAuthenticated } = useAuth();
   const viewPath = `/${tagPath}/${slug}`;
 
@@ -341,7 +364,7 @@ export function PageView({ page, tagPath, slug, isEditMode }: { page: WikiPageWi
   if (!page && !isAuthenticated) return <StatusCard status="notFound" backHref="/" />;
   if (!page && isAuthenticated) return <PageEditor tagPath={tagPath} slug={slug} />;
   if (!page) return <StatusCard status="notFound" backHref="/" />;
-  return isEditMode ? <PageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} />;
+  return isEditMode ? <PageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} siblings={siblings} />;
 }
 
 // ========== HISTORY VIEW ==========

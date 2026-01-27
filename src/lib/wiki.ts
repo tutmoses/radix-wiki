@@ -16,6 +16,11 @@ export interface ParsedPath {
   isHistoryMode: boolean;
 }
 
+export interface SiblingPages {
+  prev: { title: string; href: string } | null;
+  next: { title: string; href: string } | null;
+}
+
 export function parsePath(segments: string[] = []): ParsedPath {
   if (segments.length === 0) return { type: 'homepage', tagPath: '', slug: '', isEditMode: false, isHistoryMode: false };
   if (segments.length === 1 && segments[0] === 'edit') return { type: 'edit', tagPath: '', slug: '', isEditMode: true, isHistoryMode: false };
@@ -92,4 +97,30 @@ export async function getPageHistory(tagPath: string, slug: string) {
   });
 
   return { page, revisions };
+}
+
+export async function getSiblingPages(tagPath: string, slug: string): Promise<SiblingPages> {
+  const currentPage = await prisma.page.findFirst({
+    where: { tagPath, slug },
+    select: { title: true },
+  });
+  if (!currentPage) return { prev: null, next: null };
+
+  const [prev, next] = await Promise.all([
+    prisma.page.findFirst({
+      where: { tagPath, title: { lt: currentPage.title } },
+      orderBy: { title: 'desc' },
+      select: { title: true, slug: true, tagPath: true },
+    }),
+    prisma.page.findFirst({
+      where: { tagPath, title: { gt: currentPage.title } },
+      orderBy: { title: 'asc' },
+      select: { title: true, slug: true, tagPath: true },
+    }),
+  ]);
+
+  return {
+    prev: prev ? { title: prev.title, href: `/${prev.tagPath}/${prev.slug}` } : null,
+    next: next ? { title: next.title, href: `/${next.tagPath}/${next.slug}` } : null,
+  };
 }
