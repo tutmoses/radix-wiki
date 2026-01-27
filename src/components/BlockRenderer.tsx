@@ -58,7 +58,8 @@ function useProcessedHtml(ref: React.RefObject<HTMLElement | null>, html: string
 function extractHeadings(content: Block[]): { text: string; level: number; id: string }[] {
   const headings: { text: string; level: number; id: string }[] = [];
   const headingRegex = /<h([1-4])[^>]*>([\s\S]*?)<\/h\1>/gi;
-  const stripTags = (s: string) => s.replace(/<[^>]*>/g, '').trim();
+  const decodeEntities = (s: string) => s.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  const stripTags = (s: string) => decodeEntities(s.replace(/<[^>]*>/g, '')).trim();
   const extract = (blocks: Block[]) => {
     for (const block of blocks) {
       if (block.type === 'content' && block.text) {
