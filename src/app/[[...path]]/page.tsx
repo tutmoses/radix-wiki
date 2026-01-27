@@ -92,11 +92,9 @@ export default async function DynamicPage({ params }: Props) {
     );
   }
 
-  // Page view or edit
-  const [page, siblings] = await Promise.all([
-    getPage(parsed.tagPath, parsed.slug),
-    getSiblingPages(parsed.tagPath, parsed.slug),
-  ]);
+  // Page view or edit - sequential to avoid connection pool exhaustion
+  const page = await getPage(parsed.tagPath, parsed.slug);
+  const siblings = await getSiblingPages(parsed.tagPath, parsed.slug);
   
   return (
     <Suspense fallback={<PageSkeleton />}>

@@ -60,16 +60,14 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
 
       const orderBy = sort === 'title' ? { title: 'asc' as const } : { updatedAt: 'desc' as const };
 
-      const [pages, total] = await Promise.all([
-        prisma.page.findMany({
-          where,
-          include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
-          orderBy,
-          skip: (page - 1) * pageSize,
-          take: pageSize,
-        }),
-        prisma.page.count({ where }),
-      ]);
+      const pages = await prisma.page.findMany({
+        where,
+        include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
+        orderBy,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      });
+      const total = await prisma.page.count({ where });
 
       return json({ items: pages, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
     }

@@ -14,16 +14,18 @@ function createPool(): pg.Pool {
     return globalForPrisma.pool;
   }
 
+  const connectionString = process.env.DATABASE_URL;
+  
+  // For serverless (Neon/Supabase), use minimal pool
   const pool = new pg.Pool({
-    connectionString: process.env.DATABASE_URL,
-    max: 10,
-    idleTimeoutMillis: 30000,
+    connectionString,
+    max: 1,
+    idleTimeoutMillis: 0,
     connectionTimeoutMillis: 10000,
   });
 
-  if (process.env.NODE_ENV !== 'production') {
-    globalForPrisma.pool = pool;
-  }
+  // Always cache the pool to prevent multiple instances
+  globalForPrisma.pool = pool;
 
   return pool;
 }
@@ -38,12 +40,11 @@ function createPrismaClient(): PrismaClient {
 
   const prisma = new PrismaClient({
     adapter,
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   });
 
-  if (process.env.NODE_ENV !== 'production') {
-    globalForPrisma.prisma = prisma;
-  }
+  // Always cache to prevent multiple instances
+  globalForPrisma.prisma = prisma;
 
   return prisma;
 }

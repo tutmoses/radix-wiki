@@ -100,24 +100,18 @@ export async function getPageHistory(tagPath: string, slug: string) {
 }
 
 export async function getSiblingPages(tagPath: string, slug: string): Promise<SiblingPages> {
-  const currentPage = await prisma.page.findFirst({
-    where: { tagPath, slug },
-    select: { title: true },
+  // Single query to get all pages in the same category, ordered by title
+  const pages = await prisma.page.findMany({
+    where: { tagPath },
+    orderBy: { title: 'asc' },
+    select: { title: true, slug: true, tagPath: true },
   });
-  if (!currentPage) return { prev: null, next: null };
 
-  const [prev, next] = await Promise.all([
-    prisma.page.findFirst({
-      where: { tagPath, title: { lt: currentPage.title } },
-      orderBy: { title: 'desc' },
-      select: { title: true, slug: true, tagPath: true },
-    }),
-    prisma.page.findFirst({
-      where: { tagPath, title: { gt: currentPage.title } },
-      orderBy: { title: 'asc' },
-      select: { title: true, slug: true, tagPath: true },
-    }),
-  ]);
+  const currentIndex = pages.findIndex(p => p.slug === slug);
+  if (currentIndex === -1) return { prev: null, next: null };
+
+  const prev = currentIndex > 0 ? pages[currentIndex - 1] : null;
+  const next = currentIndex < pages.length - 1 ? pages[currentIndex + 1] : null;
 
   return {
     prev: prev ? { title: prev.title, href: `/${prev.tagPath}/${prev.slug}` } : null,

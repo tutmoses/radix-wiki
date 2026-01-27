@@ -162,7 +162,7 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
         <span className="text-h3 font-semibold">${priceStr}</span>
       </div>
       {block.showChange && typeof data.change24h === 'number' && (
-        <span className={cn('font-medium', isPositive ? 'text-success' : 'text-error')}>{isPositive ? 'â†‘' : 'â†“'} {Math.abs(data.change24h).toFixed(2)}%</span>
+        <span className={cn('font-medium', isPositive ? 'text-success' : 'text-error')}>{isPositive ? '↑' : '↓'} {Math.abs(data.change24h).toFixed(2)}%</span>
       )}
     </div>
   );
