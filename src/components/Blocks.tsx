@@ -22,7 +22,7 @@ export function createDefaultPageContentSync() {
     { id: crypto.randomUUID(), type: 'content' as const, text: '' },
     { id: crypto.randomUUID(), type: 'columns' as const, columns: [
       { id: crypto.randomUUID(), blocks: [{ id: crypto.randomUUID(), type: 'toc' as const }] },
-      { id: crypto.randomUUID(), blocks: [{ id: crypto.randomUUID(), type: 'content' as const, text: '<h2>Getting Started</h2><p>Start writing your content here...</p>' }] },
+      { id: crypto.randomUUID(), blocks: [{ id: crypto.randomUUID(), type: 'content' as const, text: '' }] },
     ], gap: 'md' as const, align: 'start' as const },
     { id: crypto.randomUUID(), type: 'content' as const, text: '' },
   ];

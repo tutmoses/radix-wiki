@@ -162,7 +162,7 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
         <span className="text-h3 font-semibold">${priceStr}</span>
       </div>
       {block.showChange && typeof data.change24h === 'number' && (
-        <span className={cn('font-medium', isPositive ? 'text-success' : 'text-error')}>{isPositive ? '↑' : '↓'} {Math.abs(data.change24h).toFixed(2)}%</span>
+        <span className={cn('font-medium', isPositive ? 'text-success' : 'text-error')}>{isPositive ? 'â†‘' : 'â†“'} {Math.abs(data.change24h).toFixed(2)}%</span>
       )}
     </div>
   );
@@ -225,6 +225,38 @@ function ColumnsBlockView({ block, allContent }: { block: ColumnsBlock; allConte
 const ContentBlockView = memo(function ContentBlockView({ html }: { html: string }) {
   const ref = useRef<HTMLDivElement>(null);
   useProcessedHtml(ref, html);
+  
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.querySelectorAll('[data-twitter-embed]:not([data-init])').forEach(container => {
+      container.setAttribute('data-init', '');
+      const tweetId = container.getAttribute('data-tweet-id');
+      if (!tweetId) return;
+      const iframe = container.querySelector('iframe');
+      if (iframe) {
+        iframe.src = `https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&dnt=true`;
+        iframe.style.width = '100%';
+        iframe.style.height = '250px';
+        iframe.style.border = 'none';
+        iframe.setAttribute('scrolling', 'no');
+      }
+    });
+    
+    const handleMessage = (e: MessageEvent) => {
+      if (e.origin === 'https://platform.twitter.com' && e.data?.['twttr.embed']?.method === 'twttr.private.resize') {
+        const params = e.data['twttr.embed'].params;
+        if (params?.[0]?.height) {
+          el.querySelectorAll('[data-twitter-embed] iframe').forEach(iframe => {
+            (iframe as HTMLIFrameElement).style.height = `${params[0].height}px`;
+          });
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [html]);
+  
   return html.trim() ? <div ref={ref} className="prose-content" dangerouslySetInnerHTML={{ __html: html }} /> : null;
 });
 

@@ -54,7 +54,7 @@ export const createDefaultPageContent = (): Block[] => [
   { id: crypto.randomUUID(), type: 'content', text: '' },
   { id: crypto.randomUUID(), type: 'columns', columns: [
     { id: crypto.randomUUID(), blocks: [{ id: crypto.randomUUID(), type: 'toc' }] },
-    { id: crypto.randomUUID(), blocks: [{ id: crypto.randomUUID(), type: 'content', text: '<h2>Getting Started</h2><p>Start writing your content here...</p>' }] },
+    { id: crypto.randomUUID(), blocks: [{ id: crypto.randomUUID(), type: 'content', text: '' }] },
   ], gap: 'md', align: 'start' },
   { id: crypto.randomUUID(), type: 'content', text: '' },
 ];
@@ -75,6 +75,59 @@ const Iframe = TiptapNode.create({
   parseHTML() { return [{ tag: 'iframe' }]; },
   renderHTML({ HTMLAttributes }) { return ['div', { 'data-iframe-embed': '', class: 'iframe-embed' }, ['iframe', mergeAttributes(HTMLAttributes, { frameborder: '0', allowfullscreen: 'true' })]]; },
 });
+
+const TwitterEmbed = TiptapNode.create({
+  name: 'twitterEmbed',
+  group: 'block',
+  atom: true,
+  addAttributes() { return { tweetId: { default: null }, url: { default: null } }; },
+  parseHTML() { return [{ tag: 'div[data-twitter-embed]', getAttrs: el => ({ tweetId: (el as HTMLElement).dataset.tweetId, url: (el as HTMLElement).dataset.url }) }]; },
+  renderHTML({ node }) { return ['div', { 'data-twitter-embed': '', 'data-tweet-id': node.attrs.tweetId, 'data-url': node.attrs.url, class: 'twitter-embed' }, ['iframe', { src: `https://platform.twitter.com/embed/Tweet.html?id=${node.attrs.tweetId}&dnt=true`, frameborder: '0', allowfullscreen: 'true', scrolling: 'no' }]]; },
+  addNodeView() { return ReactNodeViewRenderer(TwitterEmbedView); },
+  addPasteRules() {
+    return [
+      {
+        find: /https?:\/\/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/g,
+        handler: ({ match, chain, range }) => {
+          const tweetId = match[1];
+          if (tweetId) {
+            chain().deleteRange(range).insertContent({ type: 'twitterEmbed', attrs: { tweetId, url: match[0] } }).run();
+          }
+        },
+      },
+    ];
+  },
+});
+
+function TwitterEmbedView({ node }: { node: any }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [height, setHeight] = useState(250);
+  
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.origin === 'https://platform.twitter.com' && e.data?.['twttr.embed']?.method === 'twttr.private.resize') {
+        const params = e.data['twttr.embed'].params;
+        if (params?.[0]?.height) setHeight(params[0].height);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+  
+  return (
+    <NodeViewWrapper>
+      <div className="twitter-embed">
+        <iframe
+          ref={iframeRef}
+          src={`https://platform.twitter.com/embed/Tweet.html?id=${node.attrs.tweetId}&dnt=true`}
+          style={{ width: '100%', height, border: 'none' }}
+          scrolling="no"
+          allowFullScreen
+        />
+      </div>
+    </NodeViewWrapper>
+  );
+}
 
 const TabGroup = TiptapNode.create({
   name: 'tabGroup',
@@ -209,7 +262,8 @@ const TOOLBAR_BUTTONS: { key: string; icon: LucideIcon; active?: string | [strin
     const yt = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
     if (yt) { e.chain().focus().setYoutubeVideo({ src: url }).run(); return; }
     const tw = url.match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/);
-    e.chain().focus().insertContent({ type: 'iframe', attrs: { src: tw ? `https://platform.twitter.com/embed/Tweet.html?id=${tw[1]}` : url } }).run();
+    if (tw) { e.chain().focus().insertContent({ type: 'twitterEmbed', attrs: { tweetId: tw[1], url } }).run(); return; }
+    e.chain().focus().insertContent({ type: 'iframe', attrs: { src: url } }).run();
   }},
   { key: 'table', icon: TableIcon, active: 'table', action: e => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
   { key: 'tabs', icon: LayoutList, active: 'tabGroup', action: e => e.chain().focus().insertContent({
@@ -237,7 +291,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
       TiptapTable.configure({ resizable: false, HTMLAttributes: { class: 'tiptap-table' } }),
       TiptapTableRow, TiptapTableCell.configure({ HTMLAttributes: { class: 'p-2' } }),
       TiptapTableHeader.configure({ HTMLAttributes: { class: 'p-2 font-semibold bg-surface-1' } }),
-      Iframe, TabGroup, TabItem, CodeBlock, Placeholder.configure({ placeholder }),
+      Iframe, TwitterEmbed, TabGroup, TabItem, CodeBlock, Placeholder.configure({ placeholder }),
     ],
     editorProps: { attributes: { class: 'outline-none focus:outline-none prose prose-invert min-h-20' } },
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
