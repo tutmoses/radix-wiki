@@ -27,7 +27,12 @@ export const TAG_HIERARCHY: TagNode[] = [
         ],
       },
       { name: 'Events', slug: 'events' },
-      { name: 'Resources', slug: 'resources',},
+      { name: 'Resources', slug: 'resources',
+        children: [
+          { name: 'Legal', slug: 'legal' },
+          { name: 'Python Scripts', slug: 'python-scripts' }
+        ],
+      },
       { name: 'Blog', slug: 'blog', xrd: { create: 50_000 } },
     ],
   },

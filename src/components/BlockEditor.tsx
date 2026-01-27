@@ -242,7 +242,11 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
     editorProps: { attributes: { class: 'outline-none focus:outline-none prose prose-invert min-h-20' } },
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     immediatelyRender: false,
-    onCreate: ({ editor }) => { if (initialValueRef.current) editor.commands.setContent(initialValueRef.current); },
+    onCreate: ({ editor }) => { 
+      if (initialValueRef.current) {
+        queueMicrotask(() => editor.commands.setContent(initialValueRef.current));
+      }
+    },
   });
 
   useEffect(() => {
