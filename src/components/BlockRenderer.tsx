@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, memo } from 'react';
+import { useState, useEffect, useRef, memo, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, FileText } from 'lucide-react';
@@ -42,17 +42,25 @@ function useLazyShiki(containerRef: React.RefObject<HTMLElement | null>, hasCode
 }
 
 // ========== UTILITIES ==========
-function useProcessedHtml(ref: React.RefObject<HTMLElement | null>, html: string) {
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || !html.trim()) return;
-    el.querySelectorAll('h1, h2, h3, h4').forEach(h => { h.id = slugify(h.textContent?.trim() || ''); });
-    el.querySelectorAll('a[href]').forEach(a => {
-      const href = a.getAttribute('href') || '';
-      a.classList.add('link');
-      if (href.startsWith('http')) { a.setAttribute('target', '_blank'); a.setAttribute('rel', 'noopener noreferrer'); }
+function processHtml(html: string): string {
+  if (!html.trim()) return html;
+  // Add IDs to headings and process links at render time for SSR consistency
+  const stripTags = (s: string) => s.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').trim();
+  return html
+    .replace(/<(h[1-4])([^>]*)>([\s\S]*?)<\/\1>/gi, (match, tag, attrs, content) => {
+      if (attrs.includes(' id=')) return match; // Already has ID
+      const text = stripTags(content);
+      const id = slugify(text);
+      return id ? `<${tag}${attrs} id="${id}">${content}</${tag}>` : match;
+    })
+    .replace(/<a\s+href="(https?:\/\/[^"]+)"([^>]*)>/gi, (match, href, rest) => {
+      if (rest.includes('target=')) return match;
+      return `<a href="${href}"${rest} target="_blank" rel="noopener noreferrer" class="link">`;
+    })
+    .replace(/<a\s+href="([^"]+)"([^>]*)>/gi, (match, href, rest) => {
+      if (rest.includes('class=')) return match;
+      return `<a href="${href}"${rest} class="link">`;
     });
-  }, [html]);
 }
 
 function extractHeadings(content: Block[]): { text: string; level: number; id: string }[] {
@@ -224,7 +232,7 @@ function ColumnsBlockView({ block, allContent }: { block: ColumnsBlock; allConte
 
 const ContentBlockView = memo(function ContentBlockView({ html }: { html: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  useProcessedHtml(ref, html);
+  const processedHtml = useMemo(() => processHtml(html), [html]);
   
   useEffect(() => {
     const el = ref.current;
@@ -257,7 +265,7 @@ const ContentBlockView = memo(function ContentBlockView({ html }: { html: string
     return () => window.removeEventListener('message', handleMessage);
   }, [html]);
   
-  return html.trim() ? <div ref={ref} className="prose-content" dangerouslySetInnerHTML={{ __html: html }} /> : null;
+  return processedHtml.trim() ? <div ref={ref} className="prose-content" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: processedHtml }} /> : null;
 });
 
 function renderBlockView(block: Block, allContent: Block[] = []): React.ReactNode {

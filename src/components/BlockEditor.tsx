@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo, memo, type ReactNode } from 'react';
 import { useEditor, EditorContent, type Editor, NodeViewWrapper, NodeViewContent, ReactNodeViewRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TiptapLink from '@tiptap/extension-link';
@@ -90,9 +90,7 @@ const TwitterEmbed = TiptapNode.create({
         find: /https?:\/\/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/g,
         handler: ({ match, chain, range }) => {
           const tweetId = match[1];
-          if (tweetId) {
-            chain().deleteRange(range).insertContent({ type: 'twitterEmbed', attrs: { tweetId, url: match[0] } }).run();
-          }
+          if (tweetId) chain().deleteRange(range).insertContent({ type: 'twitterEmbed', attrs: { tweetId, url: match[0] } }).run();
         },
       },
     ];
@@ -281,20 +279,69 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const initialValueRef = useRef(value);
+  const onChangeRef = useRef(onChange);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const isPastingRef = useRef(false);
+  onChangeRef.current = onChange;
+
+  const extensions = useMemo(() => [
+    StarterKit.configure({ heading: { levels: [2, 3, 4] }, codeBlock: false }),
+    TiptapLink.configure({ openOnClick: false, HTMLAttributes: { class: 'link' } }),
+    TiptapImage.configure({ inline: false, allowBase64: true, HTMLAttributes: { class: 'rounded-lg max-w-full' } }),
+    TiptapYoutube.configure({ controls: true, nocookie: true, modestBranding: true }),
+    TiptapTable.configure({ resizable: false, HTMLAttributes: { class: 'tiptap-table' } }),
+    TiptapTableRow, TiptapTableCell.configure({ HTMLAttributes: { class: 'p-2' } }),
+    TiptapTableHeader.configure({ HTMLAttributes: { class: 'p-2 font-semibold bg-surface-1' } }),
+    Iframe, TwitterEmbed, TabGroup, TabItem, CodeBlock, Placeholder.configure({ placeholder }),
+  ], [placeholder]);
+
+  const cleanHtml = useCallback((html: string) => {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('style, script, meta, link, svg, canvas, noscript, iframe').forEach(el => el.remove());
+    doc.querySelectorAll('*').forEach(el => {
+      el.removeAttribute('style');
+      el.removeAttribute('class');
+      el.removeAttribute('id');
+      Array.from(el.attributes).forEach(attr => {
+        if (!['href', 'src', 'alt'].includes(attr.name)) el.removeAttribute(attr.name);
+      });
+    });
+    return doc.body.innerHTML;
+  }, []);
 
   const editor = useEditor({
-    extensions: [
-      StarterKit.configure({ heading: { levels: [2, 3, 4] }, codeBlock: false }),
-      TiptapLink.configure({ openOnClick: false, HTMLAttributes: { class: 'link' } }),
-      TiptapImage.configure({ inline: false, allowBase64: true, HTMLAttributes: { class: 'rounded-lg max-w-full' } }),
-      TiptapYoutube.configure({ controls: true, nocookie: true, modestBranding: true }),
-      TiptapTable.configure({ resizable: false, HTMLAttributes: { class: 'tiptap-table' } }),
-      TiptapTableRow, TiptapTableCell.configure({ HTMLAttributes: { class: 'p-2' } }),
-      TiptapTableHeader.configure({ HTMLAttributes: { class: 'p-2 font-semibold bg-surface-1' } }),
-      Iframe, TwitterEmbed, TabGroup, TabItem, CodeBlock, Placeholder.configure({ placeholder }),
-    ],
-    editorProps: { attributes: { class: 'outline-none focus:outline-none prose prose-invert min-h-20' } },
-    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    extensions,
+    editorProps: {
+      attributes: { class: 'outline-none focus:outline-none prose prose-invert min-h-20' },
+      transformPastedHTML: cleanHtml,
+      handlePaste: (view, event) => {
+        const text = event.clipboardData?.getData('text/plain') || '';
+        
+        // For large content, use plain text insertion to avoid heavy HTML parsing
+        if (text.length > 2000) {
+          event.preventDefault();
+          isPastingRef.current = true;
+          
+          requestAnimationFrame(() => {
+            const { state, dispatch } = view;
+            const tr = state.tr.insertText(text);
+            dispatch(tr);
+            isPastingRef.current = false;
+            setTimeout(() => onChangeRef.current(editor?.getHTML() || ''), 100);
+          });
+          
+          return true;
+        }
+        return false;
+      },
+    },
+    onUpdate: ({ editor }) => {
+      if (isPastingRef.current) return;
+      clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        requestAnimationFrame(() => onChangeRef.current(editor.getHTML()));
+      }, 300);
+    },
     immediatelyRender: false,
     onCreate: ({ editor }) => { 
       if (initialValueRef.current) {
@@ -303,9 +350,12 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
     },
   });
 
+  useEffect(() => () => clearTimeout(debounceRef.current), []);
+
   useEffect(() => {
-    if (!editor || editor.isFocused || editor.getHTML() === value) return;
-    editor.commands.setContent(value);
+    if (!editor || editor.isFocused) return;
+    const currentHtml = editor.getHTML();
+    if (currentHtml !== value) editor.commands.setContent(value);
   }, [value, editor]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -358,9 +408,9 @@ function EditWrapper({ icon: Icon, label, children }: { icon: LucideIcon; label:
 
 type BlockProps<T extends Block> = { block: T; onUpdate?: (b: T) => void; allContent?: Block[] };
 
-function ContentBlockEdit({ block, onUpdate }: BlockProps<ContentBlock>) {
+const ContentBlockEdit = memo(function ContentBlockEdit({ block, onUpdate }: BlockProps<ContentBlock>) {
   return <RichTextEditor value={block.text} onChange={text => onUpdate?.({ ...block, text })} placeholder="Write content..." />;
-}
+});
 
 function RecentPagesBlockEdit({ block, onUpdate }: BlockProps<RecentPagesBlock>) {
   return (
@@ -440,20 +490,29 @@ function ColumnsBlockEdit({ block, onUpdate }: BlockProps<ColumnsBlock>) {
 // ========== BLOCK OPERATIONS ==========
 function useBlockOperations<T extends Block>(blocks: T[], setBlocks: (blocks: T[]) => void) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const blocksRef = useRef(blocks);
+  const setBlocksRef = useRef(setBlocks);
+  blocksRef.current = blocks;
+  setBlocksRef.current = setBlocks;
+  
   return {
     selectedIndex, setSelectedIndex,
-    update: useCallback((i: number, b: T) => setBlocks(blocks.map((x, j) => j === i ? b : x)), [blocks, setBlocks]),
-    remove: useCallback((i: number) => { setBlocks(blocks.filter((_, j) => j !== i)); setSelectedIndex(null); }, [blocks, setBlocks]),
-    duplicate: useCallback((i: number) => { const next = [...blocks]; next.splice(i + 1, 0, duplicateBlock(blocks[i]) as T); setBlocks(next); setSelectedIndex(i + 1); }, [blocks, setBlocks]),
-    move: useCallback((from: number, to: number) => { if (to < 0 || to >= blocks.length) return; const next = [...blocks]; const [m] = next.splice(from, 1); next.splice(to, 0, m); setBlocks(next); setSelectedIndex(to); }, [blocks, setBlocks]),
-    insert: useCallback((type: BlockType, at?: number) => { const next = [...blocks]; const i = at ?? blocks.length; next.splice(i, 0, createBlock(type) as T); setBlocks(next); setSelectedIndex(i); }, [blocks, setBlocks]),
+    update: useCallback((i: number, b: T) => setBlocksRef.current(blocksRef.current.map((x, j) => j === i ? b : x)), []),
+    remove: useCallback((i: number) => { setBlocksRef.current(blocksRef.current.filter((_, j) => j !== i)); setSelectedIndex(null); }, []),
+    duplicate: useCallback((i: number) => { const next = [...blocksRef.current]; next.splice(i + 1, 0, duplicateBlock(blocksRef.current[i]) as T); setBlocksRef.current(next); setSelectedIndex(i + 1); }, []),
+    move: useCallback((from: number, to: number) => { if (to < 0 || to >= blocksRef.current.length) return; const next = [...blocksRef.current]; const [m] = next.splice(from, 1); next.splice(to, 0, m); setBlocksRef.current(next); setSelectedIndex(to); }, []),
+    insert: useCallback((type: BlockType, at?: number) => { const next = [...blocksRef.current]; const i = at ?? blocksRef.current.length; next.splice(i, 0, createBlock(type) as T); setBlocksRef.current(next); setSelectedIndex(i); }, []),
   };
 }
 
 function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Column; onUpdate: (col: Column) => void; onDelete: () => void; canDelete: boolean }) {
   const setBlocks = useCallback((blocks: LeafBlock[]) => onUpdate({ ...column, blocks }), [column, onUpdate]);
-  const { selectedIndex, setSelectedIndex, update, remove, move, insert } = useBlockOperations(column.blocks, setBlocks);
+  const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(column.blocks, setBlocks);
   const contentBlockTypes = INSERTABLE_BLOCKS.filter(t => t !== 'columns');
+  
+  // Create stable update callback for LeafBlock
+  const handleUpdate = useCallback((i: number, b: Block) => update(i, b as LeafBlock), [update]);
+  
   return (
     <div className="flex-1 stack-sm p-3 bg-surface-1/50 border border-dashed border-border-muted rounded-lg">
       <div className="spread"><span className="text-small text-muted uppercase tracking-wide">Column</span>{canDelete && <button onClick={onDelete} className="icon-btn p-1 text-muted hover:text-error"><Trash2 size={14} /></button>}</div>
@@ -461,7 +520,21 @@ function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Colum
         <div className="py-6 text-center"><p className="text-muted text-small mb-2">Empty column</p><InsertButton onInsert={insert} compact blockTypes={contentBlockTypes} /></div>
       ) : (
         <div className="stack-sm">
-          {column.blocks.map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={column.blocks.length} isSelected={selectedIndex === i} onSelect={() => setSelectedIndex(i)} onUpdate={b => update(i, b as LeafBlock)} onDelete={() => remove(i)} onMoveUp={() => move(i, i - 1)} onMoveDown={() => move(i, i + 1)} compact />)}
+          {column.blocks.map((block, i) => (
+            <BlockWrapper 
+              key={block.id} 
+              block={block} 
+              index={i} 
+              total={column.blocks.length} 
+              isSelected={selectedIndex === i} 
+              onSelect={setSelectedIndex}
+              onUpdate={handleUpdate}
+              onDelete={remove}
+              onDuplicate={duplicate}
+              onMove={move}
+              compact
+            />
+          ))}
           <InsertButton onInsert={insert} compact blockTypes={contentBlockTypes} />
         </div>
       )}
@@ -499,37 +572,44 @@ function InsertButton({ onInsert, compact, blockTypes = INSERTABLE_BLOCKS }: { o
   );
 }
 
-function BlockWrapper({ block, index, total, isSelected, onSelect, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveDown, compact }: {
+const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelected, onSelect, onUpdate, onDelete, onDuplicate, onMove, compact }: {
   block: Block; index: number; total: number; isSelected: boolean;
-  onSelect: () => void; onUpdate: (b: Block) => void; onDelete: () => void;
-  onDuplicate?: () => void; onMoveUp: () => void; onMoveDown: () => void; compact?: boolean;
+  onSelect: (i: number) => void; onUpdate: (i: number, b: Block) => void; onDelete: (i: number) => void;
+  onDuplicate: (i: number) => void; onMove: (from: number, to: number) => void; compact?: boolean;
 }) {
   const meta = BLOCK_META[block.type];
   const iconSize = compact ? 12 : 14;
+  const handleSelect = useCallback(() => onSelect(index), [onSelect, index]);
+  const handleUpdate = useCallback((b: Block) => onUpdate(index, b), [onUpdate, index]);
+  const handleDelete = useCallback(() => onDelete(index), [onDelete, index]);
+  const handleDuplicate = useCallback(() => onDuplicate(index), [onDuplicate, index]);
+  const handleMoveUp = useCallback(() => onMove(index, index - 1), [onMove, index]);
+  const handleMoveDown = useCallback(() => onMove(index, index + 1), [onMove, index]);
+  
   if (!meta) return (
     <div className={cn('rounded border border-warning/50 bg-warning/10', compact ? 'p-3' : 'p-4 rounded-lg')}>
-      <div className="spread mb-2"><span className={cn('text-warning', compact ? 'text-small' : 'font-medium')}>Unknown block: {block.type}</span><button onClick={e => { e.stopPropagation(); onDelete(); }} className="icon-btn p-1 text-muted hover:text-error"><Trash2 size={iconSize} /></button></div>
+      <div className="spread mb-2"><span className={cn('text-warning', compact ? 'text-small' : 'font-medium')}>Unknown block: {block.type}</span><button onClick={e => { e.stopPropagation(); handleDelete(); }} className="icon-btn p-1 text-muted hover:text-error"><Trash2 size={iconSize} /></button></div>
     </div>
   );
   const Icon = meta.icon;
   return (
-    <div onClick={onSelect} className={cn('group relative transition-colors',
+    <div onClick={handleSelect} className={cn('group relative transition-colors',
       compact ? cn('p-3 rounded-md border', isSelected ? 'border-accent bg-accent/5' : 'border-transparent hover:border-border-muted hover:bg-surface-2/50')
         : cn('p-4 rounded-lg border', isSelected ? 'border-accent bg-accent/5' : 'border-border-muted hover:border-border', block.type === 'columns' && 'bg-surface-1/30')
     )}>
       <div className={cn('spread', compact ? 'mb-2' : 'mb-3')}>
         <div className="row">{!(compact || block.type === 'columns') && <div className="row text-muted"><Icon size={18} /><span className="text-small font-medium uppercase">{meta.label}</span></div>}</div>
         <div className="row opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={e => { e.stopPropagation(); onMoveUp(); }} disabled={index === 0} className="icon-btn p-1 text-muted disabled:opacity-30"><ChevronUp size={iconSize} /></button>
-          <button onClick={e => { e.stopPropagation(); onMoveDown(); }} disabled={index === total - 1} className="icon-btn p-1 text-muted disabled:opacity-30"><ChevronDown size={iconSize} /></button>
-          {onDuplicate && <button onClick={e => { e.stopPropagation(); onDuplicate(); }} className="icon-btn p-1 text-muted" title="Duplicate"><Copy size={iconSize} /></button>}
-          <button onClick={e => { e.stopPropagation(); onDelete(); }} className="icon-btn p-1 text-muted hover:text-error" title="Delete"><Trash2 size={iconSize} /></button>
+          <button onClick={e => { e.stopPropagation(); handleMoveUp(); }} disabled={index === 0} className="icon-btn p-1 text-muted disabled:opacity-30"><ChevronUp size={iconSize} /></button>
+          <button onClick={e => { e.stopPropagation(); handleMoveDown(); }} disabled={index === total - 1} className="icon-btn p-1 text-muted disabled:opacity-30"><ChevronDown size={iconSize} /></button>
+          {!compact && <button onClick={e => { e.stopPropagation(); handleDuplicate(); }} className="icon-btn p-1 text-muted" title="Duplicate"><Copy size={iconSize} /></button>}
+          <button onClick={e => { e.stopPropagation(); handleDelete(); }} className="icon-btn p-1 text-muted hover:text-error" title="Delete"><Trash2 size={iconSize} /></button>
         </div>
       </div>
-      {renderBlockEdit(block, onUpdate)}
+      {renderBlockEdit(block, handleUpdate)}
     </div>
   );
-}
+});
 
 // ========== PUBLIC API ==========
 export function BlockEditor({ content, onChange }: { content: Block[]; onChange: (content: Block[]) => void }) {
@@ -537,7 +617,20 @@ export function BlockEditor({ content, onChange }: { content: Block[]; onChange:
   if (content.length === 0) return <div className="stack items-center py-12 text-center"><p className="text-muted">No content yet. Add your first block!</p><InsertButton onInsert={insert} /></div>;
   return (
     <div className="stack">
-      {content.map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={content.length} isSelected={selectedIndex === i} onSelect={() => setSelectedIndex(i)} onUpdate={b => update(i, b)} onDelete={() => remove(i)} onDuplicate={() => duplicate(i)} onMoveUp={() => move(i, i - 1)} onMoveDown={() => move(i, i + 1)} />)}
+      {content.map((block, i) => (
+        <BlockWrapper 
+          key={block.id} 
+          block={block} 
+          index={i} 
+          total={content.length} 
+          isSelected={selectedIndex === i} 
+          onSelect={setSelectedIndex}
+          onUpdate={update}
+          onDelete={remove}
+          onDuplicate={duplicate}
+          onMove={move}
+        />
+      ))}
       <InsertButton onInsert={insert} />
     </div>
   );

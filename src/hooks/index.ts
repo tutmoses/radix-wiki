@@ -4,7 +4,6 @@
 
 import { useState, useEffect } from 'react';
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import type { WikiPage, AuthSession, RadixWalletData } from '@/types';
 
 // ========== STORE ==========
@@ -28,42 +27,33 @@ interface AppStore {
   logout: () => Promise<void>;
 }
 
-export const useStore = create<AppStore>()(
-  persist(
-    (set, get) => ({
-      session: null,
-      isLoading: true,
-      isConnected: false,
-      walletData: null,
-      sidebarOpen: true,
-      _rdtDisconnect: null,
-      _rdtConnect: null,
-      _setRdtCallbacks: (connect, disconnect) => set({ _rdtConnect: connect, _rdtDisconnect: disconnect }),
-      setSession: (session) => set({ session, isLoading: false }),
-      setLoading: (isLoading) => set({ isLoading }),
-      setConnected: (isConnected) => set({ isConnected }),
-      setWalletData: (walletData) => set({ walletData, isConnected: !!walletData }),
-      setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
-      toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
-      connect: () => get()._rdtConnect?.(),
-      logout: async () => {
-        const { _rdtDisconnect } = get();
-        try {
-          await fetch('/api/auth', { method: 'DELETE' });
-        } catch (error) {
-          console.error('Failed to clear server session:', error);
-        }
-        _rdtDisconnect?.();
-        set({ session: null, isConnected: false, walletData: null, isLoading: false });
-      },
-    }),
-    {
-      name: 'radix-wiki-store',
-      storage: createJSONStorage(() => sessionStorage),
-      partialize: (state) => ({ session: state.session, isConnected: state.isConnected }),
+export const useStore = create<AppStore>()((set, get) => ({
+  session: null,
+  isLoading: true,
+  isConnected: false,
+  walletData: null,
+  sidebarOpen: true,
+  _rdtDisconnect: null,
+  _rdtConnect: null,
+  _setRdtCallbacks: (connect, disconnect) => set({ _rdtConnect: connect, _rdtDisconnect: disconnect }),
+  setSession: (session) => set({ session, isLoading: false }),
+  setLoading: (isLoading) => set({ isLoading }),
+  setConnected: (isConnected) => set({ isConnected }),
+  setWalletData: (walletData) => set({ walletData, isConnected: !!walletData }),
+  setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+  toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+  connect: () => get()._rdtConnect?.(),
+  logout: async () => {
+    const { _rdtDisconnect } = get();
+    try {
+      await fetch('/api/auth', { method: 'DELETE' });
+    } catch (error) {
+      console.error('Failed to clear server session:', error);
     }
-  )
-);
+    _rdtDisconnect?.();
+    set({ session: null, isConnected: false, walletData: null, isLoading: false });
+  },
+}));
 
 // ========== AUTH HOOK ==========
 

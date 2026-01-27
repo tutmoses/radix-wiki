@@ -86,11 +86,8 @@ function TableOfContents() {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { sidebarOpen } = useStore();
+  const sidebarOpen = useStore(s => s.sidebarOpen);
   const visibleTags = getVisibleTags();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
 
   const segments = pathname.split('/').filter(Boolean);
   const last = segments[segments.length - 1];
@@ -101,11 +98,8 @@ export function Sidebar() {
   const isPage = !isHomepage && !isValidTagPath(viewSegs) && viewSegs.length >= 2;
   const showToc = (isHomepage || isPage) && !isEdit && !isHistory;
 
-  // Use mounted check to ensure server/client consistency
-  const isOpen = mounted ? sidebarOpen : true;
-
   return (
-    <aside className={cn('sticky top-16 h-[calc(100vh-4rem)] bg-surface-0 border-r border-border-muted shrink-0 transition-all duration-200 overflow-hidden', isOpen ? 'w-72' : 'w-0')}>
+    <aside className={cn('sticky top-16 h-[calc(100vh-4rem)] bg-surface-0 border-r border-border-muted shrink-0 transition-all duration-200 overflow-hidden', sidebarOpen ? 'w-72' : 'w-0')}>
       <div className="flex flex-col h-full overflow-y-auto w-72 pb-24">
         <div className="stack-sm p-4">
           <nav className="stack-sm">
