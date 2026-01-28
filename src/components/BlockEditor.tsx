@@ -69,6 +69,17 @@ const Iframe = TiptapNode.create({
   renderHTML({ HTMLAttributes }) { return ['div', { 'data-iframe-embed': '', class: 'iframe-embed' }, ['iframe', mergeAttributes(HTMLAttributes, { frameborder: '0', allowfullscreen: 'true' })]]; },
 });
 
+const YouTube = TiptapYoutube.extend({
+  addPasteRules() {
+    return [{
+      find: /https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)[^\s]*/g,
+      handler: ({ match, chain, range }) => {
+        if (match[0]) chain().deleteRange(range).setYoutubeVideo({ src: match[0] }).run();
+      },
+    }];
+  },
+});
+
 const TwitterEmbed = TiptapNode.create({
   name: 'twitterEmbed',
   group: 'block',
@@ -274,23 +285,22 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
   const initialValueRef = useRef(value);
   const onChangeRef = useRef(onChange);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const isPastingRef = useRef(false);
   onChangeRef.current = onChange;
 
   const extensions = useMemo(() => [
     StarterKit.configure({ heading: { levels: [2, 3, 4] }, codeBlock: false }),
     TiptapLink.configure({ openOnClick: false, HTMLAttributes: { class: 'link' } }),
     TiptapImage.configure({ inline: false, allowBase64: true, HTMLAttributes: { class: 'rounded-lg max-w-full' } }),
-    TiptapYoutube.configure({ controls: true, nocookie: true, modestBranding: true }),
+    YouTube.configure({ controls: true, nocookie: true, modestBranding: true }),
     TiptapTable.configure({ resizable: false, HTMLAttributes: { class: 'tiptap-table' } }),
     TiptapTableRow, TiptapTableCell.configure({ HTMLAttributes: { class: 'p-2' } }),
     TiptapTableHeader.configure({ HTMLAttributes: { class: 'p-2 font-semibold bg-surface-1' } }),
     Iframe, TwitterEmbed, TabGroup, TabItem, CodeBlock, Placeholder.configure({ placeholder }),
   ], [placeholder]);
 
-  const cleanHtml = useCallback((html: string) => {
+  const cleanPastedHtml = useCallback((html: string) => {
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    doc.querySelectorAll('style, script, meta, link, svg, canvas, noscript, iframe').forEach(el => el.remove());
+    doc.querySelectorAll('style, script, meta, link, svg, canvas, noscript').forEach(el => el.remove());
     doc.querySelectorAll('*').forEach(el => {
       el.removeAttribute('style');
       el.removeAttribute('class');
@@ -306,34 +316,11 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
     extensions,
     editorProps: {
       attributes: { class: 'outline-none focus:outline-none prose prose-invert min-h-20' },
-      transformPastedHTML: cleanHtml,
-      handlePaste: (view, event) => {
-        const text = event.clipboardData?.getData('text/plain') || '';
-        
-        // For large content, use plain text insertion to avoid heavy HTML parsing
-        if (text.length > 2000) {
-          event.preventDefault();
-          isPastingRef.current = true;
-          
-          requestAnimationFrame(() => {
-            const { state, dispatch } = view;
-            const tr = state.tr.insertText(text);
-            dispatch(tr);
-            isPastingRef.current = false;
-            setTimeout(() => onChangeRef.current(editor?.getHTML() || ''), 100);
-          });
-          
-          return true;
-        }
-        return false;
-      },
+      transformPastedHTML: cleanPastedHtml,
     },
     onUpdate: ({ editor }) => {
-      if (isPastingRef.current) return;
       clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        requestAnimationFrame(() => onChangeRef.current(editor.getHTML()));
-      }, 300);
+      debounceRef.current = setTimeout(() => onChangeRef.current(editor.getHTML()), 150);
     },
     immediatelyRender: false,
     onCreate: ({ editor }) => { 
