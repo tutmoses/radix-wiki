@@ -17,7 +17,7 @@ import TiptapCodeBlock from '@tiptap/extension-code-block';
 import { Node as TiptapNode, mergeAttributes } from '@tiptap/core';
 import {
   Plus, Trash2, Copy, ChevronUp, ChevronDown, Pencil, Upload,
-  Minus, Code, Quote, Clock, FileText, Columns, Settings, ListTree,
+  Minus, Code, Quote, Clock, FileText, Columns, Settings,
   Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, X, Check,
   type LucideIcon
 } from 'lucide-react';
@@ -26,14 +26,13 @@ import { SHIKI_LANGS, DEFAULT_LANG } from '@/lib/shiki';
 import { Button, Input, Dropdown } from '@/components/ui';
 import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock, LeafBlock, Column } from '@/types/blocks';
 
-export type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, TocBlock, ColumnsBlock, Column, LeafBlock } from '@/types/blocks';
+export type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock, Column, LeafBlock } from '@/types/blocks';
 
 const BLOCK_META: Record<BlockType, { label: string; icon: LucideIcon }> = {
   content: { label: 'Content', icon: Pencil },
   recentPages: { label: 'Recent Pages', icon: Clock },
   pageList: { label: 'Page List', icon: FileText },
   assetPrice: { label: 'Asset Price', icon: TrendingUp },
-  toc: { label: 'Table of Contents', icon: ListTree },
   columns: { label: 'Columns', icon: Columns },
 };
 
@@ -42,20 +41,14 @@ const BLOCK_DEFAULTS: Record<BlockType, () => Omit<Block, 'id'>> = {
   recentPages: () => ({ type: 'recentPages', limit: 5 }),
   pageList: () => ({ type: 'pageList', pageIds: [] }),
   assetPrice: () => ({ type: 'assetPrice', resourceAddress: 'resource_rdx1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxradxrd', showChange: true }),
-  toc: () => ({ type: 'toc' }),
   columns: () => ({ type: 'columns', columns: [{ id: crypto.randomUUID(), blocks: [] }, { id: crypto.randomUUID(), blocks: [] }], gap: 'md', align: 'start' }),
 };
 
-const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'columns', 'toc', 'recentPages', 'pageList', 'assetPrice'];
+const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'columns', 'recentPages', 'pageList', 'assetPrice'];
 
 export const createBlock = (type: BlockType): Block => ({ id: crypto.randomUUID(), ...BLOCK_DEFAULTS[type]() } as Block);
 
 export const createDefaultPageContent = (): Block[] => [
-  { id: crypto.randomUUID(), type: 'content', text: '' },
-  { id: crypto.randomUUID(), type: 'columns', columns: [
-    { id: crypto.randomUUID(), blocks: [{ id: crypto.randomUUID(), type: 'toc' }] },
-    { id: crypto.randomUUID(), blocks: [{ id: crypto.randomUUID(), type: 'content', text: '' }] },
-  ], gap: 'md', align: 'start' },
   { id: crypto.randomUUID(), type: 'content', text: '' },
 ];
 
@@ -406,7 +399,7 @@ function EditWrapper({ icon: Icon, label, children }: { icon: LucideIcon; label:
   );
 }
 
-type BlockProps<T extends Block> = { block: T; onUpdate?: (b: T) => void; allContent?: Block[] };
+type BlockProps<T extends Block> = { block: T; onUpdate?: (b: T) => void };
 
 const ContentBlockEdit = memo(function ContentBlockEdit({ block, onUpdate }: BlockProps<ContentBlock>) {
   return <RichTextEditor value={block.text} onChange={text => onUpdate?.({ ...block, text })} placeholder="Write content..." />;
@@ -445,14 +438,6 @@ function AssetPriceBlockEdit({ block, onUpdate }: BlockProps<AssetPriceBlock>) {
         <input type="checkbox" checked={block.showChange ?? true} onChange={e => onUpdate?.({ ...block, showChange: e.target.checked })} className="w-4 h-4 rounded border-border" />
         Show 24h change
       </label>
-    </EditWrapper>
-  );
-}
-
-function TocBlockEdit() {
-  return (
-    <EditWrapper icon={ListTree} label="Table of Contents">
-      <p className="text-small text-muted">Auto-generated from page headings</p>
     </EditWrapper>
   );
 }
@@ -548,7 +533,6 @@ function renderBlockEdit(block: Block, onUpdate?: (b: Block) => void): ReactNode
     case 'recentPages': return <RecentPagesBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'pageList': return <PageListBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'assetPrice': return <AssetPriceBlockEdit block={block} onUpdate={onUpdate as any} />;
-    case 'toc': return <TocBlockEdit />;
     case 'columns': return <ColumnsBlockEdit block={block} onUpdate={onUpdate as any} />;
   }
 }

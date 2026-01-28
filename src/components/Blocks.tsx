@@ -2,7 +2,7 @@
 
 'use client';
 
-export type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, TocBlock, ColumnsBlock, Column, LeafBlock } from '@/types/blocks';
+export type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock, Column, LeafBlock } from '@/types/blocks';
 export { BlockRenderer } from './BlockRenderer';
 
 import dynamic from 'next/dynamic';
@@ -19,11 +19,6 @@ export async function createDefaultPageContent() {
 
 export function createDefaultPageContentSync() {
   return [
-    { id: crypto.randomUUID(), type: 'content' as const, text: '' },
-    { id: crypto.randomUUID(), type: 'columns' as const, columns: [
-      { id: crypto.randomUUID(), blocks: [{ id: crypto.randomUUID(), type: 'toc' as const }] },
-      { id: crypto.randomUUID(), blocks: [{ id: crypto.randomUUID(), type: 'content' as const, text: '' }] },
-    ], gap: 'md' as const, align: 'start' as const },
     { id: crypto.randomUUID(), type: 'content' as const, text: '' },
   ];
 }

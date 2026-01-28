@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui';
 import type { WikiPage } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock } from '@/types/blocks';
 
-export type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, TocBlock, ColumnsBlock, Column, LeafBlock } from '@/types/blocks';
+export type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock, Column, LeafBlock } from '@/types/blocks';
 
 // ========== LAZY SHIKI HOOK ==========
 function useLazyShiki(containerRef: React.RefObject<HTMLElement | null>, hasCodeBlocks: boolean) {
@@ -44,11 +44,10 @@ function useLazyShiki(containerRef: React.RefObject<HTMLElement | null>, hasCode
 // ========== UTILITIES ==========
 function processHtml(html: string): string {
   if (!html.trim()) return html;
-  // Add IDs to headings and process links at render time for SSR consistency
   const stripTags = (s: string) => s.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').trim();
   return html
     .replace(/<(h[1-4])([^>]*)>([\s\S]*?)<\/\1>/gi, (match, tag, attrs, content) => {
-      if (attrs.includes(' id=')) return match; // Already has ID
+      if (attrs.includes(' id=')) return match;
       const text = stripTags(content);
       const id = slugify(text);
       return id ? `<${tag}${attrs} id="${id}">${content}</${tag}>` : match;
@@ -61,29 +60,6 @@ function processHtml(html: string): string {
       if (rest.includes('class=')) return match;
       return `<a href="${href}"${rest} class="link">`;
     });
-}
-
-function extractHeadings(content: Block[]): { text: string; level: number; id: string }[] {
-  const headings: { text: string; level: number; id: string }[] = [];
-  const headingRegex = /<h([1-4])[^>]*>([\s\S]*?)<\/h\1>/gi;
-  const decodeEntities = (s: string) => s.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
-  const stripTags = (s: string) => decodeEntities(s.replace(/<[^>]*>/g, '')).trim();
-  const extract = (blocks: Block[]) => {
-    for (const block of blocks) {
-      if (block.type === 'content' && block.text) {
-        let match;
-        while ((match = headingRegex.exec(block.text)) !== null) {
-          const text = stripTags(match[2]);
-          if (text) headings.push({ text, level: parseInt(match[1]), id: slugify(text) });
-        }
-        headingRegex.lastIndex = 0;
-      } else if (block.type === 'columns') {
-        for (const col of block.columns) extract(col.blocks);
-      }
-    }
-  };
-  extract(content);
-  return headings;
 }
 
 function hasCodeBlocksInContent(content: Block[]): boolean {
@@ -204,26 +180,14 @@ function useResourcePrice(resourceAddress?: string) {
   return { data, isLoading, error };
 }
 
-function TocBlockView({ allContent = [] }: { allContent?: Block[] }) {
-  const headings = extractHeadings(allContent);
-  if (!headings.length) return null;
-  return (
-    <nav className="surface pt-8 pb-4 pl-8 pr-4 rounded-lg">
-      <ul className="stack-lg list-none pl-0">
-        {headings.map((h, i) => <li key={i} style={{ paddingLeft: `${(h.level - 2) * 3}rem` }}><a href={`#${h.id}`} className="hover:text-accent transition-colors font-semibold">{h.text}</a></li>)}
-      </ul>
-    </nav>
-  );
-}
-
-function ColumnsBlockView({ block, allContent }: { block: ColumnsBlock; allContent: Block[] }) {
+function ColumnsBlockView({ block }: { block: ColumnsBlock }) {
   const gapClass = { sm: 'gap-2', md: 'gap-4', lg: 'gap-6' }[block.gap || 'md'];
   const alignClass = { start: 'items-start', center: 'items-center', end: 'items-end', stretch: 'items-stretch' }[block.align || 'start'];
   return (
     <div className={cn('flex flex-col md:flex-row', gapClass, alignClass)}>
       {block.columns.map(col => (
         <div key={col.id} className="flex-1 stack">
-          {col.blocks.map(bl => <div key={bl.id}>{renderBlockView(bl, allContent)}</div>)}
+          {col.blocks.map(bl => <div key={bl.id}>{renderBlockView(bl)}</div>)}
         </div>
       ))}
     </div>
@@ -268,14 +232,13 @@ const ContentBlockView = memo(function ContentBlockView({ html }: { html: string
   return processedHtml.trim() ? <div ref={ref} className="prose-content" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: processedHtml }} /> : null;
 });
 
-function renderBlockView(block: Block, allContent: Block[] = []): React.ReactNode {
+function renderBlockView(block: Block): React.ReactNode {
   switch (block.type) {
     case 'content': return <ContentBlockView html={block.text} />;
     case 'recentPages': return <RecentPagesBlockView block={block} />;
     case 'pageList': return <PageListBlockView block={block} />;
     case 'assetPrice': return <AssetPriceBlockView block={block} />;
-    case 'toc': return <TocBlockView allContent={allContent} />;
-    case 'columns': return <ColumnsBlockView block={block} allContent={allContent} />;
+    case 'columns': return <ColumnsBlockView block={block} />;
   }
 }
 
@@ -325,7 +288,7 @@ export function BlockRenderer({ content, className }: { content: Block[] | unkno
   if (!blocks.length) return null;
   return (
     <div ref={containerRef} className={cn('stack', className)}>
-      {blocks.map(block => <div key={block.id}>{renderBlockView(block, blocks)}</div>)}
+      {blocks.map(block => <div key={block.id}>{renderBlockView(block)}</div>)}
     </div>
   );
 }
