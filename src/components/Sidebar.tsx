@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, ChevronRight, ChevronDown, ListTree } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { cn, slugify } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { useStore } from '@/hooks';
 import { getVisibleTags, isValidTagPath, type TagNode } from '@/lib/tags';
 
@@ -42,12 +42,12 @@ function TableOfContents() {
 
   useEffect(() => {
     const updateHeadings = () => {
-      const els = document.querySelector('main')?.querySelectorAll('h1, h2, h3') || [];
-      setHeadings(Array.from(els).map(el => {
-        const text = el.textContent?.trim() || '';
-        if (!el.id) el.id = slugify(text);
-        return { text, level: parseInt(el.tagName[1]), id: el.id };
-      }).filter(h => h.text));
+      const els = document.querySelector('main')?.querySelectorAll('h1[id], h2[id], h3[id]') || [];
+      setHeadings(Array.from(els).map(el => ({
+        text: el.textContent?.trim() || '',
+        level: parseInt(el.tagName[1]),
+        id: el.id,
+      })).filter(h => h.text && h.id));
     };
 
     updateHeadings();

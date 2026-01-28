@@ -65,7 +65,7 @@ function CommentThread({ comment, depth, onReply, onDelete, currentUserId }: {
       <div className="stack-xs">
         <div className="row text-small">
           <span className="font-medium">{comment.author?.displayName || comment.author?.radixAddress?.slice(0, 12) + '...'}</span>
-          <span className="text-muted">·</span>
+          <span className="text-muted">Â·</span>
           <span className="text-muted">{formatRelativeTime(comment.createdAt)}</span>
           {hasReplies && (
             <button onClick={() => setCollapsed(!collapsed)} className="row text-muted hover:text-text ml-auto">
@@ -130,7 +130,7 @@ export function Discussion({ pageId }: { pageId: string }) {
   return (
     <section className="stack pt-6 border-t border-border">
       <button onClick={() => setExpanded(!expanded)} className="spread w-full text-left">
-        <div className="row"><MessageSquare size={20} className="text-accent" /><h3 className="font-semibold">Discussion</h3><span className="text-muted">({countComments(comments)})</span></div>
+        <div className="row"><MessageSquare size={20} className="text-accent" /><h3 id="discussion" className="font-semibold">Discussion</h3><span className="text-muted">({countComments(comments)})</span></div>
         {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
       </button>
       {expanded && (

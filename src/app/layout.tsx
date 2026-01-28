@@ -46,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="flex">
               <Sidebar />
               <main className="min-h-[calc(100vh-4rem)] flex-1 transition-all duration-200">
-                <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">{children}</div>
+                <div className="min-w-[calc(100vw-2rem)] lg:min-w-0 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">{children}</div>
               </main>
             </div>
           </div>

@@ -314,7 +314,7 @@ function PageViewContent({ page }: { page: WikiPageWithRevisions }) {
     <article className="stack">
       <Banner src={page.bannerImage}>
         <Breadcrumbs path={[...page.tagPath.split('/'), page.slug]} />
-        <h1 className="m-0!">{page.title}</h1>
+        <h1 id={slugify(page.title)} className="m-0!">{page.title}</h1>
       </Banner>
       <BlockRenderer content={page.content} />
       {isCommunityPage && <UserStats authorId={page.authorId} />}
