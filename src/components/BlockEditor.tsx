@@ -102,14 +102,15 @@ const TwitterEmbed = TiptapNode.create({
 });
 
 function TwitterEmbedView({ node }: { node: any }) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [height, setHeight] = useState(250);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
-      if (e.origin === 'https://platform.twitter.com' && e.data?.['twttr.embed']?.method === 'twttr.private.resize') {
-        const params = e.data['twttr.embed'].params;
-        if (params?.[0]?.height) setHeight(params[0].height);
+      if (e.origin !== 'https://platform.twitter.com') return;
+      const data = e.data?.['twttr.embed'];
+      if (data?.method === 'twttr.private.resize' && data.params?.[0]?.height) {
+        const iframe = containerRef.current?.querySelector('iframe');
+        if (iframe) iframe.style.height = `${data.params[0].height}px`;
       }
     };
     window.addEventListener('message', handleMessage);
@@ -118,11 +119,9 @@ function TwitterEmbedView({ node }: { node: any }) {
   
   return (
     <NodeViewWrapper>
-      <div className="twitter-embed">
+      <div ref={containerRef} className="twitter-embed">
         <iframe
-          ref={iframeRef}
           src={`https://platform.twitter.com/embed/Tweet.html?id=${node.attrs.tweetId}&dnt=true`}
-          style={{ width: '100%', height, border: 'none' }}
           scrolling="no"
           allowFullScreen
         />

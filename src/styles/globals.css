@@ -94,7 +94,7 @@
     img { @apply max-w-full h-auto rounded-lg my-4; &.ProseMirror-selectednode { @apply outline-2 outline-accent outline-offset-2; } }
     div[data-youtube-video] { @apply relative w-full my-4; &::before { content: ''; @apply block pt-[56.25%]; } iframe { @apply absolute inset-0 w-full! h-full! rounded-lg; } &.ProseMirror-selectednode iframe { @apply outline-2 outline-accent outline-offset-2; } }
     .iframe-embed { @apply relative w-full min-h-[400px]; iframe { @apply w-full h-[400px] border border-border-muted rounded-lg bg-surface-1; } }
-    .twitter-embed { @apply my-4 max-w-[550px]; iframe { @apply w-full rounded-lg; } }
+    .twitter-embed { @apply my-4 max-w-[550px]; iframe { @apply w-full border-0 rounded-lg min-h-[200px]; } }
   }
 
   /* Code block with language selector */
