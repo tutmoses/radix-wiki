@@ -163,7 +163,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 bg-surface-0/80 backdrop-blur-md border-b border-border-muted">
       <div className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="row h-16">
+        <div className="row h-[var(--header-height)]">
           <button onClick={toggleSidebar} className="icon-btn" aria-label="Toggle menu">
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>

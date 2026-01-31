@@ -31,7 +31,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-scroll-behavior="smooth">
+    <html lang="en">
       <body className={`${inter.variable} font-sans antialiased`}>
         <Script
           src="https://plausible.io/js/pa-PZd7-RRTlebwSg20I8fiH.js"
@@ -45,8 +45,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Header />
             <div className="flex">
               <Sidebar />
-              <main className="min-h-[calc(100vh-4rem)] flex-1 transition-all duration-200">
-                <div className="min-w-[calc(100vw-2rem)] lg:min-w-0 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">{children}</div>
+              <main className="min-h-[calc(100dvh-var(--header-height))] flex-1 min-w-0 transition-all duration-200">
+                <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8">{children}</div>
               </main>
             </div>
           </div>

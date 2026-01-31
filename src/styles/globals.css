@@ -27,6 +27,8 @@
   --radius: 0.5rem;
   --radius-lg: 0.75rem;
   --shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.25);
+  --header-height: 4rem;
+  --sidebar-width: 18rem;
 }
 
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -39,9 +41,9 @@
 
   h1, h2, h3, h4 { &:first-child { @apply mt-0; } }
   h1 { @apply text-h1 font-bold mt-8 mb-4; }
-  h2 { @apply text-h2 font-semibold mt-8 mb-4 border-b-2 border-border scroll-mt-20; }
-  h3 { @apply text-h3 font-normal mt-6 mb-4 scroll-mt-20; }
-  h4 { @apply text-h4 font-light mt-4 mb-4 scroll-mt-20; }
+  h2 { @apply text-h2 font-semibold mt-8 mb-4 border-b-2 border-border scroll-mt-[calc(var(--header-height)+1rem)]; }
+  h3 { @apply text-h3 font-normal mt-6 mb-4 scroll-mt-[calc(var(--header-height)+1rem)]; }
+  h4 { @apply text-h4 font-light mt-4 mb-4 scroll-mt-[calc(var(--header-height)+1rem)]; }
 
   p { @apply mb-4 last:mb-0; }
   ul, ol { @apply mb-4 pl-8; :is(ul, ol) { @apply mt-1 mb-0; } }
@@ -154,7 +156,7 @@
   .skeleton { @apply bg-surface-1 rounded-lg animate-pulse; }
   .link-muted { @apply text-text-muted hover:text-text; }
 
-  .banner-container { @apply relative w-full aspect-3/1 sm:aspect-4/1 lg:aspect-8/1 overflow-hidden bg-surface-1 rounded-lg; }
+  .banner-container { @apply relative w-full aspect-[4/1] max-h-48 overflow-hidden bg-surface-1 rounded-lg; }
   .banner-image { @apply w-full h-full object-cover object-center; }
   .banner-placeholder { @apply w-full h-full bg-linear-to-br from-surface-1 to-surface-2; }
   .banner-overlay { @apply absolute inset-0 flex flex-col justify-end p-3 sm:p-4 lg:p-6 bg-linear-to-t from-black/80 via-black/40 to-transparent text-text gap-1 sm:gap-2; h1 { @apply text-base sm:text-h3 lg:text-h1 leading-tight; text-shadow: 0 2px 8px rgba(0,0,0,0.5); } nav { @apply text-xs sm:text-small font-medium; text-shadow: 0 1px 4px rgba(0,0,0,0.6); a, span { @apply text-white/90 hover:text-white; } } }

@@ -87,6 +87,9 @@ function TableOfContents() {
 export function Sidebar() {
   const pathname = usePathname();
   const sidebarOpen = useStore(s => s.sidebarOpen);
+  const setSidebarOpen = useStore(s => s.setSidebarOpen);
+
+  useEffect(() => setSidebarOpen(window.innerWidth >= 768), []);
   const visibleTags = useMemo(() => getVisibleTags(), []);
 
   const segments = pathname.split('/').filter(Boolean);
@@ -99,8 +102,8 @@ export function Sidebar() {
   const showToc = (isHomepage || isPage) && !isEdit && !isHistory;
 
   return (
-    <aside className={cn('sticky top-16 h-[calc(100vh-4rem)] bg-surface-0 border-r border-border-muted shrink-0 transition-all duration-200 overflow-hidden', sidebarOpen ? 'w-72' : 'w-0')}>
-      <div className="flex flex-col h-full overflow-y-auto w-72 pb-24">
+    <aside className={cn('sticky top-[var(--header-height)] h-[calc(100dvh-var(--header-height))] bg-surface-0 border-r border-border-muted shrink-0 transition-all duration-200 overflow-hidden', sidebarOpen ? 'w-[var(--sidebar-width)]' : 'w-0')}>
+      <div className="flex flex-col h-full overflow-y-auto w-[var(--sidebar-width)] pb-24">
         <div className="stack-sm p-4">
           <nav className="stack-sm">
             <NavItem href="/" icon={<Home size={18} />} label="Home" isActive={pathname === '/'} />
