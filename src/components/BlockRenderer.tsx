@@ -9,36 +9,29 @@ import { Clock, FileText } from 'lucide-react';
 import { cn, formatRelativeTime, slugify } from '@/lib/utils';
 import { getShiki, highlightCodeBlocks } from '@/lib/shiki';
 import { findTagByPath } from '@/lib/tags';
+import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { usePages } from '@/hooks';
 import { Badge } from '@/components/ui';
 import type { WikiPage } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock } from '@/types/blocks';
-
-export type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock, Column, LeafBlock } from '@/types/blocks';
 
 // ========== LAZY SHIKI HOOK ==========
 function useLazyShiki(containerRef: React.RefObject<HTMLElement | null>, hasCodeBlocks: boolean) {
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !hasCodeBlocks) return;
-
     let observer: IntersectionObserver | null = null;
     let cancelled = false;
-
     observer = new IntersectionObserver((entries) => {
       if (entries.some(e => e.isIntersecting) && !cancelled) {
         observer?.disconnect();
-        getShiki().then(highlighter => {
-          if (!cancelled) highlightCodeBlocks(container, highlighter);
-        });
+        getShiki().then(highlighter => { if (!cancelled) highlightCodeBlocks(container, highlighter); });
       }
     }, { rootMargin: '200px' });
-
     const codeBlocks = container.querySelectorAll('pre:not([data-highlighted])');
     codeBlocks.forEach(el => observer?.observe(el));
-
     return () => { cancelled = true; observer?.disconnect(); };
-  }, [hasCodeBlocks]);
+  }, [containerRef, hasCodeBlocks]);
 }
 
 // ========== UTILITIES ==========
@@ -52,47 +45,24 @@ function processHtml(html: string): string {
       const id = slugify(text);
       return id ? `<${tag}${attrs} id="${id}">${content}</${tag}>` : match;
     })
-    .replace(/<a\s+href="(https?:\/\/[^"]+)"([^>]*)>/gi, (match, href, rest) => {
-      if (rest.includes('target=')) return match;
-      return `<a href="${href}"${rest} target="_blank" rel="noopener noreferrer" class="link">`;
-    })
-    .replace(/<a\s+href="([^"]+)"([^>]*)>/gi, (match, href, rest) => {
-      if (rest.includes('class=')) return match;
-      return `<a href="${href}"${rest} class="link">`;
-    });
-}
-
-function hasCodeBlocksInContent(content: Block[]): boolean {
-  const check = (blocks: Block[]): boolean => {
-    for (const block of blocks) {
-      if (block.type === 'content' && block.text?.includes('<pre')) return true;
-      if (block.type === 'columns') {
-        for (const col of block.columns) if (check(col.blocks)) return true;
-      }
-    }
-    return false;
-  };
-  return check(content);
+    .replace(/<a\s+href="(https?:\/\/[^"]+)"([^>]*)>/gi, (match, href, rest) => rest.includes('target=') ? match : `<a href="${href}"${rest} target="_blank" rel="noopener noreferrer" class="link">`)
+    .replace(/<a\s+href="([^"]+)"([^>]*)>/gi, (match, href, rest) => rest.includes('class=') ? match : `<a href="${href}"${rest} class="link">`);
 }
 
 // ========== PAGE CARD ==========
 function PageCard({ page, compact }: { page: WikiPage; compact?: boolean }) {
   const leafTag = findTagByPath(page.tagPath.split('/'));
   const href = `/${page.tagPath}/${page.slug}`;
-  
+
   if (compact) {
     return (
       <Link href={href} className="group row p-3 surface hover:bg-surface-2 transition-colors">
-        {page.bannerImage ? (
-          <Image src={page.bannerImage} alt="" width={32} height={32} className="rounded object-cover shrink-0" />
-        ) : (
-          <FileText size={16} className="text-accent shrink-0" />
-        )}
+        {page.bannerImage ? <Image src={page.bannerImage} alt="" width={32} height={32} className="rounded object-cover shrink-0" /> : <FileText size={16} className="text-accent shrink-0" />}
         <span className="group-hover:text-accent transition-colors truncate">{page.title}</span>
       </Link>
     );
   }
-  
+
   return (
     <Link href={href} className="group">
       <div className="surface-interactive h-full overflow-hidden">
@@ -131,27 +101,6 @@ function PageListBlockView({ block }: { block: PageListBlock }) {
   return <div className="row-md wrap">{pages.map(p => <PageCard key={p.id} page={p} compact />)}</div>;
 }
 
-function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
-  const { data, isLoading, error } = useResourcePrice(block.resourceAddress);
-  if (!block.resourceAddress) return <p className="text-muted">No resource address configured</p>;
-  if (isLoading) return <div className="surface p-4 animate-pulse"><div className="h-8 w-32 bg-surface-2 rounded" /></div>;
-  if (error || !data || typeof data.price !== 'number') return <p className="text-error text-small">{error || 'Price unavailable'}</p>;
-  const displayName = data.symbol || data.name || block.resourceAddress.slice(0, 20) + '...';
-  const isPositive = (data.change24h ?? 0) >= 0;
-  const priceStr = data.price < 0.01 ? data.price.toFixed(6) : data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-  return (
-    <div className="surface p-4 flex items-center gap-4">
-      <div className="stack-xs">
-        <span className="text-small text-muted">${displayName}</span>
-        <span className="text-h3 font-semibold">${priceStr}</span>
-      </div>
-      {block.showChange && typeof data.change24h === 'number' && (
-        <span className={cn('font-medium', isPositive ? 'text-success' : 'text-error')}>{isPositive ? '↑' : '↓'} {Math.abs(data.change24h).toFixed(2)}%</span>
-      )}
-    </div>
-  );
-}
-
 function useResourcePrice(resourceAddress?: string) {
   const [data, setData] = useState<{ price: number; change24h?: number; symbol?: string; name?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -180,6 +129,25 @@ function useResourcePrice(resourceAddress?: string) {
   return { data, isLoading, error };
 }
 
+function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
+  const { data, isLoading, error } = useResourcePrice(block.resourceAddress);
+  if (!block.resourceAddress) return <p className="text-muted">No resource address configured</p>;
+  if (isLoading) return <div className="surface p-4 animate-pulse"><div className="h-8 w-32 bg-surface-2 rounded" /></div>;
+  if (error || !data || typeof data.price !== 'number') return <p className="text-error text-small">{error || 'Price unavailable'}</p>;
+  const displayName = data.symbol || data.name || block.resourceAddress.slice(0, 20) + '...';
+  const isPositive = (data.change24h ?? 0) >= 0;
+  const priceStr = data.price < 0.01 ? data.price.toFixed(6) : data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  return (
+    <div className="surface p-4 flex items-center gap-4">
+      <div className="stack-xs">
+        <span className="text-small text-muted">${displayName}</span>
+        <span className="text-h3 font-semibold">${priceStr}</span>
+      </div>
+      {block.showChange && typeof data.change24h === 'number' && <span className={cn('font-medium', isPositive ? 'text-success' : 'text-error')}>{isPositive ? '↑' : '↓'} {Math.abs(data.change24h).toFixed(2)}%</span>}
+    </div>
+  );
+}
+
 function ColumnsBlockView({ block }: { block: ColumnsBlock }) {
   const gapClass = { sm: 'gap-2', md: 'gap-4', lg: 'gap-6' }[block.gap || 'md'];
   const alignClass = { start: 'items-start', center: 'items-center', end: 'items-end', stretch: 'items-stretch' }[block.align || 'start'];
@@ -197,7 +165,7 @@ function ColumnsBlockView({ block }: { block: ColumnsBlock }) {
 const ContentBlockView = memo(function ContentBlockView({ html }: { html: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const processedHtml = useMemo(() => processHtml(html), [html]);
-  
+
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -206,25 +174,19 @@ const ContentBlockView = memo(function ContentBlockView({ html }: { html: string
       const tweetId = container.getAttribute('data-tweet-id');
       if (!tweetId) return;
       const iframe = container.querySelector('iframe') as HTMLIFrameElement | null;
-      if (iframe) {
-        iframe.src = `https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&dnt=true`;
-        iframe.setAttribute('scrolling', 'no');
-      }
+      if (iframe) { iframe.src = `https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&dnt=true`; iframe.setAttribute('scrolling', 'no'); }
     });
-    
     const handleMessage = (e: MessageEvent) => {
       if (e.origin !== 'https://platform.twitter.com') return;
       const data = e.data?.['twttr.embed'];
       if (data?.method === 'twttr.private.resize' && data.params?.[0]?.height) {
-        el.querySelectorAll('[data-twitter-embed] iframe').forEach(iframe => {
-          (iframe as HTMLIFrameElement).style.height = `${data.params[0].height}px`;
-        });
+        el.querySelectorAll('[data-twitter-embed] iframe').forEach(iframe => { (iframe as HTMLIFrameElement).style.height = `${data.params[0].height}px`; });
       }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [html]);
-  
+
   return processedHtml.trim() ? <div ref={ref} className="prose-content" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: processedHtml }} /> : null;
 });
 
@@ -244,7 +206,6 @@ export function BlockRenderer({ content, className }: { content: Block[] | unkno
   const blocks = (content && Array.isArray(content)) ? content as Block[] : [];
   const hasCode = hasCodeBlocksInContent(blocks);
 
-  // Handle tabs - only runs once per tab group
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;

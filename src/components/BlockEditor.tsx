@@ -15,49 +15,12 @@ import TiptapYoutube from '@tiptap/extension-youtube';
 import Placeholder from '@tiptap/extension-placeholder';
 import TiptapCodeBlock from '@tiptap/extension-code-block';
 import { Node as TiptapNode, mergeAttributes } from '@tiptap/core';
-import {
-  Plus, Trash2, Copy, ChevronUp, ChevronDown, Pencil, Upload,
-  Minus, Code, Quote, Clock, FileText, Columns, Settings,
-  Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, X, Check,
-  type LucideIcon
-} from 'lucide-react';
+import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Pencil, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, X, Check, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SHIKI_LANGS, DEFAULT_LANG } from '@/lib/shiki';
+import { BLOCK_META, INSERTABLE_BLOCKS, createBlock, duplicateBlock } from '@/lib/block-utils';
 import { Button, Input, Dropdown } from '@/components/ui';
 import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock, LeafBlock, Column } from '@/types/blocks';
-
-export type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock, Column, LeafBlock } from '@/types/blocks';
-
-const BLOCK_META: Record<BlockType, { label: string; icon: LucideIcon }> = {
-  content: { label: 'Content', icon: Pencil },
-  recentPages: { label: 'Recent Pages', icon: Clock },
-  pageList: { label: 'Page List', icon: FileText },
-  assetPrice: { label: 'Asset Price', icon: TrendingUp },
-  columns: { label: 'Columns', icon: Columns },
-};
-
-const BLOCK_DEFAULTS: Record<BlockType, () => Omit<Block, 'id'>> = {
-  content: () => ({ type: 'content', text: '' }),
-  recentPages: () => ({ type: 'recentPages', limit: 5 }),
-  pageList: () => ({ type: 'pageList', pageIds: [] }),
-  assetPrice: () => ({ type: 'assetPrice', resourceAddress: 'resource_rdx1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxradxrd', showChange: true }),
-  columns: () => ({ type: 'columns', columns: [{ id: crypto.randomUUID(), blocks: [] }, { id: crypto.randomUUID(), blocks: [] }], gap: 'md', align: 'start' }),
-};
-
-const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'columns', 'recentPages', 'pageList', 'assetPrice'];
-
-export const createBlock = (type: BlockType): Block => ({ id: crypto.randomUUID(), ...BLOCK_DEFAULTS[type]() } as Block);
-
-export const createDefaultPageContent = (): Block[] => [
-  { id: crypto.randomUUID(), type: 'content', text: '' },
-];
-
-function duplicateBlock(block: Block): Block {
-  if (block.type === 'columns') {
-    return { ...block, id: crypto.randomUUID(), columns: block.columns.map(col => ({ ...col, id: crypto.randomUUID(), blocks: col.blocks.map(b => ({ ...b, id: crypto.randomUUID() })) })) };
-  }
-  return { ...block, id: crypto.randomUUID() };
-}
 
 // ========== TIPTAP EXTENSIONS ==========
 const Iframe = TiptapNode.create({
@@ -73,9 +36,7 @@ const YouTube = TiptapYoutube.extend({
   addPasteRules() {
     return [{
       find: /https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)[^\s]*/g,
-      handler: ({ match, chain, range }) => {
-        if (match[0]) chain().deleteRange(range).setYoutubeVideo({ src: match[0] }).run();
-      },
+      handler: ({ match, chain, range }) => { if (match[0]) chain().deleteRange(range).setYoutubeVideo({ src: match[0] }).run(); },
     }];
   },
 });
@@ -89,21 +50,12 @@ const TwitterEmbed = TiptapNode.create({
   renderHTML({ node }) { return ['div', { 'data-twitter-embed': '', 'data-tweet-id': node.attrs.tweetId, 'data-url': node.attrs.url, class: 'twitter-embed' }, ['iframe', { src: `https://platform.twitter.com/embed/Tweet.html?id=${node.attrs.tweetId}&dnt=true`, frameborder: '0', allowfullscreen: 'true', scrolling: 'no' }]]; },
   addNodeView() { return ReactNodeViewRenderer(TwitterEmbedView); },
   addPasteRules() {
-    return [
-      {
-        find: /https?:\/\/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/g,
-        handler: ({ match, chain, range }) => {
-          const tweetId = match[1];
-          if (tweetId) chain().deleteRange(range).insertContent({ type: 'twitterEmbed', attrs: { tweetId, url: match[0] } }).run();
-        },
-      },
-    ];
+    return [{ find: /https?:\/\/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/g, handler: ({ match, chain, range }) => { const tweetId = match[1]; if (tweetId) chain().deleteRange(range).insertContent({ type: 'twitterEmbed', attrs: { tweetId, url: match[0] } }).run(); } }];
   },
 });
 
 function TwitterEmbedView({ node }: { node: any }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       if (e.origin !== 'https://platform.twitter.com') return;
@@ -116,18 +68,7 @@ function TwitterEmbedView({ node }: { node: any }) {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
-  
-  return (
-    <NodeViewWrapper>
-      <div ref={containerRef} className="twitter-embed">
-        <iframe
-          src={`https://platform.twitter.com/embed/Tweet.html?id=${node.attrs.tweetId}&dnt=true`}
-          scrolling="no"
-          allowFullScreen
-        />
-      </div>
-    </NodeViewWrapper>
-  );
+  return <NodeViewWrapper><div ref={containerRef} className="twitter-embed"><iframe src={`https://platform.twitter.com/embed/Tweet.html?id=${node.attrs.tweetId}&dnt=true`} scrolling="no" allowFullScreen /></div></NodeViewWrapper>;
 }
 
 const TabGroup = TiptapNode.create({
@@ -170,7 +111,6 @@ function TabGroupView({ node, getPos, editor, updateAttributes }: { node: any; g
     tr.setNodeMarkup(tabPos, undefined, { title });
     editor.view.dispatch(tr);
   };
-
   return (
     <NodeViewWrapper data-tabs="" data-active-tab={activeTab}>
       <div className="tabs-editor">
@@ -196,9 +136,7 @@ function CodeBlockView({ node, updateAttributes }: { node: any; updateAttributes
 
   useEffect(() => {
     if (!showLangs) return;
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setShowLangs(false);
-    };
+    const handler = (e: MouseEvent) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setShowLangs(false); };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showLangs]);
@@ -212,8 +150,7 @@ function CodeBlockView({ node, updateAttributes }: { node: any; updateAttributes
         {showLangs && (
           <div className="absolute top-full right-0 mt-1 bg-surface-1 border border-border rounded shadow-lg max-h-48 overflow-y-auto min-w-28 z-50">
             {SHIKI_LANGS.map(l => (
-              <button key={l} onClick={() => { updateAttributes({ language: l }); setShowLangs(false); }}
-                className={cn('w-full px-3 py-1.5 text-left text-xs hover:bg-surface-2 transition-colors flex items-center justify-between', l === lang && 'text-accent')}>
+              <button key={l} onClick={() => { updateAttributes({ language: l }); setShowLangs(false); }} className={cn('w-full px-3 py-1.5 text-left text-xs hover:bg-surface-2 transition-colors flex items-center justify-between', l === lang && 'text-accent')}>
                 {l}{l === lang && <Check size={12} />}
               </button>
             ))}
@@ -226,9 +163,7 @@ function CodeBlockView({ node, updateAttributes }: { node: any; updateAttributes
 }
 
 const CodeBlock = TiptapCodeBlock.extend({
-  addAttributes() {
-    return { ...this.parent?.(), language: { default: DEFAULT_LANG, parseHTML: el => el.querySelector('code')?.className?.match(/language-(\w+)/)?.[1] || DEFAULT_LANG } };
-  },
+  addAttributes() { return { ...this.parent?.(), language: { default: DEFAULT_LANG, parseHTML: el => el.querySelector('code')?.className?.match(/language-(\w+)/)?.[1] || DEFAULT_LANG } }; },
   addNodeView() { return ReactNodeViewRenderer(CodeBlockView); },
 });
 
@@ -267,13 +202,7 @@ const TOOLBAR_BUTTONS: { key: string; icon: LucideIcon; active?: string | [strin
     e.chain().focus().insertContent({ type: 'iframe', attrs: { src: url } }).run();
   }},
   { key: 'table', icon: TableIcon, active: 'table', action: e => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
-  { key: 'tabs', icon: LayoutList, active: 'tabGroup', action: e => e.chain().focus().insertContent({
-    type: 'tabGroup',
-    content: [
-      { type: 'tabItem', attrs: { title: 'Tab 1' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Content for tab 1' }] }] },
-      { type: 'tabItem', attrs: { title: 'Tab 2' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Content for tab 2' }] }] },
-    ],
-  }).run() },
+  { key: 'tabs', icon: LayoutList, active: 'tabGroup', action: e => e.chain().focus().insertContent({ type: 'tabGroup', content: [{ type: 'tabItem', attrs: { title: 'Tab 1' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Content for tab 1' }] }] }, { type: 'tabItem', attrs: { title: 'Tab 2' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Content for tab 2' }] }] }] }).run() },
 ];
 
 const TABLE_ACTIONS: [string, string, boolean?][] = [['addColumnAfter', '+Col'], ['addRowAfter', '+Row'], ['deleteColumn', '-Col', true], ['deleteRow', '-Row', true], ['deleteTable', '-Tbl', true]];
@@ -301,41 +230,22 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     doc.querySelectorAll('style, script, meta, link, svg, canvas, noscript').forEach(el => el.remove());
     doc.querySelectorAll('*').forEach(el => {
-      el.removeAttribute('style');
-      el.removeAttribute('class');
-      el.removeAttribute('id');
-      Array.from(el.attributes).forEach(attr => {
-        if (!['href', 'src', 'alt'].includes(attr.name)) el.removeAttribute(attr.name);
-      });
+      el.removeAttribute('style'); el.removeAttribute('class'); el.removeAttribute('id');
+      Array.from(el.attributes).forEach(attr => { if (!['href', 'src', 'alt'].includes(attr.name)) el.removeAttribute(attr.name); });
     });
     return doc.body.innerHTML;
   }, []);
 
   const editor = useEditor({
     extensions,
-    editorProps: {
-      attributes: { class: 'outline-none focus:outline-none prose prose-invert min-h-20' },
-      transformPastedHTML: cleanPastedHtml,
-    },
-    onUpdate: ({ editor }) => {
-      clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => onChangeRef.current(editor.getHTML()), 150);
-    },
+    editorProps: { attributes: { class: 'outline-none focus:outline-none prose prose-invert min-h-20' }, transformPastedHTML: cleanPastedHtml },
+    onUpdate: ({ editor }) => { clearTimeout(debounceRef.current); debounceRef.current = setTimeout(() => onChangeRef.current(editor.getHTML()), 150); },
     immediatelyRender: false,
-    onCreate: ({ editor }) => { 
-      if (initialValueRef.current) {
-        queueMicrotask(() => editor.commands.setContent(initialValueRef.current));
-      }
-    },
+    onCreate: ({ editor }) => { if (initialValueRef.current) queueMicrotask(() => editor.commands.setContent(initialValueRef.current)); },
   });
 
   useEffect(() => () => clearTimeout(debounceRef.current), []);
-
-  useEffect(() => {
-    if (!editor || editor.isFocused) return;
-    const currentHtml = editor.getHTML();
-    if (currentHtml !== value) editor.commands.setContent(value);
-  }, [value, editor]);
+  useEffect(() => { if (!editor || editor.isFocused) return; const currentHtml = editor.getHTML(); if (currentHtml !== value) editor.commands.setContent(value); }, [value, editor]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -377,12 +287,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
 
 // ========== EDIT COMPONENTS ==========
 function EditWrapper({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: ReactNode }) {
-  return (
-    <div className="stack surface p-4 border-dashed">
-      <div className="row text-muted"><Icon size={18} /><span className="font-medium">{label}</span></div>
-      {children}
-    </div>
-  );
+  return <div className="stack surface p-4 border-dashed"><div className="row text-muted"><Icon size={18} /><span className="font-medium">{label}</span></div>{children}</div>;
 }
 
 type BlockProps<T extends Block> = { block: T; onUpdate?: (b: T) => void };
@@ -420,10 +325,7 @@ function AssetPriceBlockEdit({ block, onUpdate }: BlockProps<AssetPriceBlock>) {
         <input type="text" value={block.resourceAddress || ''} onChange={e => onUpdate?.({ ...block, resourceAddress: e.target.value })} placeholder="resource_rdx1..." className="input font-mono" />
         <small className="text-muted">Enter any Radix resource address to fetch its price</small>
       </div>
-      <label className="row">
-        <input type="checkbox" checked={block.showChange ?? true} onChange={e => onUpdate?.({ ...block, showChange: e.target.checked })} className="w-4 h-4 rounded border-border" />
-        Show 24h change
-      </label>
+      <label className="row"><input type="checkbox" checked={block.showChange ?? true} onChange={e => onUpdate?.({ ...block, showChange: e.target.checked })} className="w-4 h-4 rounded border-border" />Show 24h change</label>
     </EditWrapper>
   );
 }
@@ -465,7 +367,7 @@ function useBlockOperations<T extends Block>(blocks: T[], setBlocks: (blocks: T[
   const setBlocksRef = useRef(setBlocks);
   blocksRef.current = blocks;
   setBlocksRef.current = setBlocks;
-  
+
   return {
     selectedIndex, setSelectedIndex,
     update: useCallback((i: number, b: T) => setBlocksRef.current(blocksRef.current.map((x, j) => j === i ? b : x)), []),
@@ -480,10 +382,8 @@ function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Colum
   const setBlocks = useCallback((blocks: LeafBlock[]) => onUpdate({ ...column, blocks }), [column, onUpdate]);
   const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(column.blocks, setBlocks);
   const contentBlockTypes = INSERTABLE_BLOCKS.filter(t => t !== 'columns');
-  
-  // Create stable update callback for LeafBlock
   const handleUpdate = useCallback((i: number, b: Block) => update(i, b as LeafBlock), [update]);
-  
+
   return (
     <div className="flex-1 stack-sm p-3 bg-surface-1/50 border border-dashed border-border-muted rounded-lg">
       <div className="spread"><span className="text-small text-muted uppercase tracking-wide">Column</span>{canDelete && <button onClick={onDelete} className="icon-btn p-1 text-muted hover:text-error"><Trash2 size={14} /></button>}</div>
@@ -491,21 +391,7 @@ function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Colum
         <div className="py-6 text-center"><p className="text-muted text-small mb-2">Empty column</p><InsertButton onInsert={insert} compact blockTypes={contentBlockTypes} /></div>
       ) : (
         <div className="stack-sm">
-          {column.blocks.map((block, i) => (
-            <BlockWrapper 
-              key={block.id} 
-              block={block} 
-              index={i} 
-              total={column.blocks.length} 
-              isSelected={selectedIndex === i} 
-              onSelect={setSelectedIndex}
-              onUpdate={handleUpdate}
-              onDelete={remove}
-              onDuplicate={duplicate}
-              onMove={move}
-              compact
-            />
-          ))}
+          {column.blocks.map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={column.blocks.length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={handleUpdate} onDelete={remove} onDuplicate={duplicate} onMove={move} compact />)}
           <InsertButton onInsert={insert} compact blockTypes={contentBlockTypes} />
         </div>
       )}
@@ -532,10 +418,7 @@ function InsertButton({ onInsert, compact, blockTypes = INSERTABLE_BLOCKS }: { o
       </button>
       {showMenu && (
         <Dropdown onClose={() => setShowMenu(false)} className="left-1/2 -translate-x-1/2 w-64 p-2">
-          <div className="stack-sm">{blockTypes.map(type => {
-            const { label, icon: Icon } = BLOCK_META[type];
-            return <button key={type} onClick={() => { onInsert(type); setShowMenu(false); }} className="dropdown-item rounded-md"><Icon size={18} /><span>{label}</span></button>;
-          })}</div>
+          <div className="stack-sm">{blockTypes.map(type => { const { label, icon: Icon } = BLOCK_META[type]; return <button key={type} onClick={() => { onInsert(type); setShowMenu(false); }} className="dropdown-item rounded-md"><Icon size={18} /><span>{label}</span></button>; })}</div>
         </Dropdown>
       )}
     </div>
@@ -555,7 +438,7 @@ const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelecte
   const handleDuplicate = useCallback(() => onDuplicate(index), [onDuplicate, index]);
   const handleMoveUp = useCallback(() => onMove(index, index - 1), [onMove, index]);
   const handleMoveDown = useCallback(() => onMove(index, index + 1), [onMove, index]);
-  
+
   if (!meta) return (
     <div className={cn('rounded border border-warning/50 bg-warning/10', compact ? 'p-3' : 'p-4 rounded-lg')}>
       <div className="spread mb-2"><span className={cn('text-warning', compact ? 'text-small' : 'font-medium')}>Unknown block: {block.type}</span><button onClick={e => { e.stopPropagation(); handleDelete(); }} className="icon-btn p-1 text-muted hover:text-error"><Trash2 size={iconSize} /></button></div>
@@ -563,10 +446,7 @@ const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelecte
   );
   const Icon = meta.icon;
   return (
-    <div onClick={handleSelect} className={cn('group relative transition-colors',
-      compact ? cn('p-3 rounded-md border', isSelected ? 'border-accent bg-accent/5' : 'border-transparent hover:border-border-muted hover:bg-surface-2/50')
-        : cn('p-4 rounded-lg border', isSelected ? 'border-accent bg-accent/5' : 'border-border-muted hover:border-border', block.type === 'columns' && 'bg-surface-1/30')
-    )}>
+    <div onClick={handleSelect} className={cn('group relative transition-colors', compact ? cn('p-3 rounded-md border', isSelected ? 'border-accent bg-accent/5' : 'border-transparent hover:border-border-muted hover:bg-surface-2/50') : cn('p-4 rounded-lg border', isSelected ? 'border-accent bg-accent/5' : 'border-border-muted hover:border-border', block.type === 'columns' && 'bg-surface-1/30'))}>
       <div className={cn('spread', compact ? 'mb-2' : 'mb-3')}>
         <div className="row">{!(compact || block.type === 'columns') && <div className="row text-muted"><Icon size={18} /><span className="text-small font-medium uppercase">{meta.label}</span></div>}</div>
         <div className="row opacity-0 group-hover:opacity-100 transition-opacity">
@@ -587,20 +467,7 @@ export function BlockEditor({ content, onChange }: { content: Block[]; onChange:
   if (content.length === 0) return <div className="stack items-center py-12 text-center"><p className="text-muted">No content yet. Add your first block!</p><InsertButton onInsert={insert} /></div>;
   return (
     <div className="stack">
-      {content.map((block, i) => (
-        <BlockWrapper 
-          key={block.id} 
-          block={block} 
-          index={i} 
-          total={content.length} 
-          isSelected={selectedIndex === i} 
-          onSelect={setSelectedIndex}
-          onUpdate={update}
-          onDelete={remove}
-          onDuplicate={duplicate}
-          onMove={move}
-        />
-      ))}
+      {content.map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={content.length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={update} onDelete={remove} onDuplicate={duplicate} onMove={move} />)}
       <InsertButton onInsert={insert} />
     </div>
   );

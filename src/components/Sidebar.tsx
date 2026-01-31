@@ -5,7 +5,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, ChevronRight, ChevronDown, ListTree } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { useStore } from '@/hooks';
 import { getVisibleTags, isValidTagPath, type TagNode } from '@/lib/tags';
@@ -87,7 +87,7 @@ function TableOfContents() {
 export function Sidebar() {
   const pathname = usePathname();
   const sidebarOpen = useStore(s => s.sidebarOpen);
-  const visibleTags = getVisibleTags();
+  const visibleTags = useMemo(() => getVisibleTags(), []);
 
   const segments = pathname.split('/').filter(Boolean);
   const last = segments[segments.length - 1];

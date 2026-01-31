@@ -7,7 +7,7 @@ import { getSession, createSession, destroySession, verifySignedChallenge } from
 import { RADIX_CONFIG } from '@/lib/radix/config';
 import { json, errors, handleRoute } from '@/lib/api';
 import type { SignedChallenge, RadixAccount, RadixPersona } from '@/types';
-import type { Block } from '@/components/Blocks';
+import type { Block } from '@/types/blocks';
 
 function createCommunityPageContent(displayName?: string): Block[] {
   const title = displayName ? `Welcome to ${displayName}` : 'Welcome to My Page';

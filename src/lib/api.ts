@@ -20,16 +20,11 @@ export const errors = {
 
 export type RouteContext<T = Record<string, string | string[]>> = { params: Promise<T> };
 
-// Unified auth helper - optionally checks balance
-type AuthResult<T extends BalanceAction | undefined> = T extends BalanceAction
-  ? { session: AuthSession; user: { id: string; radixAddress: string }; balance: number }
-  : { session: AuthSession };
-
 type AuthError = { error: NextResponse };
 
 export async function requireAuth(request?: NextRequest): Promise<{ session: AuthSession } | AuthError>;
 export async function requireAuth(request: NextRequest, action: BalanceAction): Promise<{ session: AuthSession; user: { id: string; radixAddress: string }; balance: number } | AuthError>;
-export async function requireAuth(request?: NextRequest, action?: BalanceAction): Promise<AuthResult<typeof action> | AuthError> {
+export async function requireAuth(request?: NextRequest, action?: BalanceAction): Promise<{ session: AuthSession; user?: { id: string; radixAddress: string }; balance?: number } | AuthError> {
   const session = await getSession(request);
   if (!session) return { error: errors.unauthorized() };
 
@@ -39,7 +34,7 @@ export async function requireAuth(request?: NextRequest, action?: BalanceAction)
     return { session, user: balanceCheck.user, balance: balanceCheck.balance };
   }
 
-  return { session } as AuthResult<typeof action>;
+  return { session };
 }
 
 export async function handleRoute(fn: () => Promise<NextResponse>, errorMsg = 'Internal server error'): Promise<NextResponse> {

@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { create } from 'zustand';
 import type { WikiPage, AuthSession, RadixWalletData } from '@/types';
 
@@ -88,42 +88,49 @@ export function usePages(mode: PageMode): SingleResult | ListResult {
   const [isLoading, setIsLoading] = useState(true);
   const [status, setStatus] = useState<'loading' | 'found' | 'notfound' | 'error'>('loading');
 
-  const modeKey = mode.type === 'single' ? `${mode.tagPath}/${mode.slug}`
-    : mode.type === 'recent' ? `${mode.tagPath || ''}:${mode.limit}:${mode.sort || 'updatedAt'}`
-    : mode.pageIds.join(',');
+  // Memoize mode properties to prevent unnecessary re-fetches
+  const modeConfig = useMemo(() => {
+    if (mode.type === 'single') {
+      return { type: 'single' as const, tagPath: mode.tagPath, slug: mode.slug, key: `${mode.tagPath}/${mode.slug}` };
+    }
+    if (mode.type === 'recent') {
+      return { type: 'recent' as const, tagPath: mode.tagPath, limit: mode.limit, sort: mode.sort || 'updatedAt', key: `${mode.tagPath || ''}:${mode.limit}:${mode.sort || 'updatedAt'}` };
+    }
+    return { type: 'byIds' as const, pageIds: mode.pageIds, key: mode.pageIds.join(',') };
+  }, [mode.type, mode.type === 'single' ? mode.tagPath : '', mode.type === 'single' ? mode.slug : '', mode.type === 'recent' ? mode.tagPath : '', mode.type === 'recent' ? mode.limit : 0, mode.type === 'recent' ? mode.sort : '', mode.type === 'byIds' ? mode.pageIds.join(',') : '']);
 
   useEffect(() => {
-    if (mode.type === 'byIds' && !mode.pageIds.length) {
+    if (modeConfig.type === 'byIds' && !modeConfig.pageIds.length) {
       setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
-    if (mode.type === 'single') setStatus('loading');
+    if (modeConfig.type === 'single') setStatus('loading');
 
     (async () => {
       try {
-        if (mode.type === 'single') {
-          const res = await fetch(`/api/wiki/${mode.tagPath}/${mode.slug}`);
+        if (modeConfig.type === 'single') {
+          const res = await fetch(`/api/wiki/${modeConfig.tagPath}/${modeConfig.slug}`);
           if (res.ok) { setPage(await res.json()); setStatus('found'); }
           else setStatus(res.status === 404 ? 'notfound' : 'error');
-        } else if (mode.type === 'recent') {
-          const params = new URLSearchParams({ pageSize: mode.limit.toString() });
-          if (mode.tagPath) params.set('tagPath', mode.tagPath);
-          if (mode.sort) params.set('sort', mode.sort);
+        } else if (modeConfig.type === 'recent') {
+          const params = new URLSearchParams({ pageSize: modeConfig.limit.toString() });
+          if (modeConfig.tagPath) params.set('tagPath', modeConfig.tagPath);
+          if (modeConfig.sort) params.set('sort', modeConfig.sort);
           const res = await fetch(`/api/wiki?${params}`);
           if (res.ok) setPages((await res.json()).items || []);
         } else {
-          const results = await Promise.all(mode.pageIds.map(id => fetch(`/api/wiki/by-id/${id}`).then(r => r.ok ? r.json() : null)));
+          const results = await Promise.all(modeConfig.pageIds.map(id => fetch(`/api/wiki/by-id/${id}`).then(r => r.ok ? r.json() : null)));
           setPages(results.filter(Boolean));
         }
       } catch {
-        if (mode.type === 'single') setStatus('error');
+        if (modeConfig.type === 'single') setStatus('error');
       } finally {
         setIsLoading(false);
       }
     })();
-  }, [mode.type, modeKey]);
+  }, [modeConfig]);
 
   if (mode.type === 'single') return { page, status };
   return { pages, isLoading };

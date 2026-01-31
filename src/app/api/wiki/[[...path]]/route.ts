@@ -6,7 +6,9 @@ import { Prisma } from '@prisma/client';
 import { slugify } from '@/lib/utils';
 import { isValidTagPath, isAuthorOnlyPath } from '@/lib/tags';
 import { json, errors, handleRoute, requireAuth, type RouteContext } from '@/lib/api';
+import { computeRevisionDiff, formatVersion, parseVersion, type BlockChange } from '@/lib/versioning';
 import type { WikiPageInput } from '@/types';
+import type { Block } from '@/types/blocks';
 
 type PathParams = { path?: string[] };
 
@@ -37,16 +39,12 @@ function parsePath(segments: string[] = []): ParsedPath | null {
   };
 }
 
-function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
 export async function GET(request: NextRequest, context: RouteContext<PathParams>) {
   return handleRoute(async () => {
     const { path } = await context.params;
     const { searchParams } = new URL(request.url);
 
-    // List mode: has pagination/search params and no specific path
+    // List mode
     if (!path?.length && (searchParams.has('page') || searchParams.has('pageSize') || searchParams.has('search') || searchParams.has('tagPath') || searchParams.has('sort'))) {
       const page = parseInt(searchParams.get('page') || '1', 10);
       const pageSize = parseInt(searchParams.get('pageSize') || '20', 10);
@@ -79,7 +77,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     if (parsed.type === 'history') {
       const page = await prisma.page.findFirst({
         where: { tagPath: parsed.tagPath, slug: parsed.slug },
-        select: { id: true },
+        select: { id: true, version: true },
       });
       if (!page) return errors.notFound('Page not found');
 
@@ -88,6 +86,9 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
         select: {
           id: true,
           title: true,
+          version: true,
+          changeType: true,
+          changes: true,
           message: true,
           createdAt: true,
           author: { select: { id: true, displayName: true, radixAddress: true } },
@@ -95,7 +96,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
         orderBy: { createdAt: 'desc' },
       });
 
-      return json(revisions);
+      return json({ currentVersion: page.version, revisions });
     }
 
     // Homepage or specific page
@@ -124,7 +125,10 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
       const auth = await requireAuth(request);
       if ('error' in auth) return auth.error;
 
-      const page = await prisma.page.findFirst({ where: { tagPath: parsed.tagPath, slug: parsed.slug } });
+      const page = await prisma.page.findFirst({ 
+        where: { tagPath: parsed.tagPath, slug: parsed.slug },
+        select: { id: true, title: true, content: true, bannerImage: true, version: true, authorId: true, tagPath: true },
+      });
       if (!page) return errors.notFound('Page not found');
 
       if (isAuthorOnlyPath(page.tagPath) && page.authorId !== auth.session.userId) {
@@ -141,11 +145,28 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
       const revision = await prisma.revision.findFirst({ where: { id: revisionId, pageId: page.id } });
       if (!revision) return errors.notFound('Revision not found');
 
+      const oldContent = (page.content as unknown as Block[]) || [];
+      const newContent = (revision.content as unknown as Block[]) || [];
+      
+      const diff = computeRevisionDiff(
+        page.version,
+        oldContent,
+        newContent,
+        page.title,
+        revision.title,
+        page.bannerImage,
+        page.bannerImage // Banner doesn't change on restore
+      );
+
       const content = revision.content as Prisma.InputJsonValue;
 
       await prisma.page.update({
         where: { id: page.id },
-        data: { title: revision.title, content },
+        data: { 
+          title: revision.title, 
+          content,
+          version: formatVersion(diff.version),
+        },
       });
 
       await prisma.revision.create({
@@ -153,12 +174,15 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
           pageId: page.id,
           title: revision.title,
           content,
+          version: formatVersion(diff.version),
+          changeType: diff.changeType,
+          changes: diff.changes as unknown as Prisma.InputJsonValue,
           authorId: auth.session.userId,
-          message: `Restored from revision ${formatDate(revision.createdAt)}`,
+          message: `Restored to v${revision.version}`,
         },
       });
 
-      return json({ success: true });
+      return json({ success: true, version: formatVersion(diff.version) });
     }
 
     // Create new page
@@ -177,6 +201,8 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
     const existing = await prisma.page.findFirst({ where: { tagPath, slug } });
     if (existing) slug = `${slug}-${Date.now().toString(36)}`;
 
+    const initialVersion = '1.0.0';
+
     const page = await prisma.page.create({
       data: {
         slug,
@@ -185,6 +211,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
         excerpt,
         bannerImage,
         tagPath,
+        version: initialVersion,
         authorId: auth.session.userId,
       },
       include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
@@ -195,6 +222,9 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
         pageId: page.id,
         title,
         content: content as unknown as Prisma.InputJsonValue,
+        version: initialVersion,
+        changeType: 'major',
+        changes: [] as unknown as Prisma.InputJsonValue,
         authorId: auth.session.userId,
         message: 'Initial version',
       },
@@ -222,6 +252,8 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
 
     // Homepage creation if it doesn't exist
     if (!existing && isHomepage) {
+      const initialVersion = '1.0.0';
+      
       const page = await prisma.page.create({
         data: {
           tagPath: '',
@@ -229,6 +261,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
           title: title || 'Homepage',
           content: (content as unknown as Prisma.InputJsonValue) || {},
           bannerImage,
+          version: initialVersion,
           authorId: auth.session.userId,
         },
       });
@@ -238,6 +271,9 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
           pageId: page.id,
           title: title || 'Homepage',
           content: (content as unknown as Prisma.InputJsonValue) || {},
+          version: initialVersion,
+          changeType: 'major',
+          changes: [] as unknown as Prisma.InputJsonValue,
           authorId: auth.session.userId,
           message: 'Initial version',
         },
@@ -253,6 +289,30 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
       return errors.forbidden('You can only edit your own pages in this category');
     }
 
+    // Compute semantic diff if content changed
+    let newVersion = existing.version;
+    let changeType: string = 'patch';
+    let changes: BlockChange[] = [];
+
+    if (content || title) {
+      const oldContent = (existing.content as unknown as Block[]) || [];
+      const newContent = (content as unknown as Block[]) || oldContent;
+      
+      const diff = computeRevisionDiff(
+        existing.version,
+        oldContent,
+        newContent,
+        existing.title,
+        title || existing.title,
+        existing.bannerImage,
+        bannerImage ?? existing.bannerImage
+      );
+
+      newVersion = formatVersion(diff.version);
+      changeType = diff.changeType;
+      changes = diff.changes;
+    }
+
     const page = await prisma.page.update({
       where: { id: existing.id },
       data: {
@@ -260,6 +320,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
         content: content !== undefined ? (content as unknown as Prisma.InputJsonValue) : undefined,
         excerpt: excerpt ?? undefined,
         bannerImage: bannerImage ?? undefined,
+        version: newVersion,
       },
       include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
     });
@@ -270,6 +331,9 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
           pageId: page.id,
           title: title || existing.title,
           content: content ? (content as unknown as Prisma.InputJsonValue) : (existing.content as Prisma.InputJsonValue),
+          version: newVersion,
+          changeType,
+          changes: changes as unknown as Prisma.InputJsonValue,
           authorId: auth.session.userId,
           message: revisionMessage,
         },

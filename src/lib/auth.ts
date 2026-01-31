@@ -156,7 +156,6 @@ export async function verifySignedChallenge(
 
     if (!keyMatches) return { isValid: false, error: 'Public key does not match owner keys' };
 
-    // Only Ed25519 (curve25519) is supported by Web Crypto API
     if (signedChallenge.proof.curve !== 'curve25519') {
       return { isValid: false, error: 'Unsupported signature curve' };
     }
@@ -179,14 +178,4 @@ export async function verifySignedChallenge(
     console.error('ROLA verification error:', error);
     return { isValid: false, error: 'Verification failed' };
   }
-}
-
-export async function cleanupExpiredSessions(): Promise<number> {
-  const result = await prisma.session.deleteMany({ where: { expiresAt: { lt: new Date() } } });
-  return result.count;
-}
-
-export async function cleanupExpiredChallenges(): Promise<number> {
-  const result = await prisma.challenge.deleteMany({ where: { expiresAt: { lt: new Date() } } });
-  return result.count;
 }

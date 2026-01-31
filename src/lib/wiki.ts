@@ -4,10 +4,6 @@ import { prisma } from '@/lib/prisma/client';
 import { isValidTagPath } from '@/lib/tags';
 import type { WikiPage } from '@/types';
 
-export interface WikiPageWithRevisions extends WikiPage {
-  revisions?: { id: string }[];
-}
-
 export interface ParsedPath {
   type: 'homepage' | 'category' | 'page' | 'history' | 'edit' | 'invalid';
   tagPath: string;
@@ -43,24 +39,24 @@ export function parsePath(segments: string[] = []): ParsedPath {
   return { type: 'page', tagPath, slug, isEditMode: false, isHistoryMode: false };
 }
 
-export async function getHomepage(): Promise<WikiPageWithRevisions | null> {
+export async function getHomepage(): Promise<WikiPage | null> {
   return prisma.page.findFirst({
     where: { tagPath: '', slug: '' },
     include: {
       author: { select: { id: true, displayName: true, radixAddress: true } },
       revisions: { select: { id: true } },
     },
-  }) as Promise<WikiPageWithRevisions | null>;
+  }) as Promise<WikiPage | null>;
 }
 
-export async function getPage(tagPath: string, slug: string): Promise<WikiPageWithRevisions | null> {
+export async function getPage(tagPath: string, slug: string): Promise<WikiPage | null> {
   return prisma.page.findFirst({
     where: { tagPath, slug },
     include: {
       author: { select: { id: true, displayName: true, radixAddress: true } },
       revisions: { select: { id: true } },
     },
-  }) as Promise<WikiPageWithRevisions | null>;
+  }) as Promise<WikiPage | null>;
 }
 
 export async function getCategoryPages(tagPath: string, limit = 50) {
@@ -75,7 +71,7 @@ export async function getCategoryPages(tagPath: string, limit = 50) {
 export async function getPageHistory(tagPath: string, slug: string) {
   const page = await prisma.page.findFirst({
     where: { tagPath, slug },
-    select: { id: true, title: true },
+    select: { id: true, title: true, version: true },
   });
   if (!page) return null;
 
@@ -84,6 +80,9 @@ export async function getPageHistory(tagPath: string, slug: string) {
     select: {
       id: true,
       title: true,
+      version: true,
+      changeType: true,
+      changes: true,
       message: true,
       createdAt: true,
       author: { select: { id: true, displayName: true, radixAddress: true } },
@@ -91,5 +90,5 @@ export async function getPageHistory(tagPath: string, slug: string) {
     orderBy: { createdAt: 'desc' },
   });
 
-  return { page, revisions };
+  return { currentVersion: page.version, revisions };
 }

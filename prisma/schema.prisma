@@ -30,7 +30,8 @@ model Page {
   content     Json      @default("{}")
   excerpt     String?
   bannerImage String?   @map("banner_image")
-  tagPath     String    @map("tag_path") // e.g., "contents/tech/core-protocols"
+  tagPath     String    @map("tag_path")
+  version     String    @default("1.0.0")
   authorId    String    @map("author_id")
   author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
   revisions   Revision[]
@@ -46,18 +47,22 @@ model Page {
 }
 
 model Revision {
-  id        String   @id @default(cuid())
-  pageId    String   @map("page_id")
-  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  content   Json
-  title     String
-  authorId  String   @map("author_id")
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  message   String?
-  createdAt DateTime @default(now()) @map("created_at")
+  id         String   @id @default(cuid())
+  pageId     String   @map("page_id")
+  page       Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  content    Json
+  title      String
+  version    String   @default("1.0.0")
+  changeType String   @default("patch") @map("change_type") // major | minor | patch
+  changes    Json?    // BlockChange[] - structured diff
+  authorId   String   @map("author_id")
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  message    String?
+  createdAt  DateTime @default(now()) @map("created_at")
   
   @@index([pageId])
   @@index([createdAt])
+  @@index([version])
   @@map("revisions")
 }
 
