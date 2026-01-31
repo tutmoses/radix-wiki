@@ -1,11 +1,11 @@
-// src/components/HistoryView.tsx - Extracted history components (lazy-loaded)
+// src/components/HistoryView.tsx
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment, type ReactElement } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, RotateCcw, User, Plus, Minus, Pencil, Move, ChevronDown, ChevronUp, GitBranch } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Plus, Minus, Pencil, Move, ChevronDown } from 'lucide-react';
 import { Button, Badge } from '@/components/ui';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { useAuth } from '@/hooks';
@@ -25,173 +25,105 @@ interface RevisionData {
 
 export type HistoryData = { currentVersion: string; revisions: RevisionData[] } | null;
 
-const CHANGE_TYPE_STYLES = {
-  major: { label: 'Major', variant: 'danger' as const, desc: 'Structural changes' },
-  minor: { label: 'Minor', variant: 'warning' as const, desc: 'Content updates' },
-  patch: { label: 'Patch', variant: 'secondary' as const, desc: 'Metadata changes' },
-} as const;
-
-const ACTION_ICONS = {
-  added: { Icon: Plus, color: 'text-success', bg: 'bg-success/10' },
-  removed: { Icon: Minus, color: 'text-error', bg: 'bg-error/10' },
-  modified: { Icon: Pencil, color: 'text-warning', bg: 'bg-warning/10' },
-  moved: { Icon: Move, color: 'text-info', bg: 'bg-info/10' },
-} as const;
-
-const BLOCK_TYPE_LABELS: Record<string, string> = {
-  content: 'Content Block',
-  recentPages: 'Recent Pages Widget',
-  pageList: 'Page List Widget',
-  assetPrice: 'Asset Price Widget',
-  columns: 'Column Layout',
+const TYPE_BADGE: Record<string, { label: string; variant: 'danger' | 'warning' | 'secondary' }> = {
+  major: { label: 'Major', variant: 'danger' },
+  minor: { label: 'Minor', variant: 'warning' },
+  patch: { label: 'Patch', variant: 'secondary' },
 };
 
-function formatPath(path: string): string {
-  const parts = path.replace('root.', '').split('.');
-  if (parts.length === 1) return `Block ${parseInt(parts[0]) + 1}`;
-  const formatted: string[] = [];
-  for (let i = 0; i < parts.length; i++) {
-    if (parts[i] === 'columns' && parts[i + 1]) {
-      formatted.push(`Column ${parseInt(parts[i + 1]) + 1}`);
-      i += 2;
-    } else if (!isNaN(parseInt(parts[i]))) {
-      formatted.push(`Block ${parseInt(parts[i]) + 1}`);
-    }
-  }
-  return formatted.join(' → ');
+function ChangeSummary({ changes }: { changes: BlockChange[] }) {
+  const counts = changes.reduce((acc, c) => { acc[c.action] = (acc[c.action] || 0) + 1; return acc; }, {} as Record<string, number>);
+  const parts: ReactElement[] = [];
+  if (counts.added) parts.push(<span key="a" className="text-success">+{counts.added}</span>);
+  if (counts.removed) parts.push(<span key="r" className="text-error">-{counts.removed}</span>);
+  if (counts.modified) parts.push(<span key="m" className="text-warning">~{counts.modified}</span>);
+  if (counts.moved) parts.push(<span key="v" className="text-info">↔{counts.moved}</span>);
+  return <span className="row gap-1.5 text-xs font-mono">{parts.length ? parts : '—'}</span>;
 }
 
 function ContentDiff({ from, to }: { from: string; to: string }) {
-  const [result, setResult] = useState<Array<[number, string]> | null>(null);
+  const [diff, setDiff] = useState<{ removed: string[]; added: string[] } | null>(null);
 
   useEffect(() => {
     if (from === to) return;
-    import('fast-diff').then(({ default: diff }) => setResult(diff(from || '', to || '')));
+    import('fast-diff').then(({ default: fastDiff }) => {
+      const result = fastDiff(from || '', to || '');
+      const removed: string[] = [];
+      const added: string[] = [];
+      for (const [type, text] of result) {
+        if (type === -1 && text.trim()) removed.push(text.trim());
+        if (type === 1 && text.trim()) added.push(text.trim());
+      }
+      setDiff({ removed, added });
+    });
   }, [from, to]);
 
-  if (!result) return null;
+  if (!diff || (!diff.removed.length && !diff.added.length)) return null;
 
   return (
-    <div className="text-xs leading-relaxed bg-surface-2/50 rounded p-2 mt-2 max-h-48 overflow-auto font-mono whitespace-pre-wrap break-all">
-      {result.map(([type, text], i) => (
-        <span key={i} className={cn(type === 1 && 'bg-success/25 text-success', type === -1 && 'bg-error/25 text-error line-through')}>{text}</span>
-      ))}
-    </div>
-  );
-}
-
-function AttributeChange({ name, from, to }: { name: string; from: unknown; to: unknown }) {
-  const formatValue = (v: unknown): string => {
-    if (v === null || v === undefined) return '(empty)';
-    if (typeof v === 'boolean') return v ? 'yes' : 'no';
-    if (typeof v === 'object') return JSON.stringify(v);
-    return String(v);
-  };
-
-  return (
-    <div className="row text-xs py-0.5">
-      <span className="text-muted w-20 shrink-0">{name}:</span>
-      <span className="text-error/70 line-through truncate">{formatValue(from)}</span>
-      <ArrowRight size={10} className="text-muted shrink-0" />
-      <span className="text-success/90 truncate">{formatValue(to)}</span>
-    </div>
-  );
-}
-
-function BlockChangeItem({ change, expanded }: { change: BlockChange; expanded?: boolean }) {
-  const { Icon, color, bg } = ACTION_ICONS[change.action];
-  const typeLabel = BLOCK_TYPE_LABELS[change.type] || change.type;
-  const location = formatPath(change.path);
-
-  const textAttr = change.attributes?.text as { from: string; to: string } | undefined;
-  const fromText = change.contentDiff?.from ?? textAttr?.from ?? '';
-  const toText = change.contentDiff?.to ?? textAttr?.to ?? '';
-  const hasTextChange = change.type === 'content' && (fromText || toText);
-  const otherAttrs = change.attributes ? Object.entries(change.attributes).filter(([k]) => k !== 'text') : [];
-
-  return (
-    <div className={cn('rounded-md p-2', bg)}>
-      <div className="row text-small">
-        <Icon size={14} className={cn(color, 'shrink-0')} />
-        <span className={cn('font-medium capitalize', color)}>{change.action}</span>
-        <span className="text-muted">·</span>
-        <span>{typeLabel}</span>
-        <span className="text-muted text-xs ml-auto">{location}</span>
-      </div>
-      {expanded && (
-        <div className="mt-2 pl-5">
-          {hasTextChange && <ContentDiff from={fromText} to={toText} />}
-          {otherAttrs.length > 0 && (
-            <div className="stack-xs mt-2">
-              {otherAttrs.map(([name, val]) => {
-                const v = val as { from: unknown; to: unknown };
-                return <AttributeChange key={name} name={name} from={v.from} to={v.to} />;
-              })}
-            </div>
-          )}
+    <div className="mt-1 stack-xs text-xs">
+      {diff.removed.length > 0 && (
+        <div className="row gap-2 items-start">
+          <Minus size={10} className="text-error mt-0.5 shrink-0" />
+          <span className="text-error/80 line-through">{diff.removed.join(' … ')}</span>
+        </div>
+      )}
+      {diff.added.length > 0 && (
+        <div className="row gap-2 items-start">
+          <Plus size={10} className="text-success mt-0.5 shrink-0" />
+          <span className="text-success">{diff.added.join(' … ')}</span>
         </div>
       )}
     </div>
   );
 }
 
-function ChangeSummary({ changes }: { changes: BlockChange[] }) {
-  const counts = changes.reduce((acc, c) => { acc[c.action] = (acc[c.action] || 0) + 1; return acc; }, {} as Record<string, number>);
-
-  return (
-    <div className="row flex-wrap gap-1">
-      {counts.added && <span className="row text-xs text-success"><Plus size={10} />{counts.added} added</span>}
-      {counts.removed && <span className="row text-xs text-error"><Minus size={10} />{counts.removed} removed</span>}
-      {counts.modified && <span className="row text-xs text-warning"><Pencil size={10} />{counts.modified} modified</span>}
-      {counts.moved && <span className="row text-xs text-info"><Move size={10} />{counts.moved} moved</span>}
-    </div>
-  );
+function formatBlockPath(path: string, type: string): string {
+  const parts = path.replace('root.', '').split('.');
+  const segments: string[] = [];
+  
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i] === 'columns' && parts[i + 1] !== undefined) {
+      segments.push(`Col ${parseInt(parts[i + 1]) + 1}`);
+      i++; // skip the column index
+    } else if (parts[i] === 'blocks' && parts[i + 1] !== undefined) {
+      segments.push(`Block ${parseInt(parts[i + 1]) + 1}`);
+      i++; // skip the block index
+    } else if (!isNaN(parseInt(parts[i]))) {
+      segments.push(`Block ${parseInt(parts[i]) + 1}`);
+    }
+  }
+  
+  const location = segments.length ? segments.join(' → ') : 'root';
+  const typeLabel = type === 'content' ? 'Text' : type === 'recentPages' ? 'Recent Pages' : type === 'pageList' ? 'Page List' : type === 'assetPrice' ? 'Asset Price' : type === 'columns' ? 'Columns' : type;
+  return `${typeLabel} at ${location}`;
 }
 
-function RevisionCard({ rev, isCurrent, canRestore, onRestore, isRestoring }: { rev: RevisionData; isCurrent: boolean; canRestore: boolean; onRestore: () => void; isRestoring: boolean }) {
-  const [expanded, setExpanded] = useState(isCurrent);
-  const changes = rev.changes || [];
-  const typeStyle = CHANGE_TYPE_STYLES[rev.changeType as keyof typeof CHANGE_TYPE_STYLES] || CHANGE_TYPE_STYLES.patch;
-
+function ExpandedChanges({ changes }: { changes: BlockChange[] }) {
   return (
-    <div className={cn('surface p-4 rounded-lg', isCurrent && 'border-accent')}>
-      <div className="stack-sm">
-        <div className="spread">
-          <div className="row flex-wrap">
-            <div className="row"><GitBranch size={14} className="text-accent" /><span className="font-mono font-medium">v{rev.version}</span></div>
-            <Badge variant={typeStyle.variant} title={typeStyle.desc}>{typeStyle.label}</Badge>
-            {isCurrent && <Badge variant="default">Current</Badge>}
-          </div>
-          <div className="row">
-            <span className="text-muted text-small">{formatDate(rev.createdAt, { hour: '2-digit', minute: '2-digit' })}</span>
-            {canRestore && !isCurrent && (
-              <Button variant="ghost" size="sm" onClick={onRestore} disabled={isRestoring}>
-                <RotateCcw size={14} />{isRestoring ? 'Restoring...' : 'Restore'}
-              </Button>
-            )}
-          </div>
-        </div>
-        <div className="row"><span className="font-medium">{rev.title}</span></div>
-        {rev.message && <p className="text-muted text-small">{rev.message}</p>}
-        <div className="spread text-small">
-          <div className="row text-muted"><User size={14} /><span>{rev.author?.displayName || rev.author?.radixAddress.slice(0, 16) + '...'}</span></div>
-          {changes.length > 0 && (
-            <div className="row">
-              <ChangeSummary changes={changes} />
-              <button onClick={() => setExpanded(!expanded)} className="row text-accent hover:text-accent-hover ml-2">
-                <span className="text-xs">{expanded ? 'hide' : 'details'}</span>
-                {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </button>
+    <tr><td colSpan={6} className="p-0!">
+      <div className="bg-surface-0 p-3 border-t border-border-muted stack-sm">
+        {changes.map((c, i) => {
+          const icons = { added: <Plus size={12} className="text-success" />, removed: <Minus size={12} className="text-error" />, modified: <Pencil size={12} className="text-warning" />, moved: <Move size={12} className="text-info" /> };
+          const colors = { added: 'text-success', removed: 'text-error', modified: 'text-warning', moved: 'text-info' };
+          const textAttr = c.attributes?.text as { from: string; to: string } | undefined;
+          const fromText = c.contentDiff?.from ?? textAttr?.from ?? '';
+          const toText = c.contentDiff?.to ?? textAttr?.to ?? '';
+          const hasTextChange = c.type === 'content' && (fromText || toText);
+          return (
+            <div key={i} className="text-xs">
+              <div className="row gap-2">
+                {icons[c.action]}
+                <span className={cn('capitalize font-medium', colors[c.action])}>{c.action}</span>
+                <span className="text-muted">—</span>
+                <span>{formatBlockPath(c.path, c.type)}</span>
+              </div>
+              {hasTextChange && <ContentDiff from={fromText} to={toText} />}
             </div>
-          )}
-        </div>
-        {expanded && changes.length > 0 && (
-          <div className="border-t border-border-muted pt-3 mt-1 stack-sm">
-            {changes.map((change, i) => <BlockChangeItem key={`${change.id}-${i}`} change={change} expanded />)}
-          </div>
-        )}
+          );
+        })}
       </div>
-    </div>
+    </td></tr>
   );
 }
 
@@ -199,6 +131,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const apiBase = isHomepage ? '/api/wiki' : `/api/wiki/${tagPath}/${slug}`;
   const viewPath = isHomepage ? '/' : `/${tagPath}/${slug}`;
@@ -213,7 +146,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
   }
 
   const handleRestore = async (revisionId: string) => {
-    if (!confirm('Restore this revision? This will create a new version with the restored content.')) return;
+    if (!confirm('Restore this revision?')) return;
     setRestoringId(revisionId);
     try {
       const r = await fetch(`${apiBase}/history`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ revisionId }) });
@@ -227,19 +160,69 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
     <div className="stack">
       {!isHomepage && <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix="History" />}
       <div className="spread">
-        <div className="row">
-          <h1 className="m-0!">{isHomepage ? 'Homepage History' : 'Version History'}</h1>
-          <Badge variant="default" className="font-mono">v{data.currentVersion}</Badge>
-        </div>
-        <Link href={viewPath}>
-          <Button variant="secondary" size="sm"><ArrowLeft size={16} />{isHomepage ? 'Back to Homepage' : 'Back to Page'}</Button>
-        </Link>
+        <h1 className="m-0!">{isHomepage ? 'Homepage' : 'Page'} History</h1>
+        <Link href={viewPath}><Button variant="secondary" size="sm"><ArrowLeft size={16} />Back</Button></Link>
       </div>
       {data.revisions.length > 0 ? (
-        <div className="stack">
-          {data.revisions.map((rev, i) => (
-            <RevisionCard key={rev.id} rev={rev} isCurrent={i === 0} canRestore={isAuthenticated} onRestore={() => handleRestore(rev.id)} isRestoring={restoringId === rev.id} />
-          ))}
+        <div className="overflow-x-auto">
+          <table className="w-full text-small">
+            <thead>
+              <tr className="text-left text-muted">
+                <th className="py-2 px-3 font-medium w-24">Version</th>
+                <th className="py-2 px-3 font-medium w-20">Type</th>
+                <th className="py-2 px-3 font-medium">Changes</th>
+                <th className="py-2 px-3 font-medium">Author</th>
+                <th className="py-2 px-3 font-medium w-36">Date</th>
+                <th className="py-2 px-3 font-medium w-24"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.revisions.map((rev, i) => {
+                const isCurrent = i === 0;
+                const type = TYPE_BADGE[rev.changeType] || TYPE_BADGE.patch;
+                const changes = rev.changes || [];
+                const isExpanded = expandedId === rev.id;
+                return (
+                  <Fragment key={rev.id}>
+                    <tr className={cn('border-t border-border-muted hover:bg-surface-1/50', isCurrent && 'bg-accent/5', i === 0 && '[&>td]:rounded-none')}>
+                      <td className="py-2 px-3">
+                        <span className="font-mono font-medium">v{rev.version}</span>
+                        {isCurrent && <Badge variant="default" className="ml-2 text-xs py-0">current</Badge>}
+                      </td>
+                      <td className="py-2 px-3"><Badge variant={type.variant}>{type.label}</Badge></td>
+                      <td className="py-2 px-3">
+                        <div className="row gap-3">
+                          <ChangeSummary changes={changes} />
+                          {rev.message && <span className="text-muted truncate max-w-48">{rev.message}</span>}
+                          {changes.length > 0 && (
+                            <button onClick={() => setExpandedId(isExpanded ? null : rev.id)} className="text-accent hover:text-accent-hover">
+                              <ChevronDown size={14} className={cn('transition-transform', isExpanded && 'rotate-180')} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-2 px-3 truncate max-w-32">
+                        {rev.author ? (
+                          <Link href={`/community/${rev.author.radixAddress.slice(-16).toLowerCase()}`} className="text-muted hover:text-accent">
+                            {rev.author.displayName || rev.author.radixAddress.slice(0, 12) + '…'}
+                          </Link>
+                        ) : '—'}
+                      </td>
+                      <td className="py-2 px-3 text-muted">{formatDate(rev.createdAt, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                      <td className="py-2 px-3">
+                        {isAuthenticated && !isCurrent && (
+                          <button onClick={() => handleRestore(rev.id)} disabled={restoringId === rev.id} className="row gap-1 text-accent hover:text-accent-hover disabled:opacity-50">
+                            <RotateCcw size={14} /><span>{restoringId === rev.id ? '…' : 'Restore'}</span>
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                    {isExpanded && changes.length > 0 && <ExpandedChanges changes={changes} />}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       ) : (
         <div className="surface p-12 text-center rounded-lg"><p className="text-muted">No revision history available.</p></div>
