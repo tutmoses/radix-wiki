@@ -13,7 +13,7 @@ import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { usePages } from '@/hooks';
 import { Badge } from '@/components/ui';
 import type { WikiPage } from '@/types';
-import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock } from '@/types/blocks';
+import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock, InfoboxBlock, AtomicBlock } from '@/types/blocks';
 
 // ========== LAZY SHIKI HOOK ==========
 function useLazyShiki(containerRef: React.RefObject<HTMLElement | null>, hasCodeBlocks: boolean) {
@@ -155,9 +155,50 @@ function ColumnsBlockView({ block }: { block: ColumnsBlock }) {
     <div className={cn('flex flex-col md:flex-row', gapClass, alignClass)}>
       {block.columns.map(col => (
         <div key={col.id} className="flex-1 stack">
-          {col.blocks.map(bl => <div key={bl.id}>{renderBlockView(bl)}</div>)}
+          {(col.blocks || []).map(bl => <div key={bl.id}>{renderBlockView(bl)}</div>)}
         </div>
       ))}
+    </div>
+  );
+}
+
+function InfoboxBlockView({ block }: { block: InfoboxBlock }) {
+  const hasMetadata = block.title || block.image || (block.rows?.length ?? 0) > 0 || block.mapUrl;
+  const hasContent = (block.blocks?.length ?? 0) > 0;
+  
+  if (!hasMetadata && !hasContent) return null;
+
+  return (
+    <div className="page-with-infobox">
+      <div className="page-main-content stack">
+        {(block.blocks || []).map(b => <div key={b.id}>{renderBlockView(b)}</div>)}
+      </div>
+      {hasMetadata && (
+        <aside className="infobox">
+          {block.title && <div className="infobox-header">{block.title}</div>}
+          {block.image && (
+            <figure className="infobox-image">
+              <img src={block.image} alt={block.caption || ''} />
+              {block.caption && <figcaption>{block.caption}</figcaption>}
+            </figure>
+          )}
+          {(block.rows?.length ?? 0) > 0 && (
+            <dl className="infobox-data">
+              {block.rows.map((row, i) => (
+                <div key={i} className="infobox-row">
+                  <dt>{row.label}</dt>
+                  <dd>{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {block.mapUrl && (
+            <div className="infobox-map">
+              <iframe src={block.mapUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+            </div>
+          )}
+        </aside>
+      )}
     </div>
   );
 }
@@ -190,13 +231,14 @@ const ContentBlockView = memo(function ContentBlockView({ html }: { html: string
   return processedHtml.trim() ? <div ref={ref} className="prose-content" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: processedHtml }} /> : null;
 });
 
-function renderBlockView(block: Block): React.ReactNode {
+function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
   switch (block.type) {
     case 'content': return <ContentBlockView html={block.text} />;
     case 'recentPages': return <RecentPagesBlockView block={block} />;
     case 'pageList': return <PageListBlockView block={block} />;
     case 'assetPrice': return <AssetPriceBlockView block={block} />;
     case 'columns': return <ColumnsBlockView block={block} />;
+    case 'infobox': return <InfoboxBlockView block={block} />;
   }
 }
 
@@ -243,6 +285,7 @@ export function BlockRenderer({ content, className }: { content: Block[] | unkno
   useLazyShiki(containerRef, hasCode);
 
   if (!blocks.length) return null;
+
   return (
     <div ref={containerRef} className={cn('stack', className)}>
       {blocks.map(block => <div key={block.id}>{renderBlockView(block)}</div>)}

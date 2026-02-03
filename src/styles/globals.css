@@ -29,6 +29,7 @@
   --shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.25);
   --header-height: 4rem;
   --sidebar-width: 18rem;
+  --infobox-width: 280px;
 }
 
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -162,6 +163,77 @@
   .banner-overlay { @apply absolute inset-0 flex flex-col justify-end p-3 sm:p-4 lg:p-6 bg-linear-to-t from-black/80 via-black/40 to-transparent text-text gap-1 sm:gap-2; h1 { @apply text-base sm:text-h3 lg:text-h1 leading-tight; text-shadow: 0 2px 8px rgba(0,0,0,0.5); } nav { @apply text-xs sm:text-small font-medium; text-shadow: 0 1px 4px rgba(0,0,0,0.6); a, span { @apply text-white/90 hover:text-white; } } }
 
   .spinner { @apply inline-block rounded-full border-2 border-current border-t-transparent animate-[spin_0.6s_linear_infinite]; }
+
+  /* Page with infobox layout */
+  .page-with-infobox {
+    @apply grid gap-6;
+    grid-template-columns: 1fr;
+    grid-template-areas: "infobox" "content";
+
+    @media (min-width: 768px) {
+      grid-template-columns: 1fr var(--infobox-width);
+      grid-template-areas: "content infobox";
+    }
+
+    > .infobox { grid-area: infobox; }
+    > .page-main-content { grid-area: content; }
+  }
+
+  /* Infobox component (Wikipedia-style) */
+  .infobox {
+    @apply bg-surface-1 border border-border-muted rounded-lg overflow-hidden;
+    width: 100%;
+
+    @media (min-width: 768px) {
+      position: sticky;
+      top: calc(var(--header-height) + 1.5rem);
+      align-self: start;
+    }
+  }
+
+  .infobox-header {
+    @apply py-2 px-3 bg-accent text-text-inverted font-semibold text-center text-small;
+  }
+
+  .infobox-image {
+    @apply m-0;
+    
+    img {
+      @apply w-full h-auto block;
+    }
+
+    figcaption {
+      @apply py-2 px-3 text-small text-text-muted text-center italic bg-surface-2/50;
+    }
+  }
+
+  .infobox-data {
+    @apply m-0 p-0;
+  }
+
+  .infobox-row {
+    @apply flex;
+
+    &:hover { dt, dd { @apply bg-white/5; } }
+
+    dt {
+      @apply py-2 px-3 bg-surface-1 border border-border-muted text-small font-semibold;
+      width: 40%;
+      flex-shrink: 0;
+    }
+
+    dd {
+      @apply py-2 px-3 bg-surface-2 border border-border-muted border-l-0 text-small m-0 flex-1;
+    }
+  }
+
+  .infobox-map {
+    @apply border-t border-border-muted;
+    
+    iframe {
+      @apply w-full h-40 block border-0;
+    }
+  }
 }
 
 radix-connect-button {

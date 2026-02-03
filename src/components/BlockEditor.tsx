@@ -15,12 +15,12 @@ import TiptapYoutube from '@tiptap/extension-youtube';
 import Placeholder from '@tiptap/extension-placeholder';
 import TiptapCodeBlock from '@tiptap/extension-code-block';
 import { Node as TiptapNode, mergeAttributes } from '@tiptap/core';
-import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Pencil, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, X, Check, type LucideIcon } from 'lucide-react';
+import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Pencil, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, X, Check, Info, Map, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SHIKI_LANGS, DEFAULT_LANG } from '@/lib/shiki';
-import { BLOCK_META, INSERTABLE_BLOCKS, createBlock, duplicateBlock } from '@/lib/block-utils';
+import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock } from '@/lib/block-utils';
 import { Button, Input, Dropdown } from '@/components/ui';
-import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock, LeafBlock, Column } from '@/types/blocks';
+import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock, InfoboxBlock, InfoboxRow, AtomicBlock, Column } from '@/types/blocks';
 
 // ========== TIPTAP EXTENSIONS ==========
 const Iframe = TiptapNode.create({
@@ -330,6 +330,94 @@ function AssetPriceBlockEdit({ block, onUpdate }: BlockProps<AssetPriceBlock>) {
   );
 }
 
+function InfoboxBlockEdit({ block, onUpdate }: BlockProps<InfoboxBlock>) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    const url = await uploadImage(file);
+    if (url) onUpdate?.({ ...block, image: url });
+    setIsUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const updateRow = (i: number, row: InfoboxRow) => onUpdate?.({ ...block, rows: (block.rows || []).map((r, j) => j === i ? row : r) });
+  const removeRow = (i: number) => onUpdate?.({ ...block, rows: (block.rows || []).filter((_, j) => j !== i) });
+  const addRow = () => onUpdate?.({ ...block, rows: [...(block.rows || []), { label: '', value: '' }] });
+
+  const setBlocks = useCallback((blocks: AtomicBlock[]) => onUpdate?.({ ...block, blocks }), [block, onUpdate]);
+  const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(block.blocks || [], setBlocks);
+  const handleBlockUpdate = useCallback((i: number, b: Block) => update(i, b as AtomicBlock), [update]);
+
+  return (
+    <div className="stack surface p-4 border-dashed">
+      <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleImageUpload} />
+      
+      <div className="spread">
+        <div className="row text-muted"><Info size={18} /><span className="font-medium">Infobox Wrapper</span></div>
+        <button onClick={() => setShowSettings(!showSettings)} className={cn('icon-btn p-1', showSettings && 'bg-surface-2')}><Settings size={14} /></button>
+      </div>
+
+      {showSettings && (
+        <div className="stack-sm p-3 bg-surface-2 rounded-lg">
+          <Input label="Title (optional)" value={block.title || ''} onChange={e => onUpdate?.({ ...block, title: e.target.value || undefined })} placeholder="e.g., Quick Facts" />
+          
+          <div className="stack-sm">
+            <label className="font-medium">Image</label>
+            {block.image ? (
+              <div className="relative">
+                <img src={block.image} alt="" className="w-full max-h-32 object-cover rounded-lg" />
+                <div className="absolute top-2 right-2 row">
+                  <button onClick={() => fileInputRef.current?.click()} className="icon-btn bg-surface-0/80 backdrop-blur-sm" disabled={isUploading}><Upload size={14} /></button>
+                  <button onClick={() => onUpdate?.({ ...block, image: undefined })} className="icon-btn bg-surface-0/80 backdrop-blur-sm text-error"><X size={14} /></button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="w-full py-4 border-2 border-dashed border-border-muted rounded-lg text-muted hover:text-text hover:border-border transition-colors text-small">
+                {isUploading ? 'Uploading...' : 'Click to upload image'}
+              </button>
+            )}
+            <Input label="Caption (optional)" value={block.caption || ''} onChange={e => onUpdate?.({ ...block, caption: e.target.value || undefined })} placeholder="Image caption" />
+          </div>
+
+          <div className="stack-sm">
+            <label className="font-medium">Data Rows</label>
+            {(block.rows || []).map((row, i) => (
+              <div key={i} className="row">
+                <input type="text" value={row.label} onChange={e => updateRow(i, { ...row, label: e.target.value })} placeholder="Label" className="input flex-1" />
+                <input type="text" value={row.value} onChange={e => updateRow(i, { ...row, value: e.target.value })} placeholder="Value" className="input flex-1" />
+                <button onClick={() => removeRow(i)} className="icon-btn text-muted hover:text-error"><Trash2 size={14} /></button>
+              </div>
+            ))}
+            <Button size="sm" variant="ghost" onClick={addRow}><Plus size={14} />Add Row</Button>
+          </div>
+
+          <div className="stack-sm">
+            <label className="font-medium row"><Map size={14} />Map Embed URL (optional)</label>
+            <input type="text" value={block.mapUrl || ''} onChange={e => onUpdate?.({ ...block, mapUrl: e.target.value || undefined })} placeholder="https://www.google.com/maps/embed?..." className="input" />
+          </div>
+        </div>
+      )}
+
+      <div className="stack-sm pt-2 border-t border-border-muted">
+        <span className="text-small text-muted uppercase tracking-wide">Content</span>
+        {(block.blocks?.length ?? 0) === 0 ? (
+          <div className="py-4 text-center"><p className="text-muted text-small mb-2">Empty infobox</p><InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
+        ) : (
+          <div className="stack-sm">
+            {(block.blocks || []).map((b, i) => <BlockWrapper key={b.id} block={b} index={i} total={(block.blocks || []).length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={handleBlockUpdate} onDelete={remove} onDuplicate={duplicate} onMove={move} compact />)}
+            <InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ColumnsBlockEdit({ block, onUpdate }: BlockProps<ColumnsBlock>) {
   const [showSettings, setShowSettings] = useState(false);
   const gapClass = { sm: 'gap-2', md: 'gap-4', lg: 'gap-6' }[block.gap || 'md'];
@@ -361,7 +449,7 @@ function ColumnsBlockEdit({ block, onUpdate }: BlockProps<ColumnsBlock>) {
 }
 
 // ========== BLOCK OPERATIONS ==========
-function useBlockOperations<T extends Block>(blocks: T[], setBlocks: (blocks: T[]) => void) {
+function useBlockOperations<T extends Block | AtomicBlock>(blocks: T[], setBlocks: (blocks: T[]) => void) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const blocksRef = useRef(blocks);
   const setBlocksRef = useRef(setBlocks);
@@ -379,33 +467,33 @@ function useBlockOperations<T extends Block>(blocks: T[], setBlocks: (blocks: T[
 }
 
 function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Column; onUpdate: (col: Column) => void; onDelete: () => void; canDelete: boolean }) {
-  const setBlocks = useCallback((blocks: LeafBlock[]) => onUpdate({ ...column, blocks }), [column, onUpdate]);
-  const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(column.blocks, setBlocks);
-  const contentBlockTypes = INSERTABLE_BLOCKS.filter(t => t !== 'columns');
-  const handleUpdate = useCallback((i: number, b: Block) => update(i, b as LeafBlock), [update]);
+  const setBlocks = useCallback((blocks: AtomicBlock[]) => onUpdate({ ...column, blocks }), [column, onUpdate]);
+  const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(column.blocks || [], setBlocks);
+  const handleUpdate = useCallback((i: number, b: Block) => update(i, b as AtomicBlock), [update]);
 
   return (
     <div className="flex-1 stack-sm p-3 bg-surface-1/50 border border-dashed border-border-muted rounded-lg">
       <div className="spread"><span className="text-small text-muted uppercase tracking-wide">Column</span>{canDelete && <button onClick={onDelete} className="icon-btn p-1 text-muted hover:text-error"><Trash2 size={14} /></button>}</div>
-      {column.blocks.length === 0 ? (
-        <div className="py-6 text-center"><p className="text-muted text-small mb-2">Empty column</p><InsertButton onInsert={insert} compact blockTypes={contentBlockTypes} /></div>
+      {(column.blocks?.length ?? 0) === 0 ? (
+        <div className="py-6 text-center"><p className="text-muted text-small mb-2">Empty column</p><InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
       ) : (
         <div className="stack-sm">
-          {column.blocks.map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={column.blocks.length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={handleUpdate} onDelete={remove} onDuplicate={duplicate} onMove={move} compact />)}
-          <InsertButton onInsert={insert} compact blockTypes={contentBlockTypes} />
+          {(column.blocks || []).map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={(column.blocks || []).length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={handleUpdate} onDelete={remove} onDuplicate={duplicate} onMove={move} compact />)}
+          <InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} />
         </div>
       )}
     </div>
   );
 }
 
-function renderBlockEdit(block: Block, onUpdate?: (b: Block) => void): ReactNode {
+function renderBlockEdit(block: Block | AtomicBlock, onUpdate?: (b: Block) => void): ReactNode {
   switch (block.type) {
     case 'content': return <ContentBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'recentPages': return <RecentPagesBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'pageList': return <PageListBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'assetPrice': return <AssetPriceBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'columns': return <ColumnsBlockEdit block={block} onUpdate={onUpdate as any} />;
+    case 'infobox': return <InfoboxBlockEdit block={block} onUpdate={onUpdate as any} />;
   }
 }
 
@@ -426,7 +514,7 @@ function InsertButton({ onInsert, compact, blockTypes = INSERTABLE_BLOCKS }: { o
 }
 
 const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelected, onSelect, onUpdate, onDelete, onDuplicate, onMove, compact }: {
-  block: Block; index: number; total: number; isSelected: boolean;
+  block: Block | AtomicBlock; index: number; total: number; isSelected: boolean;
   onSelect: (i: number) => void; onUpdate: (i: number, b: Block) => void; onDelete: (i: number) => void;
   onDuplicate: (i: number) => void; onMove: (from: number, to: number) => void; compact?: boolean;
 }) {
@@ -445,10 +533,11 @@ const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelecte
     </div>
   );
   const Icon = meta.icon;
+  const isContainer = block.type === 'columns' || block.type === 'infobox';
   return (
-    <div onClick={handleSelect} className={cn('group relative transition-colors', compact ? cn('p-3 rounded-md border', isSelected ? 'border-accent bg-accent/5' : 'border-transparent hover:border-border-muted hover:bg-surface-2/50') : cn('p-4 rounded-lg border', isSelected ? 'border-accent bg-accent/5' : 'border-border-muted hover:border-border', block.type === 'columns' && 'bg-surface-1/30'))}>
+    <div onClick={handleSelect} className={cn('group relative transition-colors', compact ? cn('p-3 rounded-md border', isSelected ? 'border-accent bg-accent/5' : 'border-transparent hover:border-border-muted hover:bg-surface-2/50') : cn('p-4 rounded-lg border', isSelected ? 'border-accent bg-accent/5' : 'border-border-muted hover:border-border', isContainer && 'bg-surface-1/30'))}>
       <div className={cn('spread', compact ? 'mb-2' : 'mb-3')}>
-        <div className="row">{!(compact || block.type === 'columns') && <div className="row text-muted"><Icon size={18} /><span className="text-small font-medium uppercase">{meta.label}</span></div>}</div>
+        <div className="row">{!(compact || isContainer) && <div className="row text-muted"><Icon size={18} /><span className="text-small font-medium uppercase">{meta.label}</span></div>}</div>
         <div className="row opacity-0 group-hover:opacity-100 transition-opacity">
           <button onClick={e => { e.stopPropagation(); handleMoveUp(); }} disabled={index === 0} className="icon-btn p-1 text-muted disabled:opacity-30"><ChevronUp size={iconSize} /></button>
           <button onClick={e => { e.stopPropagation(); handleMoveDown(); }} disabled={index === total - 1} className="icon-btn p-1 text-muted disabled:opacity-30"><ChevronDown size={iconSize} /></button>
