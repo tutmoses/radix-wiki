@@ -92,7 +92,7 @@ export async function getPage(tagPath: string, slug: string): Promise<WikiPage |
 
 export async function getCategoryPages(tagPath: string, limit = 50) {
   return prisma.page.findMany({
-    where: { tagPath: { startsWith: tagPath } },
+    where: { tagPath },
     include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
     orderBy: { title: 'asc' },
     take: limit,

@@ -16,9 +16,9 @@ import { UserStats } from '@/components/UserStats';
 import { Button, Card, Input } from '@/components/ui';
 import { useAuth } from '@/hooks';
 import { slugify } from '@/lib/utils';
-import { findTagByPath, isAuthorOnlyPath } from '@/lib/tags';
+import { findTagByPath, isAuthorOnlyPath, getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
-import type { WikiPage, AdjacentPages } from '@/types';
+import type { WikiPage, AdjacentPages, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
 
 const BlockEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.BlockEditor), {
@@ -241,7 +241,7 @@ export function CategoryView({ tagPath, pages }: { tagPath: string[]; pages: Wik
   const [newSlug, setNewSlug] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const tag = findTagByPath(tagPath);
-  const canCreatePages = isAuthenticated && pathStr !== 'community';
+  const canCreatePages = isAuthenticated;
 
   return (
     <div className="stack">
@@ -290,6 +290,49 @@ export function CategoryView({ tagPath, pages }: { tagPath: string[]; pages: Wik
   );
 }
 
+// ========== METADATA FIELDS ==========
+function MetadataFields({ metadataKeys, metadata, onChange }: { metadataKeys: MetadataKeyDefinition[]; metadata: PageMetadata; onChange: (metadata: PageMetadata) => void }) {
+  if (metadataKeys.length === 0) return null;
+
+  const updateField = (key: string, value: string) => {
+    onChange({ ...metadata, [key]: value });
+  };
+
+  return (
+    <div className="stack-sm p-4 rounded-lg bg-surface-1 border border-border">
+      <h4 className="text-small font-medium text-muted m-0!">Page Metadata</h4>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {metadataKeys.map(({ key, label, type, required, options }) => (
+          <div key={key} className="stack-xs">
+            <label className="text-small font-medium">
+              {label}{required && <span className="text-error ml-1">*</span>}
+            </label>
+            {type === 'select' && options ? (
+              <select
+                value={metadata[key] || ''}
+                onChange={e => updateField(key, e.target.value)}
+                className="input"
+              >
+                <option value="">Select...</option>
+                {options.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                type={type === 'date' ? 'date' : type === 'url' ? 'url' : 'text'}
+                value={metadata[key] || ''}
+                onChange={e => updateField(key, e.target.value)}
+                placeholder={label}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ========== PAGE EDITOR ==========
 function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string; slug: string }) {
   const router = useRouter();
@@ -299,30 +342,40 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
   const [title, setTitle] = useState('');
   const [content, setContent] = useState<Block[]>([]);
   const [bannerImage, setBannerImage] = useState<string | null>(null);
+  const [metadata, setMetadata] = useState<PageMetadata>({});
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const isAuthor = user && page?.authorId === user.id;
+  const metadataKeys = getMetadataKeys(tagPath.split('/'));
 
   useEffect(() => {
     if (page) {
       setTitle(page.title);
       setContent(page.content as unknown as Block[]);
       setBannerImage(page.bannerImage || null);
+      setMetadata((page.metadata as PageMetadata) || {});
     } else {
       setTitle('');
       setContent([createBlock('content')]);
       setBannerImage(null);
+      setMetadata({});
     }
   }, [page, tagPath, slug]);
 
   const save = async () => {
     if (!title.trim()) { alert('Title is required'); return; }
+    const requiredKeys = metadataKeys.filter(k => k.required);
+    const missingKeys = requiredKeys.filter(k => !metadata[k.key]?.trim());
+    if (missingKeys.length > 0) {
+      alert(`Missing required metadata: ${missingKeys.map(k => k.label).join(', ')}`);
+      return;
+    }
     setIsSaving(true);
     try {
       const exists = page || (await fetch(`/api/wiki/${tagPath}/${slug}`).then(r => r.ok));
       const method = exists ? 'PUT' : 'POST';
       const endpoint = exists ? `/api/wiki/${tagPath}/${slug}` : '/api/wiki';
-      const body = exists ? { title, content, bannerImage } : { title, content, bannerImage, tagPath, slug };
+      const body = exists ? { title, content, bannerImage, metadata } : { title, content, bannerImage, metadata, tagPath, slug };
       const res = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
       if (res.ok) window.location.href = `/${data.tagPath}/${data.slug}`;
@@ -366,6 +419,7 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
         <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
       </header>
       <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
+      <MetadataFields metadataKeys={metadataKeys} metadata={metadata} onChange={setMetadata} />
       {infobox ? (
         <div className="page-with-infobox">
           <div className="page-main-content">

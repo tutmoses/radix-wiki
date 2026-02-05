@@ -40,8 +40,11 @@ export interface SignedChallenge {
 // Wiki types - derive from Prisma
 export type WikiAuthor = Pick<User, 'id' | 'displayName' | 'radixAddress'>;
 
-export type WikiPage = Omit<Page, 'content'> & {
+export type PageMetadata = Record<string, string>;
+
+export type WikiPage = Omit<Page, 'content' | 'metadata'> & {
   content: Prisma.JsonValue;
+  metadata?: PageMetadata | null;
   bannerImage?: string | null;
   version: string;
   author?: WikiAuthor;
@@ -55,6 +58,7 @@ export type WikiPageInput = {
   excerpt?: string;
   bannerImage?: string;
   tagPath: string;
+  metadata?: PageMetadata;
 };
 
 export type WikiRevision = Revision & {

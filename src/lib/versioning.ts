@@ -192,10 +192,13 @@ export function diffBlocks(oldBlocks: Block[], newBlocks: Block[]): BlockChange[
         action: 'removed',
         type: item.block.type,
         path: item.path,
+        contentDiff: item.block.type === 'content'
+          ? { from: (item.block as { text: string }).text, to: '' }
+          : undefined,
       });
     }
   }
-  
+
   // Find added blocks
   for (const item of newFlat) {
     if (!matchedNew.has(item.path) && !oldById.has(item.block.id)) {
@@ -204,6 +207,9 @@ export function diffBlocks(oldBlocks: Block[], newBlocks: Block[]): BlockChange[
         action: 'added',
         type: item.block.type,
         path: item.path,
+        contentDiff: item.block.type === 'content'
+          ? { from: '', to: (item.block as { text: string }).text }
+          : undefined,
       });
     }
   }

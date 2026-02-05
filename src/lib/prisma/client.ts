@@ -20,8 +20,8 @@ function createPool(): pg.Pool {
   const pool = new pg.Pool({
     connectionString,
     max: 1,
-    idleTimeoutMillis: 0,
-    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 20000,
+    connectionTimeoutMillis: 30000,
   });
 
   // Always cache the pool to prevent multiple instances

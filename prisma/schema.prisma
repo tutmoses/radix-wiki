@@ -25,12 +25,13 @@ model User {
 
 model Page {
   id          String    @id @default(cuid())
-  slug        String    
+  slug        String
   title       String
   content     Json      @default("{}")
   excerpt     String?
   bannerImage String?   @map("banner_image")
   tagPath     String    @map("tag_path")
+  metadata    Json?     @default("{}")
   version     String    @default("1.0.0")
   authorId    String    @map("author_id")
   author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -38,7 +39,7 @@ model Page {
   comments    Comment[]
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
-  
+
   @@unique([tagPath, slug])
   @@index([slug])
   @@index([authorId])

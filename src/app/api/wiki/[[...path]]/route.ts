@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
 import { slugify } from '@/lib/utils';
-import { isValidTagPath, isAuthorOnlyPath } from '@/lib/tags';
+import { isValidTagPath, isAuthorOnlyPath, getMetadataKeys } from '@/lib/tags';
 import { json, errors, handleRoute, requireAuth, type RouteContext } from '@/lib/api';
 import { computeRevisionDiff, formatVersion, parseVersion, classifyChanges, incrementVersion, type BlockChange } from '@/lib/versioning';
 import { parseApiPath } from '@/lib/wiki';
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
 
       const where: Prisma.PageWhereInput = {};
       if (search) where.title = { contains: search, mode: 'insensitive' };
-      if (tagPath) where.tagPath = { startsWith: tagPath };
+      if (tagPath) where.tagPath = tagPath;
 
       const orderBy = sort === 'title' ? { title: 'asc' as const } : { updatedAt: 'desc' as const };
 
@@ -177,12 +177,20 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
 
     // Create new page
     const body: WikiPageInput = await request.json();
-    const { title, content, excerpt, bannerImage, tagPath } = body;
+    const { title, content, excerpt, bannerImage, tagPath, metadata } = body;
 
     if (!title || !content) return errors.badRequest('Title and content required');
     if (!validateBlocks(content)) return errors.badRequest('Invalid block structure');
     if (!tagPath || !isValidTagPath(tagPath.split('/'))) {
       return errors.badRequest('Valid tag path required');
+    }
+
+    // Validate required metadata fields
+    const metadataKeys = getMetadataKeys(tagPath.split('/'));
+    const requiredKeys = metadataKeys.filter(k => k.required);
+    const missingKeys = requiredKeys.filter(k => !metadata?.[k.key]?.trim());
+    if (missingKeys.length > 0) {
+      return errors.badRequest(`Missing required metadata: ${missingKeys.map(k => k.label).join(', ')}`);
     }
 
     const auth = await requireAuth(request, { type: 'create', tagPath });
@@ -202,6 +210,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
         excerpt,
         bannerImage,
         tagPath,
+        metadata: metadata as unknown as Prisma.InputJsonValue,
         version: initialVersion,
         authorId: auth.session.userId,
       },
@@ -237,7 +246,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     if ('error' in auth) return auth.error;
 
     const body: Partial<WikiPageInput> & { revisionMessage?: string } = await request.json();
-    const { title, content, excerpt, bannerImage, revisionMessage } = body;
+    const { title, content, excerpt, bannerImage, metadata, revisionMessage } = body;
 
     if (content !== undefined && !validateBlocks(content)) {
       return errors.badRequest('Invalid block structure');
@@ -308,6 +317,16 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
       changes = diff.changes;
     }
 
+    // Validate required metadata if being updated
+    if (metadata !== undefined) {
+      const metadataKeys = getMetadataKeys(existing.tagPath.split('/'));
+      const requiredKeys = metadataKeys.filter(k => k.required);
+      const missingKeys = requiredKeys.filter(k => !metadata?.[k.key]?.trim());
+      if (missingKeys.length > 0) {
+        return errors.badRequest(`Missing required metadata: ${missingKeys.map(k => k.label).join(', ')}`);
+      }
+    }
+
     const page = await prisma.page.update({
       where: { id: existing.id },
       data: {
@@ -315,6 +334,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
         content: content !== undefined ? (content as unknown as Prisma.InputJsonValue) : undefined,
         excerpt: excerpt ?? undefined,
         bannerImage: bannerImage ?? undefined,
+        metadata: metadata !== undefined ? (metadata as unknown as Prisma.InputJsonValue) : undefined,
         version: newVersion,
       },
       include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
