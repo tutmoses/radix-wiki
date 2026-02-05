@@ -8,7 +8,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { ArrowLeft, ArrowRight, Trash2, Save, FileText, Plus, Upload, X, Image as ImageIcon } from 'lucide-react';
-import { BlockRenderer } from '@/components/BlockRenderer';
+import { BlockRenderer, findInfobox, InfoboxSidebar } from '@/components/BlockRenderer';
 import { Discussion } from '@/components/Discussion';
 import { Footer } from '@/components/Footer';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
@@ -24,6 +24,11 @@ import type { Block } from '@/types/blocks';
 const BlockEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.BlockEditor), {
   ssr: false,
   loading: () => <div className="h-64 skeleton rounded-lg" />,
+});
+
+const InfoboxEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.InfoboxEditor), {
+  ssr: false,
+  loading: () => <div className="h-32 skeleton rounded-lg" />,
 });
 
 const HistoryView = dynamic(() => import('@/components/HistoryView'), {
@@ -145,6 +150,11 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   };
 
   if (isEditing) {
+    const infobox = findInfobox(content);
+    const mainBlocks = infobox ? content.filter(b => b.type !== 'infobox') : content;
+    const updateMainBlocks = (blocks: Block[]) => setContent(infobox ? [...blocks, infobox] : blocks);
+    const updateInfobox = (block: Block) => setContent([...content.filter(b => b.type !== 'infobox'), block]);
+
     return (
       <div className="stack">
         <div className="spread">
@@ -153,7 +163,18 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
         </div>
         <h1>Edit Homepage</h1>
         <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
-        <BlockEditor content={content} onChange={setContent} />
+        {infobox ? (
+          <div className="page-with-infobox">
+            <div className="page-main-content">
+              <BlockEditor content={mainBlocks} onChange={updateMainBlocks} />
+            </div>
+            <aside className="infobox-editor">
+              <InfoboxEditor block={infobox} onChange={updateInfobox} />
+            </aside>
+          </div>
+        ) : (
+          <BlockEditor content={content} onChange={setContent} />
+        )}
         <div className="spread">
           <Link href="/"><Button variant="ghost">Cancel</Button></Link>
           <Button onClick={handleSave} disabled={isSaving}><Save size={18} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
@@ -162,15 +183,31 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
     );
   }
 
-  return (
-    <div className="stack">
-      <Banner src={bannerImage} />
-      <BlockRenderer content={content} />
+  const infobox = findInfobox(content);
+  const mainBlocks = infobox ? content.filter(b => b.type !== 'infobox') : content;
+
+  const mainContent = (
+    <>
+      <BlockRenderer content={mainBlocks} />
       <div className="row-md justify-center wrap">
         {!isAuthenticated && <Button size="lg" variant="primary" onClick={() => document.querySelector<HTMLButtonElement>('#radix-connect-btn button')?.click()}>Connect Radix Wallet<ArrowRight size={18} /></Button>}
         <Link href="/contents"><Button variant="secondary" size="lg">Browse Content</Button></Link>
       </div>
       <Footer />
+    </>
+  );
+
+  return (
+    <div className="stack">
+      <Banner src={bannerImage} />
+      {infobox ? (
+        <div className="page-with-infobox">
+          <div className="page-main-content stack">{mainContent}</div>
+          <InfoboxSidebar block={infobox} />
+        </div>
+      ) : (
+        mainContent
+      )}
     </div>
   );
 }
@@ -243,14 +280,14 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (page) { 
-      setTitle(page.title); 
-      setContent(page.content as unknown as Block[]); 
-      setBannerImage(page.bannerImage || null); 
-    } else { 
-      setTitle(''); 
-      setContent([createBlock('content')]); 
-      setBannerImage(null); 
+    if (page) {
+      setTitle(page.title);
+      setContent(page.content as unknown as Block[]);
+      setBannerImage(page.bannerImage || null);
+    } else {
+      setTitle('');
+      setContent([createBlock('content')]);
+      setBannerImage(null);
     }
   }, [page, tagPath, slug]);
 
@@ -277,6 +314,11 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
   const backHref = isCreating ? `/${tagPath}` : viewPath;
   const saveLabel = isCreating ? (isSaving ? 'Creating...' : 'Create Page') : (isSaving ? 'Saving...' : 'Save Changes');
 
+  const infobox = findInfobox(content);
+  const mainBlocks = infobox ? content.filter(b => b.type !== 'infobox') : content;
+  const updateMainBlocks = (blocks: Block[]) => setContent(infobox ? [...blocks, infobox] : blocks);
+  const updateInfobox = (block: Block) => setContent([...content.filter(b => b.type !== 'infobox'), block]);
+
   return (
     <article className="stack">
       <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix={isCreating ? 'Create' : 'Edit'} />
@@ -289,7 +331,18 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
         <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
       </header>
       <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
-      <BlockEditor content={content} onChange={setContent} />
+      {infobox ? (
+        <div className="page-with-infobox">
+          <div className="page-main-content">
+            <BlockEditor content={mainBlocks} onChange={updateMainBlocks} />
+          </div>
+          <aside className="infobox-editor">
+            <InfoboxEditor block={infobox} onChange={updateInfobox} />
+          </aside>
+        </div>
+      ) : (
+        <BlockEditor content={content} onChange={setContent} />
+      )}
     </article>
   );
 }
@@ -301,6 +354,8 @@ function PageViewContent({ page }: { page: WikiPage }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const isAuthor = user && page.authorId === user.id;
   const isCommunityPage = page.tagPath.startsWith('community');
+  const blocks = (page.content as unknown as Block[]) || [];
+  const infobox = findInfobox(blocks);
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this page?')) return;
@@ -313,13 +368,11 @@ function PageViewContent({ page }: { page: WikiPage }) {
     finally { setIsDeleting(false); }
   };
 
-  return (
-    <article className="stack">
-      <Banner src={page.bannerImage}>
-        <Breadcrumbs path={[...page.tagPath.split('/'), page.slug]} />
-        <h1 id={slugify(page.title)} className="m-0!">{page.title}</h1>
-      </Banner>
-      <BlockRenderer content={page.content} />
+  const mainBlocks = infobox ? blocks.filter(b => b.type !== 'infobox') : blocks;
+
+  const contentSection = (
+    <>
+      <BlockRenderer content={mainBlocks} />
       {isCommunityPage && <UserStats authorId={page.authorId} />}
       <Discussion pageId={page.id} />
       {isAuthor && (
@@ -328,6 +381,23 @@ function PageViewContent({ page }: { page: WikiPage }) {
             <Trash2 size={16} />{isDeleting ? 'Deleting...' : 'DELETE PAGE'}
           </Button>
         </div>
+      )}
+    </>
+  );
+
+  return (
+    <article className="stack">
+      <Banner src={page.bannerImage}>
+        <Breadcrumbs path={[...page.tagPath.split('/'), page.slug]} />
+        <h1 id={slugify(page.title)} className="m-0!">{page.title}</h1>
+      </Banner>
+      {infobox ? (
+        <div className="page-with-infobox">
+          <div className="page-main-content stack">{contentSection}</div>
+          <InfoboxSidebar block={infobox} />
+        </div>
+      ) : (
+        contentSection
       )}
     </article>
   );

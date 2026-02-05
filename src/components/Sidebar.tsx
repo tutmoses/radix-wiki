@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 import { Home, ChevronRight, ChevronDown, ListTree } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { useStore } from '@/hooks';
+import { useStore, useIsMobile } from '@/hooks';
 import { getVisibleTags, isValidTagPath, type TagNode } from '@/lib/tags';
 
 function NavItem({ href, icon, label, isActive }: { href: string; icon: React.ReactNode; label: string; isActive?: boolean }) {
@@ -88,8 +88,9 @@ export function Sidebar() {
   const pathname = usePathname();
   const sidebarOpen = useStore(s => s.sidebarOpen);
   const setSidebarOpen = useStore(s => s.setSidebarOpen);
+  const isMobile = useIsMobile();
 
-  useEffect(() => setSidebarOpen(window.innerWidth >= 768), []);
+  useEffect(() => setSidebarOpen(!isMobile), [isMobile, setSidebarOpen]);
   const visibleTags = useMemo(() => getVisibleTags(), []);
 
   const segments = pathname.split('/').filter(Boolean);

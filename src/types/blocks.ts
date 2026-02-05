@@ -12,14 +12,8 @@ export interface AssetPriceBlock extends BaseBlock { type: 'assetPrice'; resourc
 // Atomic blocks that can be nested inside containers
 export type AtomicBlock = ContentBlock | RecentPagesBlock | PageListBlock | AssetPriceBlock;
 
-export interface InfoboxRow { label: string; value: string; }
 export interface InfoboxBlock extends BaseBlock {
   type: 'infobox';
-  title?: string;
-  image?: string;
-  caption?: string;
-  rows: InfoboxRow[];
-  mapUrl?: string;
   blocks: AtomicBlock[];
 }
 

@@ -18,7 +18,7 @@ export const BLOCK_DEFAULTS: Record<BlockType, () => Omit<Block, 'id'>> = {
   pageList: () => ({ type: 'pageList', pageIds: [] }),
   assetPrice: () => ({ type: 'assetPrice', resourceAddress: 'resource_rdx1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxradxrd', showChange: true }),
   columns: () => ({ type: 'columns', columns: [{ id: crypto.randomUUID(), blocks: [] }, { id: crypto.randomUUID(), blocks: [] }], gap: 'md', align: 'start' }),
-  infobox: () => ({ type: 'infobox', rows: [], blocks: [] }),
+  infobox: () => ({ type: 'infobox', blocks: [] }),
 };
 
 export const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'infobox', 'columns', 'recentPages', 'pageList', 'assetPrice'];
@@ -31,7 +31,7 @@ export function duplicateBlock(block: Block): Block {
     return { ...block, id: crypto.randomUUID(), columns: block.columns.map(col => ({ ...col, id: crypto.randomUUID(), blocks: (col.blocks || []).map(b => ({ ...b, id: crypto.randomUUID() })) })) };
   }
   if (block.type === 'infobox') {
-    return { ...block, id: crypto.randomUUID(), rows: (block.rows || []).map(r => ({ ...r })), blocks: (block.blocks || []).map(b => ({ ...b, id: crypto.randomUUID() }) as AtomicBlock) };
+    return { ...block, id: crypto.randomUUID(), blocks: (block.blocks || []).map(b => ({ ...b, id: crypto.randomUUID() }) as AtomicBlock) };
   }
   return { ...block, id: crypto.randomUUID() };
 }

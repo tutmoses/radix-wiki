@@ -171,7 +171,7 @@
     grid-template-areas: "infobox" "content";
 
     @media (min-width: 768px) {
-      grid-template-columns: 1fr var(--infobox-width);
+      grid-template-columns: 2fr 1fr;
       grid-template-areas: "content infobox";
     }
 
@@ -179,59 +179,31 @@
     > .page-main-content { grid-area: content; }
   }
 
-  /* Infobox component (Wikipedia-style) */
+  /* Infobox sidebar */
   .infobox {
-    @apply bg-surface-1 border border-border-muted rounded-lg overflow-hidden;
+    @apply bg-surface-1 border border-border-muted rounded-lg overflow-hidden p-4;
     width: 100%;
 
     @media (min-width: 768px) {
       position: sticky;
       top: calc(var(--header-height) + 1.5rem);
       align-self: start;
+      max-height: calc(100dvh - var(--header-height) - 3rem);
+      overflow-y: auto;
     }
   }
 
-  .infobox-header {
-    @apply py-2 px-3 bg-accent text-text-inverted font-semibold text-center text-small;
-  }
+  /* Infobox editor sidebar */
+  .infobox-editor {
+    grid-area: infobox;
+    width: 100%;
 
-  .infobox-image {
-    @apply m-0;
-    
-    img {
-      @apply w-full h-auto block;
-    }
-
-    figcaption {
-      @apply py-2 px-3 text-small text-text-muted text-center italic bg-surface-2/50;
-    }
-  }
-
-  .infobox-data {
-    @apply m-0 p-0;
-  }
-
-  .infobox-row {
-    @apply flex;
-
-    &:hover { dt, dd { @apply bg-white/5; } }
-
-    dt {
-      @apply py-2 px-3 bg-surface-1 border border-border-muted text-small font-semibold;
-      width: 40%;
-      flex-shrink: 0;
-    }
-
-    dd {
-      @apply py-2 px-3 bg-surface-2 border border-border-muted border-l-0 text-small m-0 flex-1;
-    }
-  }
-
-  .infobox-map {
-    @apply border-t border-border-muted;
-    
-    iframe {
-      @apply w-full h-40 block border-0;
+    @media (min-width: 768px) {
+      position: sticky;
+      top: calc(var(--header-height) + 1.5rem);
+      align-self: start;
+      max-height: calc(100dvh - var(--header-height) - 3rem);
+      overflow-y: auto;
     }
   }
 }

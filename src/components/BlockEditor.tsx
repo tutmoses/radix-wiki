@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { SHIKI_LANGS, DEFAULT_LANG } from '@/lib/shiki';
 import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock } from '@/lib/block-utils';
 import { Button, Input, Dropdown } from '@/components/ui';
-import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock, InfoboxBlock, InfoboxRow, AtomicBlock, Column } from '@/types/blocks';
+import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column } from '@/types/blocks';
 
 // ========== TIPTAP EXTENSIONS ==========
 const Iframe = TiptapNode.create({
@@ -331,87 +331,21 @@ function AssetPriceBlockEdit({ block, onUpdate }: BlockProps<AssetPriceBlock>) {
 }
 
 function InfoboxBlockEdit({ block, onUpdate }: BlockProps<InfoboxBlock>) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploading(true);
-    const url = await uploadImage(file);
-    if (url) onUpdate?.({ ...block, image: url });
-    setIsUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const updateRow = (i: number, row: InfoboxRow) => onUpdate?.({ ...block, rows: (block.rows || []).map((r, j) => j === i ? row : r) });
-  const removeRow = (i: number) => onUpdate?.({ ...block, rows: (block.rows || []).filter((_, j) => j !== i) });
-  const addRow = () => onUpdate?.({ ...block, rows: [...(block.rows || []), { label: '', value: '' }] });
-
   const setBlocks = useCallback((blocks: AtomicBlock[]) => onUpdate?.({ ...block, blocks }), [block, onUpdate]);
   const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(block.blocks || [], setBlocks);
   const handleBlockUpdate = useCallback((i: number, b: Block) => update(i, b as AtomicBlock), [update]);
 
   return (
     <div className="stack surface p-4 border-dashed">
-      <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleImageUpload} />
-      
-      <div className="spread">
-        <div className="row text-muted"><Info size={18} /><span className="font-medium">Infobox Wrapper</span></div>
-        <button onClick={() => setShowSettings(!showSettings)} className={cn('icon-btn p-1', showSettings && 'bg-surface-2')}><Settings size={14} /></button>
-      </div>
-
-      {showSettings && (
-        <div className="stack-sm p-3 bg-surface-2 rounded-lg">
-          <Input label="Title (optional)" value={block.title || ''} onChange={e => onUpdate?.({ ...block, title: e.target.value || undefined })} placeholder="e.g., Quick Facts" />
-          
-          <div className="stack-sm">
-            <label className="font-medium">Image</label>
-            {block.image ? (
-              <div className="relative">
-                <img src={block.image} alt="" className="w-full max-h-32 object-cover rounded-lg" />
-                <div className="absolute top-2 right-2 row">
-                  <button onClick={() => fileInputRef.current?.click()} className="icon-btn bg-surface-0/80 backdrop-blur-sm" disabled={isUploading}><Upload size={14} /></button>
-                  <button onClick={() => onUpdate?.({ ...block, image: undefined })} className="icon-btn bg-surface-0/80 backdrop-blur-sm text-error"><X size={14} /></button>
-                </div>
-              </div>
-            ) : (
-              <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="w-full py-4 border-2 border-dashed border-border-muted rounded-lg text-muted hover:text-text hover:border-border transition-colors text-small">
-                {isUploading ? 'Uploading...' : 'Click to upload image'}
-              </button>
-            )}
-            <Input label="Caption (optional)" value={block.caption || ''} onChange={e => onUpdate?.({ ...block, caption: e.target.value || undefined })} placeholder="Image caption" />
-          </div>
-
-          <div className="stack-sm">
-            <label className="font-medium">Data Rows</label>
-            {(block.rows || []).map((row, i) => (
-              <div key={i} className="row">
-                <input type="text" value={row.label} onChange={e => updateRow(i, { ...row, label: e.target.value })} placeholder="Label" className="input flex-1" />
-                <input type="text" value={row.value} onChange={e => updateRow(i, { ...row, value: e.target.value })} placeholder="Value" className="input flex-1" />
-                <button onClick={() => removeRow(i)} className="icon-btn text-muted hover:text-error"><Trash2 size={14} /></button>
-              </div>
-            ))}
-            <Button size="sm" variant="ghost" onClick={addRow}><Plus size={14} />Add Row</Button>
-          </div>
-
-          <div className="stack-sm">
-            <label className="font-medium row"><Map size={14} />Map Embed URL (optional)</label>
-            <input type="text" value={block.mapUrl || ''} onChange={e => onUpdate?.({ ...block, mapUrl: e.target.value || undefined })} placeholder="https://www.google.com/maps/embed?..." className="input" />
-          </div>
-        </div>
-      )}
-
-      <div className="stack-sm pt-2 border-t border-border-muted">
-        <span className="text-small text-muted uppercase tracking-wide">Content</span>
+      <div className="row text-muted"><Info size={18} /><span className="font-medium">Sidebar Content</span></div>
+      <div className="stack-sm">
         {(block.blocks?.length ?? 0) === 0 ? (
-          <div className="py-4 text-center"><p className="text-muted text-small mb-2">Empty infobox</p><InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
+          <div className="py-4 text-center"><p className="text-muted text-small mb-2">Empty sidebar</p><InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
         ) : (
-          <div className="stack-sm">
+          <>
             {(block.blocks || []).map((b, i) => <BlockWrapper key={b.id} block={b} index={i} total={(block.blocks || []).length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={handleBlockUpdate} onDelete={remove} onDuplicate={duplicate} onMove={move} compact />)}
             <InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} />
-          </div>
+          </>
         )}
       </div>
     </div>
@@ -560,6 +494,10 @@ export function BlockEditor({ content, onChange }: { content: Block[]; onChange:
       <InsertButton onInsert={insert} />
     </div>
   );
+}
+
+export function InfoboxEditor({ block, onChange }: { block: InfoboxBlock; onChange: (block: InfoboxBlock) => void }) {
+  return <InfoboxBlockEdit block={block} onUpdate={onChange} />;
 }
 
 export default BlockEditor;

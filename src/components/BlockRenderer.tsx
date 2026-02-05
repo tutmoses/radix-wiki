@@ -154,7 +154,7 @@ function ColumnsBlockView({ block }: { block: ColumnsBlock }) {
   return (
     <div className={cn('flex flex-col md:flex-row', gapClass, alignClass)}>
       {block.columns.map(col => (
-        <div key={col.id} className="flex-1 stack">
+        <div key={col.id} className="w-full md:flex-1 stack">
           {(col.blocks || []).map(bl => <div key={bl.id}>{renderBlockView(bl)}</div>)}
         </div>
       ))}
@@ -162,44 +162,19 @@ function ColumnsBlockView({ block }: { block: ColumnsBlock }) {
   );
 }
 
-function InfoboxBlockView({ block }: { block: InfoboxBlock }) {
-  const hasMetadata = block.title || block.image || (block.rows?.length ?? 0) > 0 || block.mapUrl;
-  const hasContent = (block.blocks?.length ?? 0) > 0;
-  
-  if (!hasMetadata && !hasContent) return null;
-
+export function InfoboxSidebar({ block }: { block: InfoboxBlock }) {
   return (
-    <div className="page-with-infobox">
-      <div className="page-main-content stack">
-        {(block.blocks || []).map(b => <div key={b.id}>{renderBlockView(b)}</div>)}
-      </div>
-      {hasMetadata && (
-        <aside className="infobox">
-          {block.title && <div className="infobox-header">{block.title}</div>}
-          {block.image && (
-            <figure className="infobox-image">
-              <img src={block.image} alt={block.caption || ''} />
-              {block.caption && <figcaption>{block.caption}</figcaption>}
-            </figure>
-          )}
-          {(block.rows?.length ?? 0) > 0 && (
-            <dl className="infobox-data">
-              {block.rows.map((row, i) => (
-                <div key={i} className="infobox-row">
-                  <dt>{row.label}</dt>
-                  <dd>{row.value}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-          {block.mapUrl && (
-            <div className="infobox-map">
-              <iframe src={block.mapUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-            </div>
-          )}
-        </aside>
-      )}
-    </div>
+    <aside className="infobox stack">
+      {(block.blocks || []).map(b => <div key={b.id}>{renderBlockView(b)}</div>)}
+    </aside>
+  );
+}
+
+function InfoboxBlockView({ block }: { block: InfoboxBlock }) {
+  return (
+    <>
+      {(block.blocks || []).map(b => <div key={b.id}>{renderBlockView(b)}</div>)}
+    </>
   );
 }
 
@@ -241,6 +216,15 @@ function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
     case 'infobox': return <InfoboxBlockView block={block} />;
   }
 }
+
+// ========== UTILITIES ==========
+export function findInfobox(blocks: Block[]): InfoboxBlock | null {
+  for (const block of blocks) {
+    if (block.type === 'infobox') return block;
+  }
+  return null;
+}
+
 
 // ========== MAIN COMPONENT ==========
 export function BlockRenderer({ content, className }: { content: Block[] | unknown; className?: string }) {
