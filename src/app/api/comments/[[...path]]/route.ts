@@ -11,16 +11,24 @@ export async function GET(request: NextRequest) {
   return handleRoute(async () => {
     const { searchParams } = new URL(request.url);
     const pageId = searchParams.get('pageId');
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '50', 10)));
 
     if (!pageId) return errors.badRequest('pageId is required');
 
-    const comments = await prisma.comment.findMany({
-      where: { pageId },
-      include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
-      orderBy: { createdAt: 'asc' },
-    });
+    const where = { pageId };
+    const [comments, total] = await Promise.all([
+      prisma.comment.findMany({
+        where,
+        include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
+        orderBy: { createdAt: 'asc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.comment.count({ where }),
+    ]);
 
-    return json(comments);
+    return json({ items: comments, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
   }, 'Failed to fetch comments');
 }
 

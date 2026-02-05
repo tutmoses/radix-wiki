@@ -4,7 +4,7 @@
 
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { BookOpen, Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, Info, Clock } from 'lucide-react';
+import { BookOpen, Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, Info, Clock, FileCode } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth } from '@/hooks';
 import { cn, shortenAddress, formatRelativeTime, formatDate } from '@/lib/utils';
@@ -29,12 +29,16 @@ function usePageContext() {
   const tagPath = isPage ? viewSegs.slice(0, -1).join('/') : null;
   const slug = isPage ? viewSegs[viewSegs.length - 1] : null;
   
+  const mdxPath = (isHomepage || isPage) ? (isHomepage ? '/api/wiki/mdx' : `/api/wiki/${tagPath}/${slug}/mdx`) : null;
+
   return {
     canEdit: isAuthenticated && (isHomepage || isPage) && !isEdit && !isHistory,
     canShowHistory: (isHomepage || isPage) && !isHistory,
     canShowInfo: (isHomepage || isPage) && !isEdit && !isHistory,
+    canExportMdx: (isHomepage || isPage) && !isEdit && !isHistory,
     editPath: isHomepage ? '/edit' : `${viewPath}/edit`,
     historyPath: (isHomepage || isPage) ? (isHomepage ? '/history' : `${viewPath}/history`) : null,
+    mdxPath,
     isHomepage,
     tagPath,
     slug,
@@ -96,7 +100,7 @@ export function Header() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
   const { session, walletData, isConnected, isLoading, logout, connect, sidebarOpen, toggleSidebar } = useStore();
-  const { canEdit, canShowHistory, canShowInfo, editPath, historyPath, isHomepage, tagPath, slug } = usePageContext();
+  const { canEdit, canShowHistory, canShowInfo, canExportMdx, editPath, historyPath, mdxPath, isHomepage, tagPath, slug } = usePageContext();
   const [showSearch, setShowSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
@@ -183,6 +187,7 @@ export function Header() {
               </div>
             )}
             
+            {canExportMdx && mdxPath && <a href={mdxPath} className="icon-btn" aria-label="Download MDX" download><FileCode size={20} /></a>}
             {canEdit && <Link href={editPath} className="icon-btn" aria-label="Edit page"><Edit size={20} /></Link>}
             {canShowHistory && historyPath && <Link href={historyPath} className="icon-btn" aria-label="Page history"><History size={20} /></Link>}
             {isAuthenticated && userProfilePath && <Link href={userProfilePath} className="icon-btn" aria-label="Your profile"><User size={20} /></Link>}

@@ -1,53 +1,55 @@
 // src/app/api/wiki/[[...path]]/route.ts
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
 import { slugify } from '@/lib/utils';
 import { isValidTagPath, isAuthorOnlyPath } from '@/lib/tags';
 import { json, errors, handleRoute, requireAuth, type RouteContext } from '@/lib/api';
-import { computeRevisionDiff, formatVersion, parseVersion, type BlockChange } from '@/lib/versioning';
+import { computeRevisionDiff, formatVersion, parseVersion, classifyChanges, incrementVersion, type BlockChange } from '@/lib/versioning';
+import { parseApiPath } from '@/lib/wiki';
+import { validateBlocks } from '@/lib/blocks';
+import { blocksToMdx } from '@/lib/mdx';
 import type { WikiPageInput } from '@/types';
 import type { Block } from '@/types/blocks';
 
 type PathParams = { path?: string[] };
 
-interface ParsedPath {
-  type: 'homepage' | 'list' | 'page' | 'history';
-  tagPath: string;
-  slug: string;
-}
-
-function parsePath(segments: string[] = []): ParsedPath | null {
-  if (segments.length === 0) return { type: 'homepage', tagPath: '', slug: '' };
-  if (segments.length === 1 && segments[0] === 'history') return { type: 'history', tagPath: '', slug: '' };
-
-  const isHistory = segments[segments.length - 1] === 'history';
-  const pathSegments = isHistory ? segments.slice(0, -1) : segments;
-
-  if (pathSegments.length < 2) return null;
-
-  const slug = pathSegments[pathSegments.length - 1];
-  const tagPathSegments = pathSegments.slice(0, -1);
-
-  if (!isValidTagPath(tagPathSegments)) return null;
-
-  return {
-    type: isHistory ? 'history' : 'page',
-    tagPath: tagPathSegments.join('/'),
-    slug,
-  };
-}
-
 export async function GET(request: NextRequest, context: RouteContext<PathParams>) {
+  const { path } = await context.params;
+
+  // Handle MDX export outside handleRoute (returns raw Response)
+  const parsed = parseApiPath(path);
+  if (parsed?.type === 'mdx') {
+    try {
+      const page = await prisma.page.findFirst({
+        where: { tagPath: parsed.tagPath, slug: parsed.slug },
+        include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
+      });
+      if (!page) return errors.notFound('Page not found');
+
+      const mdx = blocksToMdx(page);
+      const filename = page.slug || 'homepage';
+
+      return new NextResponse(mdx, {
+        headers: {
+          'Content-Type': 'text/mdx; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${filename}.mdx"`,
+        },
+      });
+    } catch (error) {
+      console.error('MDX export failed', error);
+      return errors.internal('Failed to export MDX');
+    }
+  }
+
   return handleRoute(async () => {
-    const { path } = await context.params;
     const { searchParams } = new URL(request.url);
 
     // List mode
     if (!path?.length && (searchParams.has('page') || searchParams.has('pageSize') || searchParams.has('search') || searchParams.has('tagPath') || searchParams.has('sort'))) {
-      const page = parseInt(searchParams.get('page') || '1', 10);
-      const pageSize = parseInt(searchParams.get('pageSize') || '20', 10);
+      const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+      const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '20', 10)));
       const search = searchParams.get('search') || '';
       const tagPath = searchParams.get('tagPath');
       const sort = searchParams.get('sort') || 'updatedAt';
@@ -70,7 +72,6 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       return json({ items: pages, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
     }
 
-    const parsed = parsePath(path);
     if (!parsed) return errors.notFound('Invalid path');
 
     // History mode
@@ -118,7 +119,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
 export async function POST(request: NextRequest, context: RouteContext<PathParams>) {
   return handleRoute(async () => {
     const { path } = await context.params;
-    const parsed = parsePath(path);
+    const parsed = parseApiPath(path);
 
     // Restore revision
     if (parsed?.type === 'history') {
@@ -145,27 +146,16 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
       const revision = await prisma.revision.findFirst({ where: { id: revisionId, pageId: page.id } });
       if (!revision) return errors.notFound('Revision not found');
 
-      const oldContent = (page.content as unknown as Block[]) || [];
-      const newContent = (revision.content as unknown as Block[]) || [];
-      
-      const diff = computeRevisionDiff(
-        page.version,
-        oldContent,
-        newContent,
-        page.title,
-        revision.title,
-        page.bannerImage,
-        page.bannerImage // Banner doesn't change on restore
-      );
-
+      // Restores are always major changes - skip expensive diff computation
+      const newVersion = incrementVersion(parseVersion(page.version), 'major');
       const content = revision.content as Prisma.InputJsonValue;
 
       await prisma.page.update({
         where: { id: page.id },
-        data: { 
-          title: revision.title, 
+        data: {
+          title: revision.title,
           content,
-          version: formatVersion(diff.version),
+          version: formatVersion(newVersion),
         },
       });
 
@@ -174,15 +164,15 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
           pageId: page.id,
           title: revision.title,
           content,
-          version: formatVersion(diff.version),
-          changeType: diff.changeType,
-          changes: diff.changes as unknown as Prisma.InputJsonValue,
+          version: formatVersion(newVersion),
+          changeType: 'major',
+          changes: [] as unknown as Prisma.InputJsonValue,
           authorId: auth.session.userId,
           message: `Restored to v${revision.version}`,
         },
       });
 
-      return json({ success: true, version: formatVersion(diff.version) });
+      return json({ success: true, version: formatVersion(newVersion) });
     }
 
     // Create new page
@@ -190,6 +180,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
     const { title, content, excerpt, bannerImage, tagPath } = body;
 
     if (!title || !content) return errors.badRequest('Title and content required');
+    if (!validateBlocks(content)) return errors.badRequest('Invalid block structure');
     if (!tagPath || !isValidTagPath(tagPath.split('/'))) {
       return errors.badRequest('Valid tag path required');
     }
@@ -237,7 +228,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
 export async function PUT(request: NextRequest, context: RouteContext<PathParams>) {
   return handleRoute(async () => {
     const { path } = await context.params;
-    const parsed = parsePath(path);
+    const parsed = parseApiPath(path);
 
     if (!parsed || parsed.type === 'history') return errors.notFound('Invalid path');
 
@@ -247,6 +238,10 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
 
     const body: Partial<WikiPageInput> & { revisionMessage?: string } = await request.json();
     const { title, content, excerpt, bannerImage, revisionMessage } = body;
+
+    if (content !== undefined && !validateBlocks(content)) {
+      return errors.badRequest('Invalid block structure');
+    }
 
     const existing = await prisma.page.findFirst({ where: { tagPath: parsed.tagPath, slug: parsed.slug } });
 
@@ -347,7 +342,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
 export async function DELETE(request: NextRequest, context: RouteContext<PathParams>) {
   return handleRoute(async () => {
     const { path } = await context.params;
-    const parsed = parsePath(path);
+    const parsed = parseApiPath(path);
 
     if (!parsed || parsed.type !== 'page') return errors.notFound('Invalid path');
 

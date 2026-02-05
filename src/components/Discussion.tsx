@@ -106,7 +106,10 @@ export function Discussion({ pageId }: { pageId: string }) {
   const fetchComments = useCallback(async () => {
     try {
       const res = await fetch(`/api/comments?pageId=${pageId}`);
-      if (res.ok) setComments(buildCommentTree(await res.json()));
+      if (res.ok) {
+        const data = await res.json();
+        setComments(buildCommentTree(data.items));
+      }
     } catch (e) { console.error('Failed to fetch comments:', e); }
     finally { setIsLoading(false); }
   }, [pageId]);

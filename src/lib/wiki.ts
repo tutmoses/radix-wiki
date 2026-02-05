@@ -5,7 +5,7 @@ import { isValidTagPath } from '@/lib/tags';
 import type { WikiPage } from '@/types';
 
 export interface ParsedPath {
-  type: 'homepage' | 'category' | 'page' | 'history' | 'edit' | 'invalid';
+  type: 'homepage' | 'category' | 'page' | 'history' | 'edit' | 'list' | 'invalid';
   tagPath: string;
   slug: string;
   isEditMode: boolean;
@@ -37,6 +37,37 @@ export function parsePath(segments: string[] = []): ParsedPath {
   if (isHistoryMode) return { type: 'history', tagPath, slug, isEditMode: false, isHistoryMode: true };
   if (isEditMode) return { type: 'edit', tagPath, slug, isEditMode: true, isHistoryMode: false };
   return { type: 'page', tagPath, slug, isEditMode: false, isHistoryMode: false };
+}
+
+// API-specific path parsing (excludes edit mode, simpler return type)
+export interface ApiParsedPath {
+  type: 'homepage' | 'list' | 'page' | 'history' | 'mdx';
+  tagPath: string;
+  slug: string;
+}
+
+export function parseApiPath(segments: string[] = []): ApiParsedPath | null {
+  if (segments.length === 0) return { type: 'homepage', tagPath: '', slug: '' };
+  if (segments.length === 1 && segments[0] === 'history') return { type: 'history', tagPath: '', slug: '' };
+  if (segments.length === 1 && segments[0] === 'mdx') return { type: 'mdx', tagPath: '', slug: '' };
+
+  const lastSegment = segments[segments.length - 1];
+  const isHistory = lastSegment === 'history';
+  const isMdx = lastSegment === 'mdx';
+  const pathSegments = (isHistory || isMdx) ? segments.slice(0, -1) : segments;
+
+  if (pathSegments.length < 2) return null;
+
+  const slug = pathSegments[pathSegments.length - 1];
+  const tagPathSegments = pathSegments.slice(0, -1);
+
+  if (!isValidTagPath(tagPathSegments)) return null;
+
+  return {
+    type: isHistory ? 'history' : isMdx ? 'mdx' : 'page',
+    tagPath: tagPathSegments.join('/'),
+    slug,
+  };
 }
 
 export async function getHomepage(): Promise<WikiPage | null> {
