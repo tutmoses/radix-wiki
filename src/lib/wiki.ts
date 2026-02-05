@@ -92,3 +92,19 @@ export async function getPageHistory(tagPath: string, slug: string) {
 
   return { currentVersion: page.version, revisions };
 }
+
+export async function getAdjacentPages(tagPath: string, title: string) {
+  const [prev, next] = await Promise.all([
+    prisma.page.findFirst({
+      where: { tagPath, title: { lt: title } },
+      orderBy: { title: 'desc' },
+      select: { tagPath: true, slug: true, title: true },
+    }),
+    prisma.page.findFirst({
+      where: { tagPath, title: { gt: title } },
+      orderBy: { title: 'asc' },
+      select: { tagPath: true, slug: true, title: true },
+    }),
+  ]);
+  return { prev, next };
+}

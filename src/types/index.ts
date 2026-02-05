@@ -81,3 +81,6 @@ export type PaginatedResponse<T> = {
   pageSize: number;
   totalPages: number;
 };
+
+export type AdjacentPage = { tagPath: string; slug: string; title: string } | null;
+export type AdjacentPages = { prev: AdjacentPage; next: AdjacentPage };

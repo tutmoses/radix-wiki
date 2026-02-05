@@ -18,7 +18,7 @@ import { useAuth } from '@/hooks';
 import { slugify } from '@/lib/utils';
 import { findTagByPath, isAuthorOnlyPath } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
-import type { WikiPage } from '@/types';
+import type { WikiPage, AdjacentPages } from '@/types';
 import type { Block } from '@/types/blocks';
 
 const BlockEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.BlockEditor), {
@@ -72,6 +72,27 @@ export function PageSkeleton() {
       <div className="h-6 w-3/4 skeleton rounded" />
       <div className="h-6 w-1/2 skeleton rounded" />
     </div>
+  );
+}
+
+function PageNav({ adjacent }: { adjacent: AdjacentPages }) {
+  const { prev, next } = adjacent;
+  if (!prev && !next) return null;
+  return (
+    <nav className="pt-8 border-t border-border grid grid-cols-2 gap-4">
+      {prev ? (
+        <Link href={`/${prev.tagPath}/${prev.slug}`} className="group stack-sm p-4 rounded-lg bg-surface-1 hover:bg-surface-2 transition-colors">
+          <span className="row text-muted text-small"><ArrowLeft size={14} />Previous</span>
+          <span className="font-medium group-hover:text-accent transition-colors line-clamp-1">{prev.title}</span>
+        </Link>
+      ) : <div />}
+      {next && (
+        <Link href={`/${next.tagPath}/${next.slug}`} className="group stack-sm p-4 rounded-lg bg-surface-1 hover:bg-surface-2 transition-colors text-right">
+          <span className="row justify-end text-muted text-small">Next<ArrowRight size={14} /></span>
+          <span className="font-medium group-hover:text-accent transition-colors line-clamp-1">{next.title}</span>
+        </Link>
+      )}
+    </nav>
   );
 }
 
@@ -271,6 +292,7 @@ export function CategoryView({ tagPath, pages }: { tagPath: string[]; pages: Wik
 
 // ========== PAGE EDITOR ==========
 function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string; slug: string }) {
+  const router = useRouter();
   const { user } = useAuth();
   const isCreating = !page;
   const viewPath = `/${tagPath}/${slug}`;
@@ -278,6 +300,8 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
   const [content, setContent] = useState<Block[]>([]);
   const [bannerImage, setBannerImage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const isAuthor = user && page?.authorId === user.id;
 
   useEffect(() => {
     if (page) {
@@ -304,6 +328,17 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
       if (res.ok) window.location.href = `/${data.tagPath}/${data.slug}`;
       else { alert(data.error || 'Failed to save'); setIsSaving(false); }
     } catch { alert('Failed to save'); setIsSaving(false); }
+  };
+
+  const handleDelete = async () => {
+    if (!page || !confirm('Are you sure you want to delete this page?')) return;
+    setIsDeleting(true);
+    try {
+      const r = await fetch(`/api/wiki/${page.tagPath}/${page.slug}`, { method: 'DELETE' });
+      if (r.ok) router.push(`/${page.tagPath}`);
+      else alert('Failed to delete');
+    } catch { alert('Failed to delete'); }
+    finally { setIsDeleting(false); }
   };
 
   if (page && user && isAuthorOnlyPath(page.tagPath) && page.authorId !== user.id) {
@@ -343,31 +378,22 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
       ) : (
         <BlockEditor content={content} onChange={setContent} />
       )}
+      {isAuthor && !isCreating && (
+        <div className="pt-6 border-t border-border">
+          <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isDeleting} className="text-error hover:bg-error/10">
+            <Trash2 size={16} />{isDeleting ? 'Deleting...' : 'Delete Page'}
+          </Button>
+        </div>
+      )}
     </article>
   );
 }
 
 // ========== PAGE VIEW (Read-only) ==========
-function PageViewContent({ page }: { page: WikiPage }) {
-  const router = useRouter();
-  const { user } = useAuth();
-  const [isDeleting, setIsDeleting] = useState(false);
-  const isAuthor = user && page.authorId === user.id;
+function PageViewContent({ page, adjacent }: { page: WikiPage; adjacent: AdjacentPages }) {
   const isCommunityPage = page.tagPath.startsWith('community');
   const blocks = (page.content as unknown as Block[]) || [];
   const infobox = findInfobox(blocks);
-
-  const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this page?')) return;
-    setIsDeleting(true);
-    try {
-      const r = await fetch(`/api/wiki/${page.tagPath}/${page.slug}`, { method: 'DELETE' });
-      if (r.ok) router.push(`/${page.tagPath}`);
-      else alert('Failed to delete');
-    } catch { alert('Failed to delete'); }
-    finally { setIsDeleting(false); }
-  };
-
   const mainBlocks = infobox ? blocks.filter(b => b.type !== 'infobox') : blocks;
 
   const contentSection = (
@@ -375,13 +401,7 @@ function PageViewContent({ page }: { page: WikiPage }) {
       <BlockRenderer content={mainBlocks} />
       {isCommunityPage && <UserStats authorId={page.authorId} />}
       <Discussion pageId={page.id} />
-      {isAuthor && (
-        <div className="pt-6 border-t border-border">
-          <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isDeleting} className="text-error hover:bg-error/10">
-            <Trash2 size={16} />{isDeleting ? 'Deleting...' : 'DELETE PAGE'}
-          </Button>
-        </div>
-      )}
+      <PageNav adjacent={adjacent} />
     </>
   );
 
@@ -404,7 +424,7 @@ function PageViewContent({ page }: { page: WikiPage }) {
 }
 
 // ========== PAGE VIEW WRAPPER ==========
-export function PageView({ page, tagPath, slug, isEditMode }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean }) {
+export function PageView({ page, tagPath, slug, isEditMode, adjacent }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; adjacent: AdjacentPages }) {
   const { isAuthenticated } = useAuth();
   const viewPath = `/${tagPath}/${slug}`;
 
@@ -412,5 +432,5 @@ export function PageView({ page, tagPath, slug, isEditMode }: { page: WikiPage |
   if (!page && !isAuthenticated) return <StatusCard status="notFound" backHref="/" />;
   if (!page && isAuthenticated) return <PageEditor tagPath={tagPath} slug={slug} />;
   if (!page) return <StatusCard status="notFound" backHref="/" />;
-  return isEditMode ? <PageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} />;
+  return isEditMode ? <PageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} adjacent={adjacent} />;
 }
