@@ -20,6 +20,8 @@ export const TAG_HIERARCHY: TagNode[] = [
           { name: 'Comparisons', slug: 'comparisons' },
           { name: 'Core Concepts', slug: 'core-concepts' },
           { name: 'Core Protocols', slug: 'core-protocols' },
+          { name: 'Releases', slug: 'releases' },
+          { name: 'Research', slug: 'research' },
         ],
       },
       { name: 'Events', slug: 'events' },
