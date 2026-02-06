@@ -90,13 +90,13 @@ export async function getPage(tagPath: string, slug: string): Promise<WikiPage |
   }) as Promise<WikiPage | null>;
 }
 
-export async function getCategoryPages(tagPath: string, limit = 200) {
+export async function getCategoryPages(tagPath: string, limit = 200): Promise<WikiPage[]> {
   return prisma.page.findMany({
     where: { tagPath },
     include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
     orderBy: { title: 'asc' },
     take: limit,
-  });
+  }) as Promise<WikiPage[]>;
 }
 
 export async function getPageHistory(tagPath: string, slug: string) {
