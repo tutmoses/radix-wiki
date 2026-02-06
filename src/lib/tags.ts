@@ -33,7 +33,16 @@ export const TAG_HIERARCHY: TagNode[] = [
           { name: 'Research', slug: 'research' },
         ],
       },
-      { name: 'Events', slug: 'events' },
+      { 
+        name: 'History / Events',
+        slug: 'history',
+        metadataKeys: [
+          { key: 'attendees', label: 'Attendees:', type: 'text'},
+          { key: 'date', label: 'Date:', type: 'date' },
+          { key: 'location', label: 'Location:', type: 'text' },
+          { key: 'type', label: 'Type:', type: 'select', options: ['Conference', 'Hackathon', 'Milestone', 'Workshop'] },
+          { key: 'website', label: 'Website:', type: 'url' }
+        ],},
       { name: 'Resources', slug: 'resources', children: [{ name: 'Legal', slug: 'legal' }, { name: 'Python Scripts', slug: 'python-scripts' }] },
       { name: 'Blog', slug: 'blog', xrd: { create: 50_000 } },
     ],

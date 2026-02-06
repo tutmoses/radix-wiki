@@ -1,5 +1,6 @@
 // src/lib/wiki.ts - Server-side data fetching
 
+import { cache } from 'react';
 import { prisma } from '@/lib/prisma/client';
 import { isValidTagPath } from '@/lib/tags';
 import type { WikiPage } from '@/types';
@@ -17,13 +18,19 @@ export function parsePath(segments: string[] = []): ParsedPath {
   if (segments.length === 1 && segments[0] === 'edit') return { type: 'edit', tagPath: '', slug: '', isEditMode: true, isHistoryMode: false };
   if (segments.length === 1 && segments[0] === 'history') return { type: 'history', tagPath: '', slug: '', isEditMode: false, isHistoryMode: true };
 
+  // Check full path as tag first (handles tags like 'history' that collide with suffixes)
+  if (isValidTagPath(segments)) {
+    return { type: 'category', tagPath: segments.join('/'), slug: '', isEditMode: false, isHistoryMode: false };
+  }
+
   const lastSegment = segments[segments.length - 1];
   const isEditMode = lastSegment === 'edit';
   const isHistoryMode = lastSegment === 'history';
   const pathSegments = (isEditMode || isHistoryMode) ? segments.slice(0, -1) : segments;
 
   if (isValidTagPath(pathSegments)) {
-    return { type: 'category', tagPath: pathSegments.join('/'), slug: '', isEditMode, isHistoryMode };
+    if (isEditMode) return { type: 'category', tagPath: pathSegments.join('/'), slug: '', isEditMode: true, isHistoryMode: false };
+    if (isHistoryMode) return { type: 'category', tagPath: pathSegments.join('/'), slug: '', isEditMode: false, isHistoryMode: true };
   }
 
   const tagPathSegments = pathSegments.slice(0, -1);
@@ -70,7 +77,7 @@ export function parseApiPath(segments: string[] = []): ApiParsedPath | null {
   };
 }
 
-export async function getHomepage(): Promise<WikiPage | null> {
+export const getHomepage = cache(async (): Promise<WikiPage | null> => {
   return prisma.page.findFirst({
     where: { tagPath: '', slug: '' },
     include: {
@@ -78,9 +85,9 @@ export async function getHomepage(): Promise<WikiPage | null> {
       revisions: { select: { id: true } },
     },
   }) as Promise<WikiPage | null>;
-}
+});
 
-export async function getPage(tagPath: string, slug: string): Promise<WikiPage | null> {
+export const getPage = cache(async (tagPath: string, slug: string): Promise<WikiPage | null> => {
   return prisma.page.findFirst({
     where: { tagPath, slug },
     include: {
@@ -88,18 +95,18 @@ export async function getPage(tagPath: string, slug: string): Promise<WikiPage |
       revisions: { select: { id: true } },
     },
   }) as Promise<WikiPage | null>;
-}
+});
 
-export async function getCategoryPages(tagPath: string, limit = 200): Promise<WikiPage[]> {
+export const getCategoryPages = cache(async (tagPath: string, limit = 200): Promise<WikiPage[]> => {
   return prisma.page.findMany({
     where: { tagPath },
     include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
     orderBy: { title: 'asc' },
     take: limit,
   }) as Promise<WikiPage[]>;
-}
+});
 
-export async function getPageHistory(tagPath: string, slug: string) {
+export const getPageHistory = cache(async (tagPath: string, slug: string) => {
   const page = await prisma.page.findFirst({
     where: { tagPath, slug },
     select: { id: true, title: true, version: true },
@@ -122,9 +129,9 @@ export async function getPageHistory(tagPath: string, slug: string) {
   });
 
   return { currentVersion: page.version, revisions };
-}
+});
 
-export async function getAdjacentPages(tagPath: string, title: string) {
+export const getAdjacentPages = cache(async (tagPath: string, title: string) => {
   const [prev, next] = await Promise.all([
     prisma.page.findFirst({
       where: { tagPath, title: { lt: title } },
@@ -138,4 +145,4 @@ export async function getAdjacentPages(tagPath: string, title: string) {
     }),
   ]);
   return { prev, next };
-}
+});

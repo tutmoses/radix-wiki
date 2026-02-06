@@ -363,9 +363,15 @@ function MetadataFields({ metadataKeys, metadata, onChange }: { metadataKeys: Me
                 onChange={v => updateField(key, v)}
                 placeholder={label}
               />
+            ) : type === 'url' ? (
+              <Input
+                type="url"
+                value={metadata[key] || ''}
+                onChange={e => updateField(key, e.target.value)}
+                placeholder={label}
+              />
             ) : (
               <Input
-                type={type === 'date' ? 'date' : 'url'}
                 value={metadata[key] || ''}
                 onChange={e => updateField(key, e.target.value)}
                 placeholder={label}

@@ -261,7 +261,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
 
   return (
     <div className="stack-sm">
-      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={handleFileChange} />
+      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" className="hidden" onChange={handleFileChange} />
       {editor && (
         <div className="sticky top-[var(--header-height)] z-40 flex flex-wrap gap-0.5 p-1 bg-surface-1 border border-border-muted rounded-md mb-2">
           {TOOLBAR_BUTTONS.map(({ key, icon: Icon, active, action }) => (

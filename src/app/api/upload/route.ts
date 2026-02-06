@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
     const maxSize = 4 * 1024 * 1024; // 4MB
     if (file.size > maxSize) return errors.badRequest('File too large (max 4MB)');
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif'];
     if (!allowedTypes.includes(file.type)) {
-      return errors.badRequest('Invalid file type. Allowed: JPEG, PNG, GIF, WebP');
+      return errors.badRequest('Invalid file type. Allowed: JPEG, PNG, GIF, WebP, AVIF');
     }
 
     const ext = file.name.split('.').pop() || 'jpg';
