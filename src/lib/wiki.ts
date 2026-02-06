@@ -90,7 +90,7 @@ export async function getPage(tagPath: string, slug: string): Promise<WikiPage |
   }) as Promise<WikiPage | null>;
 }
 
-export async function getCategoryPages(tagPath: string, limit = 50) {
+export async function getCategoryPages(tagPath: string, limit = 200) {
   return prisma.page.findMany({
     where: { tagPath },
     include: { author: { select: { id: true, displayName: true, radixAddress: true } } },

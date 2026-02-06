@@ -21,7 +21,7 @@ export const BLOCK_DEFAULTS: Record<BlockType, () => Omit<Block, 'id'>> = {
   infobox: () => ({ type: 'infobox', blocks: [] }),
 };
 
-export const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'infobox', 'columns', 'recentPages', 'pageList', 'assetPrice'];
+export const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'columns', 'recentPages', 'pageList', 'assetPrice'];
 export const ATOMIC_BLOCK_TYPES: readonly BlockType[] = ['content', 'recentPages', 'pageList', 'assetPrice'];
 
 export const createBlock = (type: BlockType): Block => ({ id: crypto.randomUUID(), ...BLOCK_DEFAULTS[type]() } as Block);

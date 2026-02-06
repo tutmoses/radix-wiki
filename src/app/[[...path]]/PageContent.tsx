@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -171,9 +171,9 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   };
 
   if (isEditing) {
-    const infobox = findInfobox(content);
-    const mainBlocks = infobox ? content.filter(b => b.type !== 'infobox') : content;
-    const updateMainBlocks = (blocks: Block[]) => setContent(infobox ? [...blocks, infobox] : blocks);
+    const infobox = findInfobox(content) || createBlock('infobox') as import('@/types/blocks').InfoboxBlock;
+    const mainBlocks = content.filter(b => b.type !== 'infobox');
+    const updateMainBlocks = (blocks: Block[]) => setContent([...blocks, infobox]);
     const updateInfobox = (block: Block) => setContent([...content.filter(b => b.type !== 'infobox'), block]);
 
     return (
@@ -184,18 +184,14 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
         </div>
         <h1>Edit Homepage</h1>
         <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
-        {infobox ? (
-          <div className="page-with-infobox">
-            <div className="page-main-content">
-              <BlockEditor content={mainBlocks} onChange={updateMainBlocks} />
-            </div>
-            <aside className="infobox-editor">
-              <InfoboxEditor block={infobox} onChange={updateInfobox} />
-            </aside>
+        <div className="page-with-infobox">
+          <div className="page-main-content">
+            <BlockEditor content={mainBlocks} onChange={updateMainBlocks} />
           </div>
-        ) : (
-          <BlockEditor content={content} onChange={setContent} />
-        )}
+          <aside className="infobox-editor">
+            <InfoboxEditor block={infobox} onChange={updateInfobox} />
+          </aside>
+        </div>
         <div className="spread">
           <Link href="/"><Button variant="ghost">Cancel</Button></Link>
           <Button onClick={handleSave} disabled={isSaving}><Save size={18} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
@@ -291,6 +287,49 @@ export function CategoryView({ tagPath, pages }: { tagPath: string[]; pages: Wik
 }
 
 // ========== METADATA FIELDS ==========
+function RichInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  useEffect(() => {
+    if (ref.current && ref.current.innerHTML !== value) ref.current.innerHTML = value || '';
+  }, [value]);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const html = e.clipboardData.getData('text/html');
+    if (!html) return;
+    e.preventDefault();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.body.querySelectorAll('*').forEach(el => {
+      if (el.tagName === 'A') { Array.from(el.attributes).forEach(a => { if (a.name !== 'href') el.removeAttribute(a.name); }); return; }
+      const parent = el.parentNode!;
+      while (el.firstChild) parent.insertBefore(el.firstChild, el);
+      parent.removeChild(el);
+    });
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    const frag = range.createContextualFragment(doc.body.innerHTML);
+    range.insertNode(frag);
+    range.collapse(false);
+    onChangeRef.current(ref.current?.innerHTML || '');
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      onInput={() => onChangeRef.current(ref.current?.innerHTML || '')}
+      onPaste={handlePaste}
+      data-placeholder={placeholder}
+      className="input min-h-9 [&:empty]:before:content-[attr(data-placeholder)] [&:empty]:before:text-muted [&_a]:text-accent [&_a]:underline"
+    />
+  );
+}
+
 function MetadataFields({ metadataKeys, metadata, onChange }: { metadataKeys: MetadataKeyDefinition[]; metadata: PageMetadata; onChange: (metadata: PageMetadata) => void }) {
   if (metadataKeys.length === 0) return null;
 
@@ -318,9 +357,15 @@ function MetadataFields({ metadataKeys, metadata, onChange }: { metadataKeys: Me
                   <option key={opt} value={opt}>{opt}</option>
                 ))}
               </select>
+            ) : type === 'text' ? (
+              <RichInput
+                value={metadata[key] || ''}
+                onChange={v => updateField(key, v)}
+                placeholder={label}
+              />
             ) : (
               <Input
-                type={type === 'date' ? 'date' : type === 'url' ? 'url' : 'text'}
+                type={type === 'date' ? 'date' : 'url'}
                 value={metadata[key] || ''}
                 onChange={e => updateField(key, e.target.value)}
                 placeholder={label}
@@ -402,9 +447,9 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
   const backHref = isCreating ? `/${tagPath}` : viewPath;
   const saveLabel = isCreating ? (isSaving ? 'Creating...' : 'Create Page') : (isSaving ? 'Saving...' : 'Save Changes');
 
-  const infobox = findInfobox(content);
-  const mainBlocks = infobox ? content.filter(b => b.type !== 'infobox') : content;
-  const updateMainBlocks = (blocks: Block[]) => setContent(infobox ? [...blocks, infobox] : blocks);
+  const infobox = findInfobox(content) || createBlock('infobox') as import('@/types/blocks').InfoboxBlock;
+  const mainBlocks = content.filter(b => b.type !== 'infobox');
+  const updateMainBlocks = (blocks: Block[]) => setContent([...blocks, infobox]);
   const updateInfobox = (block: Block) => setContent([...content.filter(b => b.type !== 'infobox'), block]);
 
   return (
@@ -420,18 +465,14 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
       </header>
       <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
       <MetadataFields metadataKeys={metadataKeys} metadata={metadata} onChange={setMetadata} />
-      {infobox ? (
-        <div className="page-with-infobox">
-          <div className="page-main-content">
-            <BlockEditor content={mainBlocks} onChange={updateMainBlocks} />
-          </div>
-          <aside className="infobox-editor">
-            <InfoboxEditor block={infobox} onChange={updateInfobox} />
-          </aside>
+      <div className="page-with-infobox">
+        <div className="page-main-content">
+          <BlockEditor content={mainBlocks} onChange={updateMainBlocks} />
         </div>
-      ) : (
-        <BlockEditor content={content} onChange={setContent} />
-      )}
+        <aside className="infobox-editor">
+          <InfoboxEditor block={infobox} onChange={updateInfobox} />
+        </aside>
+      </div>
       {isAuthor && !isCreating && (
         <div className="pt-6 border-t border-border">
           <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isDeleting} className="text-error hover:bg-error/10">
@@ -440,6 +481,31 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
         </div>
       )}
     </article>
+  );
+}
+
+// ========== METADATA DISPLAY ==========
+function MetadataDisplay({ metadata, tagPath }: { metadata?: PageMetadata | null; tagPath: string }) {
+  const keys = getMetadataKeys(tagPath.split('/'));
+  if (!keys.length || !metadata) return null;
+  const entries = keys.filter(k => metadata[k.key]?.trim());
+  if (!entries.length) return null;
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-2 p-4 rounded-lg bg-surface-1 border border-border text-small">
+      {entries.map(({ key, label, type }) => (
+        <div key={key} className="stack-xs">
+          <span className="text-muted font-medium">{label}</span>
+          {type === 'url' ? (
+            <a href={metadata[key]} target="_blank" rel="noopener noreferrer" className="link truncate">{metadata[key].replace(/^https?:\/\//, '')}</a>
+          ) : type === 'text' ? (
+            <span dangerouslySetInnerHTML={{ __html: metadata[key] }} />
+          ) : (
+            <span>{metadata[key]}</span>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -452,6 +518,7 @@ function PageViewContent({ page, adjacent }: { page: WikiPage; adjacent: Adjacen
 
   const contentSection = (
     <>
+      <MetadataDisplay metadata={page.metadata} tagPath={page.tagPath} />
       <BlockRenderer content={mainBlocks} />
       {isCommunityPage && <UserStats authorId={page.authorId} />}
       <Discussion pageId={page.id} />
