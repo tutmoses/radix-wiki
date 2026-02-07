@@ -490,47 +490,12 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
   );
 }
 
-// ========== METADATA DISPLAY ==========
-function MetadataDisplay({ metadata, tagPath }: { metadata?: PageMetadata | null; tagPath: string }) {
-  const keys = getMetadataKeys(tagPath.split('/'));
-  if (!keys.length || !metadata) return null;
-  const entries = keys.filter(k => metadata[k.key]?.trim());
-  if (!entries.length) return null;
-
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-2 p-4 rounded-lg bg-surface-1 border border-border text-small">
-      {entries.map(({ key, label, type }) => (
-        <div key={key} className="stack-xs">
-          <span className="text-muted font-medium">{label}</span>
-          {type === 'url' ? (
-            <a href={metadata[key]} target="_blank" rel="noopener noreferrer" className="link truncate">{metadata[key].replace(/^https?:\/\//, '')}</a>
-          ) : type === 'text' ? (
-            <span dangerouslySetInnerHTML={{ __html: metadata[key] }} />
-          ) : (
-            <span>{metadata[key]}</span>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ========== PAGE VIEW (Read-only) ==========
 function PageViewContent({ page, adjacent }: { page: WikiPage; adjacent: AdjacentPages }) {
   const isCommunityPage = page.tagPath.startsWith('community');
   const blocks = (page.content as unknown as Block[]) || [];
-  const infobox = findInfobox(blocks);
-  const mainBlocks = infobox ? blocks.filter(b => b.type !== 'infobox') : blocks;
-
-  const contentSection = (
-    <>
-      <MetadataDisplay metadata={page.metadata} tagPath={page.tagPath} />
-      <BlockRenderer content={mainBlocks} />
-      {isCommunityPage && <UserStats authorId={page.authorId} />}
-      <Discussion pageId={page.id} />
-      <PageNav adjacent={adjacent} />
-    </>
-  );
+  const infobox = findInfobox(blocks) || { id: '__infobox__', type: 'infobox' as const, blocks: [] };
+  const mainBlocks = blocks.filter(b => b.type !== 'infobox');
 
   return (
     <article className="stack">
@@ -538,14 +503,15 @@ function PageViewContent({ page, adjacent }: { page: WikiPage; adjacent: Adjacen
         <Breadcrumbs path={[...page.tagPath.split('/'), page.slug]} />
         <h1 id={slugify(page.title)} className="m-0!">{page.title}</h1>
       </Banner>
-      {infobox ? (
-        <div className="page-with-infobox">
-          <div className="page-main-content stack">{contentSection}</div>
-          <InfoboxSidebar block={infobox} />
+      <div className="page-with-infobox">
+        <div className="page-main-content stack">
+          <BlockRenderer content={mainBlocks} />
+          {isCommunityPage && <UserStats authorId={page.authorId} />}
+          <Discussion pageId={page.id} />
+          <PageNav adjacent={adjacent} />
         </div>
-      ) : (
-        contentSection
-      )}
+        <InfoboxSidebar block={infobox} metadata={page.metadata} tagPath={page.tagPath} />
+      </div>
     </article>
   );
 }

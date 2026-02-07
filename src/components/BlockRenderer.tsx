@@ -12,8 +12,9 @@ import { findTagByPath } from '@/lib/tags';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { usePages } from '@/hooks';
 import { Badge } from '@/components/ui';
-import type { WikiPage } from '@/types';
-import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock, InfoboxBlock, AtomicBlock } from '@/types/blocks';
+import type { WikiPage, PageMetadata } from '@/types';
+import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock } from '@/types/blocks';
+import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
 
 // ========== LAZY SHIKI HOOK ==========
 function useLazyShiki(containerRef: React.RefObject<HTMLElement | null>, hasCodeBlocks: boolean) {
@@ -162,9 +163,43 @@ function ColumnsBlockView({ block }: { block: ColumnsBlock }) {
   );
 }
 
-export function InfoboxSidebar({ block }: { block: InfoboxBlock }) {
+function linkify(v: string): string {
+  const href = /^https?:\/\//.test(v) ? v : `https://${v}`;
+  return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="link break-all">${v.replace(/^https?:\/\/(www\.)?/, '')}</a>`;
+}
+
+function formatMetadataValue(value: string, type: string): string {
+  if (type === 'date') {
+    const d = new Date(value);
+    if (!isNaN(d.getTime())) return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+  }
+  const isUrl = (v: string) => type === 'url' || /^https?:\/\//.test(v) || /^[^\s]+\.[a-z]{2,}(\/\S*)?$/i.test(v);
+  if (/<br\s*\/?>/.test(value)) {
+    return value.split(/<br\s*\/?>/).map(part => {
+      const trimmed = part.trim();
+      return trimmed ? (isUrl(trimmed) ? linkify(trimmed) : trimmed) : '';
+    }).join('<br>');
+  }
+  if (isUrl(value)) return linkify(value);
+  return value;
+}
+
+function buildMetadataBlock(metadata: PageMetadata, tagPath: string): ContentBlock | null {
+  const keys = getMetadataKeys(tagPath.split('/'));
+  if (!keys.length || !metadata) return null;
+  const entries = keys.filter(k => metadata[k.key]?.trim());
+  if (!entries.length) return null;
+  const rows = entries.map(({ key, label, type }) =>
+    `<tr><th>${label}</th><td>${formatMetadataValue(metadata[key], type)}</td></tr>`
+  ).join('');
+  return { id: '__metadata__', type: 'content', text: `<table>${rows}</table>` };
+}
+
+export function InfoboxSidebar({ block, metadata, tagPath }: { block: InfoboxBlock; metadata?: PageMetadata | null; tagPath?: string }) {
+  const metaBlock = metadata && tagPath ? buildMetadataBlock(metadata, tagPath) : null;
   return (
     <aside className="infobox stack">
+      {metaBlock && <div className="infobox-metadata">{renderBlockView(metaBlock)}</div>}
       {(block.blocks || []).map(b => <div key={b.id}>{renderBlockView(b)}</div>)}
     </aside>
   );

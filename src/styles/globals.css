@@ -58,7 +58,7 @@
   blockquote { @apply border-l-4 border-accent pl-4 py-1 italic text-text-muted; }
 
   table { @apply w-full border-collapse rounded-lg overflow-hidden; }
-  th, td { @apply border border-border-muted py-2 px-3 text-left align-top; }
+  th, td { border: 1px solid var(--color-border-muted); @apply py-2 px-3 text-left align-top; }
   th { @apply bg-surface-1 font-semibold; }
   td { @apply bg-surface-2; }
   tr:first-child :is(th, td):first-child { border-top-left-radius: var(--radius); }
@@ -183,6 +183,7 @@
   .infobox {
     @apply bg-surface-1 border border-border-muted rounded-lg overflow-hidden p-4;
     width: 100%;
+    th { @apply bg-surface-2; }
 
     @media (min-width: 768px) {
       position: sticky;
