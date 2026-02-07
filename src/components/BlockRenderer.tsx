@@ -57,7 +57,7 @@ function PageCard({ page, compact }: { page: WikiPage; compact?: boolean }) {
 
   if (compact) {
     return (
-      <Link href={href} className="group row p-3 surface hover:bg-surface-2 transition-colors">
+      <Link href={href} className="page-card-compact">
         {page.bannerImage ? <Image src={page.bannerImage} alt="" width={32} height={32} className="rounded object-cover shrink-0" /> : <FileText size={16} className="text-accent shrink-0" />}
         <span className="group-hover:text-accent transition-colors truncate">{page.title}</span>
       </Link>
@@ -66,18 +66,18 @@ function PageCard({ page, compact }: { page: WikiPage; compact?: boolean }) {
 
   return (
     <Link href={href} className="group">
-      <div className="surface-interactive h-full overflow-hidden">
+      <div className="page-card">
         {page.bannerImage ? (
-          <div className="aspect-4/1 overflow-hidden relative">
+          <div className="page-card-thumb">
             <Image src={page.bannerImage} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
           </div>
         ) : (
-          <div className="aspect-4/1 bg-surface-2 center"><FileText size={24} className="text-muted" /></div>
+          <div className="page-card-thumb-empty"><FileText size={24} className="text-muted" /></div>
         )}
-        <div className="stack-sm p-4">
-          <span className="font-medium group-hover:text-accent transition-colors truncate">{page.title}</span>
-          {page.excerpt && <p className="text-muted line-clamp-2 text-small">{page.excerpt}</p>}
-          <div className="row flex-wrap mt-auto pt-1">
+        <div className="page-card-body">
+          <span className="page-card-title">{page.title}</span>
+          {page.excerpt && <p className="page-card-excerpt">{page.excerpt}</p>}
+          <div className="page-card-meta">
             <small className="row text-muted"><Clock size={12} />{formatRelativeTime(page.updatedAt)}</small>
             {leafTag && <Badge variant="secondary" className="truncate max-w-full">{leafTag.name}</Badge>}
           </div>
@@ -90,9 +90,9 @@ function PageCard({ page, compact }: { page: WikiPage; compact?: boolean }) {
 // ========== BLOCK VIEW COMPONENTS ==========
 function RecentPagesBlockView({ block }: { block: RecentPagesBlock }) {
   const { pages, isLoading } = usePages({ type: 'recent', tagPath: block.tagPath, limit: block.limit });
-  if (isLoading) return <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{Array.from({ length: Math.min(block.limit, 3) }, (_, i) => <div key={i} className="h-32 skeleton" />)}</div>;
+  if (isLoading) return <div className="recent-pages-grid">{Array.from({ length: Math.min(block.limit, 3) }, (_, i) => <div key={i} className="h-32 skeleton" />)}</div>;
   if (!pages.length) return <p className="text-muted">No pages found.</p>;
-  return <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{pages.map(p => <PageCard key={p.id} page={p} />)}</div>;
+  return <div className="recent-pages-grid">{pages.map(p => <PageCard key={p.id} page={p} />)}</div>;
 }
 
 function PageListBlockView({ block }: { block: PageListBlock }) {
@@ -139,7 +139,7 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
   const isPositive = (data.change24h ?? 0) >= 0;
   const priceStr = data.price < 0.01 ? data.price.toFixed(6) : data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
   return (
-    <div className="surface p-4 flex items-center gap-4">
+    <div className="asset-price">
       <div className="stack-xs">
         <span className="text-small text-muted">${displayName}</span>
         <span className="text-h3 font-semibold">${priceStr}</span>
@@ -153,9 +153,9 @@ function ColumnsBlockView({ block }: { block: ColumnsBlock }) {
   const gapClass = { sm: 'gap-2', md: 'gap-4', lg: 'gap-6' }[block.gap || 'md'];
   const alignClass = { start: 'items-start', center: 'items-center', end: 'items-end', stretch: 'items-stretch' }[block.align || 'start'];
   return (
-    <div className={cn('flex flex-col md:flex-row', gapClass, alignClass)}>
+    <div className={cn('columns-layout', gapClass, alignClass)}>
       {block.columns.map(col => (
-        <div key={col.id} className="w-full md:flex-1 stack">
+        <div key={col.id} className="column-view">
           {(col.blocks || []).map(bl => <div key={bl.id}>{renderBlockView(bl)}</div>)}
         </div>
       ))}

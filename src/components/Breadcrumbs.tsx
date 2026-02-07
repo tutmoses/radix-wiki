@@ -22,7 +22,7 @@ export function Breadcrumbs({ path, suffix }: BreadcrumbsProps) {
         return (
           <span key={href} className="row">
             <span>/</span>
-            {isLast ? <span className="text-text capitalize">{label}</span> 
+            {isLast ? <span className="text-text capitalize">{label}</span>
               : <Link href={href} className="capitalize">{label}</Link>}
           </span>
         );

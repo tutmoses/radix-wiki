@@ -23,9 +23,9 @@ interface UserStatsData {
 
 function StatItem({ icon: Icon, label, value }: { icon: typeof FileText; label: string; value: number | string }) {
   return (
-    <div className="stack-xs items-center p-3 bg-surface-1 rounded-lg">
+    <div className="stat-card">
       <Icon size={20} className="text-accent" />
-      <span className="text-h4 font-semibold">{value}</span>
+      <span className="stat-value">{value}</span>
       <span className="text-small text-muted">{label}</span>
     </div>
   );
@@ -39,7 +39,7 @@ function ScoreRing({ score }: { score: number }) {
   const tierColor = score >= 80 ? 'text-success' : score >= 50 ? 'text-accent' : score >= 20 ? 'text-info' : 'text-muted';
 
   return (
-    <div className="stack items-center p-4 bg-surface-1 rounded-xl">
+    <div className="score-ring">
       <div className="relative w-24 h-24">
         <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
           <circle cx="50" cy="50" r={radius} fill="none" stroke="var(--color-surface-2)" strokeWidth="8" />
@@ -73,9 +73,9 @@ export function UserStats({ authorId }: { authorId: string }) {
 
   if (isLoading) {
     return (
-      <section className="stack-sm pt-6 border-t border-border">
+      <section className="section-divider stack-sm">
         <h3 className="text-muted">Statistics</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="stat-grid">
           {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-24 skeleton rounded-lg" />)}
         </div>
       </section>
@@ -85,9 +85,9 @@ export function UserStats({ authorId }: { authorId: string }) {
   if (!data) return null;
 
   return (
-    <section className="stack-sm pt-6 border-t border-border">
+    <section className="section-divider stack-sm">
       <h3 className="text-muted">Statistics</h3>
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="stat-grid">
         <ScoreRing score={data.score} />
         <StatItem icon={FileText} label="Pages" value={data.stats.pages} />
         <StatItem icon={Users} label="Contributions" value={data.stats.uniqueContributions} />

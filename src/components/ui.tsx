@@ -73,9 +73,9 @@ type BadgeVariant = 'default' | 'secondary' | 'success' | 'warning' | 'danger';
 const badgeVariants: Record<BadgeVariant, string> = {
   default: 'badge-accent',
   secondary: '',
-  success: 'bg-success/15 text-success',
-  warning: 'bg-warning/15 text-warning',
-  danger: 'bg-error/15 text-error',
+  success: 'badge-success',
+  warning: 'badge-warning',
+  danger: 'badge-danger',
 };
 
 export function Badge({ className, variant = 'default', ...props }: HTMLAttributes<HTMLSpanElement> & { variant?: BadgeVariant }) {
@@ -91,7 +91,7 @@ export function Spinner({ size = 'md', className }: { size?: 'sm' | 'md' | 'lg';
 
 export function LoadingScreen({ message = 'Loading...' }: { message?: string }) {
   return (
-    <div className="center min-h-100">
+    <div className="loading-screen">
       <div className="stack-sm items-center"><Spinner size="lg" /><p className="text-muted">{message}</p></div>
     </div>
   );

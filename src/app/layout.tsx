@@ -41,12 +41,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init();`}
         </Script>
         <RadixProvider>
-          <div className="min-h-screen bg-surface-0">
+          <div className="app-shell">
             <Header />
-            <div className="flex">
+            <div className="app-body">
               <Sidebar />
-              <main className="min-h-[calc(100dvh-var(--header-height))] flex-1 min-w-0 transition-all duration-200">
-                <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8">{children}</div>
+              <main className="app-main">
+                <div className="app-content">{children}</div>
               </main>
             </div>
           </div>

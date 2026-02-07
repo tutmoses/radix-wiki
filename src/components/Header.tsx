@@ -15,20 +15,20 @@ import type { WikiPage } from '@/types';
 function usePageContext() {
   const pathname = usePathname();
   const { isAuthenticated } = useAuth();
-  
+
   const segments = pathname.split('/').filter(Boolean);
   const last = segments[segments.length - 1];
   const isEdit = last === 'edit';
   const isHistory = last === 'history';
   const viewSegs = (isEdit || isHistory) ? segments.slice(0, -1) : segments;
-  
+
   const isHomepage = viewSegs.length === 0;
   const isPage = !isHomepage && !isValidTagPath(viewSegs) && viewSegs.length >= 2;
   const viewPath = isHomepage ? '/' : `/${viewSegs.join('/')}`;
-  
+
   const tagPath = isPage ? viewSegs.slice(0, -1).join('/') : null;
   const slug = isPage ? viewSegs[viewSegs.length - 1] : null;
-  
+
   const mdxPath = (isHomepage || isPage) ? (isHomepage ? '/api/wiki/mdx' : `/api/wiki/${tagPath}/${slug}/mdx`) : null;
 
   return {
@@ -165,28 +165,28 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-surface-0/80 backdrop-blur-md border-b border-border-muted">
-      <div className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="row h-[var(--header-height)]">
+    <header className="header">
+      <div className="header-inner">
+        <div className="header-bar">
           <button onClick={toggleSidebar} className="icon-btn" aria-label="Toggle menu">
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
           <Link href="/" className="row shrink-0">
-            <div className="center w-8 h-8 rounded-md bg-accent text-text-inverted"><BookOpen size={18} /></div>
-            <span className="font-semibold text-lg hidden sm:block">RADIX Wiki</span>
+            <div className="logo-mark"><BookOpen size={18} /></div>
+            <span className="logo-text">RADIX Wiki</span>
           </Link>
 
-          <div className="row ml-auto">
+          <div className="header-actions">
             <button onClick={() => setShowSearch(!showSearch)} className="icon-btn" aria-label="Search"><Search size={20} /></button>
-            
+
             {canShowInfo && pageData && (
               <div className="relative">
                 <button onClick={() => setShowInfo(!showInfo)} className="icon-btn" aria-label="Page info"><Info size={20} /></button>
                 {showInfo && <PageInfoDropdown page={pageData} onClose={() => setShowInfo(false)} />}
               </div>
             )}
-            
+
             {canExportMdx && mdxPath && <a href={mdxPath} className="icon-btn" aria-label="Download MDX" download><FileCode size={20} /></a>}
             {canEdit && <Link href={editPath} className="icon-btn" aria-label="Edit page"><Edit size={20} /></Link>}
             {canShowHistory && historyPath && <Link href={historyPath} className="icon-btn" aria-label="Page history"><History size={20} /></Link>}
@@ -194,20 +194,20 @@ export function Header() {
 
             <div id="radix-connect-btn" className="relative">
               {isLoading ? (
-                <div className="row surface px-3 py-1.5"><Loader2 size={14} className="animate-spin" /><span className="hidden sm:inline">Connecting...</span></div>
+                <div className="user-pill-loading"><Loader2 size={14} className="animate-spin" /><span className="hidden-mobile">Connecting...</span></div>
               ) : showAsConnected ? (
                 <>
-                  <button onClick={() => setShowUserMenu(!showUserMenu)} className="row surface px-2 sm:px-3 py-1.5 hover:bg-surface-2 transition-colors">
-                    <div className="w-2 h-2 rounded-full bg-success" />
-                    <span className="font-medium hidden sm:inline">{displayName}</span>
+                  <button onClick={() => setShowUserMenu(!showUserMenu)} className="user-pill">
+                    <div className="user-dot" />
+                    <span className="font-medium hidden-mobile">{displayName}</span>
                     <ChevronDown size={14} className={cn('transition-transform', showUserMenu && 'rotate-180')} />
                   </button>
                   {showUserMenu && <UserMenuDropdown onClose={() => setShowUserMenu(false)} onLogout={handleLogout} />}
                 </>
               ) : (
                 <Button variant="primary" size="sm" onClick={connect}>
-                  <span className="hidden sm:inline">Connect Wallet</span>
-                  <span className="sm:hidden">Connect</span>
+                  <span className="hidden-mobile">Connect Wallet</span>
+                  <span className="hidden-desktop">Connect</span>
                 </Button>
               )}
             </div>
@@ -215,18 +215,18 @@ export function Header() {
         </div>
 
         {showSearch && (
-          <div ref={searchRef} className="pb-4 animate-[slide-up_0.3s_ease-out]">
+          <div ref={searchRef} className="search-panel">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={18} />
+              <Search className="search-icon-left" size={18} />
               <input ref={searchInputRef} type="search" placeholder="Search pages..." className="input pl-10" value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && searchResults.length) handleSearchSelect(searchResults[0]); else if (e.key === 'Escape') { setShowSearch(false); setSearchQuery(''); setSearchResults([]); } }} />
-              {isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted animate-spin" size={18} />}
-              
+              {isSearching && <Loader2 className="search-icon-right" size={18} />}
+
               {searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-surface-1 border border-border rounded-lg shadow overflow-hidden z-50">
+                <div className="search-results">
                   {searchResults.map(page => (
-                    <button key={page.id} onClick={() => handleSearchSelect(page)} className="w-full row p-3 hover:bg-surface-2 transition-colors text-left">
+                    <button key={page.id} onClick={() => handleSearchSelect(page)} className="search-result">
                       <FileText size={16} className="text-accent shrink-0" />
                       <div className="min-w-0 flex-1">
                         <div className="font-medium truncate">{page.title}</div>
@@ -236,10 +236,10 @@ export function Header() {
                   ))}
                 </div>
               )}
-              
+
               {searchQuery.trim() && !isSearching && searchResults.length === 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-surface-1 border border-border rounded-lg shadow p-4 text-center text-muted z-50">
-                  No pages found for "{searchQuery}"
+                <div className="search-empty">
+                  No pages found for &ldquo;{searchQuery}&rdquo;
                 </div>
               )}
             </div>

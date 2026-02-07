@@ -124,10 +124,50 @@ Pages are organized under tag paths (e.g., `contents/tech/core-concepts`). Some 
 
 ## Styling Conventions
 
-Design system defined in `globals.css`:
+All styling is centralized in `globals.css` via `@layer base` and `@layer components`. **Never use inline Tailwind utility combinations in components** — instead, define a semantic component class in `globals.css` and reference it by name.
+
+### Rules
+- **No inline Tailwind compositions**: If a pattern uses 3+ utilities together, it must be a named class in `globals.css`
+- **Tailwind utilities are OK** for one-off modifiers (e.g., `className="mt-2"`, `className="text-center"`) and conditional composition via `cn()`
+- **New components** → add their classes to `globals.css` under `@layer components` in the appropriate section
+- **Theme tokens** live in the `@theme` block — never hardcode colors or spacing outside of it
+
+### Theme Tokens (`@theme`)
 - Dark mode default (`surface-0: #393e50`)
 - Accent color: coral/pink (`#ff9da0`)
-- Utility classes: `.center`, `.row`, `.stack-sm`, `.surface-interactive`
+- Typography scale: `--text-h1` through `--text-small`
+- Layout: `--header-height`, `--sidebar-width`, `--infobox-width`
+
+### Component Class Catalog
+Classes are organized by section in `globals.css`:
+
+| Section | Key Classes |
+|---------|-------------|
+| Layout | `.stack`, `.stack-sm`, `.stack-xs`, `.row`, `.row-md`, `.spread`, `.center` |
+| Surfaces | `.surface`, `.surface-interactive`, `.panel` |
+| Forms | `.input`, `.input-ghost`, `.icon-btn` |
+| App Shell | `.app-shell`, `.app-body`, `.app-main`, `.app-content` |
+| Header | `.header`, `.header-inner`, `.header-bar`, `.logo-mark`, `.logo-text`, `.header-actions`, `.user-pill`, `.user-dot` |
+| Search | `.search-panel`, `.search-results`, `.search-result`, `.search-empty` |
+| Sidebar | `.sidebar`, `.sidebar-open`, `.sidebar-closed`, `.sidebar-scroll`, `.sidebar-label` |
+| Nav | `.nav-item`, `.nav-item-active`, `.nav-link`, `.nav-link-active`, `.toc-btn`, `.toc-item` |
+| Banner | `.banner-container`, `.banner-empty`, `.banner-overlay`, `.banner-actions`, `.banner-action-btn` |
+| Page Card | `.page-card`, `.page-card-thumb`, `.page-card-body`, `.page-card-title`, `.page-card-compact` |
+| Page Nav | `.page-nav`, `.page-nav-link`, `.page-nav-label`, `.page-nav-title` |
+| Status | `.status-icon`, `.empty-state`, `.empty-surface` |
+| Grids | `.category-grid`, `.stat-grid`, `.recent-pages-grid` |
+| Stats | `.stat-card`, `.stat-value`, `.score-ring` |
+| Toolbar | `.toolbar`, `.toolbar-btn`, `.toolbar-btn-active`, `.toolbar-divider` |
+| Editor | `.tiptap-field`, `.edit-wrapper`, `.block-wrapper`, `.insert-btn`, `.column-editor` |
+| Toggles | `.toggle-group`, `.toggle-option`, `.toggle-option-active` |
+| Code Lang | `.lang-selector`, `.lang-btn`, `.lang-dropdown`, `.lang-option` |
+| Metadata | `.metadata-panel`, `.metadata-grid`, `.rich-input` |
+| Badges | `.badge`, `.badge-accent`, `.badge-success`, `.badge-warning`, `.badge-danger` |
+| Discussion | `.comment-thread`, `.comment-action`, `.comment-delete` |
+| History | `.diff-added`, `.diff-removed`, `.revision-current`, `.restore-btn` |
+| Layout | `.page-with-infobox`, `.columns-layout`, `.column-view`, `.section-divider`, `.footer` |
+| Loading | `.skeleton`, `.spinner`, `.loading-screen` |
+| Responsive | `.hidden-mobile`, `.hidden-desktop` |
 
 ## Code Conventions
 

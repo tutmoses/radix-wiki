@@ -143,14 +143,14 @@ function CodeBlockView({ node, updateAttributes }: { node: any; updateAttributes
 
   return (
     <NodeViewWrapper className="code-block-wrapper relative">
-      <div ref={dropdownRef} className="absolute top-2 right-2 z-10">
-        <button onClick={() => setShowLangs(!showLangs)} className="row gap-1 px-2 py-1 bg-surface-2/80 hover:bg-surface-2 rounded text-xs text-muted hover:text-text transition-colors backdrop-blur-sm">
+      <div ref={dropdownRef} className="lang-selector">
+        <button onClick={() => setShowLangs(!showLangs)} className="lang-btn">
           <Code size={12} /><span>{lang}</span><ChevronDown size={12} className={cn('transition-transform', showLangs && 'rotate-180')} />
         </button>
         {showLangs && (
-          <div className="absolute top-full right-0 mt-1 bg-surface-1 border border-border rounded shadow-lg max-h-48 overflow-y-auto min-w-28 z-50">
+          <div className="lang-dropdown">
             {SHIKI_LANGS.map(l => (
-              <button key={l} onClick={() => { updateAttributes({ language: l }); setShowLangs(false); }} className={cn('w-full px-3 py-1.5 text-left text-xs hover:bg-surface-2 transition-colors flex items-center justify-between', l === lang && 'text-accent')}>
+              <button key={l} onClick={() => { updateAttributes({ language: l }); setShowLangs(false); }} className={cn('lang-option', l === lang && 'lang-option-active')}>
                 {l}{l === lang && <Check size={12} />}
               </button>
             ))}
@@ -263,21 +263,21 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
     <div className="stack-sm">
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" className="hidden" onChange={handleFileChange} />
       {editor && (
-        <div className="sticky top-[var(--header-height)] z-40 flex flex-wrap gap-0.5 p-1 bg-surface-1 border border-border-muted rounded-md mb-2">
+        <div className="toolbar">
           {TOOLBAR_BUTTONS.map(({ key, icon: Icon, active, action }) => (
-            <button key={key} type="button" onClick={() => action(editor, () => fileInputRef.current?.click())} className={cn('p-1.5 rounded transition-colors', isActive(active) ? 'bg-accent text-text-inverted' : 'text-muted hover:bg-surface-2 hover:text-text')} title={key}><Icon size={14} /></button>
+            <button key={key} type="button" onClick={() => action(editor, () => fileInputRef.current?.click())} className={isActive(active) ? 'toolbar-btn-active' : 'toolbar-btn'} title={key}><Icon size={14} /></button>
           ))}
           {editor.isActive('table') && (
             <>
-              <div className="w-px h-6 bg-border-muted mx-1 self-center" />
+              <div className="toolbar-divider" />
               {TABLE_ACTIONS.map(([cmd, txt, danger]) => (
-                <button key={cmd} type="button" onClick={() => (editor.chain().focus() as any)[cmd]().run()} className={cn('p-1.5 rounded text-muted hover:bg-surface-2 text-xs', danger && 'hover:text-error')}>{txt}</button>
+                <button key={cmd} type="button" onClick={() => (editor.chain().focus() as any)[cmd]().run()} className={cn('toolbar-btn text-xs', danger && 'hover:text-error')}>{txt}</button>
               ))}
             </>
           )}
         </div>
       )}
-      <div className={cn('tiptap-editor bg-surface-0 border border-border rounded-md p-3 min-h-20 focus-within:border-accent focus-within:ring-2 focus-within:ring-accent-muted', isUploading && 'opacity-50 pointer-events-none')}>
+      <div className={cn('tiptap-editor tiptap-field', isUploading && 'tiptap-field-disabled')}>
         <EditorContent editor={editor} />
         {isUploading && <div className="text-center text-muted text-small py-2">Uploading image...</div>}
       </div>
@@ -287,7 +287,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
 
 // ========== EDIT COMPONENTS ==========
 function EditWrapper({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: ReactNode }) {
-  return <div className="stack surface p-4 border-dashed"><div className="row text-muted"><Icon size={18} /><span className="font-medium">{label}</span></div>{children}</div>;
+  return <div className="edit-wrapper"><div className="edit-wrapper-label"><Icon size={18} /><span className="font-medium">{label}</span></div>{children}</div>;
 }
 
 type BlockProps<T extends Block> = { block: T; onUpdate?: (b: T) => void };
@@ -336,11 +336,11 @@ function InfoboxBlockEdit({ block, onUpdate }: BlockProps<InfoboxBlock>) {
   const handleBlockUpdate = useCallback((i: number, b: Block) => update(i, b as AtomicBlock), [update]);
 
   return (
-    <div className="stack surface p-4 border-dashed">
-      <div className="row text-muted"><Info size={18} /><span className="font-medium">Sidebar Content</span></div>
+    <div className="edit-wrapper">
+      <div className="edit-wrapper-label"><Info size={18} /><span className="font-medium">Sidebar Content</span></div>
       <div className="stack-sm">
         {(block.blocks?.length ?? 0) === 0 ? (
-          <div className="py-4 text-center"><p className="text-muted text-small mb-2">Empty sidebar</p><InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
+          <div className="empty-state"><p className="text-muted text-small mb-2">Empty sidebar</p><InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
         ) : (
           <>
             {(block.blocks || []).map((b, i) => <BlockWrapper key={b.id} block={b} index={i} total={(block.blocks || []).length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={handleBlockUpdate} onDelete={remove} onDuplicate={duplicate} onMove={move} compact />)}
@@ -372,9 +372,9 @@ function ColumnsBlockEdit({ block, onUpdate }: BlockProps<ColumnsBlock>) {
         </div>
       </div>
       {showSettings && (
-        <div className="row-md p-3 bg-surface-2 rounded-lg">
-          <div className="row"><span className="text-small text-muted">Gap:</span><div className="row wrap">{gaps.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, gap: opt })} className={cn('px-3 py-1 rounded-md border capitalize', (block.gap || 'md') === opt ? 'bg-accent text-text-inverted border-accent' : 'border-border hover:bg-surface-2')}>{opt}</button>)}</div></div>
-          <div className="row"><span className="text-small text-muted">Align:</span><div className="row wrap">{aligns.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, align: opt })} className={cn('px-3 py-1 rounded-md border capitalize', (block.align || 'start') === opt ? 'bg-accent text-text-inverted border-accent' : 'border-border hover:bg-surface-2')}>{opt}</button>)}</div></div>
+        <div className="toggle-group">
+          <div className="row"><span className="text-small text-muted">Gap:</span><div className="row wrap">{gaps.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, gap: opt })} className={(block.gap || 'md') === opt ? 'toggle-option-active' : 'toggle-option'}>{opt}</button>)}</div></div>
+          <div className="row"><span className="text-small text-muted">Align:</span><div className="row wrap">{aligns.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, align: opt })} className={(block.align || 'start') === opt ? 'toggle-option-active' : 'toggle-option'}>{opt}</button>)}</div></div>
         </div>
       )}
       <div className={cn('flex', gapClass)}>{block.columns.map((col, i) => <ColumnEditor key={col.id} column={col} onUpdate={c => updateColumn(i, c)} onDelete={() => deleteColumn(i)} canDelete={block.columns.length > 1} />)}</div>
@@ -406,8 +406,8 @@ function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Colum
   const handleUpdate = useCallback((i: number, b: Block) => update(i, b as AtomicBlock), [update]);
 
   return (
-    <div className="flex-1 stack-sm p-3 bg-surface-1/50 border border-dashed border-border-muted rounded-lg">
-      <div className="spread"><span className="text-small text-muted uppercase tracking-wide">Column</span>{canDelete && <button onClick={onDelete} className="icon-btn p-1 text-muted hover:text-error"><Trash2 size={14} /></button>}</div>
+    <div className="column-editor">
+      <div className="spread"><span className="column-header">Column</span>{canDelete && <button onClick={onDelete} className="icon-btn p-1 text-muted hover:text-error"><Trash2 size={14} /></button>}</div>
       {(column.blocks?.length ?? 0) === 0 ? (
         <div className="py-6 text-center"><p className="text-muted text-small mb-2">Empty column</p><InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
       ) : (
@@ -435,7 +435,7 @@ function InsertButton({ onInsert, compact, blockTypes = INSERTABLE_BLOCKS }: { o
   const [showMenu, setShowMenu] = useState(false);
   return (
     <div className="relative center">
-      <button onClick={() => setShowMenu(!showMenu)} className={cn('row text-muted hover:text-text border border-dashed border-border-muted hover:border-border rounded-md transition-colors', compact ? 'px-2 py-1 text-small rounded' : 'px-3 py-1.5')}>
+      <button onClick={() => setShowMenu(!showMenu)} className={compact ? 'insert-btn-compact' : 'insert-btn'}>
         <Plus size={compact ? 14 : 16} /><span>{compact ? 'Add' : 'Add block'}</span>
       </button>
       {showMenu && (
@@ -462,17 +462,21 @@ const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelecte
   const handleMoveDown = useCallback(() => onMove(index, index + 1), [onMove, index]);
 
   if (!meta) return (
-    <div className={cn('rounded border border-warning/50 bg-warning/10', compact ? 'p-3' : 'p-4 rounded-lg')}>
+    <div className={cn('block-unknown', compact ? 'p-3' : 'p-4 rounded-lg')}>
       <div className="spread mb-2"><span className={cn('text-warning', compact ? 'text-small' : 'font-medium')}>Unknown block: {block.type}</span><button onClick={e => { e.stopPropagation(); handleDelete(); }} className="icon-btn p-1 text-muted hover:text-error"><Trash2 size={iconSize} /></button></div>
     </div>
   );
   const Icon = meta.icon;
   const isContainer = block.type === 'columns' || block.type === 'infobox';
   return (
-    <div onClick={handleSelect} className={cn('group relative transition-colors', compact ? cn('p-3 rounded-md border', isSelected ? 'border-accent bg-accent/5' : 'border-transparent hover:border-border-muted hover:bg-surface-2/50') : cn('p-4 rounded-lg border', isSelected ? 'border-accent bg-accent/5' : 'border-border-muted hover:border-border', isContainer && 'bg-surface-1/30'))}>
+    <div onClick={handleSelect} className={cn(
+      compact
+        ? (isSelected ? 'block-wrapper-compact-selected' : 'block-wrapper-compact')
+        : (isSelected ? 'block-wrapper-selected' : cn('block-wrapper', isContainer && 'block-wrapper-container'))
+    )}>
       <div className={cn('spread', compact ? 'mb-2' : 'mb-3')}>
-        <div className="row">{!(compact || isContainer) && <div className="row text-muted"><Icon size={18} /><span className="text-small font-medium uppercase">{meta.label}</span></div>}</div>
-        <div className="row opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="row">{!(compact || isContainer) && <div className="block-label"><Icon size={18} /><span className="block-label-text">{meta.label}</span></div>}</div>
+        <div className="block-actions">
           <button onClick={e => { e.stopPropagation(); handleMoveUp(); }} disabled={index === 0} className="icon-btn p-1 text-muted disabled:opacity-30"><ChevronUp size={iconSize} /></button>
           <button onClick={e => { e.stopPropagation(); handleMoveDown(); }} disabled={index === total - 1} className="icon-btn p-1 text-muted disabled:opacity-30"><ChevronDown size={iconSize} /></button>
           {!compact && <button onClick={e => { e.stopPropagation(); handleDuplicate(); }} className="icon-btn p-1 text-muted" title="Duplicate"><Copy size={iconSize} /></button>}
@@ -487,7 +491,7 @@ const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelecte
 // ========== PUBLIC API ==========
 export function BlockEditor({ content, onChange }: { content: Block[]; onChange: (content: Block[]) => void }) {
   const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(content, onChange);
-  if (content.length === 0) return <div className="stack items-center py-12 text-center"><p className="text-muted">No content yet. Add your first block!</p><InsertButton onInsert={insert} /></div>;
+  if (content.length === 0) return <div className="stack items-center empty-state"><p className="text-muted">No content yet. Add your first block!</p><InsertButton onInsert={insert} /></div>;
   return (
     <div className="stack">
       {content.map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={content.length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={update} onDelete={remove} onDuplicate={duplicate} onMove={move} />)}

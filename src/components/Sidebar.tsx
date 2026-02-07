@@ -12,7 +12,7 @@ import { getVisibleTags, isValidTagPath, type TagNode } from '@/lib/tags';
 
 function NavItem({ href, icon, label, isActive }: { href: string; icon: React.ReactNode; label: string; isActive?: boolean }) {
   return (
-    <Link href={href} className={cn('row px-3 py-2 rounded-md transition-colors', isActive ? 'bg-accent-muted text-accent font-medium' : 'text-muted hover:bg-surface-2 hover:text-text')}>
+    <Link href={href} className={isActive ? 'nav-item-active' : 'nav-item'}>
       {icon}<span>{label}</span>
     </Link>
   );
@@ -29,7 +29,7 @@ function TagNavItem({ node, parentPath, pathname, depth }: { node: TagNode; pare
     <div className={cn(depth > 0 && 'ml-3')}>
       <div className="row">
         {hasChildren && <button onClick={() => setIsExpanded(!isExpanded)} className="icon-btn p-1 text-muted">{isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button>}
-        <Link href={href} className={cn('flex-1 row px-2 py-1.5 rounded-md transition-colors', isActive ? 'bg-accent-muted text-accent font-medium' : 'text-muted hover:bg-surface-2 hover:text-text', !hasChildren && 'ml-5')}>{node.name}</Link>
+        <Link href={href} className={cn(isActive ? 'nav-link-active' : 'nav-link', !hasChildren && 'ml-5')}>{node.name}</Link>
       </div>
       {hasChildren && isExpanded && <div className="mt-1">{node.children!.map(child => <TagNavItem key={child.slug} node={child} parentPath={currentPath} pathname={pathname} depth={depth + 1} />)}</div>}
     </div>
@@ -61,10 +61,10 @@ function TableOfContents() {
 
   return (
     <div className="stack-sm">
-      <button onClick={() => setIsExpanded(!isExpanded)} className="row px-3 py-2 text-muted hover:text-text transition-colors w-full">
+      <button onClick={() => setIsExpanded(!isExpanded)} className="toc-btn">
         {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         <ListTree size={16} />
-        <span className="text-small font-medium uppercase tracking-wide">On This Page</span>
+        <span className="toc-label">On This Page</span>
       </button>
       {isExpanded && (
         <nav className="stack-xs pl-4">
@@ -72,7 +72,7 @@ function TableOfContents() {
             <button
               key={i}
               onClick={() => document.getElementById(h.id)?.scrollIntoView({ behavior: 'smooth' })}
-              className="text-left text-small text-muted hover:text-accent transition-colors py-1 px-2 rounded truncate"
+              className="toc-item"
               style={{ paddingLeft: `${(h.level - 1) * 0.75}rem` }}
             >
               {h.text}
@@ -103,22 +103,22 @@ export function Sidebar() {
   const showToc = (isHomepage || isPage) && !isEdit && !isHistory;
 
   return (
-    <aside className={cn('sticky top-[var(--header-height)] h-[calc(100dvh-var(--header-height))] bg-surface-0 border-r border-border-muted shrink-0 transition-all duration-200 overflow-hidden', sidebarOpen ? 'w-[var(--sidebar-width)]' : 'w-0')}>
-      <div className="flex flex-col h-full overflow-y-auto w-[var(--sidebar-width)] pb-24">
+    <aside className={cn('sidebar', sidebarOpen ? 'sidebar-open' : 'sidebar-closed')}>
+      <div className="sidebar-scroll">
         <div className="stack-sm p-4">
           <nav className="stack-sm">
             <NavItem href="/" icon={<Home size={18} />} label="Home" isActive={pathname === '/'} />
           </nav>
         </div>
-        
+
         {showToc && (
           <div className="px-4 pb-4 border-b border-border-muted">
             <TableOfContents />
           </div>
         )}
-        
+
         <div className="stack-sm p-4 flex-1">
-          <span className="text-small text-muted font-medium uppercase tracking-wide px-3">Categories</span>
+          <span className="sidebar-label">Categories</span>
           <nav className="stack-sm">
             {visibleTags.map(node => <TagNavItem key={node.slug} node={node} parentPath="" pathname={pathname} depth={0} />)}
           </nav>

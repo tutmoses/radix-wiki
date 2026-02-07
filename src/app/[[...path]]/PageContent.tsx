@@ -54,7 +54,7 @@ export function StatusCard({ status, backHref }: { status: keyof typeof STATUS; 
     <div className="center">
       <Card className="text-center max-w-md">
         <div className="stack items-center py-12">
-          <div className="center w-16 h-16 rounded-2xl bg-surface-2 text-muted"><FileText size={32} /></div>
+          <div className="status-icon"><FileText size={32} /></div>
           <h1>{title}</h1>
           <p className="text-muted">{message}</p>
           <Link href={backHref}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link>
@@ -79,17 +79,17 @@ function PageNav({ adjacent }: { adjacent: AdjacentPages }) {
   const { prev, next } = adjacent;
   if (!prev && !next) return null;
   return (
-    <nav className="pt-8 border-t border-border grid grid-cols-2 gap-4">
+    <nav className="page-nav">
       {prev ? (
-        <Link href={`/${prev.tagPath}/${prev.slug}`} className="group stack-sm p-4 rounded-lg bg-surface-1 hover:bg-surface-2 transition-colors">
-          <span className="row text-muted text-small"><ArrowLeft size={14} />Previous</span>
-          <span className="font-medium group-hover:text-accent transition-colors line-clamp-1">{prev.title}</span>
+        <Link href={`/${prev.tagPath}/${prev.slug}`} className="page-nav-link">
+          <span className="page-nav-label"><ArrowLeft size={14} />Previous</span>
+          <span className="page-nav-title">{prev.title}</span>
         </Link>
       ) : <div />}
       {next && (
-        <Link href={`/${next.tagPath}/${next.slug}`} className="group stack-sm p-4 rounded-lg bg-surface-1 hover:bg-surface-2 transition-colors text-right">
-          <span className="row justify-end text-muted text-small">Next<ArrowRight size={14} /></span>
-          <span className="font-medium group-hover:text-accent transition-colors line-clamp-1">{next.title}</span>
+        <Link href={`/${next.tagPath}/${next.slug}`} className="page-nav-link text-right">
+          <span className="page-nav-label justify-end">Next<ArrowRight size={14} /></span>
+          <span className="page-nav-title">{next.title}</span>
         </Link>
       )}
     </nav>
@@ -119,9 +119,9 @@ function Banner({ src, editable, onUpload, onRemove, children }: { src?: string 
 
   if (editable && !src) {
     return (
-      <div className="banner-container border-2 border-dashed border-border-muted rounded-lg bg-surface-1/50">
+      <div className="banner-empty">
         {FileInput}
-        <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="w-full h-full center text-muted hover:text-text hover:bg-surface-2/50 transition-colors">
+        <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="banner-upload-btn">
           <div className="stack-sm items-center"><ImageIcon size={32} /><span>{isUploading ? 'Uploading...' : 'Add Banner Image'}</span></div>
         </button>
         {children && <div className="banner-overlay">{children}</div>}
@@ -132,14 +132,14 @@ function Banner({ src, editable, onUpload, onRemove, children }: { src?: string 
   if (!src && !children) return null;
 
   return (
-    <div className="banner-container relative rounded-lg overflow-hidden">
-      {src ? <Image src={src} alt="Page banner" fill className="banner-image object-cover" sizes="100vw" priority /> : <div className="banner-placeholder" />}
+    <div className="banner-container">
+      {src ? <Image src={src} alt="Page banner" fill className="banner-image" sizes="100vw" priority /> : <div className="banner-placeholder" />}
       {children && <div className="banner-overlay">{children}</div>}
       {editable && (
-        <div className="absolute top-2 right-2 row z-10">
+        <div className="banner-actions">
           {FileInput}
-          <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="icon-btn bg-surface-0/80 backdrop-blur-sm" title="Change banner"><Upload size={16} /></button>
-          {onRemove && src && <button onClick={onRemove} className="icon-btn bg-surface-0/80 backdrop-blur-sm text-error hover:text-error" title="Remove banner"><X size={16} /></button>}
+          <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="banner-action-btn" title="Change banner"><Upload size={16} /></button>
+          {onRemove && src && <button onClick={onRemove} className="banner-action-btn text-error hover:text-error" title="Remove banner"><X size={16} /></button>}
         </div>
       )}
     </div>
@@ -257,18 +257,18 @@ export function CategoryView({ tagPath, pages }: { tagPath: string[]; pages: Wik
         )}
       </div>
       {pages.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="category-grid">
           {pages.map(p => (
             <Link key={p.id} href={`/${p.tagPath}/${p.slug}`}>
               <Card interactive className="h-full overflow-hidden p-0!">
                 {p.bannerImage ? (
-                  <div className="aspect-4/1 overflow-hidden relative">
+                  <div className="page-card-thumb">
                     <Image src={p.bannerImage} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
                   </div>
                 ) : (
-                  <div className="aspect-4/1 bg-surface-2 center"><FileText size={24} className="text-muted" /></div>
+                  <div className="page-card-thumb-empty"><FileText size={24} className="text-muted" /></div>
                 )}
-                <div className="stack-sm p-4">
+                <div className="page-card-body">
                   <h3 className="m-0!">{p.title}</h3>
                   {p.excerpt && <p className="text-muted text-small line-clamp-2">{p.excerpt}</p>}
                 </div>
@@ -277,7 +277,7 @@ export function CategoryView({ tagPath, pages }: { tagPath: string[]; pages: Wik
           ))}
         </div>
       ) : (
-        <Card className="text-center py-12">
+        <Card className="empty-state">
           <p className="text-muted">No pages in this category yet.</p>
           {canCreatePages && <small className="mt-2 block">Click "New Page" above to create one.</small>}
         </Card>
@@ -325,7 +325,7 @@ function RichInput({ value, onChange, placeholder }: { value: string; onChange: 
       onInput={() => onChangeRef.current(ref.current?.innerHTML || '')}
       onPaste={handlePaste}
       data-placeholder={placeholder}
-      className="input min-h-9 [&:empty]:before:content-[attr(data-placeholder)] [&:empty]:before:text-muted [&_a]:text-accent [&_a]:underline"
+      className="rich-input"
     />
   );
 }
@@ -338,9 +338,9 @@ function MetadataFields({ metadataKeys, metadata, onChange }: { metadataKeys: Me
   };
 
   return (
-    <div className="stack-sm p-4 rounded-lg bg-surface-1 border border-border">
+    <div className="metadata-panel">
       <h4 className="text-small font-medium text-muted m-0!">Page Metadata</h4>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="metadata-grid">
         {metadataKeys.map(({ key, label, type, required, options }) => (
           <div key={key} className="stack-xs">
             <label className="text-small font-medium">
@@ -480,7 +480,7 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
         </aside>
       </div>
       {isAuthor && !isCreating && (
-        <div className="pt-6 border-t border-border">
+        <div className="section-divider">
           <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isDeleting} className="text-error hover:bg-error/10">
             <Trash2 size={16} />{isDeleting ? 'Deleting...' : 'Delete Page'}
           </Button>

@@ -63,13 +63,13 @@ function ContentDiff({ from, to }: { from: string; to: string }) {
   return (
     <div className="mt-1 stack-xs text-xs">
       {diff.removed.length > 0 && (
-        <div className="row gap-2 items-start">
+        <div className="diff-removed">
           <Minus size={10} className="text-error mt-0.5 shrink-0" />
           <span className="text-error/80 line-through">{diff.removed.join(' … ')}</span>
         </div>
       )}
       {diff.added.length > 0 && (
-        <div className="row gap-2 items-start">
+        <div className="diff-added">
           <Plus size={10} className="text-success mt-0.5 shrink-0" />
           <span className="text-success">{diff.added.join(' … ')}</span>
         </div>
@@ -81,7 +81,7 @@ function ContentDiff({ from, to }: { from: string; to: string }) {
 function formatBlockPath(path: string, type: string): string {
   const parts = path.replace('root.', '').split('.');
   const segments: string[] = [];
-  
+
   for (let i = 0; i < parts.length; i++) {
     if (parts[i] === 'columns' && parts[i + 1] !== undefined) {
       segments.push(`Col ${parseInt(parts[i + 1]) + 1}`);
@@ -93,7 +93,7 @@ function formatBlockPath(path: string, type: string): string {
       segments.push(`Block ${parseInt(parts[i]) + 1}`);
     }
   }
-  
+
   const location = segments.length ? segments.join(' → ') : 'root';
   const typeLabel = type === 'content' ? 'Text' : type === 'recentPages' ? 'Recent Pages' : type === 'pageList' ? 'Page List' : type === 'assetPrice' ? 'Asset Price' : type === 'columns' ? 'Columns' : type;
   return `${typeLabel} at ${location}`;
@@ -140,7 +140,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
     return (
       <div className="stack">
         {!isHomepage && <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix="History" />}
-        <div className="surface p-12 text-center rounded-lg"><p className="text-error">Page not found</p></div>
+        <div className="empty-surface"><p className="text-error">Page not found</p></div>
       </div>
     );
   }
@@ -184,7 +184,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                 const isExpanded = expandedId === rev.id;
                 return (
                   <Fragment key={rev.id}>
-                    <tr className={cn('border-t border-border-muted hover:bg-surface-1/50', isCurrent && 'bg-accent/5', i === 0 && '[&>td]:rounded-none')}>
+                    <tr className={cn('border-t border-border-muted hover:bg-surface-1/50', isCurrent && 'revision-current', i === 0 && '[&>td]:rounded-none')}>
                       <td className="py-2 px-3">
                         <span className="font-mono font-medium">v{rev.version}</span>
                         {isCurrent && <Badge variant="default" className="ml-2 text-xs py-0">current</Badge>}
@@ -211,7 +211,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                       <td className="py-2 px-3 text-muted">{formatDate(rev.createdAt, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                       <td className="py-2 px-3">
                         {isAuthenticated && !isCurrent && (
-                          <button onClick={() => handleRestore(rev.id)} disabled={restoringId === rev.id} className="row gap-1 text-accent hover:text-accent-hover disabled:opacity-50">
+                          <button onClick={() => handleRestore(rev.id)} disabled={restoringId === rev.id} className="restore-btn">
                             <RotateCcw size={14} /><span>{restoringId === rev.id ? '…' : 'Restore'}</span>
                           </button>
                         )}
@@ -225,7 +225,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
           </table>
         </div>
       ) : (
-        <div className="surface p-12 text-center rounded-lg"><p className="text-muted">No revision history available.</p></div>
+        <div className="empty-surface"><p className="text-muted">No revision history available.</p></div>
       )}
     </div>
   );

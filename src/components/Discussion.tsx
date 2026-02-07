@@ -61,14 +61,14 @@ function CommentThread({ comment, depth, onReply, onDelete, currentUserId }: {
   }, {});
 
   return (
-    <div className={cn('stack-sm', depth > 0 && 'pl-4 border-l border-border-muted')}>
+    <div className={cn('stack-sm', depth > 0 && 'comment-thread')}>
       <div className="stack-xs">
         <div className="row text-small">
           <span className="font-medium">{comment.author?.displayName || comment.author?.radixAddress?.slice(0, 12) + '...'}</span>
           <span className="text-muted">·</span>
           <span className="text-muted">{formatRelativeTime(comment.createdAt)}</span>
           {hasReplies && (
-            <button onClick={() => setCollapsed(!collapsed)} className="row text-muted hover:text-text ml-auto">
+            <button onClick={() => setCollapsed(!collapsed)} className="comment-action ml-auto">
               {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
               <span>{comment.replies!.length} {comment.replies!.length === 1 ? 'reply' : 'replies'}</span>
             </button>
@@ -76,10 +76,10 @@ function CommentThread({ comment, depth, onReply, onDelete, currentUserId }: {
         </div>
         <p className="text-text">{comment.content}</p>
         <div className="row text-small">
-          {canReply && <button onClick={() => setShowReplyForm(!showReplyForm)} className="row text-muted hover:text-accent"><Reply size={14} /><span>Reply</span></button>}
+          {canReply && <button onClick={() => setShowReplyForm(!showReplyForm)} className="comment-action"><Reply size={14} /><span>Reply</span></button>}
           {isAuthor && (
             <form action={delAction}>
-              <button type="submit" disabled={isDeleting} className="row text-muted hover:text-error">
+              <button type="submit" disabled={isDeleting} className="comment-delete">
                 <Trash2 size={14} /><span>{isDeleting ? 'Deleting...' : 'Delete'}</span>
               </button>
             </form>
@@ -131,7 +131,7 @@ export function Discussion({ pageId }: { pageId: string }) {
   const countComments = (list: WikiComment[]): number => list.reduce((acc, c) => acc + 1 + countComments(c.replies || []), 0);
 
   return (
-    <section className="stack pt-6 border-t border-border">
+    <section className="section-divider stack">
       <button onClick={() => setExpanded(!expanded)} className="spread w-full text-left">
         <div className="row"><MessageSquare size={20} className="text-accent" /><h3 id="discussion" className="font-semibold">Discussion</h3><span className="text-muted">({countComments(comments)})</span></div>
         {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
