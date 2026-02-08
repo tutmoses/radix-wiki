@@ -11,7 +11,7 @@ const XRD_RESOURCE: Record<number, string> = {
 };
 
 // Single source of truth for XRD requirements
-export const XRD_DEFAULTS = {
+const XRD_DEFAULTS = {
   homepage: { edit: 20_000 },
   create: 5_000,
   edit: 20_000,
@@ -47,7 +47,7 @@ async function getXrdBalance(address: string): Promise<number> {
   }
 }
 
-export type BalanceResult =
+type BalanceResult =
   | { ok: true; user: { id: string; radixAddress: string }; balance: number }
   | { ok: false; response: NextResponse };
 

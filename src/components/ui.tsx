@@ -2,7 +2,7 @@
 
 'use client';
 
-import { forwardRef, useRef, useEffect, type ButtonHTMLAttributes, type InputHTMLAttributes, type HTMLAttributes, type ReactNode } from 'react';
+import { forwardRef, useRef, useEffect, type ButtonHTMLAttributes, type InputHTMLAttributes, type HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
 // Dropdown
@@ -89,10 +89,3 @@ export function Spinner({ size = 'md', className }: { size?: 'sm' | 'md' | 'lg';
   return <span className={cn('spinner text-accent', spinnerSizes[size], className)} />;
 }
 
-export function LoadingScreen({ message = 'Loading...' }: { message?: string }) {
-  return (
-    <div className="loading-screen">
-      <div className="stack-sm items-center"><Spinner size="lg" /><p className="text-muted">{message}</p></div>
-    </div>
-  );
-}

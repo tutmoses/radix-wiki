@@ -14,7 +14,7 @@ export enum RadixNetworkId {
   Stokenet = 2,
 }
 
-export const GATEWAY_URLS: Record<number, string> = {
+const GATEWAY_URLS: Record<number, string> = {
   [RadixNetworkId.Mainnet]: 'https://mainnet.radixdlt.com',
   [RadixNetworkId.Stokenet]: 'https://stokenet.radixdlt.com',
 };

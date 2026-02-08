@@ -61,6 +61,6 @@ export default async function DynamicPage({ params }: Props) {
   }
 
   const page = await getPage(parsed.tagPath, parsed.slug);
-  const adjacent = page ? await getAdjacentPages(parsed.tagPath, page.title) : { prev: null, next: null };
+  const adjacent = page ? await getAdjacentPages(parsed.tagPath, page.title, page.createdAt) : { prev: null, next: null };
   return <Suspense fallback={<PageSkeleton />}><PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.isEditMode} adjacent={adjacent} /></Suspense>;
 }

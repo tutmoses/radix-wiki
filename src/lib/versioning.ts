@@ -3,13 +3,13 @@
 import type { Block, BlockType } from '@/types/blocks';
 
 // Semantic version type
-export interface SemVer {
+interface SemVer {
   major: number;
   minor: number;
   patch: number;
 }
 
-export type ChangeType = 'major' | 'minor' | 'patch' | 'none';
+type ChangeType = 'major' | 'minor' | 'patch' | 'none';
 
 // Block-level change tracking
 export interface BlockChange {
@@ -119,7 +119,7 @@ function computeContentDiff(fromHtml: string, toHtml: string): BlockChange['cont
 }
 
 // Compute block-level diff
-export function diffBlocks(oldBlocks: Block[], newBlocks: Block[]): BlockChange[] {
+function diffBlocks(oldBlocks: Block[], newBlocks: Block[]): BlockChange[] {
   const changes: BlockChange[] = [];
   const oldFlat = extractBlocks(oldBlocks);
   const newFlat = extractBlocks(newBlocks);
@@ -218,7 +218,7 @@ export function diffBlocks(oldBlocks: Block[], newBlocks: Block[]): BlockChange[
 }
 
 // Determine change type from diff
-export function classifyChanges(
+function classifyChanges(
   changes: BlockChange[],
   titleChanged: boolean,
   bannerChanged: boolean
@@ -244,7 +244,7 @@ export function classifyChanges(
 }
 
 // Generate human-readable summary
-export function generateChangeSummary(diff: Omit<RevisionDiff, 'summary'>): string {
+function generateChangeSummary(diff: Omit<RevisionDiff, 'summary'>): string {
   const parts: string[] = [];
   
   if (diff.titleChanged) parts.push('title updated');

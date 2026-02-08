@@ -12,7 +12,7 @@ export const BLOCK_META: Record<BlockType, { label: string; icon: LucideIcon }> 
   infobox: { label: 'Infobox', icon: Info },
 };
 
-export const BLOCK_DEFAULTS: Record<BlockType, () => Omit<Block, 'id'>> = {
+const BLOCK_DEFAULTS: Record<BlockType, () => Omit<Block, 'id'>> = {
   content: () => ({ type: 'content', text: '' }),
   recentPages: () => ({ type: 'recentPages', limit: 5 }),
   pageList: () => ({ type: 'pageList', pageIds: [] }),

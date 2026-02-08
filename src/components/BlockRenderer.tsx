@@ -171,7 +171,7 @@ function linkify(v: string): string {
 function formatMetadataValue(value: string, type: string): string {
   if (type === 'date') {
     const d = new Date(value);
-    if (!isNaN(d.getTime())) return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
   }
   const isUrl = (v: string) => type === 'url' || /^https?:\/\//.test(v) || /^[^\s]+\.[a-z]{2,}(\/\S*)?$/i.test(v);
   if (/<br\s*\/?>/.test(value)) {

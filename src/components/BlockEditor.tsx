@@ -54,6 +54,100 @@ const TwitterEmbed = TiptapNode.create({
   },
 });
 
+function mapsEmbedUrl(lat: number, lon: number, zoom = 15): string {
+  const d = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom) * 500;
+  return `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d${d.toFixed(1)}!2d${lon}!3d${lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s!2s!5e0!3m2!1sen!2sus`;
+}
+
+function extractCoordsFromUrl(url: string): { lat: number; lon: number; zoom?: number } | null {
+  const coords = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*),?(\d+\.?\d*)?z?/);
+  if (coords) return { lat: +coords[1], lon: +coords[2], zoom: coords[3] ? +coords[3] : undefined };
+  const search = url.match(/\/search\/(-?\d+\.?\d*),[\s+]*(-?\d+\.?\d*)/);
+  if (search) return { lat: +search[1], lon: +search[2] };
+  try {
+    const u = new URL(url);
+    const ll = u.searchParams.get('ll') || u.searchParams.get('sll');
+    if (ll) { const [lat, lon] = ll.split(',').map(Number); if (!isNaN(lat) && !isNaN(lon)) return { lat, lon }; }
+  } catch { /* not a valid URL */ }
+  return null;
+}
+
+function toMapEmbedUrl(url: string): string | null {
+  if (/google\.[a-z.]+\/maps\/embed/.test(url)) return url;
+  if (/embed\.apple\.com\/maps/.test(url)) return url;
+  const c = extractCoordsFromUrl(url);
+  if (c) return mapsEmbedUrl(c.lat, c.lon, c.zoom);
+  // Google Maps place name — use place search in pb
+  if (/google\.[a-z.]+\/maps/.test(url)) {
+    const place = url.match(/\/place\/([^/@]+)/);
+    if (place) return `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d5000!2d0!3d0!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s!2s${encodeURIComponent(decodeURIComponent(place[1]).replace(/\+/g, ' '))}!5e0!3m2!1sen!2sus`;
+  }
+  // Apple Maps
+  if (/maps\.apple\.com/.test(url)) {
+    try {
+      const u = new URL(url);
+      const ll = u.searchParams.get('ll') || u.searchParams.get('sll');
+      const q = u.searchParams.get('q') || u.searchParams.get('address');
+      const params = new URLSearchParams();
+      if (ll) params.set('ll', ll);
+      if (q) params.set('q', q);
+      return `https://embed.apple.com/maps?${params.toString()}`;
+    } catch { return null; }
+  }
+  return null;
+}
+
+async function resolveMapUrl(url: string): Promise<string | null> {
+  const sync = toMapEmbedUrl(url);
+  if (sync) return sync;
+  if (/maps\.app\.goo\.gl|goo\.gl\/maps/.test(url)) {
+    try {
+      const res = await fetch(`/api/resolve-map?url=${encodeURIComponent(url)}`);
+      const { resolved } = await res.json();
+      if (resolved) return toMapEmbedUrl(resolved);
+    } catch { /* fall through */ }
+  }
+  return null;
+}
+
+const MapEmbed = TiptapNode.create({
+  name: 'mapEmbed',
+  group: 'block',
+  atom: true,
+  addAttributes() { return { src: { default: null }, url: { default: null } }; },
+  parseHTML() { return [{ tag: 'div[data-map-embed]', getAttrs: el => ({ src: (el as HTMLElement).querySelector('iframe')?.getAttribute('src'), url: (el as HTMLElement).dataset.url }) }]; },
+  renderHTML({ node }) { return ['div', { 'data-map-embed': '', 'data-url': node.attrs.url || '', class: 'map-embed' }, ['iframe', { src: node.attrs.src, frameborder: '0', allowfullscreen: 'true', loading: 'lazy', referrerpolicy: 'no-referrer-when-downgrade' }]]; },
+  addPasteRules() {
+    const ext = this;
+    const handler = ({ match, chain, range }: any) => {
+      const url = match[0];
+      const src = toMapEmbedUrl(url);
+      if (src) { chain().deleteRange(range).insertContent({ type: 'mapEmbed', attrs: { src, url } }).run(); return; }
+      // Short links: insert placeholder then resolve async
+      if (/maps\.app\.goo\.gl|goo\.gl\/maps/.test(url)) {
+        chain().deleteRange(range).insertContent({ type: 'mapEmbed', attrs: { src: 'about:blank', url } }).run();
+        resolveMapUrl(url).then(resolved => {
+          if (!resolved) return;
+          const { doc } = ext.editor.state;
+          doc.descendants((node, pos) => {
+            if (node.type.name === 'mapEmbed' && node.attrs.url === url && node.attrs.src === 'about:blank') {
+              ext.editor.chain().setNodeSelection(pos).updateAttributes('mapEmbed', { src: resolved }).run();
+              return false;
+            }
+          });
+        });
+      }
+    };
+    return [
+      { find: /https?:\/\/(?:www\.)?google\.[a-z.]+\/maps[^\s]*/g, handler },
+      { find: /https?:\/\/maps\.app\.goo\.gl\/[^\s]+/g, handler },
+      { find: /https?:\/\/goo\.gl\/maps\/[^\s]+/g, handler },
+      { find: /https?:\/\/maps\.apple\.com[^\s]*/g, handler },
+      { find: /https?:\/\/embed\.apple\.com\/maps[^\s]*/g, handler },
+    ];
+  },
+});
+
 function TwitterEmbedView({ node }: { node: any }) {
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -193,12 +287,28 @@ const TOOLBAR_BUTTONS: { key: string; icon: LucideIcon; active?: string | [strin
   { key: 'divider', icon: Minus, action: e => e.chain().focus().setHorizontalRule().run() },
   { key: 'upload', icon: Upload, action: (_, upload) => upload() },
   { key: 'embed', icon: Globe, action: e => {
-    const url = window.prompt('Embed URL (YouTube, Twitter/X, or any iframe)');
+    const url = window.prompt('Embed URL (YouTube, Twitter/X, Google/Apple Maps, or any iframe)');
     if (!url) return;
     const yt = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
     if (yt) { e.chain().focus().setYoutubeVideo({ src: url }).run(); return; }
     const tw = url.match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/);
     if (tw) { e.chain().focus().insertContent({ type: 'twitterEmbed', attrs: { tweetId: tw[1], url } }).run(); return; }
+    const mapSrc = toMapEmbedUrl(url);
+    if (mapSrc) { e.chain().focus().insertContent({ type: 'mapEmbed', attrs: { src: mapSrc, url } }).run(); return; }
+    if (/maps\.app\.goo\.gl|goo\.gl\/maps/.test(url)) {
+      e.chain().focus().insertContent({ type: 'mapEmbed', attrs: { src: 'about:blank', url } }).run();
+      resolveMapUrl(url).then(src => {
+        if (!src) return;
+        const { doc } = e.state;
+        doc.descendants((node, pos) => {
+          if (node.type.name === 'mapEmbed' && node.attrs.url === url && node.attrs.src === 'about:blank') {
+            e.chain().setNodeSelection(pos).updateAttributes('mapEmbed', { src }).run();
+            return false;
+          }
+        });
+      });
+      return;
+    }
     e.chain().focus().insertContent({ type: 'iframe', attrs: { src: url } }).run();
   }},
   { key: 'table', icon: TableIcon, active: 'table', action: e => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
@@ -223,7 +333,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
     TiptapTable.configure({ resizable: false, HTMLAttributes: { class: 'tiptap-table' } }),
     TiptapTableRow, TiptapTableCell.configure({ HTMLAttributes: { class: 'p-2' } }),
     TiptapTableHeader.configure({ HTMLAttributes: { class: 'p-2 font-semibold bg-surface-1' } }),
-    Iframe, TwitterEmbed, TabGroup, TabItem, CodeBlock, Placeholder.configure({ placeholder }),
+    Iframe, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock, Placeholder.configure({ placeholder }),
   ], [placeholder]);
 
   const cleanPastedHtml = useCallback((html: string) => {
@@ -470,6 +580,7 @@ const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelecte
   const isContainer = block.type === 'columns' || block.type === 'infobox';
   return (
     <div onClick={handleSelect} className={cn(
+      'group',
       compact
         ? (isSelected ? 'block-wrapper-compact-selected' : 'block-wrapper-compact')
         : (isSelected ? 'block-wrapper-selected' : cn('block-wrapper', isContainer && 'block-wrapper-container'))

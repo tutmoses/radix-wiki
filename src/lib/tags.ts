@@ -8,11 +8,14 @@ export interface MetadataKeyDefinition {
   options?: string[]; // For select type
 }
 
+export type SortOrder = 'title' | 'newest' | 'oldest';
+
 export interface TagNode {
   name: string;
   slug: string;
   children?: TagNode[];
   hidden?: boolean;
+  sort?: SortOrder;
   xrd?: { create?: number; edit?: number; comment?: number };
   metadataKeys?: MetadataKeyDefinition[];
 }
@@ -33,18 +36,26 @@ export const TAG_HIERARCHY: TagNode[] = [
           { name: 'Research', slug: 'research' },
         ],
       },
-      { 
+      {
         name: 'History / Events',
         slug: 'history',
+        sort: 'newest',
         metadataKeys: [
           { key: 'attendees', label: 'Attendees:', type: 'text'},
           { key: 'date', label: 'Date:', type: 'date' },
           { key: 'location', label: 'Location:', type: 'text' },
           { key: 'type', label: 'Type:', type: 'select', options: ['Conference', 'Hackathon', 'Milestone', 'Workshop'] },
           { key: 'website', label: 'Website:', type: 'url' }
-        ],},
+        ]},
       { name: 'Resources', slug: 'resources', children: [{ name: 'Legal', slug: 'legal' }, { name: 'Python Scripts', slug: 'python-scripts' }] },
-      { name: 'Blog', slug: 'blog', xrd: { create: 50_000 } },
+      {
+        name: 'Blog',
+        slug: 'blog',
+        sort: 'newest',
+        metadataKeys: [
+          { key: 'date', label: 'Published:', type: 'date'}
+        ],
+        xrd: { create: 50_000 } },
     ],
   },
   { name: 'Developers', slug: 'developers', children: [{ name: 'Learn', slug: 'learn' }, { name: 'Build', slug: 'build' }, { name: 'Patterns', slug: 'patterns' }, { name: 'Reference', slug: 'reference' }] },
@@ -68,10 +79,11 @@ export const TAG_HIERARCHY: TagNode[] = [
 
 const AUTHOR_ONLY_PATHS = new Set(['community', 'community/rfps', 'contents/blog']);
 
-export interface TagPathContext {
+interface TagPathContext {
   node: TagNode | null;
   isValid: boolean;
   isAuthorOnly: boolean;
+  sort: SortOrder;
   xrdRequirements: NonNullable<TagNode['xrd']>;
   metadataKeys: MetadataKeyDefinition[];
 }
@@ -79,7 +91,7 @@ export interface TagPathContext {
 // Memoization cache
 const resolveCache = new Map<string, TagPathContext>();
 
-export function resolveTagPath(pathSegments: string[], hierarchy: TagNode[] = TAG_HIERARCHY): TagPathContext {
+function resolveTagPath(pathSegments: string[], hierarchy: TagNode[] = TAG_HIERARCHY): TagPathContext {
   const key = pathSegments.join('/');
   const cached = resolveCache.get(key);
   if (cached) return cached;
@@ -88,21 +100,23 @@ export function resolveTagPath(pathSegments: string[], hierarchy: TagNode[] = TA
   const metadataKeys: MetadataKeyDefinition[] = [];
   let current: TagNode[] = hierarchy;
   let node: TagNode | null = null;
+  let sort: SortOrder = 'title';
 
   for (const segment of pathSegments) {
     node = current.find(n => n.slug === segment) ?? null;
     if (!node) {
-      const result = { node: null, isValid: false, isAuthorOnly: false, xrdRequirements: {}, metadataKeys: [] };
+      const result: TagPathContext = { node: null, isValid: false, isAuthorOnly: false, sort: 'title', xrdRequirements: {}, metadataKeys: [] };
       resolveCache.set(key, result);
       return result;
     }
     if (node.xrd) Object.assign(requirements, node.xrd);
     if (node.metadataKeys) metadataKeys.push(...node.metadataKeys);
+    if (node.sort) sort = node.sort;
     current = node.children || [];
   }
 
   const isAuthorOnly = AUTHOR_ONLY_PATHS.has(key) || [...AUTHOR_ONLY_PATHS].some(p => key.startsWith(p + '/'));
-  const result = { node, isValid: pathSegments.length > 0, isAuthorOnly, xrdRequirements: requirements, metadataKeys };
+  const result: TagPathContext = { node, isValid: pathSegments.length > 0, isAuthorOnly, sort, xrdRequirements: requirements, metadataKeys };
   resolveCache.set(key, result);
   return result;
 }
@@ -111,6 +125,7 @@ export function resolveTagPath(pathSegments: string[], hierarchy: TagNode[] = TA
 export const findTagByPath = (pathSegments: string[]): TagNode | null => resolveTagPath(pathSegments).node;
 export const isValidTagPath = (pathSegments: string[]): boolean => resolveTagPath(pathSegments).isValid;
 export const isAuthorOnlyPath = (tagPath: string): boolean => resolveTagPath(tagPath.split('/')).isAuthorOnly;
-export const getXrdRequirements = (pathSegments: string[]): NonNullable<TagNode['xrd']> => resolveTagPath(pathSegments).xrdRequirements;
+const getXrdRequirements = (pathSegments: string[]): NonNullable<TagNode['xrd']> => resolveTagPath(pathSegments).xrdRequirements;
 export const getMetadataKeys = (pathSegments: string[]): MetadataKeyDefinition[] => resolveTagPath(pathSegments).metadataKeys;
+export const getSortOrder = (pathSegments: string[]): SortOrder => resolveTagPath(pathSegments).sort;
 export const getVisibleTags = (hierarchy: TagNode[] = TAG_HIERARCHY): TagNode[] => hierarchy.filter(n => !n.hidden);

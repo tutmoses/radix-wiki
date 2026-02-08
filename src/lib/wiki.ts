@@ -2,7 +2,7 @@
 
 import { cache } from 'react';
 import { prisma } from '@/lib/prisma/client';
-import { isValidTagPath } from '@/lib/tags';
+import { isValidTagPath, getSortOrder, getMetadataKeys, type SortOrder } from '@/lib/tags';
 import type { WikiPage } from '@/types';
 
 export interface ParsedPath {
@@ -47,7 +47,7 @@ export function parsePath(segments: string[] = []): ParsedPath {
 }
 
 // API-specific path parsing (excludes edit mode, simpler return type)
-export interface ApiParsedPath {
+interface ApiParsedPath {
   type: 'homepage' | 'list' | 'page' | 'history' | 'mdx';
   tagPath: string;
   slug: string;
@@ -97,13 +97,28 @@ export const getPage = cache(async (tagPath: string, slug: string): Promise<Wiki
   }) as Promise<WikiPage | null>;
 });
 
-export const getCategoryPages = cache(async (tagPath: string, limit = 200): Promise<WikiPage[]> => {
-  return prisma.page.findMany({
+const sortOrderBy: Record<SortOrder, object> = {
+  title: { title: 'asc' as const },
+  newest: { createdAt: 'desc' as const },
+  oldest: { createdAt: 'asc' as const },
+};
+
+export const getCategoryPages = cache(async (tagPath: string, sort?: SortOrder, limit = 200): Promise<WikiPage[]> => {
+  const resolvedSort = sort ?? getSortOrder(tagPath.split('/'));
+  const hasDateMeta = resolvedSort !== 'title' && getMetadataKeys(tagPath.split('/')).some(k => k.key === 'date' && k.type === 'date');
+  const pages = await prisma.page.findMany({
     where: { tagPath },
     include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
-    orderBy: { title: 'asc' },
+    orderBy: sortOrderBy[resolvedSort],
     take: limit,
-  }) as Promise<WikiPage[]>;
+  }) as WikiPage[];
+  if (!hasDateMeta) return pages;
+  const dir = resolvedSort === 'oldest' ? 1 : -1;
+  return pages.sort((a, b) => {
+    const da = (a.metadata as Record<string, string> | null)?.date || '';
+    const db = (b.metadata as Record<string, string> | null)?.date || '';
+    return (da < db ? -1 : da > db ? 1 : 0) * dir;
+  });
 });
 
 export const getPageHistory = cache(async (tagPath: string, slug: string) => {
@@ -131,17 +146,51 @@ export const getPageHistory = cache(async (tagPath: string, slug: string) => {
   return { currentVersion: page.version, revisions };
 });
 
-export const getAdjacentPages = cache(async (tagPath: string, title: string) => {
+export const getAdjacentPages = cache(async (tagPath: string, title: string, createdAt?: Date) => {
+  const sort = getSortOrder(tagPath.split('/'));
+  const select = { tagPath: true, slug: true, title: true, metadata: true } as const;
+  const hasDateMeta = sort !== 'title' && getMetadataKeys(tagPath.split('/')).some(k => k.key === 'date' && k.type === 'date');
+
+  if (hasDateMeta) {
+    const pages = await prisma.page.findMany({ where: { tagPath }, select });
+    const dir = sort === 'oldest' ? 1 : -1;
+    const sorted = pages.sort((a, b) => {
+      const da = (a.metadata as Record<string, string> | null)?.date || '';
+      const db = (b.metadata as Record<string, string> | null)?.date || '';
+      return (da < db ? -1 : da > db ? 1 : 0) * dir;
+    });
+    const currentDate = (sorted.find(p => p.title === title)?.metadata as Record<string, string> | null)?.date || '';
+    const idx = sorted.findIndex(p => p.title === title && ((p.metadata as Record<string, string> | null)?.date || '') === currentDate);
+    return { prev: idx > 0 ? sorted[idx - 1] : null, next: idx < sorted.length - 1 ? sorted[idx + 1] : null };
+  }
+
+  if (sort !== 'title' && createdAt) {
+    const isNewest = sort === 'newest';
+    const [prev, next] = await Promise.all([
+      prisma.page.findFirst({
+        where: { tagPath, createdAt: isNewest ? { gt: createdAt } : { lt: createdAt } },
+        orderBy: { createdAt: isNewest ? 'asc' : 'desc' },
+        select,
+      }),
+      prisma.page.findFirst({
+        where: { tagPath, createdAt: isNewest ? { lt: createdAt } : { gt: createdAt } },
+        orderBy: { createdAt: isNewest ? 'desc' : 'asc' },
+        select,
+      }),
+    ]);
+    return { prev, next };
+  }
+
   const [prev, next] = await Promise.all([
     prisma.page.findFirst({
       where: { tagPath, title: { lt: title } },
       orderBy: { title: 'desc' },
-      select: { tagPath: true, slug: true, title: true },
+      select,
     }),
     prisma.page.findFirst({
       where: { tagPath, title: { gt: title } },
       orderBy: { title: 'asc' },
-      select: { tagPath: true, slug: true, title: true },
+      select,
     }),
   ]);
   return { prev, next };

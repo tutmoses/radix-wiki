@@ -3,7 +3,7 @@
 type Highlighter = Awaited<ReturnType<typeof import('shiki').createHighlighter>>;
 
 export const SHIKI_LANGS = ['javascript', 'typescript', 'css', 'json', 'bash', 'python', 'rust', 'sql', 'html', 'xml', 'jsx', 'tsx', 'markdown', 'yaml', 'toml'] as const;
-export const VALID_LANGS = new Set<string>(SHIKI_LANGS);
+const VALID_LANGS = new Set<string>(SHIKI_LANGS);
 export const DEFAULT_LANG = 'rust';
 
 let shikiInstance: Highlighter | null = null;

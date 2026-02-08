@@ -61,13 +61,6 @@ export type WikiPageInput = {
   metadata?: PageMetadata;
 };
 
-export type WikiRevision = Revision & {
-  version: string;
-  changeType: string;
-  changes: Prisma.JsonValue;
-  author?: WikiAuthor;
-};
-
 export type WikiComment = Comment & {
   author?: WikiAuthor;
   replies?: WikiComment[];
@@ -76,14 +69,6 @@ export type WikiComment = Comment & {
 export type CommentInput = {
   content: string;
   parentId?: string;
-};
-
-export type PaginatedResponse<T> = {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
 };
 
 export type AdjacentPage = { tagPath: string; slug: string; title: string } | null;

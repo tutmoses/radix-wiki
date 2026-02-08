@@ -6,7 +6,7 @@ import { Prisma } from '@prisma/client';
 import { slugify } from '@/lib/utils';
 import { isValidTagPath, isAuthorOnlyPath, getMetadataKeys } from '@/lib/tags';
 import { json, errors, handleRoute, requireAuth, type RouteContext } from '@/lib/api';
-import { computeRevisionDiff, formatVersion, parseVersion, classifyChanges, incrementVersion, type BlockChange } from '@/lib/versioning';
+import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, type BlockChange } from '@/lib/versioning';
 import { parseApiPath } from '@/lib/wiki';
 import { validateBlocks } from '@/lib/blocks';
 import { blocksToMdx } from '@/lib/mdx';
