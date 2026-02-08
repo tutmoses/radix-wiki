@@ -60,7 +60,7 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
         () => rdt.walletApi.sendRequest(),
         () => rdt.disconnect()
       );
-      rdt.walletApi.setRequestData(DataRequestBuilder.accounts().atLeast(1), DataRequestBuilder.personaData().fullName());
+      rdt.walletApi.setRequestData(DataRequestBuilder.accounts().atLeast(1));
 
       subscription = rdt.walletApi.walletData$.subscribe((walletData) => {
         if (walletData.accounts.length > 0) {
