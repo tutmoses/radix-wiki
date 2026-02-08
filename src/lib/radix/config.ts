@@ -2,7 +2,7 @@
 
 export const RADIX_CONFIG = {
   dAppDefinitionAddress: process.env.NEXT_PUBLIC_RADIX_DAPP_DEFINITION_ADDRESS ||
-    'account_rdx128y6f60dpfje76cfdraup9jknznscp0y76e7ndj42ckn99jxxv6lwmg',
+    'account_rdx12xzx7as5hv9ahw9na8g0s7gtzvdcuvzrtdr96qhzyxcmn5dlmpmp23',
   networkId: parseInt(process.env.NEXT_PUBLIC_RADIX_NETWORK_ID || '1', 10),
   applicationName: process.env.NEXT_PUBLIC_RADIX_APPLICATION_NAME || 'RADIX Wiki',
   applicationVersion: process.env.NEXT_PUBLIC_RADIX_APPLICATION_VERSION || '1.0.0',
