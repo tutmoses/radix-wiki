@@ -95,7 +95,7 @@ Content is stored as an array of typed blocks:
 ### Tag Hierarchy
 Pages are organized under tag paths (e.g., `contents/tech/core-concepts`). Some paths have:
 - XRD balance requirements (e.g., 50k XRD for blog)
-- Author-only restrictions (community, community/rfps, contents/blog)
+- Author-only restrictions (community, community/rfps, blog)
 
 ### Versioning
 - Semantic versioning (major/minor/patch)

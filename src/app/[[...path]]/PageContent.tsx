@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, ArrowRight, Trash2, Save, FileText, Plus, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Trash2, Save, FileText, Plus, Upload, X, Image as ImageIcon, Link2 } from 'lucide-react';
 import { BlockRenderer, findInfobox, InfoboxSidebar } from '@/components/BlockRenderer';
 import { Discussion } from '@/components/Discussion';
 import { Footer } from '@/components/Footer';
@@ -400,6 +400,7 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
   const [content, setContent] = useState<Block[]>([]);
   const [bannerImage, setBannerImage] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<PageMetadata>({});
+  const [editSlug, setEditSlug] = useState(slug);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const isAuthor = user && page?.authorId === user.id;
@@ -411,6 +412,7 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
       setContent(page.content as unknown as Block[]);
       setBannerImage(page.bannerImage || null);
       setMetadata((page.metadata as PageMetadata) || {});
+      setEditSlug(page.slug);
     } else {
       setTitle('');
       setContent([createBlock('content')]);
@@ -432,7 +434,8 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
       const exists = page || (await fetch(`/api/wiki/${tagPath}/${slug}`).then(r => r.ok));
       const method = exists ? 'PUT' : 'POST';
       const endpoint = exists ? `/api/wiki/${tagPath}/${slug}` : '/api/wiki';
-      const body = exists ? { title, content, bannerImage, metadata } : { title, content, bannerImage, metadata, tagPath, slug };
+      const newSlug = slugify(editSlug);
+      const body = exists ? { title, content, bannerImage, metadata, newSlug } : { title, content, bannerImage, metadata, tagPath, slug: newSlug || slug };
       const res = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
       if (res.ok) window.location.href = `/${data.tagPath}/${data.slug}`;
@@ -474,6 +477,11 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
         </div>
         {isCreating && <div className="callout"><p>Creating new page at <code>/{tagPath}/{slug}</code></p></div>}
         <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
+        <div className="slug-editor">
+          <Link2 size={14} />
+          <span>/{tagPath}/</span>
+          <input type="text" value={editSlug} onChange={e => setEditSlug(slugify(e.target.value))} placeholder="page-slug" />
+        </div>
       </header>
       <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
       <MetadataFields metadataKeys={metadataKeys} metadata={metadata} onChange={setMetadata} />

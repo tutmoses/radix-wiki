@@ -245,8 +245,8 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     const auth = await requireAuth(request, isHomepage ? { type: 'editHomepage' } : { type: 'edit', tagPath: parsed.tagPath });
     if ('error' in auth) return auth.error;
 
-    const body: Partial<WikiPageInput> & { revisionMessage?: string } = await request.json();
-    const { title, content, excerpt, bannerImage, metadata, revisionMessage } = body;
+    const body: Partial<WikiPageInput> & { revisionMessage?: string; newSlug?: string } = await request.json();
+    const { title, content, excerpt, bannerImage, metadata, revisionMessage, newSlug } = body;
 
     if (content !== undefined && !validateBlocks(content)) {
       return errors.badRequest('Invalid block structure');
@@ -287,6 +287,13 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     }
 
     if (!existing) return errors.notFound('Page not found');
+
+    // Slug rename: validate uniqueness
+    const slugUpdate = newSlug && newSlug !== existing.slug ? slugify(newSlug) : undefined;
+    if (slugUpdate) {
+      const conflict = await prisma.page.findFirst({ where: { tagPath: existing.tagPath, slug: slugUpdate } });
+      if (conflict) return errors.badRequest('A page with that slug already exists in this category');
+    }
 
     // Author-only check for non-homepage
     if (!isHomepage && isAuthorOnlyPath(existing.tagPath) && existing.authorId !== auth.session.userId) {
@@ -331,6 +338,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
       where: { id: existing.id },
       data: {
         title: title ?? undefined,
+        slug: slugUpdate ?? undefined,
         content: content !== undefined ? (content as unknown as Prisma.InputJsonValue) : undefined,
         excerpt: excerpt ?? undefined,
         bannerImage: bannerImage ?? undefined,

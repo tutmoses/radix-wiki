@@ -48,14 +48,6 @@ export const TAG_HIERARCHY: TagNode[] = [
           { key: 'website', label: 'Website:', type: 'url' }
         ]},
       { name: 'Resources', slug: 'resources', children: [{ name: 'Legal', slug: 'legal' }, { name: 'Python Scripts', slug: 'python-scripts' }] },
-      {
-        name: 'Blog',
-        slug: 'blog',
-        sort: 'newest',
-        metadataKeys: [
-          { key: 'date', label: 'Published:', type: 'date'}
-        ],
-        xrd: { create: 50_000 } },
     ],
   },
   { name: 'Developers', slug: 'developers', children: [{ name: 'Learn', slug: 'learn' }, { name: 'Build', slug: 'build' }, { name: 'Patterns', slug: 'patterns' }, { name: 'Reference', slug: 'reference' }] },
@@ -72,12 +64,12 @@ export const TAG_HIERARCHY: TagNode[] = [
       { key: 'open positions', label: 'Open Positions:', type: 'text' },
     ],
     xrd: { create: 20_000 } },
-  { name: 'Jobs', slug: 'jobs' },
-  { name: 'Community', slug: 'community', children: [{ name: 'RFPs', slug: 'rfps' }] },
+  { name: 'Community', slug: 'community'},
+  { name: 'Blog', slug: 'blog', sort: 'newest', metadataKeys: [{ key: 'date', label: 'Published:', type: 'date' }], xrd: { create: 50_000 } },
   { name: 'Meta', slug: 'meta' },
 ];
 
-const AUTHOR_ONLY_PATHS = new Set(['community', 'community/rfps', 'contents/blog']);
+const AUTHOR_ONLY_PATHS = new Set(['community', 'community/rfps', 'blog']);
 
 interface TagPathContext {
   node: TagNode | null;

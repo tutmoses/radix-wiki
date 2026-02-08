@@ -302,6 +302,10 @@
   .lang-option { @apply w-full px-3 py-1.5 text-left text-xs hover:bg-surface-2 transition-colors flex items-center justify-between; }
   .lang-option-active { @apply text-accent; }
 
+  /* ===== SLUG EDITOR ===== */
+  .slug-editor { @apply flex items-center gap-2 text-small text-text-muted py-1; }
+  .slug-editor input { @apply flex-1 bg-transparent border-0 outline-none text-small text-accent py-1 placeholder:text-text-muted placeholder:opacity-60; }
+
   /* ===== METADATA FIELDS ===== */
   .metadata-panel { @apply flex flex-col gap-2 p-4 rounded-lg bg-surface-1 border border-border; }
   .metadata-grid { @apply grid grid-cols-1 md:grid-cols-2 gap-4; }
