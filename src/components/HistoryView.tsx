@@ -9,7 +9,7 @@ import { ArrowLeft, RotateCcw, Plus, Minus, Pencil, Move, ChevronDown } from 'lu
 import { Button, Badge } from '@/components/ui';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { useAuth } from '@/hooks';
-import { formatDate, cn } from '@/lib/utils';
+import { formatDate, cn, userProfileSlug } from '@/lib/utils';
 import type { BlockChange } from '@/lib/versioning';
 
 interface RevisionData {
@@ -203,7 +203,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                       </td>
                       <td className="py-2 px-3 truncate max-w-32">
                         {rev.author ? (
-                          <Link href={`/community/${rev.author.radixAddress.slice(-16).toLowerCase()}`} className="text-muted hover:text-accent">
+                          <Link href={`/community/${userProfileSlug(rev.author.displayName, rev.author.radixAddress)}`} className="text-muted hover:text-accent">
                             {rev.author.displayName || rev.author.radixAddress.slice(0, 12) + '…'}
                           </Link>
                         ) : '—'}

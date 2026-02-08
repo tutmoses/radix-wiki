@@ -35,3 +35,9 @@ export function formatRelativeTime(date: Date | string): string {
 export function shortenAddress(address: string, chars: number = 6): string {
   return address.length <= chars * 2 ? address : `${address.slice(0, chars)}...${address.slice(-chars)}`;
 }
+
+export function userProfileSlug(displayName: string | null | undefined, radixAddress: string): string {
+  return displayName
+    ? displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    : radixAddress.slice(-16).toLowerCase();
+}

@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma/client';
 import { getSession, createSession, destroySession, verifySignedChallenge } from '@/lib/auth';
 import { RADIX_CONFIG } from '@/lib/radix/config';
 import { json, errors, handleRoute } from '@/lib/api';
+import { userProfileSlug } from '@/lib/utils';
 import type { SignedChallenge, RadixAccount, RadixPersona } from '@/types';
 import type { Block } from '@/types/blocks';
 
@@ -18,10 +19,6 @@ function createCommunityPageContent(displayName?: string): Block[] {
       text: `<h1>${title}</h1><p>This is your personal community page. Edit it to share your thoughts, projects, and contributions with the RADIX community.</p><h2>About Me</h2><p>Tell the community about yourself...</p>`,
     },
   ];
-}
-
-function nameToSlug(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
 export async function GET() {
@@ -89,7 +86,7 @@ export async function POST(request: NextRequest) {
     if (!existingPage) {
       try {
         const displayName = user.displayName || undefined;
-        const baseSlug = displayName ? nameToSlug(displayName) : primaryAccount.address.slice(-16).toLowerCase();
+        const baseSlug = userProfileSlug(displayName, primaryAccount.address);
         const pageTitle = displayName || 'My Community Page';
         const content = createCommunityPageContent(displayName);
 

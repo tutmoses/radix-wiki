@@ -8,7 +8,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, Info, Clock, FileCode } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth } from '@/hooks';
-import { cn, shortenAddress, formatRelativeTime, formatDate } from '@/lib/utils';
+import { cn, shortenAddress, formatRelativeTime, formatDate, userProfileSlug } from '@/lib/utils';
 import { Button, Dropdown } from '@/components/ui';
 import { isValidTagPath } from '@/lib/tags';
 import type { WikiPage } from '@/types';
@@ -117,7 +117,7 @@ export function Header() {
     (session?.radixAddress ? shortenAddress(session.radixAddress) : 'Connected');
 
   const showAsConnected = isAuthenticated || (isConnected && walletData?.accounts?.length);
-  const userProfilePath = session?.radixAddress ? `/community/${session.radixAddress.slice(-16).toLowerCase()}` : null;
+  const userProfilePath = session ? `/community/${userProfileSlug(session.displayName, session.radixAddress)}` : null;
 
   useEffect(() => {
     if (canShowInfo) {

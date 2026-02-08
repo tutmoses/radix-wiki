@@ -480,7 +480,7 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
         <div className="slug-editor">
           <Link2 size={14} />
           <span>/{tagPath}/</span>
-          <input type="text" value={editSlug} onChange={e => setEditSlug(slugify(e.target.value))} placeholder="page-slug" />
+          <input type="text" value={editSlug} onChange={e => setEditSlug(e.target.value.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-'))} onBlur={() => setEditSlug(slugify(editSlug))} placeholder="page-slug" />
         </div>
       </header>
       <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
