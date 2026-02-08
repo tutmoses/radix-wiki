@@ -2,8 +2,8 @@
 
 import type { Block, BlockType, AtomicBlock } from '@/types/blocks';
 
-const VALID_BLOCK_TYPES: BlockType[] = ['content', 'recentPages', 'pageList', 'assetPrice', 'columns', 'infobox'];
-const ATOMIC_TYPES: BlockType[] = ['content', 'recentPages', 'pageList', 'assetPrice'];
+const VALID_BLOCK_TYPES: BlockType[] = ['content', 'recentPages', 'pageList', 'assetPrice', 'columns', 'infobox', 'rssFeed'];
+const ATOMIC_TYPES: BlockType[] = ['content', 'recentPages', 'pageList', 'assetPrice', 'rssFeed'];
 
 function isValidBlockType(type: unknown): type is BlockType {
   return typeof type === 'string' && VALID_BLOCK_TYPES.includes(type as BlockType);
@@ -27,6 +27,8 @@ function validateAtomicBlock(block: unknown): block is AtomicBlock {
       return Array.isArray(b.pageIds) && b.pageIds.every((id: unknown) => typeof id === 'string');
     case 'assetPrice':
       return b.resourceAddress === undefined || typeof b.resourceAddress === 'string';
+    case 'rssFeed':
+      return typeof b.url === 'string';
     default:
       return false;
   }

@@ -15,12 +15,12 @@ import TiptapYoutube from '@tiptap/extension-youtube';
 import Placeholder from '@tiptap/extension-placeholder';
 import TiptapCodeBlock from '@tiptap/extension-code-block';
 import { Node as TiptapNode, mergeAttributes } from '@tiptap/core';
-import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Pencil, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, X, Check, Info, Map, type LucideIcon } from 'lucide-react';
+import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Pencil, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, X, Check, Info, Map, Rss, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SHIKI_LANGS, DEFAULT_LANG } from '@/lib/shiki';
 import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock } from '@/lib/block-utils';
 import { Button, Input, Dropdown } from '@/components/ui';
-import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column } from '@/types/blocks';
+import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column } from '@/types/blocks';
 
 // ========== TIPTAP EXTENSIONS ==========
 const Iframe = TiptapNode.create({
@@ -440,6 +440,15 @@ function AssetPriceBlockEdit({ block, onUpdate }: BlockProps<AssetPriceBlock>) {
   );
 }
 
+function RssFeedBlockEdit({ block, onUpdate }: BlockProps<RssFeedBlock>) {
+  return (
+    <EditWrapper icon={Rss} label="RSS Feed Widget">
+      <Input label="Feed URL" value={block.url} onChange={e => onUpdate?.({ ...block, url: e.target.value })} placeholder="https://example.com/feeds.json" />
+      <div className="row"><span>Show</span><input type="number" min={1} max={100} value={block.limit || 20} onChange={e => onUpdate?.({ ...block, limit: parseInt(e.target.value) || 20 })} className="input w-16 text-center" /><span>items per page</span></div>
+    </EditWrapper>
+  );
+}
+
 function InfoboxBlockEdit({ block, onUpdate }: BlockProps<InfoboxBlock>) {
   const setBlocks = useCallback((blocks: AtomicBlock[]) => onUpdate?.({ ...block, blocks }), [block, onUpdate]);
   const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(block.blocks || [], setBlocks);
@@ -536,6 +545,7 @@ function renderBlockEdit(block: Block | AtomicBlock, onUpdate?: (b: Block) => vo
     case 'recentPages': return <RecentPagesBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'pageList': return <PageListBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'assetPrice': return <AssetPriceBlockEdit block={block} onUpdate={onUpdate as any} />;
+    case 'rssFeed': return <RssFeedBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'columns': return <ColumnsBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'infobox': return <InfoboxBlockEdit block={block} onUpdate={onUpdate as any} />;
   }

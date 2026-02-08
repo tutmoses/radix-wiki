@@ -1,7 +1,7 @@
 // src/lib/block-utils.ts - Shared block constants and utilities
 
 import type { Block, BlockType, AtomicBlock } from '@/types/blocks';
-import { Clock, FileText, Columns, TrendingUp, Pencil, Info, type LucideIcon } from 'lucide-react';
+import { Clock, FileText, Columns, TrendingUp, Pencil, Info, Rss, type LucideIcon } from 'lucide-react';
 
 export const BLOCK_META: Record<BlockType, { label: string; icon: LucideIcon }> = {
   content: { label: 'Content', icon: Pencil },
@@ -10,6 +10,7 @@ export const BLOCK_META: Record<BlockType, { label: string; icon: LucideIcon }> 
   assetPrice: { label: 'Asset Price', icon: TrendingUp },
   columns: { label: 'Columns', icon: Columns },
   infobox: { label: 'Infobox', icon: Info },
+  rssFeed: { label: 'RSS Feed', icon: Rss },
 };
 
 const BLOCK_DEFAULTS: Record<BlockType, () => Omit<Block, 'id'>> = {
@@ -19,10 +20,11 @@ const BLOCK_DEFAULTS: Record<BlockType, () => Omit<Block, 'id'>> = {
   assetPrice: () => ({ type: 'assetPrice', resourceAddress: 'resource_rdx1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxradxrd', showChange: true }),
   columns: () => ({ type: 'columns', columns: [{ id: crypto.randomUUID(), blocks: [] }, { id: crypto.randomUUID(), blocks: [] }], gap: 'md', align: 'start' }),
   infobox: () => ({ type: 'infobox', blocks: [] }),
+  rssFeed: () => ({ type: 'rssFeed', url: 'https://tutmoses.github.io/rss-feed/feeds.json', limit: 20 }),
 };
 
-export const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'columns', 'recentPages', 'pageList', 'assetPrice'];
-export const ATOMIC_BLOCK_TYPES: readonly BlockType[] = ['content', 'recentPages', 'pageList', 'assetPrice'];
+export const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'columns', 'recentPages', 'pageList', 'assetPrice', 'rssFeed'];
+export const ATOMIC_BLOCK_TYPES: readonly BlockType[] = ['content', 'recentPages', 'pageList', 'assetPrice', 'rssFeed'];
 
 export const createBlock = (type: BlockType): Block => ({ id: crypto.randomUUID(), ...BLOCK_DEFAULTS[type]() } as Block);
 

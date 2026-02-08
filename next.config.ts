@@ -20,6 +20,22 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '*.blob.vercel-storage.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'cdn.prod.website-files.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn-images-1.medium.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.sanity.io',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.ytimg.com',
+      },
     ],
     formats: ['image/avif', 'image/webp'],
   },

@@ -115,6 +115,7 @@ function convertAtomicBlock(block: AtomicBlock): string {
     case 'recentPages': return convertRecentPagesBlock(block);
     case 'pageList': return convertPageListBlock(block);
     case 'assetPrice': return convertAssetPriceBlock(block);
+    case 'rssFeed': return `<RssFeed url="${block.url}" limit={${block.limit || 20}} />`;
   }
 }
 

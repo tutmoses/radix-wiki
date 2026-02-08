@@ -13,7 +13,7 @@ import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { usePages } from '@/hooks';
 import { Badge } from '@/components/ui';
 import type { WikiPage, PageMetadata } from '@/types';
-import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock } from '@/types/blocks';
+import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock } from '@/types/blocks';
 import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
 
 // ========== LAZY SHIKI HOOK ==========
@@ -149,6 +149,48 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
   );
 }
 
+interface RssFeedItem { title: string; link: string; image?: string; source: string; date?: string; description?: string; }
+
+function RssFeedBlockView({ block }: { block: RssFeedBlock }) {
+  const [items, setItems] = useState<RssFeedItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(block.url)
+      .then(r => r.json())
+      .then(data => setItems(data.items || []))
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, [block.url]);
+
+  if (isLoading) return <div className="rss-feed-scroll"><div className="stack-sm p-3">{Array.from({ length: 3 }, (_, i) => <div key={i} className="h-[280px] skeleton rounded-md" />)}</div></div>;
+  if (!items.length) return <p className="text-text-muted">No feed items found.</p>;
+
+  return (
+    <div className="rss-feed-scroll">
+      <div className="stack-sm p-3">
+        {(block.limit ? items.slice(0, block.limit) : items).map((item, i) => (
+          <div key={i} className="rss-card">
+            {item.image && (
+              <div className="rss-card-image">
+                <Image src={item.image} alt="" fill className="object-cover" sizes="(max-width: 768px) 100vw, 640px" />
+              </div>
+            )}
+            <div className="rss-card-body">
+              <div className="rss-card-title"><a href={item.link} target="_blank" rel="noopener noreferrer">{item.title}</a></div>
+              <div className="rss-card-meta">
+                <span className="rss-card-source">{item.source}</span>
+                {item.date && <>{' · '}{new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</>}
+              </div>
+              {item.description && <div className="rss-card-desc">{item.description}...</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ColumnsBlockView({ block }: { block: ColumnsBlock }) {
   const gapClass = { sm: 'gap-2', md: 'gap-4', lg: 'gap-6' }[block.gap || 'md'];
   const alignClass = { start: 'items-start', center: 'items-center', end: 'items-end', stretch: 'items-stretch' }[block.align || 'start'];
@@ -247,6 +289,7 @@ function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
     case 'recentPages': return <RecentPagesBlockView block={block} />;
     case 'pageList': return <PageListBlockView block={block} />;
     case 'assetPrice': return <AssetPriceBlockView block={block} />;
+    case 'rssFeed': return <RssFeedBlockView block={block} />;
     case 'columns': return <ColumnsBlockView block={block} />;
     case 'infobox': return <InfoboxBlockView block={block} />;
   }

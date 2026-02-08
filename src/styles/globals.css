@@ -384,6 +384,16 @@
   /* ===== ASSET PRICE ===== */
   .asset-price { @apply bg-surface-1 border border-border-muted rounded-lg p-4 flex items-center gap-4; }
   .recent-pages-grid { @apply grid grid-cols-1 lg:grid-cols-2 gap-4; }
+
+  /* ===== RSS FEED ===== */
+  .rss-feed-scroll { @apply max-h-[494px] overflow-y-auto rounded-lg border border-border-muted bg-surface-0; }
+  .rss-card { @apply bg-surface-1 border border-border-muted rounded-md overflow-hidden transition-colors hover:bg-surface-2; }
+  .rss-card-image { @apply w-full h-[200px] relative; }
+  .rss-card-body { @apply p-3.5; }
+  .rss-card-title { @apply text-[15px] font-semibold mb-1.5 leading-snug; a { @apply text-accent no-underline hover:underline; } }
+  .rss-card-meta { @apply text-xs text-text-muted mb-2; }
+  .rss-card-source { @apply text-success font-medium; }
+  .rss-card-desc { @apply text-text-muted text-[13px] leading-relaxed; }
 }
 
 radix-connect-button {
