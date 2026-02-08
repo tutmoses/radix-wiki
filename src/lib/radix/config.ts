@@ -1,9 +1,9 @@
 // src/lib/radix/config.ts
 
 export const RADIX_CONFIG = {
-  dAppDefinitionAddress: process.env.NEXT_PUBLIC_RADIX_DAPP_DEFINITION_ADDRESS || 
-    'account_tdx_2_12yh3ufj24atcr2x3975m3jqce5327yrlr27g49mgqfrur8ncunpxmy',
-  networkId: parseInt(process.env.NEXT_PUBLIC_RADIX_NETWORK_ID || '2', 10),
+  dAppDefinitionAddress: process.env.NEXT_PUBLIC_RADIX_DAPP_DEFINITION_ADDRESS ||
+    'account_rdx128y6f60dpfje76cfdraup9jknznscp0y76e7ndj42ckn99jxxv6lwmg',
+  networkId: parseInt(process.env.NEXT_PUBLIC_RADIX_NETWORK_ID || '1', 10),
   applicationName: process.env.NEXT_PUBLIC_RADIX_APPLICATION_NAME || 'RADIX Wiki',
   applicationVersion: process.env.NEXT_PUBLIC_RADIX_APPLICATION_VERSION || '1.0.0',
   applicationUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
@@ -20,5 +20,5 @@ const GATEWAY_URLS: Record<number, string> = {
 };
 
 export function getGatewayUrl(networkId = RADIX_CONFIG.networkId): string {
-  return GATEWAY_URLS[networkId] || GATEWAY_URLS[RadixNetworkId.Stokenet];
+  return GATEWAY_URLS[networkId] || GATEWAY_URLS[RadixNetworkId.Mainnet];
 }

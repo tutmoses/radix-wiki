@@ -34,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${inter.variable} font-sans antialiased`}>
         <Script
-          src="https://plausible.io/js/pa-PZd7-RRTlebwSg20I8fiH.js"
+          src="https://plausible.io/js/pa-5NRG8r4xW19fPk-6FUmFm.js"
           strategy="afterInteractive"
         />
         <Script id="plausible-init" strategy="afterInteractive">
