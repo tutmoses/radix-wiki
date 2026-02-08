@@ -69,7 +69,7 @@ export const TAG_HIERARCHY: TagNode[] = [
   { name: 'Meta', slug: 'meta' },
 ];
 
-const AUTHOR_ONLY_PATHS = new Set(['community', 'community/rfps', 'blog']);
+const AUTHOR_ONLY_PATHS = new Set(['community', 'blog']);
 
 interface TagPathContext {
   node: TagNode | null;
