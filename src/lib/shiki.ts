@@ -1,6 +1,6 @@
 // src/lib/shiki.ts - Shared syntax highlighting
 
-type Highlighter = Awaited<ReturnType<typeof import('shiki').createHighlighter>>;
+type Highlighter = Awaited<ReturnType<typeof import('shiki/bundle/web').createHighlighter>>;
 
 export const SHIKI_LANGS = ['javascript', 'typescript', 'css', 'json', 'bash', 'python', 'rust', 'sql', 'html', 'xml', 'jsx', 'tsx', 'markdown', 'yaml', 'toml'] as const;
 const VALID_LANGS = new Set<string>(SHIKI_LANGS);
@@ -12,7 +12,7 @@ let shikiPromise: Promise<Highlighter> | null = null;
 export function getShiki(): Promise<Highlighter> {
   if (shikiInstance) return Promise.resolve(shikiInstance);
   if (!shikiPromise) {
-    shikiPromise = import('shiki').then(async ({ createHighlighter }) => {
+    shikiPromise = import('shiki/bundle/web').then(async ({ createHighlighter }) => {
       shikiInstance = await createHighlighter({ themes: ['github-dark'], langs: [...SHIKI_LANGS] });
       return shikiInstance;
     });
