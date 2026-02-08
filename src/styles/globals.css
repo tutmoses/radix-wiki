@@ -181,7 +181,7 @@
   .header { @apply sticky top-0 z-50 bg-surface-0/80 backdrop-blur-md border-b border-border-muted; }
   .header-inner { @apply w-full px-4 sm:px-6 lg:px-8; }
   .header-bar { @apply flex items-center gap-2 h-[var(--header-height)]; }
-  .logo-mark { @apply flex items-center justify-center w-8 h-8 rounded-md bg-accent text-text-inverted; }
+  .logo-mark { @apply w-8 h-8 object-contain; }
   .logo-text { @apply font-semibold text-lg hidden sm:block; }
   .header-actions { @apply flex items-center gap-2 ml-auto; }
 

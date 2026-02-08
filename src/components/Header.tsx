@@ -3,8 +3,9 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
-import { BookOpen, Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, Info, Clock, FileCode } from 'lucide-react';
+import { Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, Info, Clock, FileCode } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth } from '@/hooks';
 import { cn, shortenAddress, formatRelativeTime, formatDate } from '@/lib/utils';
@@ -173,7 +174,7 @@ export function Header() {
           </button>
 
           <Link href="/" className="row shrink-0">
-            <div className="logo-mark"><BookOpen size={18} /></div>
+            <Image src="/logo.png" alt="RADIX Wiki" width={240} height={240} className="logo-mark" priority />
             <span className="logo-text">RADIX Wiki</span>
           </Link>
 

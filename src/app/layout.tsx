@@ -22,6 +22,10 @@ export const metadata: Metadata = {
   description: 'A decentralized wiki powered by Radix DLT',
   keywords: ['wiki', 'radix', 'blockchain', 'decentralized', 'web3'],
   authors: [{ name: 'RADIX Wiki' }],
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/logo.png',
+  },
   openGraph: {
     title: 'RADIX Wiki',
     description: 'A decentralized wiki powered by Radix DLT',
