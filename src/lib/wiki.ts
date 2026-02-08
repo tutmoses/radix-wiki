@@ -82,7 +82,7 @@ export const getHomepage = cache(async (): Promise<WikiPage | null> => {
     where: { tagPath: '', slug: '' },
     include: {
       author: { select: { id: true, displayName: true, radixAddress: true } },
-      revisions: { select: { id: true } },
+      _count: { select: { revisions: true } },
     },
   }) as Promise<WikiPage | null>;
 });
@@ -92,7 +92,7 @@ export const getPage = cache(async (tagPath: string, slug: string): Promise<Wiki
     where: { tagPath, slug },
     include: {
       author: { select: { id: true, displayName: true, radixAddress: true } },
-      revisions: { select: { id: true } },
+      _count: { select: { revisions: true } },
     },
   }) as Promise<WikiPage | null>;
 });

@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, Info, Clock, FileCode } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useStore, useAuth } from '@/hooks';
+import { useStore, useAuth, type PageInfo } from '@/hooks';
 import { cn, shortenAddress, formatRelativeTime, formatDate, userProfileSlug } from '@/lib/utils';
 import { Button, Dropdown } from '@/components/ui';
 import { isValidTagPath } from '@/lib/tags';
@@ -40,21 +40,10 @@ function usePageContext() {
     editPath: isHomepage ? '/edit' : `${viewPath}/edit`,
     historyPath: (isHomepage || isPage) ? (isHomepage ? '/history' : `${viewPath}/history`) : null,
     mdxPath,
-    isHomepage,
-    tagPath,
-    slug,
   };
 }
 
-interface PageWithAuthor {
-  id: string;
-  updatedAt: string | Date;
-  createdAt: string | Date;
-  author?: { id: string; displayName?: string | null; radixAddress: string };
-  revisions?: { id: string }[];
-}
-
-function PageInfoDropdown({ page, onClose }: { page: PageWithAuthor; onClose: () => void }) {
+function PageInfoDropdown({ page, onClose }: { page: PageInfo; onClose: () => void }) {
   return (
     <Dropdown onClose={onClose} className="w-64 p-3">
       <div className="stack-sm text-small">
@@ -75,13 +64,13 @@ function PageInfoDropdown({ page, onClose }: { page: PageWithAuthor; onClose: ()
           <span className="text-muted">Created:</span>
           <span>{formatDate(page.createdAt)}</span>
         </div>
-        {page.revisions?.length ? (
+        {page.revisionCount > 0 && (
           <div className="row">
             <FileText size={14} className="text-muted shrink-0" />
             <span className="text-muted">Revisions:</span>
-            <span>{page.revisions.length}</span>
+            <span>{page.revisionCount}</span>
           </div>
-        ) : null}
+        )}
       </div>
     </Dropdown>
   );
@@ -101,11 +90,11 @@ export function Header() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
   const { session, walletData, isConnected, isLoading, logout, connect, sidebarOpen, toggleSidebar } = useStore();
-  const { canEdit, canShowHistory, canShowInfo, canExportMdx, editPath, historyPath, mdxPath, isHomepage, tagPath, slug } = usePageContext();
+  const { canEdit, canShowHistory, canShowInfo, canExportMdx, editPath, historyPath, mdxPath } = usePageContext();
+  const pageInfo = useStore(s => s.pageInfo);
   const [showSearch, setShowSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
-  const [pageData, setPageData] = useState<PageWithAuthor | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<WikiPage[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -118,18 +107,6 @@ export function Header() {
 
   const showAsConnected = isAuthenticated || (isConnected && walletData?.accounts?.length);
   const userProfilePath = session ? `/community/${userProfileSlug(session.displayName, session.radixAddress)}` : null;
-
-  useEffect(() => {
-    if (canShowInfo) {
-      const url = isHomepage ? '/api/wiki' : `/api/wiki/${tagPath}/${slug}`;
-      fetch(url)
-        .then(r => r.ok ? r.json() : null)
-        .then(data => setPageData(data))
-        .catch(() => setPageData(null));
-    } else {
-      setPageData(null);
-    }
-  }, [canShowInfo, isHomepage, tagPath, slug]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -181,10 +158,10 @@ export function Header() {
           <div className="header-actions">
             <button onClick={() => setShowSearch(!showSearch)} className="icon-btn" aria-label="Search"><Search size={20} /></button>
 
-            {canShowInfo && pageData && (
+            {canShowInfo && pageInfo && (
               <div className="relative">
                 <button onClick={() => setShowInfo(!showInfo)} className="icon-btn" aria-label="Page info"><Info size={20} /></button>
-                {showInfo && <PageInfoDropdown page={pageData} onClose={() => setShowInfo(false)} />}
+                {showInfo && <PageInfoDropdown page={pageInfo} onClose={() => setShowInfo(false)} />}
               </div>
             )}
 

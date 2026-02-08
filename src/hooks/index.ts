@@ -26,12 +26,20 @@ export function useIsMobile() {
 
 // ========== STORE ==========
 
+export interface PageInfo {
+  updatedAt: string | Date;
+  createdAt: string | Date;
+  author?: { id: string; displayName?: string | null; radixAddress: string } | null;
+  revisionCount: number;
+}
+
 interface AppStore {
   session: AuthSession | null;
   isLoading: boolean;
   isConnected: boolean;
   walletData: RadixWalletData | null;
   sidebarOpen: boolean;
+  pageInfo: PageInfo | null;
   _rdtDisconnect: (() => void) | null;
   _rdtConnect: (() => void) | null;
   _setRdtCallbacks: (connect: (() => void) | null, disconnect: (() => void) | null) => void;
@@ -40,6 +48,7 @@ interface AppStore {
   setConnected: (isConnected: boolean) => void;
   setWalletData: (walletData: RadixWalletData | null) => void;
   setSidebarOpen: (open: boolean) => void;
+  setPageInfo: (info: PageInfo | null) => void;
   toggleSidebar: () => void;
   connect: () => void;
   logout: () => Promise<void>;
@@ -51,6 +60,7 @@ export const useStore = create<AppStore>()((set, get) => ({
   isConnected: false,
   walletData: null,
   sidebarOpen: true,
+  pageInfo: null,
   _rdtDisconnect: null,
   _rdtConnect: null,
   _setRdtCallbacks: (connect, disconnect) => set({ _rdtConnect: connect, _rdtDisconnect: disconnect }),
@@ -59,6 +69,7 @@ export const useStore = create<AppStore>()((set, get) => ({
   setConnected: (isConnected) => set({ isConnected }),
   setWalletData: (walletData) => set({ walletData, isConnected: !!walletData }),
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+  setPageInfo: (pageInfo) => set({ pageInfo }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   connect: () => get()._rdtConnect?.(),
   logout: async () => {

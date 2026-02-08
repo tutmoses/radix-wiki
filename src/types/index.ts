@@ -48,7 +48,7 @@ export type WikiPage = Omit<Page, 'content' | 'metadata'> & {
   bannerImage?: string | null;
   version: string;
   author?: WikiAuthor;
-  revisions?: Pick<Revision, 'id'>[];
+  _count?: { revisions: number };
 };
 
 export type WikiPageInput = {

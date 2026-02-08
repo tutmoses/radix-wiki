@@ -44,6 +44,8 @@ model Page {
   @@index([slug])
   @@index([authorId])
   @@index([tagPath])
+  @@index([tagPath, createdAt])
+  @@index([tagPath, updatedAt])
   @@map("pages")
 }
 
@@ -62,6 +64,7 @@ model Revision {
   createdAt  DateTime @default(now()) @map("created_at")
   
   @@index([pageId])
+  @@index([pageId, createdAt])
   @@index([createdAt])
   @@index([version])
   @@map("revisions")

@@ -62,7 +62,12 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
 
       const pages = await prisma.page.findMany({
         where,
-        include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
+        select: {
+          id: true, slug: true, title: true, excerpt: true, bannerImage: true,
+          tagPath: true, metadata: true, version: true, createdAt: true, updatedAt: true,
+          author: { select: { id: true, displayName: true, radixAddress: true } },
+          _count: { select: { revisions: true } },
+        },
         orderBy,
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -105,7 +110,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       where: { tagPath: parsed.tagPath, slug: parsed.slug },
       include: {
         author: { select: { id: true, displayName: true, radixAddress: true } },
-        revisions: { select: { id: true } },
+        _count: { select: { revisions: true } },
       },
     });
 
