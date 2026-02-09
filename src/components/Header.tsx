@@ -89,7 +89,7 @@ function UserMenuDropdown({ onClose, onLogout }: { onClose: () => void; onLogout
 export function Header() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
-  const { session, walletData, isConnected, isLoading, logout, connect, sidebarOpen, toggleSidebar } = useStore();
+  const { session, walletData, isConnected, isLoading, rdtReady, logout, connect, sidebarOpen, toggleSidebar, _pendingConnect } = useStore();
   const { canEdit, canShowHistory, canShowInfo, canExportMdx, editPath, historyPath, mdxPath } = usePageContext();
   const pageInfo = useStore(s => s.pageInfo);
   const [showSearch, setShowSearch] = useState(false);
@@ -171,7 +171,7 @@ export function Header() {
             {isAuthenticated && userProfilePath && <Link href={userProfilePath} className="icon-btn" aria-label="Your profile"><User size={20} /></Link>}
 
             <div id="radix-connect-btn" className="relative">
-              {isLoading ? (
+              {isLoading || _pendingConnect ? (
                 <div className="user-pill-loading"><Loader2 size={14} className="animate-spin" /><span className="hidden-mobile">Connecting...</span></div>
               ) : showAsConnected ? (
                 <>

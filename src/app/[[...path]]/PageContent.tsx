@@ -167,6 +167,7 @@ function Banner({ src, editable, onUpload, onRemove, children }: { src?: string 
 export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEditing: boolean }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
+  const connect = useStore(s => s.connect);
   const [content, setContent] = useState<Block[]>((page?.content as unknown as Block[]) || []);
   const [bannerImage, setBannerImage] = useState<string | null>(page?.bannerImage || null);
   const [isSaving, setIsSaving] = useState(false);
@@ -225,7 +226,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
     <>
       <BlockRenderer content={mainBlocks} />
       <div className="row-md justify-center wrap">
-        {!isAuthenticated && <Button size="lg" variant="primary" onClick={() => document.querySelector<HTMLButtonElement>('#radix-connect-btn button')?.click()}>Connect Radix Wallet<ArrowRight size={18} /></Button>}
+        {!isAuthenticated && <Button size="lg" variant="primary" onClick={connect}>Connect Radix Wallet<ArrowRight size={18} /></Button>}
         <Link href="/contents"><Button variant="secondary" size="lg">Browse Content</Button></Link>
       </div>
       <Footer />

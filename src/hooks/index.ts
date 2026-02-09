@@ -37,12 +37,15 @@ interface AppStore {
   session: AuthSession | null;
   isLoading: boolean;
   isConnected: boolean;
+  rdtReady: boolean;
   walletData: RadixWalletData | null;
   sidebarOpen: boolean;
   pageInfo: PageInfo | null;
   _rdtDisconnect: (() => void) | null;
   _rdtConnect: (() => void) | null;
+  _pendingConnect: boolean;
   _setRdtCallbacks: (connect: (() => void) | null, disconnect: (() => void) | null) => void;
+  setRdtReady: (ready: boolean) => void;
   setSession: (session: AuthSession | null) => void;
   setLoading: (isLoading: boolean) => void;
   setConnected: (isConnected: boolean) => void;
@@ -58,12 +61,22 @@ export const useStore = create<AppStore>()((set, get) => ({
   session: null,
   isLoading: true,
   isConnected: false,
+  rdtReady: false,
   walletData: null,
   sidebarOpen: true,
   pageInfo: null,
   _rdtDisconnect: null,
   _rdtConnect: null,
-  _setRdtCallbacks: (connect, disconnect) => set({ _rdtConnect: connect, _rdtDisconnect: disconnect }),
+  _pendingConnect: false,
+  _setRdtCallbacks: (connect, disconnect) => {
+    set({ _rdtConnect: connect, _rdtDisconnect: disconnect });
+    // Flush any connect attempt that happened before RDT was ready
+    if (connect && get()._pendingConnect) {
+      set({ _pendingConnect: false });
+      connect();
+    }
+  },
+  setRdtReady: (rdtReady) => set({ rdtReady }),
   setSession: (session) => set({ session, isLoading: false }),
   setLoading: (isLoading) => set({ isLoading }),
   setConnected: (isConnected) => set({ isConnected }),
@@ -71,7 +84,15 @@ export const useStore = create<AppStore>()((set, get) => ({
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
   setPageInfo: (pageInfo) => set({ pageInfo }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
-  connect: () => get()._rdtConnect?.(),
+  connect: () => {
+    const { _rdtConnect, rdtReady } = get();
+    if (_rdtConnect) {
+      _rdtConnect();
+    } else if (!rdtReady) {
+      // RDT still initializing — queue the intent so it fires once ready
+      set({ _pendingConnect: true });
+    }
+  },
   logout: async () => {
     const { _rdtDisconnect } = get();
     try {
