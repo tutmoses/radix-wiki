@@ -163,12 +163,12 @@ function RssFeedBlockView({ block }: { block: RssFeedBlock }) {
       .finally(() => setIsLoading(false));
   }, [block.url]);
 
-  if (isLoading) return <div className="rss-feed-scroll"><div className="stack-sm p-3">{Array.from({ length: 3 }, (_, i) => <div key={i} className="h-[280px] skeleton rounded-md" />)}</div></div>;
+  if (isLoading) return <div className="rss-feed-scroll"><div className="stack-sm">{Array.from({ length: 3 }, (_, i) => <div key={i} className="h-[280px] skeleton rounded-md" />)}</div></div>;
   if (!items.length) return <p className="text-text-muted">No feed items found.</p>;
 
   return (
     <div className="rss-feed-scroll">
-      <div className="stack-sm p-3">
+      <div className="stack-sm">
         {(block.limit ? items.slice(0, block.limit) : items).map((item, i) => (
           <div key={i} className="rss-card">
             {item.image && (

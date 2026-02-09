@@ -70,9 +70,8 @@
   ::selection { @apply bg-accent-muted text-text; }
   :focus-visible { @apply outline-2 outline-accent outline-offset-2; }
 
-  ::-webkit-scrollbar { @apply w-2 h-2; }
-  ::-webkit-scrollbar-track { @apply bg-surface-1; }
-  ::-webkit-scrollbar-thumb { @apply bg-border rounded; &:hover { @apply bg-text-muted; } }
+  * { scrollbar-width: none; }
+  ::-webkit-scrollbar { @apply hidden; }
 
   input, textarea, select { font: inherit; color: inherit; }
   hr { @apply border-0 border-t border-border-muted; }
