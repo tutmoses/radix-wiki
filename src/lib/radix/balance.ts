@@ -12,8 +12,8 @@ const XRD_RESOURCE: Record<number, string> = {
 
 // Single source of truth for XRD requirements
 const XRD_DEFAULTS = {
-  homepage: { edit: 20_000 },
-  create: 5_000,
+  homepage: { edit: 100_000 },
+  create: 10_000,
   edit: 20_000,
   comment: 10_000,
 } as const;
