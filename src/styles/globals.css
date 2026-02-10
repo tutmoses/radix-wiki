@@ -96,8 +96,8 @@
   :is(.tiptap-editor .tiptap, .prose-content) {
     img { @apply max-w-full h-auto rounded-lg my-4; &.ProseMirror-selectednode { @apply outline-2 outline-accent outline-offset-2; } }
     div[data-youtube-video] { @apply relative w-full my-4; &::before { content: ''; @apply block pt-[56.25%]; } iframe { @apply absolute inset-0 w-full! h-full! rounded-lg; } &.ProseMirror-selectednode iframe { @apply outline-2 outline-accent outline-offset-2; } }
-    .iframe-embed { @apply relative w-full min-h-[494px]; iframe { @apply w-full h-[494px] border border-border-muted rounded-lg bg-surface-1; } }
-    .twitter-embed { @apply my-4 max-w-[550px]; iframe { @apply w-full border-0 rounded-lg min-h-[200px]; } }
+    .iframe-embed { @apply relative w-full my-4; iframe { @apply w-full border border-border-muted rounded-lg bg-surface-1; } }
+    .twitter-embed { @apply my-4 w-fit max-w-full; iframe { @apply w-[550px] max-w-full border-0 rounded-lg min-h-[200px]; } }
     .map-embed { @apply relative w-full my-4; &::before { content: ''; @apply block pt-[56.25%]; } iframe { @apply absolute inset-0 w-full! h-full! rounded-lg border border-border-muted; } &.ProseMirror-selectednode { @apply outline-2 outline-accent outline-offset-2 rounded-lg; } }
   }
 
