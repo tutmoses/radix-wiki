@@ -16,7 +16,7 @@ import { UserStats } from '@/components/UserStats';
 import { Button, Card, Input } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
 import { slugify } from '@/lib/utils';
-import { findTagByPath, isAuthorOnlyPath, getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
+import { findTagByPath, isAuthorOnlyPath, getMetadataKeys, getXrdRequired, type MetadataKeyDefinition } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
 import type { WikiPage, AdjacentPages, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
@@ -202,6 +202,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
           <Button onClick={handleSave} disabled={isSaving} size="sm"><Save size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
         </div>
         <h1>Edit Homepage</h1>
+        <div className="callout"><p>Editing the homepage requires <strong>{getXrdRequired('edit', '').toLocaleString()} XRD</strong></p></div>
         <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
         <div className="page-with-infobox">
           <div className="page-main-content">
@@ -494,7 +495,7 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
           <Link href={backHref} className="row link-muted"><ArrowLeft size={16} /><span>{isCreating ? 'Back to Category' : 'Back to Page'}</span></Link>
           <Button onClick={save} disabled={isSaving || !canSave} size="sm"><Save size={16} />{saveLabel}</Button>
         </div>
-        {isCreating && <div className="callout"><p>Creating new page at <code>/{tagPath}/{slug}</code></p></div>}
+        <div className="callout"><p>{isCreating ? `Creating new page at` : `Editing page at`} <code>/{tagPath}/{slug}</code> — requires <strong>{getXrdRequired(isCreating ? 'create' : 'edit', tagPath).toLocaleString()} XRD</strong></p></div>
         <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
         <div className="slug-editor">
           <Link2 size={14} />
@@ -540,7 +541,7 @@ function PageViewContent({ page, adjacent }: { page: WikiPage; adjacent: Adjacen
         <div className="page-main-content stack">
           <BlockRenderer content={mainBlocks} />
           {isCommunityPage && <UserStats authorId={page.authorId} />}
-          <Discussion pageId={page.id} />
+          <Discussion pageId={page.id} tagPath={page.tagPath} />
           <PageNav adjacent={adjacent} />
         </div>
         <InfoboxSidebar block={infobox} metadata={page.metadata} tagPath={page.tagPath} />

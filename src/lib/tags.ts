@@ -21,6 +21,7 @@ export interface TagNode {
 }
 
 export const TAG_HIERARCHY: TagNode[] = [
+  { name: 'Homepage', slug: '', hidden: true, xrd: { edit: 100_000 } },
   {
     name: 'Contents',
     slug: 'contents',
@@ -117,7 +118,11 @@ function resolveTagPath(pathSegments: string[], hierarchy: TagNode[] = TAG_HIERA
 export const findTagByPath = (pathSegments: string[]): TagNode | null => resolveTagPath(pathSegments).node;
 export const isValidTagPath = (pathSegments: string[]): boolean => resolveTagPath(pathSegments).isValid;
 export const isAuthorOnlyPath = (tagPath: string): boolean => resolveTagPath(tagPath.split('/')).isAuthorOnly;
-const getXrdRequirements = (pathSegments: string[]): NonNullable<TagNode['xrd']> => resolveTagPath(pathSegments).xrdRequirements;
+const XRD_DEFAULTS = { create: 10_000, edit: 20_000, comment: 10_000 } as const;
+
+export function getXrdRequired(action: 'create' | 'edit' | 'comment', tagPath: string): number {
+  return resolveTagPath(tagPath.split('/')).xrdRequirements[action] ?? XRD_DEFAULTS[action];
+}
 export const getMetadataKeys = (pathSegments: string[]): MetadataKeyDefinition[] => resolveTagPath(pathSegments).metadataKeys;
 export const getSortOrder = (pathSegments: string[]): SortOrder => resolveTagPath(pathSegments).sort;
 export const getVisibleTags = (hierarchy: TagNode[] = TAG_HIERARCHY): TagNode[] => hierarchy.filter(n => !n.hidden);

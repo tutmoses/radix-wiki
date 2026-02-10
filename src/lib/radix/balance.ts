@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server';
 import { getGatewayUrl, RADIX_CONFIG, RadixNetworkId } from './config';
 import { prisma } from '@/lib/prisma/client';
+import { getXrdRequired } from '@/lib/tags';
 import type { AuthSession } from '@/types';
 
 const XRD_RESOURCE: Record<number, string> = {
@@ -10,24 +11,7 @@ const XRD_RESOURCE: Record<number, string> = {
   [RadixNetworkId.Stokenet]: 'resource_tdx_2_1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxtfd2jc',
 };
 
-// Single source of truth for XRD requirements
-const XRD_DEFAULTS = {
-  homepage: { edit: 100_000 },
-  create: 10_000,
-  edit: 20_000,
-  comment: 10_000,
-} as const;
-
-export type BalanceAction =
-  | { type: 'editHomepage' }
-  | { type: 'edit'; tagPath: string }
-  | { type: 'create'; tagPath: string }
-  | { type: 'comment'; tagPath: string };
-
-function getRequirement(action: BalanceAction): number {
-  if (action.type === 'editHomepage') return XRD_DEFAULTS.homepage.edit;
-  return XRD_DEFAULTS[action.type];
-}
+export type BalanceAction = { type: 'create' | 'edit' | 'comment'; tagPath: string };
 
 async function getXrdBalance(address: string): Promise<number> {
   try {
@@ -51,6 +35,8 @@ type BalanceResult =
   | { ok: true; user: { id: string; radixAddress: string }; balance: number }
   | { ok: false; response: NextResponse };
 
+const ACTION_LABELS: Record<BalanceAction['type'], string> = { edit: 'edit pages', create: 'create pages', comment: 'comment' };
+
 export async function requireBalance(session: AuthSession, action: BalanceAction): Promise<BalanceResult> {
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
@@ -61,10 +47,12 @@ export async function requireBalance(session: AuthSession, action: BalanceAction
     return { ok: false, response: NextResponse.json({ error: 'User not found' }, { status: 404 }) };
   }
 
-  const required = getRequirement(action);
+  const required = getXrdRequired(action.type, action.tagPath);
   const balance = await getXrdBalance(user.radixAddress);
 
   if (balance >= required) return { ok: true, user, balance };
+
+  const shortfall = required - Math.floor(balance);
 
   return {
     ok: false,
@@ -72,7 +60,7 @@ export async function requireBalance(session: AuthSession, action: BalanceAction
       ok: false,
       balance,
       required,
-      error: `Insufficient XRD balance. Required: ${required.toLocaleString()} XRD, Available: ${Math.floor(balance).toLocaleString()} XRD`,
+      error: `You need ${required.toLocaleString()} XRD to ${ACTION_LABELS[action.type]}${action.tagPath ? ` in ${action.tagPath}` : ''}. You have ${Math.floor(balance).toLocaleString()} XRD (${shortfall.toLocaleString()} XRD short).`,
     }, { status: 403 }),
   };
 }

@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback, useActionState } from 'react';
 import { MessageSquare, Reply, Trash2, ChevronDown, ChevronUp, Send } from 'lucide-react';
 import { cn, formatRelativeTime } from '@/lib/utils';
+import { getXrdRequired } from '@/lib/tags';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/hooks';
 import type { WikiComment } from '@/types';
@@ -97,7 +98,7 @@ function CommentThread({ comment, depth, onReply, onDelete, currentUserId }: {
   );
 }
 
-export function Discussion({ pageId }: { pageId: string }) {
+export function Discussion({ pageId, tagPath }: { pageId: string; tagPath: string }) {
   const [comments, setComments] = useState<WikiComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expanded, setExpanded] = useState(true);
@@ -138,8 +139,12 @@ export function Discussion({ pageId }: { pageId: string }) {
       </button>
       {expanded && (
         <div className="stack">
-          {isAuthenticated ? <CommentForm onSubmit={c => handlePost(c)} placeholder="Start a discussion..." />
-            : <p className="text-muted surface p-4 text-center">Connect your wallet to join the discussion.</p>}
+          {isAuthenticated ? (
+            <>
+              <p className="text-muted text-small">Commenting requires {getXrdRequired('comment', tagPath).toLocaleString()} XRD</p>
+              <CommentForm onSubmit={c => handlePost(c)} placeholder="Start a discussion..." />
+            </>
+          ) : <p className="text-muted surface p-4 text-center">Connect your wallet to join the discussion.</p>}
           {isLoading ? <div className="stack">{[1, 2].map(i => <div key={i} className="h-20 skeleton" />)}</div>
             : comments.length > 0 ? <div className="stack">{comments.map(c => <CommentThread key={c.id} comment={c} depth={0} onReply={handlePost} onDelete={handleDelete} currentUserId={user?.id} />)}</div>
             : <p className="text-muted text-center py-4">No comments yet. Be the first to start the discussion!</p>}

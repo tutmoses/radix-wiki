@@ -141,8 +141,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
         return errors.forbidden('You can only restore your own pages in this category');
       }
 
-      const isHomepage = parsed.tagPath === '' && parsed.slug === '';
-      const balanceAuth = await requireAuth(request, isHomepage ? { type: 'editHomepage' } : { type: 'edit', tagPath: parsed.tagPath });
+      const balanceAuth = await requireAuth(request, { type: 'edit', tagPath: parsed.tagPath });
       if ('error' in balanceAuth) return balanceAuth.error;
 
       const { revisionId } = await request.json();
@@ -246,8 +245,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
 
     if (!parsed || parsed.type === 'history') return errors.notFound('Invalid path');
 
-    const isHomepage = parsed.type === 'homepage';
-    const auth = await requireAuth(request, isHomepage ? { type: 'editHomepage' } : { type: 'edit', tagPath: parsed.tagPath });
+    const auth = await requireAuth(request, { type: 'edit', tagPath: parsed.tagPath });
     if ('error' in auth) return auth.error;
 
     const body: Partial<WikiPageInput> & { revisionMessage?: string; newSlug?: string } = await request.json();
@@ -260,7 +258,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     const existing = await prisma.page.findFirst({ where: { tagPath: parsed.tagPath, slug: parsed.slug } });
 
     // Homepage creation if it doesn't exist
-    if (!existing && isHomepage) {
+    if (!existing && parsed.type === 'homepage') {
       const initialVersion = '1.0.0';
       
       const page = await prisma.page.create({
@@ -301,7 +299,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     }
 
     // Author-only check for non-homepage
-    if (!isHomepage && isAuthorOnlyPath(existing.tagPath) && existing.authorId !== auth.session.userId) {
+    if (parsed.type !== 'homepage' && isAuthorOnlyPath(existing.tagPath) && existing.authorId !== auth.session.userId) {
       return errors.forbidden('You can only edit your own pages in this category');
     }
 
