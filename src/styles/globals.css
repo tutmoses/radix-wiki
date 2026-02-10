@@ -75,6 +75,7 @@
 
   input, textarea, select { font: inherit; color: inherit; }
   hr { @apply border-0 border-t border-border-muted; }
+  pre { @apply whitespace-pre-wrap break-words; }
 
   /* Tiptap editor */
   .tiptap-editor .tiptap {
@@ -101,7 +102,7 @@
   }
 
   /* Code block with language selector */
-  .code-block-wrapper { @apply relative my-4; pre { @apply m-0 border border-border-muted rounded-lg p-4 pr-24 overflow-x-auto; background-color: #24292e; } code { @apply bg-transparent p-0; } }
+  .code-block-wrapper { @apply relative my-4; pre { @apply m-0 border border-border-muted rounded-lg p-4 pr-24; background-color: #24292e; } code { @apply bg-transparent p-0; } }
 
   /* Tabs - consolidated */
   [data-tabs] {
@@ -126,7 +127,7 @@
   [data-tabs][data-active-tab="5"] [data-tab-item]:nth-of-type(6) { @apply block; }
 
   /* Shiki code blocks */
-  .shiki { @apply border border-border-muted rounded-lg p-4 overflow-x-auto; code { @apply p-0 bg-transparent; } }
+  .shiki { @apply border border-border-muted rounded-lg p-4; code { @apply p-0 bg-transparent; } }
 }
 
 @layer components {
@@ -332,6 +333,7 @@
       grid-template-areas: "content infobox";
     }
 
+    > * { min-width: 0; }
     > .infobox { grid-area: infobox; }
     > .page-main-content { grid-area: content; }
   }
