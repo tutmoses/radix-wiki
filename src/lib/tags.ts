@@ -8,7 +8,7 @@ export interface MetadataKeyDefinition {
   options?: string[]; // For select type
 }
 
-export type SortOrder = 'title' | 'newest' | 'oldest';
+export type SortOrder = 'title' | 'newest' | 'oldest' | 'recent';
 
 export interface TagNode {
   name: string;
@@ -65,7 +65,7 @@ export const TAG_HIERARCHY: TagNode[] = [
       { key: 'open positions', label: 'Open Positions:', type: 'text' },
     ],
     xrd: { create: 20_000 } },
-  { name: 'Community', slug: 'community'},
+  { name: 'Community', slug: 'community', sort: 'recent' },
   { name: 'Blog', slug: 'blog', sort: 'newest', metadataKeys: [{ key: 'date', label: 'Published:', type: 'date' }], xrd: { create: 50_000 } },
   { name: 'Meta', slug: 'meta' },
 ];

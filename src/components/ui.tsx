@@ -3,6 +3,8 @@
 'use client';
 
 import { forwardRef, useRef, useEffect, type ButtonHTMLAttributes, type InputHTMLAttributes, type HTMLAttributes } from 'react';
+import Link from 'next/link';
+import { ArrowLeft, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Dropdown
@@ -87,5 +89,30 @@ const spinnerSizes = { sm: 'h-4 w-4', md: 'h-6 w-6', lg: 'h-8 w-8' };
 
 export function Spinner({ size = 'md', className }: { size?: 'sm' | 'md' | 'lg'; className?: string }) {
   return <span className={cn('spinner text-accent', spinnerSizes[size], className)} />;
+}
+
+// StatusCard - Reusable status/error display
+const STATUS = {
+  authRequired: { title: 'Authentication Required', message: 'Please connect your Radix wallet.' },
+  notFound: { title: 'Page not found', message: "The page you're looking for doesn't exist." },
+  notAuthorized: { title: 'Not Authorized', message: 'You can only edit your own pages in this category.' },
+  invalidPath: { title: 'Invalid path', message: 'The path you entered is not valid.' },
+  error: { title: 'Error', message: 'Failed to load page' },
+} as const;
+
+export function StatusCard({ status, backHref }: { status: keyof typeof STATUS; backHref: string }) {
+  const { title, message } = STATUS[status];
+  return (
+    <div className="center">
+      <Card className="text-center max-w-md">
+        <div className="stack items-center py-12">
+          <div className="status-icon"><FileText size={32} /></div>
+          <h1>{title}</h1>
+          <p className="text-muted">{message}</p>
+          <Link href={backHref}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link>
+        </div>
+      </Card>
+    </div>
+  );
 }
 

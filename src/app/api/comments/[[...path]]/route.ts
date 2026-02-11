@@ -3,6 +3,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { json, errors, handleRoute, requireAuth, type RouteContext } from '@/lib/api';
+import { AUTHOR_SELECT } from '@/lib/wiki';
 import type { CommentInput } from '@/types';
 
 type PathParams = { path?: string[] };
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
     const [comments, total] = await Promise.all([
       prisma.comment.findMany({
         where,
-        include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
+        include: { author: AUTHOR_SELECT },
         orderBy: { createdAt: 'asc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest) {
         content: content.trim(),
         authorId: auth.session.userId,
       },
-      include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
+      include: { author: AUTHOR_SELECT },
     });
 
     return json(comment, 201);

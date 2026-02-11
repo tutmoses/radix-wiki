@@ -292,8 +292,11 @@
 
   /* ===== TOGGLE OPTIONS (gap/align pickers) ===== */
   .toggle-group { @apply flex items-center gap-4 p-3 bg-surface-2 rounded-lg; }
+  .toggle-group-sm { @apply flex items-center gap-1 p-1 bg-surface-2 rounded-md; }
   .toggle-option { @apply px-3 py-1 rounded-md border border-border hover:bg-surface-2 capitalize; }
   .toggle-option-active { @apply px-3 py-1 rounded-md border border-accent bg-accent text-text-inverted capitalize; }
+  .toggle-option-sm { @apply px-2 py-0.5 text-small rounded border border-transparent hover:bg-surface-2; }
+  .toggle-option-sm-active { @apply px-2 py-0.5 text-small rounded border border-accent bg-accent text-text-inverted; }
 
   /* ===== CODE BLOCK LANG SELECTOR ===== */
   .lang-selector { @apply absolute top-2 right-2 z-10; }

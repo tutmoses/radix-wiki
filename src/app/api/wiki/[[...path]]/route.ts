@@ -7,7 +7,7 @@ import { slugify } from '@/lib/utils';
 import { isValidTagPath, isAuthorOnlyPath, getMetadataKeys } from '@/lib/tags';
 import { json, errors, handleRoute, requireAuth, type RouteContext } from '@/lib/api';
 import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, type BlockChange } from '@/lib/versioning';
-import { parseApiPath } from '@/lib/wiki';
+import { parsePath, AUTHOR_SELECT, PAGE_INCLUDE } from '@/lib/wiki';
 import { validateBlocks } from '@/lib/blocks';
 import { blocksToMdx } from '@/lib/mdx';
 import type { WikiPageInput } from '@/types';
@@ -17,14 +17,14 @@ type PathParams = { path?: string[] };
 
 export async function GET(request: NextRequest, context: RouteContext<PathParams>) {
   const { path } = await context.params;
+  const parsed = parsePath(path, 'api');
 
   // Handle MDX export outside handleRoute (returns raw Response)
-  const parsed = parseApiPath(path);
-  if (parsed?.type === 'mdx') {
+  if (parsed.type === 'mdx') {
     try {
       const page = await prisma.page.findFirst({
         where: { tagPath: parsed.tagPath, slug: parsed.slug },
-        include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
+        include: { author: AUTHOR_SELECT },
       });
       if (!page) return errors.notFound('Page not found');
 
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
         select: {
           id: true, slug: true, title: true, excerpt: true, bannerImage: true,
           tagPath: true, metadata: true, version: true, createdAt: true, updatedAt: true,
-          author: { select: { id: true, displayName: true, radixAddress: true } },
+          author: AUTHOR_SELECT,
           _count: { select: { revisions: true } },
         },
         orderBy,
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       return json({ items: pages, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
     }
 
-    if (!parsed) return errors.notFound('Invalid path');
+    if (parsed.type === 'invalid') return errors.notFound('Invalid path');
 
     // History mode
     if (parsed.type === 'history') {
@@ -90,14 +90,9 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       const revisions = await prisma.revision.findMany({
         where: { pageId: page.id },
         select: {
-          id: true,
-          title: true,
-          version: true,
-          changeType: true,
-          changes: true,
-          message: true,
-          createdAt: true,
-          author: { select: { id: true, displayName: true, radixAddress: true } },
+          id: true, title: true, version: true, changeType: true,
+          changes: true, message: true, createdAt: true,
+          author: AUTHOR_SELECT,
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -108,10 +103,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     // Homepage or specific page
     const page = await prisma.page.findFirst({
       where: { tagPath: parsed.tagPath, slug: parsed.slug },
-      include: {
-        author: { select: { id: true, displayName: true, radixAddress: true } },
-        _count: { select: { revisions: true } },
-      },
+      include: PAGE_INCLUDE,
     });
 
     if (!page && parsed.type === 'homepage') return json(null);
@@ -124,14 +116,14 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
 export async function POST(request: NextRequest, context: RouteContext<PathParams>) {
   return handleRoute(async () => {
     const { path } = await context.params;
-    const parsed = parseApiPath(path);
+    const parsed = parsePath(path, 'api');
 
     // Restore revision
-    if (parsed?.type === 'history') {
+    if (parsed.type === 'history') {
       const auth = await requireAuth(request);
       if ('error' in auth) return auth.error;
 
-      const page = await prisma.page.findFirst({ 
+      const page = await prisma.page.findFirst({
         where: { tagPath: parsed.tagPath, slug: parsed.slug },
         select: { id: true, title: true, content: true, bannerImage: true, version: true, authorId: true, tagPath: true },
       });
@@ -150,29 +142,20 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
       const revision = await prisma.revision.findFirst({ where: { id: revisionId, pageId: page.id } });
       if (!revision) return errors.notFound('Revision not found');
 
-      // Restores are always major changes - skip expensive diff computation
       const newVersion = incrementVersion(parseVersion(page.version), 'major');
       const content = revision.content as Prisma.InputJsonValue;
 
       await prisma.page.update({
         where: { id: page.id },
-        data: {
-          title: revision.title,
-          content,
-          version: formatVersion(newVersion),
-        },
+        data: { title: revision.title, content, version: formatVersion(newVersion) },
       });
 
       await prisma.revision.create({
         data: {
-          pageId: page.id,
-          title: revision.title,
-          content,
-          version: formatVersion(newVersion),
-          changeType: 'major',
+          pageId: page.id, title: revision.title, content,
+          version: formatVersion(newVersion), changeType: 'major',
           changes: [] as unknown as Prisma.InputJsonValue,
-          authorId: auth.session.userId,
-          message: `Restored to v${revision.version}`,
+          authorId: auth.session.userId, message: `Restored to v${revision.version}`,
         },
       });
 
@@ -189,7 +172,6 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
       return errors.badRequest('Valid tag path required');
     }
 
-    // Validate required metadata fields
     const metadataKeys = getMetadataKeys(tagPath.split('/'));
     const requiredKeys = metadataKeys.filter(k => k.required);
     const missingKeys = requiredKeys.filter(k => !metadata?.[k.key]?.trim());
@@ -208,29 +190,22 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
 
     const page = await prisma.page.create({
       data: {
-        slug,
-        title,
+        slug, title,
         content: content as unknown as Prisma.InputJsonValue,
-        excerpt,
-        bannerImage,
-        tagPath,
+        excerpt, bannerImage, tagPath,
         metadata: metadata as unknown as Prisma.InputJsonValue,
-        version: initialVersion,
-        authorId: auth.session.userId,
+        version: initialVersion, authorId: auth.session.userId,
       },
-      include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
+      include: { author: AUTHOR_SELECT },
     });
 
     await prisma.revision.create({
       data: {
-        pageId: page.id,
-        title,
+        pageId: page.id, title,
         content: content as unknown as Prisma.InputJsonValue,
-        version: initialVersion,
-        changeType: 'major',
+        version: initialVersion, changeType: 'major',
         changes: [] as unknown as Prisma.InputJsonValue,
-        authorId: auth.session.userId,
-        message: 'Initial version',
+        authorId: auth.session.userId, message: 'Initial version',
       },
     });
 
@@ -241,9 +216,9 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
 export async function PUT(request: NextRequest, context: RouteContext<PathParams>) {
   return handleRoute(async () => {
     const { path } = await context.params;
-    const parsed = parseApiPath(path);
+    const parsed = parsePath(path, 'api');
 
-    if (!parsed || parsed.type === 'history') return errors.notFound('Invalid path');
+    if (parsed.type === 'invalid' || parsed.type === 'history') return errors.notFound('Invalid path');
 
     const auth = await requireAuth(request, { type: 'edit', tagPath: parsed.tagPath });
     if ('error' in auth) return auth.error;
@@ -260,29 +235,23 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     // Homepage creation if it doesn't exist
     if (!existing && parsed.type === 'homepage') {
       const initialVersion = '1.0.0';
-      
+
       const page = await prisma.page.create({
         data: {
-          tagPath: '',
-          slug: '',
+          tagPath: '', slug: '',
           title: title || 'Homepage',
           content: (content as unknown as Prisma.InputJsonValue) || {},
-          bannerImage,
-          version: initialVersion,
-          authorId: auth.session.userId,
+          bannerImage, version: initialVersion, authorId: auth.session.userId,
         },
       });
 
       await prisma.revision.create({
         data: {
-          pageId: page.id,
-          title: title || 'Homepage',
+          pageId: page.id, title: title || 'Homepage',
           content: (content as unknown as Prisma.InputJsonValue) || {},
-          version: initialVersion,
-          changeType: 'major',
+          version: initialVersion, changeType: 'major',
           changes: [] as unknown as Prisma.InputJsonValue,
-          authorId: auth.session.userId,
-          message: 'Initial version',
+          authorId: auth.session.userId, message: 'Initial version',
         },
       });
 
@@ -291,19 +260,16 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
 
     if (!existing) return errors.notFound('Page not found');
 
-    // Slug rename: validate uniqueness
     const slugUpdate = newSlug && newSlug !== existing.slug ? slugify(newSlug) : undefined;
     if (slugUpdate) {
       const conflict = await prisma.page.findFirst({ where: { tagPath: existing.tagPath, slug: slugUpdate } });
       if (conflict) return errors.badRequest('A page with that slug already exists in this category');
     }
 
-    // Author-only check for non-homepage
     if (parsed.type !== 'homepage' && isAuthorOnlyPath(existing.tagPath) && existing.authorId !== auth.session.userId) {
       return errors.forbidden('You can only edit your own pages in this category');
     }
 
-    // Compute semantic diff if content changed
     let newVersion = existing.version;
     let changeType: string = 'patch';
     let changes: BlockChange[] = [];
@@ -311,15 +277,11 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     if (content || title) {
       const oldContent = (existing.content as unknown as Block[]) || [];
       const newContent = (content as unknown as Block[]) || oldContent;
-      
+
       const diff = computeRevisionDiff(
-        existing.version,
-        oldContent,
-        newContent,
-        existing.title,
-        title || existing.title,
-        existing.bannerImage,
-        bannerImage ?? existing.bannerImage
+        existing.version, oldContent, newContent,
+        existing.title, title || existing.title,
+        existing.bannerImage, bannerImage ?? existing.bannerImage
       );
 
       newVersion = formatVersion(diff.version);
@@ -327,7 +289,6 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
       changes = diff.changes;
     }
 
-    // Validate required metadata if being updated
     if (metadata !== undefined) {
       const metadataKeys = getMetadataKeys(existing.tagPath.split('/'));
       const requiredKeys = metadataKeys.filter(k => k.required);
@@ -340,28 +301,23 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     const page = await prisma.page.update({
       where: { id: existing.id },
       data: {
-        title: title ?? undefined,
-        slug: slugUpdate ?? undefined,
+        title: title ?? undefined, slug: slugUpdate ?? undefined,
         content: content !== undefined ? (content as unknown as Prisma.InputJsonValue) : undefined,
-        excerpt: excerpt ?? undefined,
-        bannerImage: bannerImage ?? undefined,
+        excerpt: excerpt ?? undefined, bannerImage: bannerImage ?? undefined,
         metadata: metadata !== undefined ? (metadata as unknown as Prisma.InputJsonValue) : undefined,
         version: newVersion,
       },
-      include: { author: { select: { id: true, displayName: true, radixAddress: true } } },
+      include: { author: AUTHOR_SELECT },
     });
 
     if (content || title) {
       await prisma.revision.create({
         data: {
-          pageId: page.id,
-          title: title || existing.title,
+          pageId: page.id, title: title || existing.title,
           content: content ? (content as unknown as Prisma.InputJsonValue) : (existing.content as Prisma.InputJsonValue),
-          version: newVersion,
-          changeType,
+          version: newVersion, changeType,
           changes: changes as unknown as Prisma.InputJsonValue,
-          authorId: auth.session.userId,
-          message: revisionMessage,
+          authorId: auth.session.userId, message: revisionMessage,
         },
       });
     }
@@ -373,9 +329,9 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
 export async function DELETE(request: NextRequest, context: RouteContext<PathParams>) {
   return handleRoute(async () => {
     const { path } = await context.params;
-    const parsed = parseApiPath(path);
+    const parsed = parsePath(path, 'api');
 
-    if (!parsed || parsed.type !== 'page') return errors.notFound('Invalid path');
+    if (parsed.type !== 'page') return errors.notFound('Invalid path');
 
     const auth = await requireAuth(request);
     if ('error' in auth) return auth.error;

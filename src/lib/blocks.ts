@@ -1,16 +1,14 @@
 // src/lib/blocks.ts - Block validation utilities
 
 import type { Block, BlockType, AtomicBlock } from '@/types/blocks';
-
-const VALID_BLOCK_TYPES: BlockType[] = ['content', 'recentPages', 'pageList', 'assetPrice', 'columns', 'infobox', 'rssFeed'];
-const ATOMIC_TYPES: BlockType[] = ['content', 'recentPages', 'pageList', 'assetPrice', 'rssFeed'];
+import { BLOCK_META, ATOMIC_BLOCK_TYPES } from '@/lib/block-utils';
 
 function isValidBlockType(type: unknown): type is BlockType {
-  return typeof type === 'string' && VALID_BLOCK_TYPES.includes(type as BlockType);
+  return typeof type === 'string' && type in BLOCK_META;
 }
 
 function isAtomicType(type: BlockType): boolean {
-  return ATOMIC_TYPES.includes(type);
+  return ATOMIC_BLOCK_TYPES.includes(type);
 }
 
 function validateAtomicBlock(block: unknown): block is AtomicBlock {

@@ -3,11 +3,12 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { parsePath, getHomepage, getPage, getCategoryPages, getPageHistory, getAdjacentPages } from '@/lib/wiki';
+import { getSortOrder, type SortOrder } from '@/lib/tags';
 import { PageView, HomepageView, CategoryView, PageSkeleton, StatusCard, HistoryView, type HistoryData } from './PageContent';
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-type Props = { params: Promise<{ path?: string[] }> };
+type Props = { params: Promise<{ path?: string[] }>; searchParams: Promise<{ sort?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { path } = await params;
@@ -29,8 +30,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function DynamicPage({ params }: Props) {
+const VALID_SORTS = new Set<string>(['title', 'newest', 'oldest', 'recent']);
+
+export default async function DynamicPage({ params, searchParams }: Props) {
   const { path } = await params;
+  const { sort: sortParam } = await searchParams;
   const parsed = parsePath(path);
 
   if (parsed.type === 'invalid') return <StatusCard status="invalidPath" backHref="/" />;
@@ -51,8 +55,10 @@ export default async function DynamicPage({ params }: Props) {
   }
 
   if (parsed.type === 'category') {
-    const pages = await getCategoryPages(parsed.tagPath);
-    return <Suspense fallback={<PageSkeleton />}><CategoryView tagPath={parsed.tagPath.split('/')} pages={pages} /></Suspense>;
+    const defaultSort = getSortOrder(parsed.tagPath.split('/'));
+    const sort = (sortParam && VALID_SORTS.has(sortParam) ? sortParam : defaultSort) as SortOrder;
+    const pages = await getCategoryPages(parsed.tagPath, sort);
+    return <Suspense fallback={<PageSkeleton />}><CategoryView tagPath={parsed.tagPath.split('/')} pages={pages} sort={sort} /></Suspense>;
   }
 
   if (parsed.type === 'history') {
@@ -61,6 +67,6 @@ export default async function DynamicPage({ params }: Props) {
   }
 
   const page = await getPage(parsed.tagPath, parsed.slug);
-  const adjacent = page ? await getAdjacentPages(parsed.tagPath, page.title, page.createdAt) : { prev: null, next: null };
-  return <Suspense fallback={<PageSkeleton />}><PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.isEditMode} adjacent={adjacent} /></Suspense>;
+  const adjacent = page ? await getAdjacentPages(parsed.tagPath, page.title, page.createdAt, page.updatedAt) : { prev: null, next: null };
+  return <Suspense fallback={<PageSkeleton />}><PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} adjacent={adjacent} /></Suspense>;
 }

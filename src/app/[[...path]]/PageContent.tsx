@@ -13,10 +13,10 @@ import { Discussion } from '@/components/Discussion';
 import { Footer } from '@/components/Footer';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { UserStats } from '@/components/UserStats';
-import { Button, Card, Input } from '@/components/ui';
+import { Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
 import { slugify } from '@/lib/utils';
-import { findTagByPath, isAuthorOnlyPath, getMetadataKeys, getXrdRequired, type MetadataKeyDefinition } from '@/lib/tags';
+import { findTagByPath, isAuthorOnlyPath, getMetadataKeys, getXrdRequired, type MetadataKeyDefinition, type SortOrder } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
 import type { WikiPage, AdjacentPages, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
@@ -56,30 +56,7 @@ function useSyncPageInfo(page: WikiPage | null) {
   }, [page, setPageInfo]);
 }
 
-// ========== STATUS CARDS ==========
-const STATUS = {
-  authRequired: { title: 'Authentication Required', message: 'Please connect your Radix wallet.' },
-  notFound: { title: 'Page not found', message: "The page you're looking for doesn't exist." },
-  notAuthorized: { title: 'Not Authorized', message: 'You can only edit your own pages in this category.' },
-  invalidPath: { title: 'Invalid path', message: 'The path you entered is not valid.' },
-  error: { title: 'Error', message: 'Failed to load page' },
-} as const;
-
-export function StatusCard({ status, backHref }: { status: keyof typeof STATUS; backHref: string }) {
-  const { title, message } = STATUS[status];
-  return (
-    <div className="center">
-      <Card className="text-center max-w-md">
-        <div className="stack items-center py-12">
-          <div className="status-icon"><FileText size={32} /></div>
-          <h1>{title}</h1>
-          <p className="text-muted">{message}</p>
-          <Link href={backHref}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link>
-        </div>
-      </Card>
-    </div>
-  );
-}
+export { StatusCard } from '@/components/ui';
 
 export function PageSkeleton() {
   return (
@@ -249,8 +226,27 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   );
 }
 
+// ========== SORT TOGGLE ==========
+const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
+  { value: 'title', label: 'A–Z' },
+  { value: 'newest', label: 'Newest' },
+  { value: 'recent', label: 'Updated' },
+];
+
+function SortToggle({ sort, tagPath }: { sort: SortOrder; tagPath: string }) {
+  const router = useRouter();
+  return (
+    <div className="toggle-group-sm">
+      {SORT_OPTIONS.map(o => (
+        <button key={o.value} className={sort === o.value ? 'toggle-option-sm-active' : 'toggle-option-sm'}
+          onClick={() => router.push(`/${tagPath}?sort=${o.value}`)}>{o.label}</button>
+      ))}
+    </div>
+  );
+}
+
 // ========== CATEGORY VIEW ==========
-export function CategoryView({ tagPath, pages }: { tagPath: string[]; pages: WikiPage[] }) {
+export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; pages: WikiPage[]; sort: SortOrder }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const pathStr = tagPath.join('/');
@@ -275,6 +271,9 @@ export function CategoryView({ tagPath, pages }: { tagPath: string[]; pages: Wik
             ) : <Button size="sm" onClick={() => setShowCreate(true)}><Plus size={16} />New Page</Button>}
           </div>
         )}
+      </div>
+      <div className="center">
+        <SortToggle sort={sort} tagPath={pathStr} />
       </div>
       {pages.length > 0 ? (
         <div className="category-grid">
