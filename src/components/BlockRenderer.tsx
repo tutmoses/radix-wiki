@@ -169,11 +169,11 @@ function RssFeedBlockView({ block }: { block: RssFeedBlock }) {
   return (
     <div className="rss-feed-scroll">
       <div className="stack-sm">
-        {(block.limit ? items.slice(0, block.limit) : items).map((item, i) => (
+        {items.slice(0, block.limit || 15).map((item, i) => (
           <div key={i} className="rss-card">
             {item.image && (
               <div className="rss-card-image">
-                <Image src={item.image} alt="" fill className="object-cover" sizes="(max-width: 768px) 100vw, 640px" />
+                <img src={item.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
               </div>
             )}
             <div className="rss-card-body">
