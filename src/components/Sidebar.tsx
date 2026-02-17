@@ -26,10 +26,10 @@ function TagNavItem({ node, parentPath, pathname, depth }: { node: TagNode; pare
   const [isExpanded, setIsExpanded] = useState(isActive);
 
   return (
-    <div className={cn(depth > 0 && 'ml-3')}>
+    <div style={{ paddingLeft: `${depth * 1.5}rem` }}>
       <div className="row">
-        {hasChildren && <button onClick={() => setIsExpanded(!isExpanded)} className="icon-btn p-1 text-muted">{isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button>}
-        <Link href={href} className={cn(isActive ? 'nav-link-active' : 'nav-link', !hasChildren && 'ml-5')}>{node.name}</Link>
+        <span className="nav-indent">{hasChildren ? <button onClick={() => setIsExpanded(!isExpanded)} className="icon-btn p-1 text-muted">{isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button> : null}</span>
+        <Link href={href} className={isActive ? 'nav-link-active' : 'nav-link'}>{node.name}</Link>
       </div>
       {hasChildren && isExpanded && <div className="mt-1">{node.children!.map(child => <TagNavItem key={child.slug} node={child} parentPath={currentPath} pathname={pathname} depth={depth + 1} />)}</div>}
     </div>

@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, ArrowRight, Trash2, Save, FileText, Plus, Upload, X, Image as ImageIcon, Link2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Trash2, Save, FileText, Plus, Upload, X, Image as ImageIcon, Link2, MessageSquare } from 'lucide-react';
 import { BlockRenderer, findInfobox, InfoboxSidebar } from '@/components/BlockRenderer';
 import { Discussion } from '@/components/Discussion';
 import { Footer } from '@/components/Footer';
@@ -15,10 +15,10 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { UserStats } from '@/components/UserStats';
 import { Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
-import { slugify } from '@/lib/utils';
+import { slugify, formatRelativeTime } from '@/lib/utils';
 import { findTagByPath, isAuthorOnlyPath, getMetadataKeys, getXrdRequired, type MetadataKeyDefinition, type SortOrder } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
-import type { WikiPage, AdjacentPages, PageMetadata } from '@/types';
+import type { WikiPage, AdjacentPages, PageMetadata, ForumThread } from '@/types';
 import type { Block } from '@/types/blocks';
 
 const BlockEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.BlockEditor), {
@@ -299,6 +299,60 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
         <Card className="empty-state">
           <p className="text-muted">No pages in this category yet.</p>
           {canCreatePages && <small className="mt-2 block">Click "New Page" above to create one.</small>}
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ========== FORUM VIEW ==========
+export function ForumView({ tagPath, threads, sort }: { tagPath: string[]; threads: ForumThread[]; sort: SortOrder }) {
+  const router = useRouter();
+  const { isAuthenticated } = useAuth();
+  const pathStr = tagPath.join('/');
+  const [newSlug, setNewSlug] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const tag = findTagByPath(tagPath);
+
+  return (
+    <div className="stack">
+      <Breadcrumbs path={tagPath} />
+      <div className="spread">
+        <h1>{tag?.name || tagPath[tagPath.length - 1]}</h1>
+        {isAuthenticated && (
+          <div className="row">
+            {showCreate ? (
+              <>
+                <Input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="thread-slug" className="w-48" onKeyDown={e => e.key === 'Enter' && newSlug.trim() && router.push(`/${pathStr}/${slugify(newSlug)}`)} autoFocus />
+                <Button size="sm" onClick={() => { const s = slugify(newSlug); if (s) router.push(`/${pathStr}/${s}`); }} disabled={!newSlug.trim()}>Go</Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
+              </>
+            ) : <Button size="sm" onClick={() => setShowCreate(true)}><Plus size={16} />New Thread</Button>}
+          </div>
+        )}
+      </div>
+      <div className="center">
+        <SortToggle sort={sort} tagPath={pathStr} />
+      </div>
+      {threads.length > 0 ? (
+        <div className="forum-list">
+          {threads.map(t => (
+            <Link key={t.id} href={`/${t.tagPath}/${t.slug}`} className="forum-row">
+              <div className="forum-row-main">
+                <span className="forum-row-title">{t.title}</span>
+                <span className="forum-row-author">{t.author?.displayName || t.author?.radixAddress?.slice(0, 12) + '...'}</span>
+              </div>
+              <div className="forum-row-meta">
+                <span className="forum-row-replies"><MessageSquare size={14} />{t.replyCount}</span>
+                <span className="forum-row-activity">{formatRelativeTime(t.lastActivity)}</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <Card className="empty-state">
+          <p className="text-muted">No threads yet.</p>
+          {isAuthenticated && <small className="mt-2 block">Click &quot;New Thread&quot; to start a discussion.</small>}
         </Card>
       )}
     </div>

@@ -23,7 +23,7 @@ export interface TagNode {
 export const TAG_HIERARCHY: TagNode[] = [
   { name: 'Homepage', slug: '', hidden: true, xrd: { edit: 100_000 } },
   {
-    name: 'Contents',
+    name: '📚 Contents',
     slug: 'contents',
     children: [
       {
@@ -51,8 +51,10 @@ export const TAG_HIERARCHY: TagNode[] = [
       { name: 'Resources', slug: 'resources', children: [{ name: 'Legal', slug: 'legal' }, { name: 'Python Scripts', slug: 'python-scripts' }] },
     ],
   },
-  { name: 'Developers', slug: 'developers', children: [{ name: 'Learn', slug: 'learn' }, { name: 'Build', slug: 'build' }, { name: 'Patterns', slug: 'patterns' }, { name: 'Reference', slug: 'reference' }] },
-  { name: 'Ecosystem',
+  { name: '👾 Developers',
+    slug: 'developers',
+    children: [{ name: 'Learn', slug: 'learn' }, { name: 'Build', slug: 'build' }, { name: 'Patterns', slug: 'patterns' }, { name: 'Reference', slug: 'reference' }] },
+  { name: '🌐 Ecosystem',
     slug: 'ecosystem',
     metadataKeys: [
       { key: 'status', label: 'Status:', type: 'select', options: ['🟢','🟠','🔴'], required: true },
@@ -65,12 +67,19 @@ export const TAG_HIERARCHY: TagNode[] = [
       { key: 'open positions', label: 'Open Positions:', type: 'text' },
     ],
     xrd: { create: 20_000 } },
-  { name: 'Community', slug: 'community', sort: 'recent' },
-  { name: 'Blog', slug: 'blog', sort: 'newest', metadataKeys: [{ key: 'date', label: 'Published:', type: 'date' }], xrd: { create: 50_000 } },
-  { name: 'Meta', slug: 'meta' },
+  { name: '👥 Community', slug: 'community', sort: 'recent' },
+  { name: '✍️ Blog', slug: 'blog', sort: 'newest', metadataKeys: [{ key: 'date', label: 'Published:', type: 'date' }], xrd: { create: 50_000 } },
+  { name: '🗣️ Forum', 
+    slug: 'forum', 
+    metadataKeys: [
+      { key: 'category', label: 'Category:', type: 'select', options: ['🌐 General', '⚖️ Governance', '👾 Developers'], required: true }
+    ],
+    sort: 'recent',
+    xrd: { create: 10_000, comment: 10_000 } },
+  { name: '🧠 Meta', slug: 'meta' },
 ];
 
-const AUTHOR_ONLY_PATHS = new Set(['community', 'blog']);
+const AUTHOR_ONLY_PATHS = new Set(['community', 'blog', 'forum']);
 
 interface TagPathContext {
   node: TagNode | null;

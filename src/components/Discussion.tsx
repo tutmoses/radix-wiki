@@ -141,7 +141,6 @@ export function Discussion({ pageId, tagPath }: { pageId: string; tagPath: strin
         <div className="stack">
           {isAuthenticated ? (
             <>
-              <p className="text-muted text-small">Commenting requires {getXrdRequired('comment', tagPath).toLocaleString()} XRD</p>
               <CommentForm onSubmit={c => handlePost(c)} placeholder="Start a discussion..." />
             </>
           ) : <p className="text-muted surface p-4 text-center">Connect your wallet to join the discussion.</p>}

@@ -71,5 +71,18 @@ export type CommentInput = {
   parentId?: string;
 };
 
+export type ForumThread = {
+  id: string;
+  slug: string;
+  title: string;
+  tagPath: string;
+  createdAt: Date;
+  updatedAt: Date;
+  author?: WikiAuthor;
+  replyCount: number;
+  lastActivity: Date;
+  lastReplyAuthor?: WikiAuthor | null;
+};
+
 export type AdjacentPage = { tagPath: string; slug: string; title: string } | null;
 export type AdjacentPages = { prev: AdjacentPage; next: AdjacentPage };

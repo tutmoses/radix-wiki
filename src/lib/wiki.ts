@@ -3,7 +3,7 @@
 import { cache } from 'react';
 import { prisma } from '@/lib/prisma/client';
 import { isValidTagPath, getSortOrder, getMetadataKeys, type SortOrder } from '@/lib/tags';
-import type { WikiPage } from '@/types';
+import type { WikiPage, ForumThread } from '@/types';
 
 // ========== PRISMA QUERY FRAGMENTS ==========
 export const AUTHOR_SELECT = { select: { id: true, displayName: true, radixAddress: true } } as const;
@@ -98,6 +98,32 @@ export const getCategoryPages = cache(async (tagPath: string, sort?: SortOrder, 
     take: limit,
   }) as WikiPage[];
   return hasDateMeta ? sortByDateMeta<WikiPage>(pages, resolvedSort === 'oldest' ? 1 : -1) : pages;
+});
+
+export function isForumPath(tagPath: string): boolean {
+  return tagPath === 'forum' || tagPath.startsWith('forum/');
+}
+
+export const getForumThreads = cache(async (tagPath: string, sort?: SortOrder, limit = 50): Promise<ForumThread[]> => {
+  const resolvedSort = sort ?? getSortOrder(tagPath.split('/'));
+  const pages = await prisma.page.findMany({
+    where: { tagPath: { startsWith: tagPath } },
+    select: {
+      id: true, slug: true, title: true, tagPath: true, createdAt: true, updatedAt: true,
+      author: AUTHOR_SELECT,
+      _count: { select: { comments: true } },
+      comments: { orderBy: { createdAt: 'desc' as const }, take: 1, select: { createdAt: true, author: AUTHOR_SELECT } },
+    },
+    orderBy: sortOrderBy[resolvedSort],
+    take: limit,
+  });
+  return pages.map(p => ({
+    id: p.id, slug: p.slug, title: p.title, tagPath: p.tagPath,
+    createdAt: p.createdAt, updatedAt: p.updatedAt, author: p.author,
+    replyCount: p._count.comments,
+    lastActivity: p.comments[0]?.createdAt ?? p.createdAt,
+    lastReplyAuthor: p.comments[0]?.author ?? null,
+  }));
 });
 
 export const getPageHistory = cache(async (tagPath: string, slug: string) => {

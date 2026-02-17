@@ -2,9 +2,9 @@
 
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { parsePath, getHomepage, getPage, getCategoryPages, getPageHistory, getAdjacentPages } from '@/lib/wiki';
+import { parsePath, getHomepage, getPage, getCategoryPages, getForumThreads, isForumPath, getPageHistory, getAdjacentPages } from '@/lib/wiki';
 import { getSortOrder, type SortOrder } from '@/lib/tags';
-import { PageView, HomepageView, CategoryView, PageSkeleton, StatusCard, HistoryView, type HistoryData } from './PageContent';
+import { PageView, HomepageView, CategoryView, ForumView, PageSkeleton, StatusCard, HistoryView, type HistoryData } from './PageContent';
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
@@ -57,6 +57,10 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   if (parsed.type === 'category') {
     const defaultSort = getSortOrder(parsed.tagPath.split('/'));
     const sort = (sortParam && VALID_SORTS.has(sortParam) ? sortParam : defaultSort) as SortOrder;
+    if (isForumPath(parsed.tagPath)) {
+      const threads = await getForumThreads(parsed.tagPath, sort);
+      return <Suspense fallback={<PageSkeleton />}><ForumView tagPath={parsed.tagPath.split('/')} threads={threads} sort={sort} /></Suspense>;
+    }
     const pages = await getCategoryPages(parsed.tagPath, sort);
     return <Suspense fallback={<PageSkeleton />}><CategoryView tagPath={parsed.tagPath.split('/')} pages={pages} sort={sort} /></Suspense>;
   }

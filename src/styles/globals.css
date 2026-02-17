@@ -203,11 +203,12 @@
   .sidebar-open { @apply w-[var(--sidebar-width)]; }
   .sidebar-closed { @apply w-0; }
   .sidebar-scroll { @apply flex flex-col h-full overflow-y-auto w-[var(--sidebar-width)] pb-24; }
-  .sidebar-label { @apply text-small text-text-muted font-medium uppercase tracking-wide px-3; }
+  .sidebar-label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3; }
 
   /* Nav items */
   .nav-item { @apply flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-text-muted hover:bg-surface-2 hover:text-text; }
   .nav-item-active { @apply flex items-center gap-2 px-3 py-2 rounded-md bg-accent-muted text-accent font-medium; }
+  .nav-indent { @apply inline-flex items-center justify-center w-6 shrink-0; }
   .nav-link { @apply flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-text-muted hover:bg-surface-2 hover:text-text; }
   .nav-link-active { @apply flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md bg-accent-muted text-accent font-medium; }
 
@@ -318,6 +319,16 @@
   .comment-thread { @apply flex flex-col gap-2 pl-4 border-l border-border-muted; }
   .comment-action { @apply flex items-center gap-2 text-text-muted hover:text-accent; }
   .comment-delete { @apply flex items-center gap-2 text-text-muted hover:text-error; }
+
+  /* ===== FORUM ===== */
+  .forum-list { @apply flex flex-col border border-border-muted rounded-lg overflow-hidden divide-y divide-border-muted; }
+  .forum-row { @apply flex items-center justify-between gap-4 p-4 bg-surface-1 transition-colors hover:bg-surface-2; }
+  .forum-row-main { @apply flex flex-col gap-1 min-w-0 flex-1; }
+  .forum-row-title { @apply font-medium truncate; }
+  .forum-row-author { @apply text-sm text-text-muted; }
+  .forum-row-meta { @apply flex items-center gap-4 text-sm text-text-muted shrink-0; }
+  .forum-row-replies { @apply flex items-center gap-1; }
+  .forum-row-activity { @apply text-text-muted; }
 
   /* ===== HISTORY / DIFF ===== */
   .diff-added { @apply flex items-start gap-2; }
