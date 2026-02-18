@@ -53,7 +53,98 @@ export const TAG_HIERARCHY: TagNode[] = [
   },
   { name: '👾 Developers',
     slug: 'developers',
-    children: [{ name: 'Learn', slug: 'learn' }, { name: 'Build', slug: 'build' }, { name: 'Patterns', slug: 'patterns' }, { name: 'Reference', slug: 'reference' }] },
+    children: [{ name: 'Learn', slug: 'learn' }, { name: 'Build', slug: 'build' }, { name: 'Patterns', slug: 'patterns' }, { name: 'Reference', slug: 'reference' },
+      { name: 'Legacy Docs', slug: 'legacy-docs', children: [
+        { name: 'Essentials', slug: 'essentials' },
+        { name: 'Use', slug: 'use' },
+        { name: 'Integrate', slug: 'integrate', children: [
+          { name: 'Integrate with Radix', slug: 'integrate-with-radix', children: [
+            { name: 'Exchange Integration Guide', slug: 'exchange-integration-guide' },
+            { name: 'Updating from Olympia', slug: 'updating-from-olympia' },
+          ]},
+          { name: 'Network APIs', slug: 'network-apis' },
+          { name: 'Radix Engine Toolkit', slug: 'radix-engine-toolkit', children: [
+            { name: 'Usage Guide', slug: 'radix-engine-toolkit-usage-guide' },
+          ]},
+          { name: 'Rust Libraries', slug: 'rust-libraries' },
+        ]},
+        { name: 'Build', slug: 'build', children: [
+          { name: 'Developer Quick Start', slug: 'developer-quick-start' },
+          { name: 'Setting Up', slug: 'setting-up-for-scrypto-development' },
+          { name: 'Learning Step-by-Step', slug: 'learning-step-by-step' },
+          { name: 'dApp Development', slug: 'build-dapps', children: [
+            { name: 'Application Stack', slug: 'dapp-application-stack', children: [
+              { name: 'dApp SDKs', slug: 'dapp-sdks' },
+            ]},
+            { name: 'dApp Transactions', slug: 'dapp-transactions', children: [
+              { name: 'Examples', slug: 'transaction-examples' },
+            ]},
+            { name: 'Before You Release', slug: 'before-you-release' },
+          ]},
+          { name: 'Scrypto', slug: 'scrypto-1', children: [
+            { name: 'Authorization', slug: 'auth' },
+            { name: 'Resources', slug: 'resources' },
+            { name: 'Royalties', slug: 'royalties' },
+            { name: 'Cryptography', slug: 'cryptography' },
+            { name: 'Design Patterns', slug: 'scrypto-design-patterns' },
+            { name: 'Testing', slug: 'testing' },
+            { name: 'Tools', slug: 'tools-for-scrypto' },
+          ]},
+        ]},
+        { name: 'Run', slug: 'run', children: [
+          { name: 'Node', slug: 'node', children: [
+            { name: 'Node Setup', slug: 'node-setup', children: [
+              { name: 'Guided Setup', slug: 'node-setup-guided' },
+              { name: 'Manual Setup', slug: 'manual-setup-advanced', children: [
+                { name: 'Systemd', slug: 'node-setup-systemd' },
+              ]},
+            ]},
+            { name: 'Maintenance', slug: 'node-maintenance-and-administration' },
+            { name: 'Workbench', slug: 'workbench' },
+          ]},
+          { name: 'Network Gateway', slug: 'network-gateway', children: [
+            { name: 'Setup', slug: 'network-gateway-setup', children: [
+              { name: 'Custom Setup', slug: 'custom-setup' },
+            ]},
+            { name: 'Maintenance', slug: 'maintenance-1' },
+          ]},
+        ]},
+        { name: 'Reference', slug: 'reference', children: [
+          { name: 'Integrator Concepts', slug: 'babylon-technical-concepts' },
+          { name: 'Radix Engine', slug: 'radix-engine', children: [
+            { name: 'Native Blueprints', slug: 'native-blueprints' },
+            { name: 'Costing and Limits', slug: 'costing-and-limits' },
+            { name: 'Metadata', slug: 'metadata' },
+          ]},
+          { name: 'Transactions', slug: 'transactions', children: [
+            { name: 'Manifest', slug: 'manifest' },
+          ]},
+          { name: 'SBOR Serialization', slug: 'sbor-serialization', children: [
+            { name: 'Manifest SBOR', slug: 'manifest-sbor' },
+            { name: 'Textual Representations', slug: 'sbor-textual-representations' },
+            { name: 'Scrypto SBOR', slug: 'scrypto-sbor' },
+          ]},
+          { name: 'Standards', slug: 'standards', children: [
+            { name: 'Metadata Standards', slug: 'metadata-standards' },
+            { name: 'Non-fungible Standards', slug: 'non-fungible-standards' },
+            { name: 'UI/UX Standards', slug: 'ui-ux-standards' },
+          ]},
+        ]},
+        { name: 'Updates', slug: 'updates', children: [
+          { name: 'Protocol Updates', slug: 'protocol-updates' },
+          { name: 'Release Notes', slug: 'release-notes', children: [
+            { name: 'Scrypto', slug: 'scrypto' },
+          ]},
+          { name: 'Roadmap', slug: 'roadmap', children: [
+            { name: 'Wallets', slug: 'wallets' },
+            { name: 'Scrypto', slug: 'scrypto' },
+            { name: 'Node/Engine', slug: 'node-engine' },
+            { name: 'Gateway', slug: 'gateway' },
+            { name: 'Developer Tools', slug: 'developer-tools' },
+          ]},
+        ]},
+      ]},
+    ] },
   { name: '🌐 Ecosystem',
     slug: 'ecosystem',
     metadataKeys: [

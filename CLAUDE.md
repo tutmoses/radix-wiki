@@ -190,6 +190,66 @@ NEXT_PUBLIC_RADIX_APPLICATION_NAME
 NEXT_PUBLIC_APP_URL
 ```
 
+## Creating Wiki Articles from Telegram Channels
+
+### Workflow
+1. **Connect browser** — use `tabs_context_mcp` to check Chrome connection, then navigate to `https://web.telegram.org/k/` (user must be logged in)
+2. **Read channel** — navigate to the target channel, scroll through messages, take screenshots. For bulk extraction, use `javascript_tool` to scrape DOM:
+   ```javascript
+   // Telegram Web virtualises the DOM — only ~20-30 messages loaded at a time
+   // Target the scrollable element and extract message bubbles:
+   const msgs = document.querySelectorAll('.message');
+   Array.from(msgs).map(m => ({
+     text: m.querySelector('.text-content')?.textContent,
+     name: m.querySelector('.peer-title')?.textContent,
+     date: m.closest('.bubbles-group')?.querySelector('.time')?.textContent
+   }));
+   ```
+3. **Supplement with web sources** — use `WebFetch` on linked blog posts, GitHub repos, documentation to get facts and source URLs
+4. **Structure content** — plan Wikipedia-style sections (Infobox, Introduction, Background, etc.) with hyperlinked assertions
+5. **Create seed script** — write `scripts/seed-<name>.mjs` following the pattern below
+6. **Insert & verify** — run the script, then check the page in the browser
+
+### Telegram Web gotchas
+- DOM is virtualised: only ~20-30 messages in DOM at once, older messages are unloaded as you scroll
+- Scrollable container: `document.querySelectorAll('.scrollable.scrollable-y')[1]` (index 1, not 0)
+- Pinned messages: click the pinned bar at the top to read the pinned message
+- Group info (members, admins): click the channel name header to open the info panel
+- New/small channels may have all content accessible; large channels will need multiple scroll passes
+
+## Seeding Wiki Pages
+
+To create wiki pages programmatically (bypassing API auth), use a seed script in `scripts/`. See `scripts/seed-hyperscale-rs.mjs` or `scripts/seed-rac.mjs` as templates.
+
+### Pattern
+```javascript
+import pg from 'pg';
+import { randomUUID } from 'crypto';
+import { config } from 'dotenv';
+config();
+
+const uid = () => randomUUID();
+const AUTHOR_ID = 'cmk5t48vx0000005zc5se4dqz'; // Hydrate
+
+const content = [
+  { id: uid(), type: 'infobox', blocks: [{ id: uid(), type: 'content', text: '<table>...</table>' }] },
+  { id: uid(), type: 'content', text: '<h2>Section</h2><p>HTML content with <a href="..." target="_blank" rel="noopener">hyperlinks</a>.</p>' },
+];
+
+const { Pool } = pg; // ESM: must destructure from default import
+const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, ssl: { rejectUnauthorized: false } });
+```
+
+### Key details
+- **ESM module** — use `const { Pool } = pg;` (not `pg.Pool` or `pg.default.Pool`)
+- **Block IDs** — each block and nested block needs a unique UUID via `randomUUID()`
+- **Block types** — `'content'` (HTML string in `text`) or `'infobox'` (contains `blocks: AtomicBlock[]`)
+- **Inserts** — `pages` table (id, slug, title, content::jsonb, excerpt, tag_path, metadata, version, author_id, timestamps) + `revisions` table
+- **Idempotent** — check `SELECT id FROM pages WHERE tag_path = $1 AND slug = $2` before inserting
+- **Run** — `node scripts/seed-<name>.mjs`
+- **Tag paths** — must match a valid path in `src/lib/tags.ts` TAG_HIERARCHY (e.g., `community`, `contents/tech/research`, `ecosystem`)
+- **HTML content** — use `<a href="..." target="_blank" rel="noopener">` for external links; hyperlink assertions to their source URLs
+
 ## Important Notes
 
 - No test framework currently configured
