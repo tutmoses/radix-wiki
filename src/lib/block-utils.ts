@@ -1,7 +1,7 @@
 // src/lib/block-utils.ts - Shared block constants and utilities
 
 import type { Block, BlockType, AtomicBlock } from '@/types/blocks';
-import { Clock, FileText, Columns, TrendingUp, Pencil, Info, Rss, type LucideIcon } from 'lucide-react';
+import { Clock, FileText, Columns, TrendingUp, Pencil, Info, Rss, Code2, type LucideIcon } from 'lucide-react';
 
 export const BLOCK_META: Record<BlockType, { label: string; icon: LucideIcon }> = {
   content: { label: 'Content', icon: Pencil },
@@ -11,6 +11,7 @@ export const BLOCK_META: Record<BlockType, { label: string; icon: LucideIcon }> 
   columns: { label: 'Columns', icon: Columns },
   infobox: { label: 'Infobox', icon: Info },
   rssFeed: { label: 'RSS Feed', icon: Rss },
+  codeTabs: { label: 'Code Tabs', icon: Code2 },
 };
 
 const BLOCK_DEFAULTS: Record<BlockType, () => Omit<Block, 'id'>> = {
@@ -21,10 +22,11 @@ const BLOCK_DEFAULTS: Record<BlockType, () => Omit<Block, 'id'>> = {
   columns: () => ({ type: 'columns', columns: [{ id: crypto.randomUUID(), blocks: [] }, { id: crypto.randomUUID(), blocks: [] }], gap: 'md', align: 'start' }),
   infobox: () => ({ type: 'infobox', blocks: [] }),
   rssFeed: () => ({ type: 'rssFeed', url: 'https://tutmoses.github.io/rss-feed/feeds.json', limit: 15 }),
+  codeTabs: () => ({ type: 'codeTabs', tabs: [{ label: 'Rust', language: 'rust', code: '' }, { label: 'TypeScript', language: 'typescript', code: '' }] }),
 };
 
-export const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'columns', 'recentPages', 'pageList', 'assetPrice', 'rssFeed'];
-export const ATOMIC_BLOCK_TYPES: readonly BlockType[] = ['content', 'recentPages', 'pageList', 'assetPrice', 'rssFeed'];
+export const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'columns', 'recentPages', 'pageList', 'assetPrice', 'rssFeed', 'codeTabs'];
+export const ATOMIC_BLOCK_TYPES: readonly BlockType[] = ['content', 'recentPages', 'pageList', 'assetPrice', 'rssFeed', 'codeTabs'];
 
 export const createBlock = (type: BlockType): Block => ({ id: crypto.randomUUID(), ...BLOCK_DEFAULTS[type]() } as Block);
 
@@ -45,6 +47,7 @@ export function hasCodeBlocksInContent(content: Block[]): boolean {
     for (const block of blocks) {
       if (!block) continue;
       if (block.type === 'content' && block.text?.includes('<pre')) return true;
+      if (block.type === 'codeTabs') return true;
       if (block.type === 'columns' && block.columns) {
         for (const col of block.columns) {
           if (col?.blocks && check(col.blocks)) return true;

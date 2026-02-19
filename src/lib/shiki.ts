@@ -20,6 +20,29 @@ export function getShiki(): Promise<Highlighter> {
   return shikiPromise;
 }
 
+function addCopyButton(pre: Element) {
+  const btn = document.createElement('button');
+  btn.className = 'code-copy-btn';
+  btn.setAttribute('aria-label', 'Copy code');
+  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+  btn.onclick = () => {
+    const code = pre.querySelector('code')?.textContent || pre.textContent || '';
+    navigator.clipboard.writeText(code).then(() => {
+      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+      setTimeout(() => {
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+      }, 2000);
+    });
+  };
+  const wrapper = pre.parentElement;
+  if (wrapper?.classList.contains('code-block-wrapper')) {
+    wrapper.appendChild(btn);
+  } else {
+    (pre as HTMLElement).style.position = 'relative';
+    pre.appendChild(btn);
+  }
+}
+
 export function highlightCodeBlocks(container: HTMLElement, highlighter: Highlighter) {
   container.querySelectorAll('pre:not([data-highlighted]) code, pre:not([data-highlighted]):not(:has(code))').forEach(el => {
     const pre = el.tagName === 'PRE' ? el : el.parentElement;
@@ -35,6 +58,9 @@ export function highlightCodeBlocks(container: HTMLElement, highlighter: Highlig
     if (newPre) {
       newPre.setAttribute('data-highlighted', 'true');
       pre.replaceWith(newPre);
+      addCopyButton(newPre);
     }
   });
+  // Add copy buttons to pre blocks that already had highlighting or don't need it
+  container.querySelectorAll('pre[data-highlighted]:not(:has(.code-copy-btn))').forEach(pre => addCopyButton(pre));
 }

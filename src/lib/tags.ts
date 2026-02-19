@@ -13,6 +13,7 @@ export type SortOrder = 'title' | 'newest' | 'oldest' | 'recent';
 export interface TagNode {
   name: string;
   slug: string;
+  description?: string;
   children?: TagNode[];
   hidden?: boolean;
   sort?: SortOrder;
@@ -53,7 +54,20 @@ export const TAG_HIERARCHY: TagNode[] = [
   },
   { name: '👾 Developers',
     slug: 'developers',
-    children: [{ name: 'Learn', slug: 'learn' }, { name: 'Build', slug: 'build' }, { name: 'Patterns', slug: 'patterns' }, { name: 'Reference', slug: 'reference' },
+    metadataKeys: [
+      { key: 'difficulty', label: 'Difficulty:', type: 'select', options: ['Beginner', 'Intermediate', 'Advanced'] },
+      { key: 'language', label: 'Language:', type: 'text' },
+      { key: 'prerequisites', label: 'Prerequisites:', type: 'text' },
+      { key: 'estimatedTime', label: 'Est. Time:', type: 'text' },
+      { key: 'lastVerified', label: 'Last Verified:', type: 'date' },
+    ],
+    description: 'Build on Radix — tutorials, guides, design patterns, and API references for Scrypto, transaction manifests, and the Radix stack.',
+    children: [
+      { name: 'Quick Start', slug: 'quick-start', description: 'Get up and running with Radix development in minutes.' },
+      { name: 'Learn', slug: 'learn', description: 'Core concepts and tutorials to get started with Radix development.' },
+      { name: 'Build', slug: 'build', description: 'Step-by-step guides for setting up your environment, building dApps, and deploying to the Radix network.' },
+      { name: 'Patterns', slug: 'patterns', description: 'Reusable design patterns for badge-gated auth, vaults, oracles, and more.' },
+      { name: 'Reference', slug: 'reference', description: 'API references for Scrypto stdlib, SBOR serialization, transaction manifests, and the Gateway API.' },
       { name: 'Legacy Docs', slug: 'legacy-docs', children: [
         { name: 'Essentials', slug: 'essentials' },
         { name: 'Use', slug: 'use' },

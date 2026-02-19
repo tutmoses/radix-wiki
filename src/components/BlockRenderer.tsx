@@ -6,14 +6,14 @@ import { useState, useEffect, useRef, memo, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, FileText } from 'lucide-react';
-import { cn, formatRelativeTime, slugify } from '@/lib/utils';
+import { cn, formatRelativeTime, slugify, generateBannerSvg } from '@/lib/utils';
 import { getShiki, highlightCodeBlocks } from '@/lib/shiki';
 import { findTagByPath } from '@/lib/tags';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { usePages } from '@/hooks';
 import { Badge } from '@/components/ui';
 import type { WikiPage, PageMetadata } from '@/types';
-import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock } from '@/types/blocks';
+import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock } from '@/types/blocks';
 import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
 
 // ========== LAZY SHIKI HOOK ==========
@@ -67,13 +67,14 @@ function PageCard({ page, compact }: { page: WikiPage; compact?: boolean }) {
   return (
     <Link href={href} className="group">
       <div className="page-card">
-        {page.bannerImage ? (
-          <div className="page-card-thumb">
+        <div className="page-card-thumb">
+          {page.bannerImage ? (
             <Image src={page.bannerImage} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
-          </div>
-        ) : (
-          <div className="page-card-thumb-empty"><FileText size={24} className="text-muted" /></div>
-        )}
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={generateBannerSvg(page.title, page.tagPath)} alt="" className="w-full h-full object-cover" />
+          )}
+        </div>
         <div className="page-card-body">
           <span className="page-card-title">{page.title}</span>
           {page.excerpt && <p className="page-card-excerpt">{page.excerpt}</p>}
@@ -191,6 +192,29 @@ function RssFeedBlockView({ block }: { block: RssFeedBlock }) {
   );
 }
 
+function CodeTabsBlockView({ block }: { block: CodeTabsBlock }) {
+  const [activeTab, setActiveTab] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const hasCode = block.tabs.some(t => t.code.trim());
+
+  useLazyShiki(containerRef, hasCode);
+
+  return (
+    <div ref={containerRef} className="code-tabs">
+      <div className="code-tabs-list">
+        {block.tabs.map((tab, i) => (
+          <button key={i} className={cn('code-tabs-btn', i === activeTab && 'code-tabs-btn-active')} onClick={() => setActiveTab(i)}>{tab.label}</button>
+        ))}
+      </div>
+      {block.tabs.map((tab, i) => (
+        <div key={i} className={i === activeTab ? 'block' : 'hidden'}>
+          <pre><code className={`language-${tab.language}`}>{tab.code}</code></pre>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ColumnsBlockView({ block }: { block: ColumnsBlock }) {
   const gapClass = { sm: 'gap-2', md: 'gap-4', lg: 'gap-6' }[block.gap || 'md'];
   const alignClass = { start: 'items-start', center: 'items-center', end: 'items-end', stretch: 'items-stretch' }[block.align || 'start'];
@@ -290,6 +314,7 @@ function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
     case 'pageList': return <PageListBlockView block={block} />;
     case 'assetPrice': return <AssetPriceBlockView block={block} />;
     case 'rssFeed': return <RssFeedBlockView block={block} />;
+    case 'codeTabs': return <CodeTabsBlockView block={block} />;
     case 'columns': return <ColumnsBlockView block={block} />;
     case 'infobox': return <InfoboxBlockView block={block} />;
   }

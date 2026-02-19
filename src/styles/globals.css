@@ -128,6 +128,59 @@
 
   /* Shiki code blocks */
   .shiki { @apply border border-border-muted rounded-lg p-4; code { @apply p-0 bg-transparent; } }
+
+  /* Copy button on code blocks */
+  .code-copy-btn {
+    @apply absolute top-2 right-2 p-1.5 rounded bg-white/10 text-text-muted opacity-0 transition-all cursor-pointer hover:bg-white/20 hover:text-text z-10;
+  }
+  pre:hover > .code-copy-btn,
+  .code-block-wrapper:hover > .code-copy-btn { @apply opacity-100; }
+
+  /* ===== CALLOUTS / ADMONITIONS ===== */
+  [data-callout] {
+    @apply flex gap-3 p-4 rounded-lg border my-4;
+    &::before { @apply text-lg leading-none shrink-0 mt-0.5; }
+  }
+  [data-callout="info"], [data-callout="note"] {
+    @apply border-info/30 bg-info/10;
+    &::before { content: 'ℹ'; @apply text-info; }
+  }
+  [data-callout="tip"] {
+    @apply border-success/30 bg-success/10;
+    &::before { content: '💡'; }
+  }
+  [data-callout="warning"], [data-callout="caution"] {
+    @apply border-warning/30 bg-warning/10;
+    &::before { content: '⚠'; @apply text-warning; }
+  }
+  [data-callout="danger"], [data-callout="error"] {
+    @apply border-error/30 bg-error/10;
+    &::before { content: '🚨'; }
+  }
+  [data-callout] > div { @apply flex-1 min-w-0; p:last-child { @apply mb-0; } }
+  [data-callout-title] { @apply font-semibold mb-1; }
+
+  /* ===== CODE TABS ===== */
+  .code-tabs { @apply border border-border-muted rounded-lg overflow-hidden my-4; }
+  .code-tabs-list { @apply flex gap-0 border-b border-border-muted; background-color: #1e2228; }
+  .code-tabs-btn { @apply px-4 py-2 text-small text-text-muted border-b-2 border-transparent transition-colors cursor-pointer hover:text-text; background: transparent; }
+  .code-tabs-btn-active { @apply text-accent border-accent; }
+  .code-tabs pre { @apply m-0 border-0 rounded-none; }
+
+  /* ===== STEP-BY-STEP GUIDES ===== */
+  [data-steps] {
+    @apply list-none pl-0 mb-4;
+    counter-reset: step;
+    > li {
+      @apply relative pl-12 pb-6 border-l-2 border-border-muted ml-4 last:border-l-0 last:pb-0;
+      counter-increment: step;
+      &::before {
+        content: counter(step);
+        @apply absolute -left-[17px] top-0 w-8 h-8 rounded-full bg-accent text-text-inverted text-sm font-bold flex items-center justify-center;
+      }
+      > *:first-child { @apply mt-0; }
+    }
+  }
 }
 
 @layer components {
@@ -248,6 +301,11 @@
 
   /* ===== SECTION DIVIDER ===== */
   .section-divider { @apply pt-6 border-t border-border; }
+
+  /* ===== CATEGORY HERO ===== */
+  .category-hero { @apply flex flex-col gap-4 pb-4 border-b border-border-muted; }
+  .category-hero-grid { @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3; }
+  .category-hero-card { @apply flex flex-col gap-1 p-4 bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5 hover:shadow; }
 
   /* ===== CATEGORY GRID ===== */
   .category-grid { @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4; }

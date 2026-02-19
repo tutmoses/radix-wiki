@@ -15,8 +15,8 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { UserStats } from '@/components/UserStats';
 import { Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
-import { slugify, formatRelativeTime } from '@/lib/utils';
-import { findTagByPath, isAuthorOnlyPath, getMetadataKeys, getXrdRequired, type MetadataKeyDefinition, type SortOrder } from '@/lib/tags';
+import { slugify, formatRelativeTime, generateBannerSvg } from '@/lib/utils';
+import { findTagByPath, isAuthorOnlyPath, getMetadataKeys, getXrdRequired, type MetadataKeyDefinition, type SortOrder, type TagNode } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
 import type { WikiPage, AdjacentPages, PageMetadata, ForumThread } from '@/types';
 import type { Block } from '@/types/blocks';
@@ -91,7 +91,7 @@ function PageNav({ adjacent }: { adjacent: AdjacentPages }) {
 }
 
 // ========== BANNER ==========
-function Banner({ src, editable, onUpload, onRemove, children }: { src?: string | null; editable?: boolean; onUpload?: (url: string) => void; onRemove?: () => void; children?: ReactNode }) {
+function Banner({ src, title, tagPath, editable, onUpload, onRemove, children }: { src?: string | null; title?: string; tagPath?: string; editable?: boolean; onUpload?: (url: string) => void; onRemove?: () => void; children?: ReactNode }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -123,11 +123,19 @@ function Banner({ src, editable, onUpload, onRemove, children }: { src?: string 
     );
   }
 
-  if (!src && !children) return null;
+  const generativeSrc = !src && title ? generateBannerSvg(title, tagPath || '') : null;
+  if (!src && !generativeSrc && !children) return null;
 
   return (
     <div className="banner-container">
-      {src ? <Image src={src} alt="Page banner" fill className="banner-image" sizes="100vw" priority /> : <div className="banner-placeholder" />}
+      {src ? (
+        <Image src={src} alt="Page banner" fill className="banner-image" sizes="100vw" priority />
+      ) : generativeSrc ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={generativeSrc} alt="" className="banner-image absolute inset-0" />
+      ) : (
+        <div className="banner-placeholder" />
+      )}
       {children && <div className="banner-overlay">{children}</div>}
       {editable && (
         <div className="banner-actions">
@@ -213,7 +221,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
 
   return (
     <div className="stack">
-      <Banner src={bannerImage} />
+      <Banner src={bannerImage} title="Homepage" />
       {infobox ? (
         <div className="page-with-infobox">
           <div className="page-main-content stack">{mainContent}</div>
@@ -245,6 +253,27 @@ function SortToggle({ sort, tagPath }: { sort: SortOrder; tagPath: string }) {
   );
 }
 
+// ========== CATEGORY HERO ==========
+function CategoryHero({ tag, tagPath }: { tag: TagNode; tagPath: string }) {
+  const children = tag.children?.filter(c => !c.hidden);
+  if (!tag.description && !children?.length) return null;
+  return (
+    <div className="category-hero">
+      {tag.description && <p className="text-text-muted text-lg">{tag.description}</p>}
+      {children && children.length > 0 && (
+        <div className="category-hero-grid">
+          {children.map(child => (
+            <Link key={child.slug} href={`/${tagPath}/${child.slug}`} className="category-hero-card">
+              <span className="font-medium">{child.name}</span>
+              {child.description && <span className="text-text-muted text-small">{child.description}</span>}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ========== CATEGORY VIEW ==========
 export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; pages: WikiPage[]; sort: SortOrder }) {
   const router = useRouter();
@@ -272,6 +301,7 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
           </div>
         )}
       </div>
+      {tag && <CategoryHero tag={tag} tagPath={pathStr} />}
       <div className="center">
         <SortToggle sort={sort} tagPath={pathStr} />
       </div>
@@ -280,13 +310,14 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
           {pages.map(p => (
             <Link key={p.id} href={`/${p.tagPath}/${p.slug}`}>
               <Card interactive className="h-full overflow-hidden p-0!">
-                {p.bannerImage ? (
-                  <div className="page-card-thumb">
+                <div className="page-card-thumb">
+                  {p.bannerImage ? (
                     <Image src={p.bannerImage} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
-                  </div>
-                ) : (
-                  <div className="page-card-thumb-empty"><FileText size={24} className="text-muted" /></div>
-                )}
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={generateBannerSvg(p.title, p.tagPath)} alt="" className="w-full h-full object-cover" />
+                  )}
+                </div>
                 <div className="page-card-body">
                   <h3 className="m-0!">{p.title}</h3>
                   {p.excerpt && <p className="text-muted text-small line-clamp-2">{p.excerpt}</p>}
@@ -586,7 +617,7 @@ function PageViewContent({ page, adjacent }: { page: WikiPage; adjacent: Adjacen
 
   return (
     <article className="stack">
-      <Banner src={page.bannerImage}>
+      <Banner src={page.bannerImage} title={page.title} tagPath={page.tagPath}>
         <Breadcrumbs path={[...page.tagPath.split('/'), page.slug]} />
         <h1 id={slugify(page.title)} className="m-0!">{page.title}</h1>
       </Banner>

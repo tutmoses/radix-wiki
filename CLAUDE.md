@@ -250,6 +250,95 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, ssl:
 - **Tag paths** — must match a valid path in `src/lib/tags.ts` TAG_HIERARCHY (e.g., `community`, `contents/tech/research`, `ecosystem`)
 - **HTML content** — use `<a href="..." target="_blank" rel="noopener">` for external links; hyperlink assertions to their source URLs
 
+## Batch Seeding Multiple Pages
+
+For bulk content creation, use `scripts/seed-<category>.mjs` with a `pages` array. See `scripts/seed-core-concepts.mjs` as the canonical batch template.
+
+### Batch pattern
+```javascript
+const pages = [
+  {
+    tagPath: 'contents/tech/core-concepts',
+    slug: 'page-slug',
+    title: 'Page Title',
+    excerpt: 'One-sentence excerpt (≤160 chars).',
+    content: [
+      { id: uid(), type: 'infobox', blocks: [{ id: uid(), type: 'content', text: '<table>...</table>' }] },
+      { id: uid(), type: 'content', text: '<h2>Introduction</h2><p>...</p>' },
+      { id: uid(), type: 'content', text: '<h2>Section</h2><p>...</p>' },
+      { id: uid(), type: 'content', text: '<h2>External Links</h2><ul><li>...</li></ul>' },
+    ],
+  },
+  // ... more pages
+];
+
+// Loop: check existence → INSERT page + revision in transaction
+for (const page of pages) {
+  const existing = await client.query('SELECT id FROM pages WHERE tag_path = $1 AND slug = $2', [page.tagPath, page.slug]);
+  if (existing.rows.length > 0) { skipped++; continue; }
+  await client.query('BEGIN');
+  // INSERT INTO pages ... + INSERT INTO revisions ...
+  await client.query('COMMIT');
+}
+```
+
+### Content quality standards
+- **Infobox first** — every page starts with an infobox block containing a `<table>` with key-value metadata
+- **Section structure** — Introduction → 2-3 body sections → External Links (all `<h2>`)
+- **Hyperlinked assertions** — every factual claim links to its source (`<a href="..." target="_blank" rel="noopener">`)
+- **Internal cross-links** — link to other wiki pages via relative paths (e.g., `<a href="/contents/tech/core-protocols/radix-engine" rel="noopener">`)
+- **Block boundaries** — each conceptual section gets its own content block (200-800 words each)
+- **No inline styles** — semantic HTML only (`<h2>`, `<h3>`, `<ul>`, `<ol>`, `<table>`, `<code>`, `<strong>`, `<em>`)
+- **Excerpt** — ≤160 chars, one sentence, no markdown
+
+## Content Overhaul Plan
+
+### Current State (as of 2026-02-18)
+Total pages: 254 across 17 tag paths.
+
+| Tag Path | Count | Status |
+|---|---|---|
+| `ecosystem` | 122 | Many stubs from Notion import — need enrichment |
+| `contents/tech/core-concepts` | 24 | ✅ Good (14 original + 10 new from Phase 2) |
+| `contents/history` | 20 | Events seeded from Notion markdown |
+| `community` | 19 | User profiles (auto-created on login) |
+| `contents/tech/core-protocols` | 13 | ✅ Good (11 original + 2 new from Phase 2) |
+| `blog` | 9 | Original posts |
+| `contents/resources` | 7 | Guides & resources |
+| `contents/tech/releases` | 6 | Network releases |
+| `contents/tech/research` | 8 | ✅ Good (5 original + 3 new from Phase 2c) |
+| `developers` | 4 | Quickstart tutorials |
+| `developers/build` | 4 | ✅ Good (4 new from Phase 3a) |
+| `developers/learn` | 3 | Learning guides |
+| `contents/resources/legal` | 3 | Legal docs |
+| `contents/resources/python-scripts` | 2 | Scripts |
+| `forum` | 2 | RFCs |
+| `meta` | 1 | About page |
+| `(homepage)` | 1 | Homepage |
+
+### Remaining Phases
+Each phase = one conversation, producing a batch seed script.
+
+| Phase | Category | Work | Est. Pages |
+|---|---|---|---|
+| ✅ Phase 2a | `core-concepts` + `core-protocols` | New pages | 12 done |
+| ✅ Phase 2b | `contents/tech/comparisons` | Radix vs ETH/SOL/DOT/ATOM | 5 done |
+| ✅ Phase 2c | `contents/tech/research` | Cerberus whitepaper, economic model, consensus evolution | 3 done |
+| ✅ Phase 3a | `developers/build` | Dev environment, build/test, deploy, frontend | 4 done |
+| Phase 3b | `developers/patterns` | Badge auth, vault, oracle patterns | ~4 new |
+| Phase 3c | `developers/reference` | Scrypto stdlib, SBOR, manifest ref | ~3 new |
+| Phase 4 | `contents/history` | Radix founding, key milestones | ~8 new |
+| Phase 5 | `community` / governance | Foundation, RDX Works, programs | ~5 new/updated |
+| Phase 1a-d | `ecosystem` audit | Update stubs → full articles | ~40 updated |
+
+### Research Sources
+- **Radix Docs**: https://docs.radixdlt.com/
+- **Radix Blog**: https://www.radixdlt.com/blog
+- **Radix Knowledge Base**: https://learn.radixdlt.com/
+- **Cerberus Whitepaper**: https://arxiv.org/pdf/2008.04450
+- **GitHub**: https://github.com/radixdlt
+- **Telegram groups**: Radix Developer Discussion (@RadixDevelopers), Radix DLT Official, hyperscale-rs for Radix, Radix Accountability Council
+
 ## Important Notes
 
 - No test framework currently configured

@@ -1,6 +1,6 @@
 // src/types/blocks.ts - Shared block types
 
-export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice' | 'infobox' | 'rssFeed';
+export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice' | 'infobox' | 'rssFeed' | 'codeTabs';
 
 interface BaseBlock { id: string; type: BlockType; }
 
@@ -9,9 +9,11 @@ export interface RecentPagesBlock extends BaseBlock { type: 'recentPages'; tagPa
 export interface PageListBlock extends BaseBlock { type: 'pageList'; pageIds: string[]; }
 export interface AssetPriceBlock extends BaseBlock { type: 'assetPrice'; resourceAddress?: string; showChange?: boolean; }
 export interface RssFeedBlock extends BaseBlock { type: 'rssFeed'; url: string; limit?: number; }
+export interface CodeTab { label: string; language: string; code: string; }
+export interface CodeTabsBlock extends BaseBlock { type: 'codeTabs'; tabs: CodeTab[]; }
 
 // Atomic blocks that can be nested inside containers
-export type AtomicBlock = ContentBlock | RecentPagesBlock | PageListBlock | AssetPriceBlock | RssFeedBlock;
+export type AtomicBlock = ContentBlock | RecentPagesBlock | PageListBlock | AssetPriceBlock | RssFeedBlock | CodeTabsBlock;
 
 export interface InfoboxBlock extends BaseBlock {
   type: 'infobox';
