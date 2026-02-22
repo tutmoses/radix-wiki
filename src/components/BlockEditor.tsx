@@ -17,8 +17,7 @@ import TiptapCodeBlock from '@tiptap/extension-code-block';
 import { Node as TiptapNode, mergeAttributes } from '@tiptap/core';
 import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Pencil, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, X, Check, Info, Map, Rss, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { SHIKI_LANGS, DEFAULT_LANG } from '@/lib/shiki';
-import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock } from '@/lib/block-utils';
+import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock, CODE_LANGS, DEFAULT_LANG } from '@/lib/block-utils';
 import { toMapEmbedUrl, resolveMapUrl } from '@/lib/map-utils';
 import { Button, Input, Dropdown } from '@/components/ui';
 import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column } from '@/types/blocks';
@@ -188,7 +187,7 @@ function CodeBlockView({ node, updateAttributes }: { node: any; updateAttributes
         </button>
         {showLangs && (
           <div className="lang-dropdown">
-            {SHIKI_LANGS.map(l => (
+            {CODE_LANGS.map(l => (
               <button key={l} onClick={() => { updateAttributes({ language: l }); setShowLangs(false); }} className={cn('lang-option', l === lang && 'lang-option-active')}>
                 {l}{l === lang && <Check size={12} />}
               </button>

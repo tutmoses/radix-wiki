@@ -7,32 +7,31 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, FileText } from 'lucide-react';
 import { cn, formatRelativeTime, slugify, generateBannerSvg } from '@/lib/utils';
-import { getShiki, highlightCodeBlocks } from '@/lib/shiki';
 import { findTagByPath } from '@/lib/tags';
-import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { usePages } from '@/hooks';
 import { Badge } from '@/components/ui';
 import type { WikiPage, PageMetadata } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock } from '@/types/blocks';
 import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
 
-// ========== LAZY SHIKI HOOK ==========
-function useLazyShiki(containerRef: React.RefObject<HTMLElement | null>, hasCodeBlocks: boolean) {
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container || !hasCodeBlocks) return;
-    let observer: IntersectionObserver | null = null;
-    let cancelled = false;
-    observer = new IntersectionObserver((entries) => {
-      if (entries.some(e => e.isIntersecting) && !cancelled) {
-        observer?.disconnect();
-        getShiki().then(highlighter => { if (!cancelled) highlightCodeBlocks(container, highlighter); });
-      }
-    }, { rootMargin: '200px' });
-    const codeBlocks = container.querySelectorAll('pre:not([data-highlighted])');
-    codeBlocks.forEach(el => observer?.observe(el));
-    return () => { cancelled = true; observer?.disconnect(); };
-  }, [containerRef, hasCodeBlocks]);
+// ========== COPY BUTTON ==========
+const COPY_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+const CHECK_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
+function addCopyButton(pre: Element) {
+  const btn = document.createElement('button');
+  btn.className = 'code-copy-btn';
+  btn.setAttribute('aria-label', 'Copy code');
+  btn.innerHTML = COPY_SVG;
+  btn.onclick = () => {
+    const code = pre.querySelector('code')?.textContent || pre.textContent || '';
+    navigator.clipboard.writeText(code).then(() => {
+      btn.innerHTML = CHECK_SVG;
+      setTimeout(() => { btn.innerHTML = COPY_SVG; }, 2000);
+    });
+  };
+  (pre as HTMLElement).style.position = 'relative';
+  pre.appendChild(btn);
 }
 
 // ========== UTILITIES ==========
@@ -194,22 +193,16 @@ function RssFeedBlockView({ block }: { block: RssFeedBlock }) {
 
 function CodeTabsBlockView({ block }: { block: CodeTabsBlock }) {
   const [activeTab, setActiveTab] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const hasCode = block.tabs.some(t => t.code.trim());
-
-  useLazyShiki(containerRef, hasCode);
 
   return (
-    <div ref={containerRef} className="code-tabs">
+    <div className="code-tabs">
       <div className="code-tabs-list">
         {block.tabs.map((tab, i) => (
           <button key={i} className={cn('code-tabs-btn', i === activeTab && 'code-tabs-btn-active')} onClick={() => setActiveTab(i)}>{tab.label}</button>
         ))}
       </div>
       {block.tabs.map((tab, i) => (
-        <div key={i} className={i === activeTab ? 'block' : 'hidden'}>
-          <pre><code className={`language-${tab.language}`}>{tab.code}</code></pre>
-        </div>
+        <div key={i} className={i === activeTab ? 'block' : 'hidden'} dangerouslySetInnerHTML={{ __html: tab.code }} />
       ))}
     </div>
   );
@@ -333,7 +326,6 @@ export function findInfobox(blocks: Block[]): InfoboxBlock | null {
 export function BlockRenderer({ content, className }: { content: Block[] | unknown; className?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const blocks = (content && Array.isArray(content)) ? content as Block[] : [];
-  const hasCode = hasCodeBlocksInContent(blocks);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -367,9 +359,9 @@ export function BlockRenderer({ content, className }: { content: Block[] | unkno
       tabGroup.appendChild(tabList);
       tabGroup.appendChild(tabPanels);
     });
+    // Add copy buttons to highlighted code blocks
+    container.querySelectorAll('pre:not(:has(.code-copy-btn))').forEach(addCopyButton);
   }, []);
-
-  useLazyShiki(containerRef, hasCode);
 
   if (!blocks.length) return null;
 

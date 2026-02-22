@@ -294,7 +294,7 @@ for (const page of pages) {
 ## Content Overhaul Plan
 
 ### Current State (as of 2026-02-18)
-Total pages: 254 across 17 tag paths.
+Total pages: 261 across 17 tag paths.
 
 | Tag Path | Count | Status |
 |---|---|---|
@@ -325,8 +325,8 @@ Each phase = one conversation, producing a batch seed script.
 | ✅ Phase 2b | `contents/tech/comparisons` | Radix vs ETH/SOL/DOT/ATOM | 5 done |
 | ✅ Phase 2c | `contents/tech/research` | Cerberus whitepaper, economic model, consensus evolution | 3 done |
 | ✅ Phase 3a | `developers/build` | Dev environment, build/test, deploy, frontend | 4 done |
-| Phase 3b | `developers/patterns` | Badge auth, vault, oracle patterns | ~4 new |
-| Phase 3c | `developers/reference` | Scrypto stdlib, SBOR, manifest ref | ~3 new |
+| ✅ Phase 3b | `developers/patterns` | Badge auth, vault, oracle, multi-component | 4 done |
+| ✅ Phase 3c | `developers/reference` | Scrypto stdlib, SBOR, manifest ref | 3 done |
 | Phase 4 | `contents/history` | Radix founding, key milestones | ~8 new |
 | Phase 5 | `community` / governance | Foundation, RDX Works, programs | ~5 new/updated |
 | Phase 1a-d | `ecosystem` audit | Update stubs → full articles | ~40 updated |

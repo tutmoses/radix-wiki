@@ -3,6 +3,9 @@
 import type { Block, BlockType, AtomicBlock } from '@/types/blocks';
 import { Clock, FileText, Columns, TrendingUp, Pencil, Info, Rss, Code2, type LucideIcon } from 'lucide-react';
 
+export const CODE_LANGS = ['javascript', 'typescript', 'css', 'json', 'bash', 'python', 'rust', 'sql', 'html', 'xml', 'jsx', 'tsx', 'markdown', 'yaml', 'toml'] as const;
+export const DEFAULT_LANG = 'rust';
+
 export const BLOCK_META: Record<BlockType, { label: string; icon: LucideIcon }> = {
   content: { label: 'Content', icon: Pencil },
   recentPages: { label: 'Recent Pages', icon: Clock },
