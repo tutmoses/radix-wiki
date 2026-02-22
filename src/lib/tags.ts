@@ -63,11 +63,11 @@ export const TAG_HIERARCHY: TagNode[] = [
     ],
     description: 'Build on Radix — tutorials, guides, design patterns, and API references for Scrypto, transaction manifests, and the Radix stack.',
     children: [
-      { name: 'Quick Start', slug: 'quick-start', description: 'Get up and running with Radix development in minutes.' },
-      { name: 'Learn', slug: 'learn', description: 'Core concepts and tutorials to get started with Radix development.' },
-      { name: 'Build', slug: 'build', description: 'Step-by-step guides for setting up your environment, building dApps, and deploying to the Radix network.' },
-      { name: 'Patterns', slug: 'patterns', description: 'Reusable design patterns for badge-gated auth, vaults, oracles, and more.' },
-      { name: 'Reference', slug: 'reference', description: 'API references for Scrypto stdlib, SBOR serialization, transaction manifests, and the Gateway API.' },
+      { name: 'Getting Started', slug: 'getting-started', description: 'Install Scrypto, write your first blueprint, and deploy to the network.' },
+      { name: 'Scrypto', slug: 'scrypto', description: 'Asset-oriented programming: resources, auth, testing, and design patterns.' },
+      { name: 'Transactions', slug: 'transactions', description: 'Transaction manifests, lifecycle, and submission.' },
+      { name: 'Frontend', slug: 'frontend', description: 'Connect wallets, read ledger state, and authenticate users.' },
+      { name: 'Infrastructure', slug: 'infrastructure', description: 'Run a node, use the APIs, and integrate with Radix.' },
       { name: 'Legacy Docs', slug: 'legacy-docs', children: [
         { name: 'Essentials', slug: 'essentials' },
         { name: 'Use', slug: 'use' },

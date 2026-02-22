@@ -12,7 +12,12 @@ type RadixDappToolkitType = Awaited<ReturnType<typeof import('@radixdlt/radix-da
 export function RadixProvider({ children }: { children: React.ReactNode }) {
   const rdtRef = useRef<RadixDappToolkitType | null>(null);
   const isAuthenticatingRef = useRef(false);
-  const { setSession, setLoading, setConnected, setWalletData, setRdtReady, _setRdtCallbacks } = useStore();
+  const setSession = useStore(s => s.setSession);
+  const setLoading = useStore(s => s.setLoading);
+  const setConnected = useStore(s => s.setConnected);
+  const setWalletData = useStore(s => s.setWalletData);
+  const setRdtReady = useStore(s => s.setRdtReady);
+  const _setRdtCallbacks = useStore(s => s._setRdtCallbacks);
 
   const createSessionFromWallet = useCallback(async (walletData: RadixWalletData) => {
     if (isAuthenticatingRef.current) return;

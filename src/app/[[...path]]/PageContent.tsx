@@ -9,10 +9,8 @@ import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { ArrowLeft, ArrowRight, Trash2, Save, FileText, Plus, Upload, X, Image as ImageIcon, Link2, MessageSquare } from 'lucide-react';
 import { BlockRenderer, findInfobox, InfoboxSidebar } from '@/components/BlockRenderer';
-import { Discussion } from '@/components/Discussion';
 import { Footer } from '@/components/Footer';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
-import { UserStats } from '@/components/UserStats';
 import { Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
 import { slugify, formatRelativeTime, generateBannerSvg } from '@/lib/utils';
@@ -38,6 +36,9 @@ const HistoryView = dynamic(() => import('@/components/HistoryView'), {
 
 export type { HistoryData } from '@/components/HistoryView';
 export { HistoryView };
+
+const Discussion = dynamic(() => import('@/components/Discussion').then(m => m.Discussion), { ssr: false });
+const UserStats = dynamic(() => import('@/components/UserStats').then(m => m.UserStats));
 
 function useSyncPageInfo(page: WikiPage | null) {
   const setPageInfo = useStore(s => s.setPageInfo);

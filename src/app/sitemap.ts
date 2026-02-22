@@ -4,6 +4,8 @@ import type { MetadataRoute } from 'next';
 import { prisma } from '@/lib/prisma/client';
 import { TAG_HIERARCHY, type TagNode } from '@/lib/tags';
 
+export const revalidate = 3600;
+
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 function collectTagPaths(nodes: TagNode[], parentPath = ''): string[] {

@@ -126,6 +126,10 @@
   [data-tabs][data-active-tab="4"] [data-tab-item]:nth-of-type(5),
   [data-tabs][data-active-tab="5"] [data-tab-item]:nth-of-type(6) { @apply block; }
 
+  /* KaTeX math */
+  .katex-display { @apply my-4 overflow-x-auto overflow-y-hidden; }
+  .katex { @apply text-text; }
+
   /* rehype-pretty-code blocks */
   [data-rehype-pretty-code-figure] { @apply my-4; pre { @apply border border-border-muted rounded-lg p-4; background-color: #24292e; } code { @apply p-0 bg-transparent; } }
 

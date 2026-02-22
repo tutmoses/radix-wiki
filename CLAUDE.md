@@ -25,34 +25,6 @@ This file provides guidance for Claude Code when working with this codebase.
 - **State**: Zustand 5
 - **Storage**: Vercel Blob for images
 
-## Project Structure
-
-```
-src/
-├── app/                    # Next.js App Router
-│   ├── api/               # API routes (auth, wiki, comments, upload)
-│   └── [[...path]]/       # Dynamic catch-all for wiki pages
-├── components/            # React components
-│   ├── BlockEditor.tsx    # Rich text editor (TipTap)
-│   ├── BlockRenderer.tsx  # Content rendering
-│   ├── ui.tsx            # Shared UI (Button, Input, Card, Badge)
-│   └── ...
-├── lib/                   # Utilities
-│   ├── api.ts            # API helpers & requireAuth middleware
-│   ├── auth.ts           # Session & JWT management
-│   ├── wiki.ts           # Data fetching & path parsing
-│   ├── versioning.ts     # Semantic versioning & block diffs
-│   ├── tags.ts           # Tag hierarchy & access control
-│   ├── prisma/client.ts  # Prisma singleton
-│   └── radix/            # Radix config & balance checks
-├── types/                # TypeScript types
-│   ├── index.ts          # Core types (AuthSession, WikiPage, etc.)
-│   └── blocks.ts         # Block types (Content, Columns, Infobox)
-├── hooks/index.ts        # useAuth, usePages, useStore
-└── styles/globals.css    # Tailwind 4 theme
-prisma/schema.prisma      # Database schema (7 models)
-```
-
 ## Key Commands
 
 ```bash

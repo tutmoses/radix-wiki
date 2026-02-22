@@ -88,10 +88,17 @@ function UserMenuDropdown({ onClose, onLogout }: { onClose: () => void; onLogout
 
 export function Header() {
   const router = useRouter();
-  const { isAuthenticated, user } = useAuth();
-  const { session, walletData, isConnected, isLoading, rdtReady, logout, connect, sidebarOpen, toggleSidebar, _pendingConnect } = useStore();
-  const { canEdit, canShowHistory, canShowInfo, canExportMdx, editPath, historyPath, mdxPath } = usePageContext();
+  const { isAuthenticated, user, walletData } = useAuth();
+  const isConnected = useStore(s => s.isConnected);
+  const isLoading = useStore(s => s.isLoading);
+  const rdtReady = useStore(s => s.rdtReady);
+  const logout = useStore(s => s.logout);
+  const connect = useStore(s => s.connect);
+  const sidebarOpen = useStore(s => s.sidebarOpen);
+  const toggleSidebar = useStore(s => s.toggleSidebar);
+  const _pendingConnect = useStore(s => s._pendingConnect);
   const pageInfo = useStore(s => s.pageInfo);
+  const { canEdit, canShowHistory, canShowInfo, canExportMdx, editPath, historyPath, mdxPath } = usePageContext();
   const [showSearch, setShowSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
@@ -101,12 +108,12 @@ export function Header() {
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const displayName = session?.displayName || walletData?.persona?.label ||
+  const displayName = user?.displayName || walletData?.persona?.label ||
     (walletData?.accounts?.[0]?.address ? shortenAddress(walletData.accounts[0].address) : null) ||
-    (session?.radixAddress ? shortenAddress(session.radixAddress) : 'Connected');
+    (user?.radixAddress ? shortenAddress(user.radixAddress) : 'Connected');
 
   const showAsConnected = isAuthenticated || (isConnected && walletData?.accounts?.length);
-  const userProfilePath = session ? `/community/${userProfileSlug(session.displayName, session.radixAddress)}` : null;
+  const userProfilePath = user ? `/community/${userProfileSlug(user.displayName, user.radixAddress)}` : null;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {

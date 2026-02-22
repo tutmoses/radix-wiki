@@ -1,6 +1,7 @@
 // src/app/api/wiki/[[...path]]/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
 import { slugify } from '@/lib/utils';
@@ -15,6 +16,12 @@ import type { Block } from '@/types/blocks';
 
 type PathParams = { path?: string[] };
 
+const CACHE_HEADERS = { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' };
+
+function cachedJson<T>(data: T, status?: number) {
+  return NextResponse.json(data, { status, headers: CACHE_HEADERS });
+}
+
 export async function GET(request: NextRequest, context: RouteContext<PathParams>) {
   const { path } = await context.params;
   const parsed = parsePath(path, 'api');
@@ -22,8 +29,8 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
   // Handle MDX export outside handleRoute (returns raw Response)
   if (parsed.type === 'mdx') {
     try {
-      const page = await prisma.page.findFirst({
-        where: { tagPath: parsed.tagPath, slug: parsed.slug },
+      const page = await prisma.page.findUnique({
+        where: { tagPath_slug: { tagPath: parsed.tagPath, slug: parsed.slug } },
         include: { author: AUTHOR_SELECT },
       });
       if (!page) return errors.notFound('Page not found');
@@ -60,29 +67,31 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
 
       const orderBy = sort === 'title' ? { title: 'asc' as const } : { updatedAt: 'desc' as const };
 
-      const pages = await prisma.page.findMany({
-        where,
-        select: {
-          id: true, slug: true, title: true, excerpt: true, bannerImage: true,
-          tagPath: true, metadata: true, version: true, createdAt: true, updatedAt: true,
-          author: AUTHOR_SELECT,
-          _count: { select: { revisions: true } },
-        },
-        orderBy,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      });
-      const total = await prisma.page.count({ where });
+      const [pages, total] = await Promise.all([
+        prisma.page.findMany({
+          where,
+          select: {
+            id: true, slug: true, title: true, excerpt: true, bannerImage: true,
+            tagPath: true, metadata: true, version: true, createdAt: true, updatedAt: true,
+            author: AUTHOR_SELECT,
+            _count: { select: { revisions: true } },
+          },
+          orderBy,
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        }),
+        prisma.page.count({ where }),
+      ]);
 
-      return json({ items: pages, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
+      return cachedJson({ items: pages, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
     }
 
     if (parsed.type === 'invalid') return errors.notFound('Invalid path');
 
     // History mode
     if (parsed.type === 'history') {
-      const page = await prisma.page.findFirst({
-        where: { tagPath: parsed.tagPath, slug: parsed.slug },
+      const page = await prisma.page.findUnique({
+        where: { tagPath_slug: { tagPath: parsed.tagPath, slug: parsed.slug } },
         select: { id: true, version: true },
       });
       if (!page) return errors.notFound('Page not found');
@@ -97,19 +106,19 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
         orderBy: { createdAt: 'desc' },
       });
 
-      return json({ currentVersion: page.version, revisions });
+      return cachedJson({ currentVersion: page.version, revisions });
     }
 
     // Homepage or specific page
-    const page = await prisma.page.findFirst({
-      where: { tagPath: parsed.tagPath, slug: parsed.slug },
+    const page = await prisma.page.findUnique({
+      where: { tagPath_slug: { tagPath: parsed.tagPath, slug: parsed.slug } },
       include: PAGE_INCLUDE,
     });
 
-    if (!page && parsed.type === 'homepage') return json(null);
+    if (!page && parsed.type === 'homepage') return cachedJson(null);
     if (!page) return errors.notFound('Page not found');
 
-    return json(page);
+    return cachedJson(page);
   }, 'Failed to fetch');
 }
 
@@ -120,11 +129,11 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
 
     // Restore revision
     if (parsed.type === 'history') {
-      const auth = await requireAuth(request);
+      const auth = await requireAuth(request, { type: 'edit', tagPath: parsed.tagPath });
       if ('error' in auth) return auth.error;
 
-      const page = await prisma.page.findFirst({
-        where: { tagPath: parsed.tagPath, slug: parsed.slug },
+      const page = await prisma.page.findUnique({
+        where: { tagPath_slug: { tagPath: parsed.tagPath, slug: parsed.slug } },
         select: { id: true, title: true, content: true, bannerImage: true, version: true, authorId: true, tagPath: true },
       });
       if (!page) return errors.notFound('Page not found');
@@ -132,9 +141,6 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
       if (isAuthorOnlyPath(page.tagPath) && page.authorId !== auth.session.userId) {
         return errors.forbidden('You can only restore your own pages in this category');
       }
-
-      const balanceAuth = await requireAuth(request, { type: 'edit', tagPath: parsed.tagPath });
-      if ('error' in balanceAuth) return balanceAuth.error;
 
       const { revisionId } = await request.json();
       if (!revisionId) return errors.badRequest('Revision ID required');
@@ -145,20 +151,22 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
       const newVersion = incrementVersion(parseVersion(page.version), 'major');
       const content = revision.content as Prisma.InputJsonValue;
 
-      await prisma.page.update({
-        where: { id: page.id },
-        data: { title: revision.title, content, version: formatVersion(newVersion) },
-      });
+      await prisma.$transaction([
+        prisma.page.update({
+          where: { id: page.id },
+          data: { title: revision.title, content, version: formatVersion(newVersion) },
+        }),
+        prisma.revision.create({
+          data: {
+            pageId: page.id, title: revision.title, content,
+            version: formatVersion(newVersion), changeType: 'major',
+            changes: [] as unknown as Prisma.InputJsonValue,
+            authorId: auth.session.userId, message: `Restored to v${revision.version}`,
+          },
+        }),
+      ]);
 
-      await prisma.revision.create({
-        data: {
-          pageId: page.id, title: revision.title, content,
-          version: formatVersion(newVersion), changeType: 'major',
-          changes: [] as unknown as Prisma.InputJsonValue,
-          authorId: auth.session.userId, message: `Restored to v${revision.version}`,
-        },
-      });
-
+      revalidateTag('wiki');
       return json({ success: true, version: formatVersion(newVersion) });
     }
 
@@ -183,32 +191,35 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
     if ('error' in auth) return auth.error;
 
     let slug = body.slug || slugify(title);
-    const existing = await prisma.page.findFirst({ where: { tagPath, slug } });
+    const existing = await prisma.page.findUnique({ where: { tagPath_slug: { tagPath, slug } } });
     if (existing) slug = `${slug}-${Date.now().toString(36)}`;
 
     const initialVersion = '1.0.0';
 
-    const page = await prisma.page.create({
-      data: {
-        slug, title,
-        content: content as unknown as Prisma.InputJsonValue,
-        excerpt, bannerImage, tagPath,
-        metadata: metadata as unknown as Prisma.InputJsonValue,
-        version: initialVersion, authorId: auth.session.userId,
-      },
-      include: { author: AUTHOR_SELECT },
+    const page = await prisma.$transaction(async (tx) => {
+      const p = await tx.page.create({
+        data: {
+          slug, title,
+          content: content as unknown as Prisma.InputJsonValue,
+          excerpt, bannerImage, tagPath,
+          metadata: metadata as unknown as Prisma.InputJsonValue,
+          version: initialVersion, authorId: auth.session.userId,
+        },
+        include: { author: AUTHOR_SELECT },
+      });
+      await tx.revision.create({
+        data: {
+          pageId: p.id, title,
+          content: content as unknown as Prisma.InputJsonValue,
+          version: initialVersion, changeType: 'major',
+          changes: [] as unknown as Prisma.InputJsonValue,
+          authorId: auth.session.userId, message: 'Initial version',
+        },
+      });
+      return p;
     });
 
-    await prisma.revision.create({
-      data: {
-        pageId: page.id, title,
-        content: content as unknown as Prisma.InputJsonValue,
-        version: initialVersion, changeType: 'major',
-        changes: [] as unknown as Prisma.InputJsonValue,
-        authorId: auth.session.userId, message: 'Initial version',
-      },
-    });
-
+    revalidateTag('wiki');
     return json(page, 201);
   }, 'Failed to create');
 }
@@ -230,31 +241,34 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
       return errors.badRequest('Invalid block structure');
     }
 
-    const existing = await prisma.page.findFirst({ where: { tagPath: parsed.tagPath, slug: parsed.slug } });
+    const existing = await prisma.page.findUnique({ where: { tagPath_slug: { tagPath: parsed.tagPath, slug: parsed.slug } } });
 
     // Homepage creation if it doesn't exist
     if (!existing && parsed.type === 'homepage') {
       const initialVersion = '1.0.0';
 
-      const page = await prisma.page.create({
-        data: {
-          tagPath: '', slug: '',
-          title: title || 'Homepage',
-          content: (content as unknown as Prisma.InputJsonValue) || {},
-          bannerImage, version: initialVersion, authorId: auth.session.userId,
-        },
+      const page = await prisma.$transaction(async (tx) => {
+        const p = await tx.page.create({
+          data: {
+            tagPath: '', slug: '',
+            title: title || 'Homepage',
+            content: (content as unknown as Prisma.InputJsonValue) || {},
+            bannerImage, version: initialVersion, authorId: auth.session.userId,
+          },
+        });
+        await tx.revision.create({
+          data: {
+            pageId: p.id, title: title || 'Homepage',
+            content: (content as unknown as Prisma.InputJsonValue) || {},
+            version: initialVersion, changeType: 'major',
+            changes: [] as unknown as Prisma.InputJsonValue,
+            authorId: auth.session.userId, message: 'Initial version',
+          },
+        });
+        return p;
       });
 
-      await prisma.revision.create({
-        data: {
-          pageId: page.id, title: title || 'Homepage',
-          content: (content as unknown as Prisma.InputJsonValue) || {},
-          version: initialVersion, changeType: 'major',
-          changes: [] as unknown as Prisma.InputJsonValue,
-          authorId: auth.session.userId, message: 'Initial version',
-        },
-      });
-
+      revalidateTag('wiki');
       return json(page, 201);
     }
 
@@ -262,7 +276,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
 
     const slugUpdate = newSlug && newSlug !== existing.slug ? slugify(newSlug) : undefined;
     if (slugUpdate) {
-      const conflict = await prisma.page.findFirst({ where: { tagPath: existing.tagPath, slug: slugUpdate } });
+      const conflict = await prisma.page.findUnique({ where: { tagPath_slug: { tagPath: existing.tagPath, slug: slugUpdate } } });
       if (conflict) return errors.badRequest('A page with that slug already exists in this category');
     }
 
@@ -298,30 +312,35 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
       }
     }
 
-    const page = await prisma.page.update({
-      where: { id: existing.id },
-      data: {
-        title: title ?? undefined, slug: slugUpdate ?? undefined,
-        content: content !== undefined ? (content as unknown as Prisma.InputJsonValue) : undefined,
-        excerpt: excerpt ?? undefined, bannerImage: bannerImage ?? undefined,
-        metadata: metadata !== undefined ? (metadata as unknown as Prisma.InputJsonValue) : undefined,
-        version: newVersion,
-      },
-      include: { author: AUTHOR_SELECT },
+    const page = await prisma.$transaction(async (tx) => {
+      const p = await tx.page.update({
+        where: { id: existing.id },
+        data: {
+          title: title ?? undefined, slug: slugUpdate ?? undefined,
+          content: content !== undefined ? (content as unknown as Prisma.InputJsonValue) : undefined,
+          excerpt: excerpt ?? undefined, bannerImage: bannerImage ?? undefined,
+          metadata: metadata !== undefined ? (metadata as unknown as Prisma.InputJsonValue) : undefined,
+          version: newVersion,
+        },
+        include: { author: AUTHOR_SELECT },
+      });
+
+      if (content || title) {
+        await tx.revision.create({
+          data: {
+            pageId: p.id, title: title || existing.title,
+            content: content ? (content as unknown as Prisma.InputJsonValue) : (existing.content as Prisma.InputJsonValue),
+            version: newVersion, changeType,
+            changes: changes as unknown as Prisma.InputJsonValue,
+            authorId: auth.session.userId, message: revisionMessage,
+          },
+        });
+      }
+
+      return p;
     });
 
-    if (content || title) {
-      await prisma.revision.create({
-        data: {
-          pageId: page.id, title: title || existing.title,
-          content: content ? (content as unknown as Prisma.InputJsonValue) : (existing.content as Prisma.InputJsonValue),
-          version: newVersion, changeType,
-          changes: changes as unknown as Prisma.InputJsonValue,
-          authorId: auth.session.userId, message: revisionMessage,
-        },
-      });
-    }
-
+    revalidateTag('wiki');
     return json(page);
   }, 'Failed to update');
 }
@@ -336,11 +355,12 @@ export async function DELETE(request: NextRequest, context: RouteContext<PathPar
     const auth = await requireAuth(request);
     if ('error' in auth) return auth.error;
 
-    const existing = await prisma.page.findFirst({ where: { tagPath: parsed.tagPath, slug: parsed.slug } });
+    const existing = await prisma.page.findUnique({ where: { tagPath_slug: { tagPath: parsed.tagPath, slug: parsed.slug } } });
     if (!existing) return errors.notFound('Page not found');
     if (existing.authorId !== auth.session.userId) return errors.forbidden();
 
     await prisma.page.delete({ where: { id: existing.id } });
+    revalidateTag('wiki');
     return json({ success: true });
   }, 'Failed to delete');
 }

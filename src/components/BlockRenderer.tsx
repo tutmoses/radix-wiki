@@ -11,6 +11,7 @@ import { findTagByPath } from '@/lib/tags';
 import { usePages } from '@/hooks';
 import { Badge } from '@/components/ui';
 import type { WikiPage, PageMetadata } from '@/types';
+import renderMathInElement from 'katex/contrib/auto-render';
 import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock } from '@/types/blocks';
 import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
 
@@ -50,7 +51,7 @@ function processHtml(html: string): string {
 }
 
 // ========== PAGE CARD ==========
-function PageCard({ page, compact }: { page: WikiPage; compact?: boolean }) {
+const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; compact?: boolean }) {
   const leafTag = findTagByPath(page.tagPath.split('/'));
   const href = `/${page.tagPath}/${page.slug}`;
 
@@ -85,7 +86,7 @@ function PageCard({ page, compact }: { page: WikiPage; compact?: boolean }) {
       </div>
     </Link>
   );
-}
+});
 
 // ========== BLOCK VIEW COMPONENTS ==========
 function RecentPagesBlockView({ block }: { block: RecentPagesBlock }) {
@@ -294,6 +295,17 @@ const ContentBlockView = memo(function ContentBlockView({ html }: { html: string
       }
     };
     window.addEventListener('message', handleMessage);
+
+    renderMathInElement(el, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false },
+        { left: '\\(', right: '\\)', display: false },
+        { left: '\\[', right: '\\]', display: true },
+      ],
+      throwOnError: false,
+    });
+
     return () => window.removeEventListener('message', handleMessage);
   }, [html]);
 

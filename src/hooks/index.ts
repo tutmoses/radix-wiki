@@ -108,15 +108,17 @@ export const useStore = create<AppStore>()((set, get) => ({
 // ========== AUTH HOOK ==========
 
 export const useAuth = () => {
-  const { session, walletData, isConnected } = useStore();
+  const session = useStore(s => s.session);
+  const walletData = useStore(s => s.walletData);
+  const isConnected = useStore(s => s.isConnected);
   const isAuthenticated = !!session && new Date(session.expiresAt) > new Date();
-  const user = session ? {
+  const user = useMemo(() => session ? {
     id: session.userId,
     radixAddress: session.radixAddress,
     personaAddress: session.personaAddress,
     displayName: session.displayName,
-  } : null;
-  return { user, isAuthenticated, isConnected, walletData };
+  } : null, [session]);
+  return useMemo(() => ({ user, isAuthenticated, isConnected, walletData }), [user, isAuthenticated, isConnected, walletData]);
 };
 
 // ========== PAGES HOOK ==========
@@ -171,8 +173,8 @@ export function usePages(mode: PageMode): SingleResult | ListResult {
           const res = await fetch(`/api/wiki?${params}`);
           if (res.ok) setPages((await res.json()).items || []);
         } else {
-          const results = await Promise.all(modeConfig.pageIds.map(id => fetch(`/api/wiki/by-id/${id}`).then(r => r.ok ? r.json() : null)));
-          setPages(results.filter(Boolean));
+          const res = await fetch(`/api/wiki/by-ids?ids=${modeConfig.pageIds.join(',')}`);
+          if (res.ok) setPages(await res.json());
         }
       } catch {
         if (modeConfig.type === 'single') setStatus('error');

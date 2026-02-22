@@ -41,20 +41,24 @@ function TableOfContents() {
   const [isExpanded, setIsExpanded] = useState(true);
 
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
     const updateHeadings = () => {
-      const els = document.querySelector('main')?.querySelectorAll('h1[id], h2[id], h3[id]') || [];
-      setHeadings(Array.from(els).map(el => ({
-        text: el.textContent?.trim() || '',
-        level: parseInt(el.tagName[1]),
-        id: el.id,
-      })).filter(h => h.text && h.id));
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const els = document.querySelector('main')?.querySelectorAll('h1[id], h2[id], h3[id]') || [];
+        setHeadings(Array.from(els).map(el => ({
+          text: el.textContent?.trim() || '',
+          level: parseInt(el.tagName[1]),
+          id: el.id,
+        })).filter(h => h.text && h.id));
+      }, 200);
     };
 
     updateHeadings();
     const observer = new MutationObserver(updateHeadings);
     const main = document.querySelector('main');
     if (main) observer.observe(main, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    return () => { clearTimeout(timer); observer.disconnect(); };
   }, []);
 
   if (!headings.length) return null;

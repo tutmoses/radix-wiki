@@ -67,7 +67,13 @@ function seededRandom(seed: number): () => number {
   return () => { s = (s * 16807 + 0) % 2147483647; return s / 2147483647; };
 }
 
+const svgCache = new Map<string, string>();
+
 export function generateBannerSvg(title: string, tagPath: string): string {
+  const cacheKey = `${title}:${tagPath}`;
+  const cached = svgCache.get(cacheKey);
+  if (cached) return cached;
+
   const palette = Object.entries(CATEGORY_PALETTES).find(([k]) => tagPath.startsWith(k))?.[1] ?? DEFAULT_PALETTE;
   const hash = hashStr(title + tagPath);
   const rand = seededRandom(hash);
@@ -116,5 +122,7 @@ export function generateBannerSvg(title: string, tagPath: string): string {
     svg += `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${r.toFixed(0)}" fill="${palette[2]}" opacity="${(0.4 + rand() * 0.4).toFixed(2)}"/>`;
   }
 
-  return `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">${svg}</svg>`)}`;
+  const result = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">${svg}</svg>`)}`;
+  svgCache.set(cacheKey, result);
+  return result;
 }

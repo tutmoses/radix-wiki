@@ -3,6 +3,7 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import { Inter } from 'next/font/google';
+import 'katex/dist/katex.min.css';
 import '@/styles/globals.css';
 import { RadixProvider } from '@/components/RadixProvider';
 import { Header } from '@/components/Header';

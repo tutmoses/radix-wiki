@@ -3,12 +3,34 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { parsePath, getHomepage, getPage, getCategoryPages, getForumThreads, isForumPath, getPageHistory, getAdjacentPages } from '@/lib/wiki';
-import { getSortOrder, type SortOrder } from '@/lib/tags';
+import { getSortOrder, TAG_HIERARCHY, type TagNode, type SortOrder } from '@/lib/tags';
 import { highlightBlocks } from '@/lib/highlight';
+import { hasCodeBlocksInContent } from '@/lib/block-utils';
+import { prisma } from '@/lib/prisma/client';
 import { PageView, HomepageView, CategoryView, ForumView, PageSkeleton, StatusCard, HistoryView, type HistoryData } from './PageContent';
 import type { Block } from '@/types/blocks';
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+function collectTagPaths(nodes: TagNode[], parent = ''): string[] {
+  return nodes.flatMap(n => {
+    const p = parent ? `${parent}/${n.slug}` : n.slug;
+    return [p, ...(n.children ? collectTagPaths(n.children, p) : [])];
+  });
+}
+
+export async function generateStaticParams() {
+  const pages = await prisma.page.findMany({ select: { tagPath: true, slug: true } });
+  const categories = collectTagPaths(TAG_HIERARCHY).filter(Boolean);
+
+  return [
+    { path: [] },
+    ...categories.map(p => ({ path: p.split('/') })),
+    ...pages.filter(p => p.tagPath && p.slug).map(p => ({ path: [...p.tagPath.split('/'), p.slug] })),
+  ];
+}
+
+export const dynamicParams = true;
 
 type Props = { params: Promise<{ path?: string[] }>; searchParams: Promise<{ sort?: string }> };
 
@@ -34,6 +56,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 async function withHighlightedContent<T extends { content: unknown }>(page: T | null): Promise<T | null> {
   if (!page || !Array.isArray(page.content)) return page;
+  if (!hasCodeBlocksInContent(page.content as Block[])) return page;
   return { ...page, content: await highlightBlocks(page.content as Block[]) };
 }
 
@@ -79,6 +102,6 @@ export default async function DynamicPage({ params, searchParams }: Props) {
 
   const rawPage = await getPage(parsed.tagPath, parsed.slug);
   const page = parsed.suffix === 'edit' ? rawPage : await withHighlightedContent(rawPage);
-  const adjacent = page ? await getAdjacentPages(parsed.tagPath, page.title, page.createdAt, page.updatedAt) : { prev: null, next: null };
+  const adjacent = page ? await getAdjacentPages(parsed.tagPath, page.title, String(page.createdAt), String(page.updatedAt)) : { prev: null, next: null };
   return <Suspense fallback={<PageSkeleton />}><PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} adjacent={adjacent} /></Suspense>;
 }

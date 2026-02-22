@@ -1,6 +1,7 @@
 // src/lib/wiki.ts - Server-side data fetching
 
 import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { isValidTagPath, getSortOrder, getMetadataKeys, type SortOrder } from '@/lib/tags';
 import type { WikiPage, ForumThread } from '@/types';
@@ -8,6 +9,12 @@ import type { WikiPage, ForumThread } from '@/types';
 // ========== PRISMA QUERY FRAGMENTS ==========
 export const AUTHOR_SELECT = { select: { id: true, displayName: true, radixAddress: true } } as const;
 export const PAGE_INCLUDE = { author: AUTHOR_SELECT, _count: { select: { revisions: true } } } as const;
+const CATEGORY_SELECT = {
+  id: true, slug: true, title: true, excerpt: true, bannerImage: true,
+  tagPath: true, metadata: true, version: true, createdAt: true, updatedAt: true,
+  authorId: true, author: AUTHOR_SELECT,
+} as const;
+const CACHE_OPTS = { tags: ['wiki'], revalidate: 300 };
 
 // ========== UNIFIED PATH PARSING ==========
 
@@ -65,13 +72,17 @@ export function parsePath(segments: string[] = [], mode: 'client' | 'api' = 'cli
 
 // ========== DATA FETCHING ==========
 
-export const getHomepage = cache(async (): Promise<WikiPage | null> => {
-  return prisma.page.findFirst({ where: { tagPath: '', slug: '' }, include: PAGE_INCLUDE }) as Promise<WikiPage | null>;
-});
+export const getHomepage = cache(unstable_cache(
+  async (): Promise<WikiPage | null> => {
+    return prisma.page.findUnique({ where: { tagPath_slug: { tagPath: '', slug: '' } }, include: PAGE_INCLUDE }) as Promise<WikiPage | null>;
+  }, ['getHomepage'], CACHE_OPTS,
+));
 
-export const getPage = cache(async (tagPath: string, slug: string): Promise<WikiPage | null> => {
-  return prisma.page.findFirst({ where: { tagPath, slug }, include: PAGE_INCLUDE }) as Promise<WikiPage | null>;
-});
+export const getPage = cache(unstable_cache(
+  async (tagPath: string, slug: string): Promise<WikiPage | null> => {
+    return prisma.page.findUnique({ where: { tagPath_slug: { tagPath, slug } }, include: PAGE_INCLUDE }) as Promise<WikiPage | null>;
+  }, ['getPage'], CACHE_OPTS,
+));
 
 const sortOrderBy: Record<SortOrder, object> = {
   title: { title: 'asc' as const },
@@ -88,93 +99,99 @@ function sortByDateMeta<T extends { metadata?: any }>(pages: T[], dir: number): 
   });
 }
 
-export const getCategoryPages = cache(async (tagPath: string, sort?: SortOrder, limit = 200): Promise<WikiPage[]> => {
-  const resolvedSort = sort ?? getSortOrder(tagPath.split('/'));
-  const hasDateMeta = resolvedSort !== 'title' && getMetadataKeys(tagPath.split('/')).some(k => k.key === 'date' && k.type === 'date');
-  const pages = await prisma.page.findMany({
-    where: { tagPath },
-    include: { author: AUTHOR_SELECT },
-    orderBy: sortOrderBy[resolvedSort],
-    take: limit,
-  }) as WikiPage[];
-  return hasDateMeta ? sortByDateMeta<WikiPage>(pages, resolvedSort === 'oldest' ? 1 : -1) : pages;
-});
+export const getCategoryPages = cache(unstable_cache(
+  async (tagPath: string, sort?: SortOrder, limit = 200): Promise<WikiPage[]> => {
+    const resolvedSort = sort ?? getSortOrder(tagPath.split('/'));
+    const hasDateMeta = resolvedSort !== 'title' && getMetadataKeys(tagPath.split('/')).some(k => k.key === 'date' && k.type === 'date');
+    const pages = await prisma.page.findMany({
+      where: { tagPath },
+      select: CATEGORY_SELECT,
+      orderBy: sortOrderBy[resolvedSort],
+      take: limit,
+    }) as unknown as WikiPage[];
+    return hasDateMeta ? sortByDateMeta<WikiPage>(pages, resolvedSort === 'oldest' ? 1 : -1) : pages;
+  }, ['getCategoryPages'], CACHE_OPTS,
+));
 
 export function isForumPath(tagPath: string): boolean {
   return tagPath === 'forum' || tagPath.startsWith('forum/');
 }
 
-export const getForumThreads = cache(async (tagPath: string, sort?: SortOrder, limit = 50): Promise<ForumThread[]> => {
-  const resolvedSort = sort ?? getSortOrder(tagPath.split('/'));
-  const pages = await prisma.page.findMany({
-    where: { tagPath: { startsWith: tagPath } },
-    select: {
-      id: true, slug: true, title: true, tagPath: true, createdAt: true, updatedAt: true,
-      author: AUTHOR_SELECT,
-      _count: { select: { comments: true } },
-      comments: { orderBy: { createdAt: 'desc' as const }, take: 1, select: { createdAt: true, author: AUTHOR_SELECT } },
-    },
-    orderBy: sortOrderBy[resolvedSort],
-    take: limit,
-  });
-  return pages.map(p => ({
-    id: p.id, slug: p.slug, title: p.title, tagPath: p.tagPath,
-    createdAt: p.createdAt, updatedAt: p.updatedAt, author: p.author,
-    replyCount: p._count.comments,
-    lastActivity: p.comments[0]?.createdAt ?? p.createdAt,
-    lastReplyAuthor: p.comments[0]?.author ?? null,
-  }));
-});
+export const getForumThreads = cache(unstable_cache(
+  async (tagPath: string, sort?: SortOrder, limit = 50): Promise<ForumThread[]> => {
+    const resolvedSort = sort ?? getSortOrder(tagPath.split('/'));
+    const pages = await prisma.page.findMany({
+      where: { tagPath: { startsWith: tagPath } },
+      select: {
+        id: true, slug: true, title: true, tagPath: true, createdAt: true, updatedAt: true,
+        author: AUTHOR_SELECT,
+        _count: { select: { comments: true } },
+        comments: { orderBy: { createdAt: 'desc' as const }, take: 1, select: { createdAt: true, author: AUTHOR_SELECT } },
+      },
+      orderBy: sortOrderBy[resolvedSort],
+      take: limit,
+    });
+    return pages.map(p => ({
+      id: p.id, slug: p.slug, title: p.title, tagPath: p.tagPath,
+      createdAt: p.createdAt, updatedAt: p.updatedAt, author: p.author,
+      replyCount: p._count.comments,
+      lastActivity: p.comments[0]?.createdAt ?? p.createdAt,
+      lastReplyAuthor: p.comments[0]?.author ?? null,
+    }));
+  }, ['getForumThreads'], CACHE_OPTS,
+));
 
-export const getPageHistory = cache(async (tagPath: string, slug: string) => {
-  const page = await prisma.page.findFirst({
-    where: { tagPath, slug },
-    select: { id: true, title: true, version: true },
-  });
-  if (!page) return null;
+export const getPageHistory = cache(unstable_cache(
+  async (tagPath: string, slug: string) => {
+    const page = await prisma.page.findUnique({
+      where: { tagPath_slug: { tagPath, slug } },
+      select: { id: true, title: true, version: true },
+    });
+    if (!page) return null;
 
-  const revisions = await prisma.revision.findMany({
-    where: { pageId: page.id },
-    select: {
-      id: true, title: true, version: true, changeType: true,
-      changes: true, message: true, createdAt: true,
-      author: AUTHOR_SELECT,
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+    const revisions = await prisma.revision.findMany({
+      where: { pageId: page.id },
+      select: {
+        id: true, title: true, version: true, changeType: true,
+        changes: true, message: true, createdAt: true,
+        author: AUTHOR_SELECT,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
-  return { currentVersion: page.version, revisions };
-});
+    return { currentVersion: page.version, revisions };
+  }, ['getPageHistory'], CACHE_OPTS,
+));
 
-export const getAdjacentPages = cache(async (tagPath: string, title: string, createdAt?: Date, updatedAt?: Date) => {
-  const sort = getSortOrder(tagPath.split('/'));
-  const select = { tagPath: true, slug: true, title: true, metadata: true } as const;
-  const hasDateMeta = sort !== 'title' && sort !== 'recent' && getMetadataKeys(tagPath.split('/')).some(k => k.key === 'date' && k.type === 'date');
+export const getAdjacentPages = cache(unstable_cache(
+  async (tagPath: string, title: string, createdAt?: string, updatedAt?: string) => {
+    const sort = getSortOrder(tagPath.split('/'));
+    const select = { tagPath: true, slug: true, title: true, metadata: true } as const;
+    const hasDateMeta = sort !== 'title' && sort !== 'recent' && getMetadataKeys(tagPath.split('/')).some(k => k.key === 'date' && k.type === 'date');
 
-  // Date-metadata sort: fetch all and find neighbors in sorted array
-  if (hasDateMeta) {
-    const pages = await prisma.page.findMany({ where: { tagPath }, select });
-    const sorted = sortByDateMeta(pages, sort === 'oldest' ? 1 : -1);
-    const idx = sorted.findIndex(p => p.title === title);
-    return { prev: idx > 0 ? sorted[idx - 1] : null, next: idx < sorted.length - 1 ? sorted[idx + 1] : null };
-  }
+    if (hasDateMeta) {
+      const pages = await prisma.page.findMany({ where: { tagPath }, select });
+      const sorted = sortByDateMeta(pages, sort === 'oldest' ? 1 : -1);
+      const idx = sorted.findIndex(p => p.title === title);
+      return { prev: idx > 0 ? sorted[idx - 1] : null, next: idx < sorted.length - 1 ? sorted[idx + 1] : null };
+    }
 
-  // Cursor-based: use DB ordering directly
-  const field = sort === 'recent' ? 'updatedAt' : sort !== 'title' && createdAt ? 'createdAt' : 'title';
-  const cursor = sort === 'recent' ? updatedAt : field === 'createdAt' ? createdAt : title;
-  const ascending = sort === 'oldest' || sort === 'title';
+    const field = sort === 'recent' ? 'updatedAt' : sort !== 'title' && createdAt ? 'createdAt' : 'title';
+    const cursor = sort === 'recent' ? updatedAt : field === 'createdAt' ? createdAt : title;
+    const ascending = sort === 'oldest' || sort === 'title';
 
-  const [prev, next] = await Promise.all([
-    prisma.page.findFirst({
-      where: { tagPath, [field]: { [ascending ? 'lt' : 'gt']: cursor } },
-      orderBy: { [field]: ascending ? 'desc' : 'asc' },
-      select,
-    }),
-    prisma.page.findFirst({
-      where: { tagPath, [field]: { [ascending ? 'gt' : 'lt']: cursor } },
-      orderBy: { [field]: ascending ? 'asc' : 'desc' },
-      select,
-    }),
-  ]);
-  return { prev, next };
-});
+    const [prev, next] = await Promise.all([
+      prisma.page.findFirst({
+        where: { tagPath, [field]: { [ascending ? 'lt' : 'gt']: cursor } },
+        orderBy: { [field]: ascending ? 'desc' : 'asc' },
+        select,
+      }),
+      prisma.page.findFirst({
+        where: { tagPath, [field]: { [ascending ? 'gt' : 'lt']: cursor } },
+        orderBy: { [field]: ascending ? 'asc' : 'desc' },
+        select,
+      }),
+    ]);
+    return { prev, next };
+  }, ['getAdjacentPages'], CACHE_OPTS,
+));
