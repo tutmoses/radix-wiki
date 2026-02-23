@@ -3,7 +3,6 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import { Inter } from 'next/font/google';
-import 'katex/dist/katex.min.css';
 import '@/styles/globals.css';
 import { RadixProvider } from '@/components/RadixProvider';
 import { Header } from '@/components/Header';
@@ -39,7 +38,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${inter.variable} font-sans antialiased`}>
         <Script
-          src="https://plausible.io/js/pa-5NRG8r4xW19fPk-6FUmFm.js"
+          src="/js/script.js"
+          data-api="/api/event"
           strategy="afterInteractive"
         />
         <Script id="plausible-init" strategy="afterInteractive">

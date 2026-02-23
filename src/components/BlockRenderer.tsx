@@ -11,7 +11,6 @@ import { findTagByPath } from '@/lib/tags';
 import { usePages, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
 import type { WikiPage, PageMetadata } from '@/types';
-import renderMathInElement from 'katex/contrib/auto-render';
 import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock } from '@/types/blocks';
 import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
 
@@ -288,15 +287,20 @@ const ContentBlockView = memo(function ContentBlockView({ html }: { html: string
     };
     window.addEventListener('message', handleMessage);
 
-    renderMathInElement(el, {
-      delimiters: [
-        { left: '$$', right: '$$', display: true },
-        { left: '$', right: '$', display: false },
-        { left: '\\(', right: '\\)', display: false },
-        { left: '\\[', right: '\\]', display: true },
-      ],
-      throwOnError: false,
-    });
+    if (/\$\$|\\\(|\\\[/.test(html)) {
+      // @ts-expect-error -- CSS module import has no types
+      import('katex/dist/katex.min.css').then(() => import('katex/contrib/auto-render')).then(({ default: render }) => {
+        render(el, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false },
+            { left: '\\(', right: '\\)', display: false },
+            { left: '\\[', right: '\\]', display: true },
+          ],
+          throwOnError: false,
+        });
+      });
+    }
 
     return () => window.removeEventListener('message', handleMessage);
   }, [html]);
