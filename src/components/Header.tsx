@@ -36,24 +36,24 @@ function PageInfoDropdown({ page, onClose }: { page: PageInfo; onClose: () => vo
         {page.author && (
           <div className="row">
             <UserAvatar radixAddress={page.author.radixAddress} avatarUrl={page.author.avatarUrl} size="sm" />
-            <span className="text-muted">Author:</span>
+            <span className="text-text-muted">Author:</span>
             <span className="truncate">{page.author.displayName || page.author.radixAddress.slice(0, 16)}...</span>
           </div>
         )}
         <div className="row">
-          <Clock size={14} className="text-muted shrink-0" />
-          <span className="text-muted">Updated:</span>
+          <Clock size={14} className="text-text-muted shrink-0" />
+          <span className="text-text-muted">Updated:</span>
           <span>{formatRelativeTime(page.updatedAt)}</span>
         </div>
         <div className="row">
-          <Clock size={14} className="text-muted shrink-0" />
-          <span className="text-muted">Created:</span>
+          <Clock size={14} className="text-text-muted shrink-0" />
+          <span className="text-text-muted">Created:</span>
           <span>{formatDate(page.createdAt)}</span>
         </div>
         {page.revisionCount > 0 && (
           <div className="row">
-            <FileText size={14} className="text-muted shrink-0" />
-            <span className="text-muted">Revisions:</span>
+            <FileText size={14} className="text-text-muted shrink-0" />
+            <span className="text-text-muted">Revisions:</span>
             <span>{page.revisionCount}</span>
           </div>
         )}
@@ -137,7 +137,7 @@ export function Header() {
           </button>
 
           <Link href="/" className="row shrink-0">
-            <Image src="/logo.png" alt="RADIX Wiki" width={240} height={240} className="logo-mark" priority />
+            <Image src="/logo.png" alt="RADIX Wiki" width={240} height={240} className="size-8 object-contain" priority />
             <span className="logo-text">RADIX Wiki</span>
           </Link>
 
@@ -158,20 +158,20 @@ export function Header() {
 
             <div id="radix-connect-btn" className="relative">
               {isLoading || _pendingConnect ? (
-                <div className="user-pill-loading"><Loader2 size={14} className="animate-spin" /><span className="hidden-mobile">Connecting...</span></div>
+                <div className="user-pill"><Loader2 size={14} className="animate-spin" /><span className="hidden sm:inline">Connecting...</span></div>
               ) : showAsConnected ? (
                 <>
                   <button onClick={() => setShowUserMenu(!showUserMenu)} className="user-pill">
                     <UserAvatar radixAddress={user?.radixAddress || walletData?.accounts?.[0]?.address || ''} size="sm" />
-                    <span className="font-medium hidden-mobile">{displayName}</span>
+                    <span className="font-medium hidden sm:inline">{displayName}</span>
                     <ChevronDown size={14} className={cn('transition-transform', showUserMenu && 'rotate-180')} />
                   </button>
                   {showUserMenu && <UserMenuDropdown onClose={() => setShowUserMenu(false)} onLogout={handleLogout} />}
                 </>
               ) : (
                 <Button variant="primary" size="sm" onClick={connect}>
-                  <span className="hidden-mobile">Connect Wallet</span>
-                  <span className="hidden-desktop">Connect</span>
+                  <span className="hidden sm:inline">Connect Wallet</span>
+                  <span className="sm:hidden">Connect</span>
                 </Button>
               )}
             </div>
@@ -194,7 +194,7 @@ export function Header() {
                       <FileText size={16} className="text-accent shrink-0" />
                       <div className="min-w-0 flex-1">
                         <div className="font-medium truncate">{page.title}</div>
-                        <div className="text-small text-muted truncate">/{page.tagPath}/{page.slug}</div>
+                        <div className="text-small text-text-muted truncate">/{page.tagPath}/{page.slug}</div>
                       </div>
                     </button>
                   ))}

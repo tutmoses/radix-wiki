@@ -64,13 +64,13 @@ function ContentDiff({ from, to }: { from: string; to: string }) {
   return (
     <div className="mt-1 stack-xs text-xs">
       {diff.removed.length > 0 && (
-        <div className="diff-removed">
+        <div className="flex items-start gap-2">
           <Minus size={10} className="text-error mt-0.5 shrink-0" />
           <span className="text-error/80 line-through">{diff.removed.join(' … ')}</span>
         </div>
       )}
       {diff.added.length > 0 && (
-        <div className="diff-added">
+        <div className="flex items-start gap-2">
           <Plus size={10} className="text-success mt-0.5 shrink-0" />
           <span className="text-success">{diff.added.join(' … ')}</span>
         </div>
@@ -116,7 +116,7 @@ function ExpandedChanges({ changes }: { changes: BlockChange[] }) {
               <div className="row gap-2">
                 {icons[c.action]}
                 <span className={cn('capitalize font-medium', colors[c.action])}>{c.action}</span>
-                <span className="text-muted">—</span>
+                <span className="text-text-muted">—</span>
                 <span>{formatBlockPath(c.path, c.type)}</span>
               </div>
               {hasTextChange && <ContentDiff from={fromText} to={toText} />}
@@ -141,7 +141,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
     return (
       <div className="stack">
         {!isHomepage && <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix="History" />}
-        <div className="empty-surface"><p className="text-error">Page not found</p></div>
+        <div className="surface p-12 text-center"><p className="text-error">Page not found</p></div>
       </div>
     );
   }
@@ -168,7 +168,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
         <div className="overflow-x-auto">
           <table className="w-full text-small">
             <thead>
-              <tr className="text-left text-muted">
+              <tr className="text-left text-text-muted">
                 <th className="py-2 px-3 font-medium w-24">Version</th>
                 <th className="py-2 px-3 font-medium w-20">Type</th>
                 <th className="py-2 px-3 font-medium">Changes</th>
@@ -185,7 +185,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                 const isExpanded = expandedId === rev.id;
                 return (
                   <Fragment key={rev.id}>
-                    <tr className={cn('border-t border-border-muted hover:bg-surface-1/50', isCurrent && 'revision-current', i === 0 && '[&>td]:rounded-none')}>
+                    <tr className={cn('border-t border-border-muted hover:bg-surface-1/50', isCurrent && 'bg-accent/5', i === 0 && '[&>td]:rounded-none')}>
                       <td className="py-2 px-3">
                         <span className="font-mono font-medium">v{rev.version}</span>
                         {isCurrent && <Badge variant="default" className="ml-2 text-xs py-0">current</Badge>}
@@ -194,7 +194,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                       <td className="py-2 px-3">
                         <div className="row gap-3">
                           <ChangeSummary changes={changes} />
-                          {rev.message && <span className="text-muted truncate max-w-48">{rev.message}</span>}
+                          {rev.message && <span className="text-text-muted truncate max-w-48">{rev.message}</span>}
                           {changes.length > 0 && (
                             <button onClick={() => setExpandedId(isExpanded ? null : rev.id)} className="text-accent hover:text-accent-hover">
                               <ChevronDown size={14} className={cn('transition-transform', isExpanded && 'rotate-180')} />
@@ -204,13 +204,13 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                       </td>
                       <td className="py-2 px-3 truncate max-w-32">
                         {rev.author ? (
-                          <Link href={`/community/${userProfileSlug(rev.author.displayName, rev.author.radixAddress)}`} className="row text-muted hover:text-accent">
+                          <Link href={`/community/${userProfileSlug(rev.author.displayName, rev.author.radixAddress)}`} className="row text-text-muted hover:text-accent">
                             <UserAvatar radixAddress={rev.author.radixAddress} avatarUrl={rev.author.avatarUrl} size="sm" />
                             {rev.author.displayName || rev.author.radixAddress.slice(0, 12) + '…'}
                           </Link>
                         ) : '—'}
                       </td>
-                      <td className="py-2 px-3 text-muted">{formatDate(rev.createdAt, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                      <td className="py-2 px-3 text-text-muted">{formatDate(rev.createdAt, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                       <td className="py-2 px-3">
                         {isAuthenticated && !isCurrent && (
                           <button onClick={() => handleRestore(rev.id)} disabled={restoringId === rev.id} className="restore-btn">
@@ -227,7 +227,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
           </table>
         </div>
       ) : (
-        <div className="empty-surface"><p className="text-muted">No revision history available.</p></div>
+        <div className="surface p-12 text-center"><p className="text-text-muted">No revision history available.</p></div>
       )}
     </div>
   );

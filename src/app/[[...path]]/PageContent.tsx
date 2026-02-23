@@ -7,13 +7,13 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, ArrowRight, Trash2, Save, FileText, Plus, Upload, X, Image as ImageIcon, Link2, MessageSquare, LayoutGrid, List } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Trash2, Save, FileText, Plus, Upload, X, Image as ImageIcon, Link2, MessageSquare, LayoutGrid, List, ArrowDownAZ, CalendarPlus, RefreshCw } from 'lucide-react';
 import { BlockRenderer, findInfobox, InfoboxSidebar } from '@/components/BlockRenderer';
 import { Footer } from '@/components/Footer';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Badge, Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
-import { slugify, formatRelativeTime, generateBannerSvg } from '@/lib/utils';
+import { cn, slugify, formatRelativeTime, generateBannerSvg } from '@/lib/utils';
 import { findTagByPath, isAuthorOnlyPath, getMetadataKeys, getXrdRequired, type MetadataKeyDefinition, type SortOrder, type TagNode } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
 import type { WikiPage, AdjacentPages, PageMetadata, IdeasPage } from '@/types';
@@ -188,7 +188,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
           <Button onClick={handleSave} disabled={isSaving} size="sm"><Save size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
         </div>
         <h1>Edit Homepage</h1>
-        <div className="callout"><p>Editing the homepage requires <strong>{getXrdRequired('edit', '').toLocaleString()} XRD</strong></p></div>
+        <div data-callout="info"><p>Editing the homepage requires <strong>{getXrdRequired('edit', '').toLocaleString()} XRD</strong></p></div>
         <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
         <div className="page-with-infobox">
           <div className="page-main-content">
@@ -236,10 +236,10 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
 }
 
 // ========== SORT TOGGLE ==========
-const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
-  { value: 'title', label: 'A–Z' },
-  { value: 'newest', label: 'Newest' },
-  { value: 'recent', label: 'Updated' },
+const SORT_OPTIONS: { value: SortOrder; label: string; icon: typeof ArrowDownAZ }[] = [
+  { value: 'title', label: 'A–Z', icon: ArrowDownAZ },
+  { value: 'newest', label: 'Newest', icon: CalendarPlus },
+  { value: 'recent', label: 'Updated', icon: RefreshCw },
 ];
 
 function SortToggle({ sort, tagPath }: { sort: SortOrder; tagPath: string }) {
@@ -247,8 +247,8 @@ function SortToggle({ sort, tagPath }: { sort: SortOrder; tagPath: string }) {
   return (
     <div className="toggle-group-sm">
       {SORT_OPTIONS.map(o => (
-        <button key={o.value} className={sort === o.value ? 'toggle-option-sm-active' : 'toggle-option-sm'}
-          onClick={() => router.push(`/${tagPath}?sort=${o.value}`)}>{o.label}</button>
+        <button key={o.value} className={cn('toggle-option-sm', sort === o.value && 'bg-accent text-text-inverted')}
+          onClick={() => router.push(`/${tagPath}?sort=${o.value}`)} title={o.label}><o.icon size={14} /></button>
       ))}
     </div>
   );
@@ -321,7 +321,7 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
                 </div>
                 <div className="page-card-body">
                   <h3 className="m-0!">{p.title}</h3>
-                  {p.excerpt && <p className="text-muted text-small line-clamp-2">{p.excerpt}</p>}
+                  {p.excerpt && <p className="text-text-muted text-small line-clamp-2">{p.excerpt}</p>}
                 </div>
               </Card>
             </Link>
@@ -329,7 +329,7 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
         </div>
       ) : (
         <Card className="empty-state">
-          <p className="text-muted">No pages in this category yet.</p>
+          <p className="text-text-muted">No pages in this category yet.</p>
           {canCreatePages && <small className="mt-2 block">Click "New Page" above to create one.</small>}
         </Card>
       )}
@@ -340,8 +340,17 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
 // ========== IDEAS PIPELINE ==========
 const IDEAS_STATUS_COLUMNS = ['Discussion', 'Proposed', 'Approved', 'In Progress', 'Testing', 'Done'] as const;
 const PRIORITY_VARIANT: Record<string, 'danger' | 'warning' | 'success'> = { High: 'danger', Medium: 'warning', Low: 'success' };
-const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'danger'> = {
-  Discussion: 'secondary', Proposed: 'default', Approved: 'success', 'In Progress': 'warning', Testing: 'warning', Done: 'success',
+const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'info' | 'success' | 'warning' | 'danger'> = {
+  Discussion: 'default', Proposed: 'danger', Approved: 'warning', 'In Progress': 'info', Testing: 'secondary', Done: 'success',
+};
+const STATUS_TAB_COLOR: Record<string, string> = {
+  Discussion: 'border-accent text-accent', Proposed: 'border-danger text-danger',
+  Approved: 'border-warning text-warning', 'In Progress': 'border-info text-info',
+  Testing: 'border-purple text-purple', Done: 'border-success text-success',
+};
+const STATUS_DOT: Record<string, string> = {
+  Discussion: 'bg-accent', Proposed: 'bg-danger', Approved: 'bg-warning',
+  'In Progress': 'bg-info', Testing: 'bg-purple', Done: 'bg-success',
 };
 
 function BoardCard({ page }: { page: WikiPage }) {
@@ -351,8 +360,8 @@ function BoardCard({ page }: { page: WikiPage }) {
       <span className="board-card-title">{page.title}</span>
       <div className="board-card-meta">
         {meta.priority && <Badge variant={PRIORITY_VARIANT[meta.priority] || 'default'}>{meta.priority}</Badge>}
-        {meta.category && <Badge>{meta.category}</Badge>}
-        {meta.owner && <span className="text-text-muted text-xs">{meta.owner}</span>}
+        {meta.category && <Badge variant="secondary">{meta.category}</Badge>}
+        {meta.owner && <span className="text-text-muted text-xs">{meta.owner.replace(/<[^>]*>/g, ' ').trim()}</span>}
       </div>
     </Link>
   );
@@ -378,7 +387,7 @@ function IdeasListView({ pages, categoryFilter, statusFilter }: { pages: IdeasPa
               <span className="ideas-row-title">{p.title}</span>
               <div className="ideas-row-badges">
                 {meta.status && <Badge variant={STATUS_VARIANT[meta.status] || 'default'}>{meta.status}</Badge>}
-                {meta.category && <Badge>{meta.category}</Badge>}
+                {meta.category && <Badge variant="secondary">{meta.category}</Badge>}
                 {meta.priority && <Badge variant={PRIORITY_VARIANT[meta.priority] || 'default'}>{meta.priority}</Badge>}
               </div>
             </div>
@@ -393,7 +402,15 @@ function IdeasListView({ pages, categoryFilter, statusFilter }: { pages: IdeasPa
   );
 }
 
-export function IdeasView({ tagPath, pages }: { tagPath: string[]; pages: IdeasPage[] }) {
+function sortPages(pages: IdeasPage[], sort: SortOrder): IdeasPage[] {
+  return [...pages].sort((a, b) => {
+    if (sort === 'title') return a.title.localeCompare(b.title);
+    if (sort === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    return new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime();
+  });
+}
+
+export function IdeasView({ tagPath, pages, sort }: { tagPath: string[]; pages: IdeasPage[]; sort: SortOrder }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const pathStr = tagPath.join('/');
@@ -404,13 +421,15 @@ export function IdeasView({ tagPath, pages }: { tagPath: string[]; pages: IdeasP
   const [newSlug, setNewSlug] = useState('');
   const [showCreate, setShowCreate] = useState(false);
 
+  const sorted = useMemo(() => sortPages(pages, sort), [pages, sort]);
+
   const columns = useMemo(() => {
-    const filtered = categoryFilter ? pages.filter(p => (p.metadata as PageMetadata)?.category === categoryFilter) : pages;
+    const filtered = categoryFilter ? sorted.filter(p => (p.metadata as PageMetadata)?.category === categoryFilter) : sorted;
     return IDEAS_STATUS_COLUMNS.map(status => ({
       status,
       items: filtered.filter(p => (p.metadata as PageMetadata)?.status === status),
     }));
-  }, [pages, categoryFilter]);
+  }, [sorted, categoryFilter]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -426,49 +445,54 @@ export function IdeasView({ tagPath, pages }: { tagPath: string[]; pages: IdeasP
       <Breadcrumbs path={tagPath} />
       <div className="spread">
         <h1>{tag?.name || tagPath[tagPath.length - 1]}</h1>
-        {isAuthenticated && (
-          <div className="row">
-            {showCreate ? (
+        <div className="row">
+          <SortToggle sort={sort} tagPath={pathStr} />
+          <button className={cn('icon-btn', view === 'list' && 'text-accent')} onClick={() => setView('list')} title="List view"><List size={18} /></button>
+          <button className={cn('icon-btn', view === 'board' && 'text-accent')} onClick={() => setView('board')} title="Board view"><LayoutGrid size={18} /></button>
+          {isAuthenticated && (
+            showCreate ? (
               <>
                 <Input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="idea-slug" className="w-48" onKeyDown={e => e.key === 'Enter' && newSlug.trim() && router.push(`/${pathStr}/${slugify(newSlug)}`)} autoFocus />
                 <Button size="sm" onClick={() => { const s = slugify(newSlug); if (s) router.push(`/${pathStr}/${s}`); }} disabled={!newSlug.trim()}>Go</Button>
                 <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
               </>
-            ) : <Button size="sm" onClick={() => setShowCreate(true)}><Plus size={16} />New Idea</Button>}
-          </div>
-        )}
-      </div>
-      <div className="board-controls">
-        <div className="toggle-group-sm">
-          <button className={view === 'list' ? 'toggle-option-sm-active' : 'toggle-option-sm'} onClick={() => setView('list')}>
-            <List size={14} />List
-          </button>
-          <button className={view === 'board' ? 'toggle-option-sm-active' : 'toggle-option-sm'} onClick={() => setView('board')}>
-            <LayoutGrid size={14} />Board
-          </button>
+            ) : <Button size="sm" onClick={() => setShowCreate(true)}><Plus size={16} />New Idea</Button>
+          )}
         </div>
-        {categories.length > 0 && (
-          <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="input text-sm py-1 px-2 w-auto">
-            <option value="">All Categories</option>
-            {categories.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        )}
-        {view === 'list' && (
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="input text-sm py-1 px-2 w-auto">
-            <option value="">All Statuses</option>
-            {IDEAS_STATUS_COLUMNS.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        )}
-        <span className="text-text-muted text-sm">{pages.length} ideas</span>
       </div>
       {view === 'list' ? (
-        <IdeasListView pages={pages} categoryFilter={categoryFilter} statusFilter={statusFilter} />
+        <div className="ideas-panel">
+          <div className="status-tabs">
+            <button className={cn('status-tab', statusFilter === '' && 'border-accent text-accent')} onClick={() => setStatusFilter('')}>All</button>
+            {IDEAS_STATUS_COLUMNS.map(s => (
+              <button key={s} className={cn('status-tab', statusFilter === s && STATUS_TAB_COLOR[s])} onClick={() => setStatusFilter(s)}>{s}</button>
+            ))}
+          </div>
+          {categories.length > 0 && (
+            <div className="status-tabs">
+              <button className={cn('status-tab', categoryFilter === '' && 'border-text text-text')} onClick={() => setCategoryFilter('')}>All Types</button>
+              {categories.map(c => (
+                <button key={c} className={cn('status-tab', categoryFilter === c && 'border-text text-text')} onClick={() => setCategoryFilter(c)}>{c}</button>
+              ))}
+            </div>
+          )}
+          <IdeasListView pages={sorted} categoryFilter={categoryFilter} statusFilter={statusFilter} />
+        </div>
       ) : (
-        <div className="board-columns">
+        <div className="ideas-panel">
+          {categories.length > 0 && (
+            <div className="status-tabs">
+              <button className={cn('status-tab', categoryFilter === '' && 'border-text text-text')} onClick={() => setCategoryFilter('')}>All Types</button>
+              {categories.map(c => (
+                <button key={c} className={cn('status-tab', categoryFilter === c && 'border-text text-text')} onClick={() => setCategoryFilter(c)}>{c}</button>
+              ))}
+            </div>
+          )}
+          <div className="board-columns">
           {columns.map(({ status, items }) => (
             <div key={status} className="board-column">
               <div className="board-column-head">
-                <span>{status}</span>
+                <span className="flex items-center gap-2"><span className={cn('size-2 rounded-full', STATUS_DOT[status])} />{status}</span>
                 <Badge>{items.length}</Badge>
               </div>
               <div className="board-column-body">
@@ -476,6 +500,7 @@ export function IdeasView({ tagPath, pages }: { tagPath: string[]; pages: IdeasP
               </div>
             </div>
           ))}
+          </div>
         </div>
       )}
     </div>
@@ -577,7 +602,7 @@ function MetadataFields({ metadataKeys, metadata, onChange }: { metadataKeys: Me
 
   return (
     <div className="metadata-panel">
-      <h4 className="text-small font-medium text-muted m-0!">Page Metadata</h4>
+      <h4 className="text-small font-medium text-text-muted m-0!">Page Metadata</h4>
       <div className="metadata-grid">
         {metadataKeys.map(({ key, label, type, required, options }) => (
           <div key={key} className="stack-xs">
@@ -718,7 +743,7 @@ function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string;
           <Link href={backHref} className="row link-muted"><ArrowLeft size={16} /><span>{isCreating ? 'Back to Category' : 'Back to Page'}</span></Link>
           <Button onClick={save} disabled={isSaving || !canSave} size="sm"><Save size={16} />{saveLabel}</Button>
         </div>
-        <div className="callout"><p>{isCreating ? `Creating new page at` : `Editing page at`} <code>/{tagPath}/{slug}</code> — requires <strong>{getXrdRequired(isCreating ? 'create' : 'edit', tagPath).toLocaleString()} XRD</strong></p></div>
+        <div data-callout="info"><p>{isCreating ? `Creating new page at` : `Editing page at`} <code>/{tagPath}/{slug}</code> — requires <strong>{getXrdRequired(isCreating ? 'create' : 'edit', tagPath).toLocaleString()} XRD</strong></p></div>
         <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
         <div className="slug-editor">
           <Link2 size={14} />

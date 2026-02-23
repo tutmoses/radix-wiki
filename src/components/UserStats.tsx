@@ -28,7 +28,7 @@ function StatItem({ icon: Icon, label, value }: { icon: typeof FileText; label: 
     <div className="stat-card">
       <Icon size={20} className="text-accent" />
       <span className="stat-value">{value}</span>
-      <span className="text-small text-muted">{label}</span>
+      <span className="text-small text-text-muted">{label}</span>
     </div>
   );
 }
@@ -38,7 +38,7 @@ function ScoreRing({ score }: { score: number }) {
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
   const tier = score >= 80 ? 'Trusted' : score >= 50 ? 'Active' : score >= 20 ? 'Member' : 'New';
-  const tierColor = score >= 80 ? 'text-success' : score >= 50 ? 'text-accent' : score >= 20 ? 'text-info' : 'text-muted';
+  const tierColor = score >= 80 ? 'text-success' : score >= 50 ? 'text-accent' : score >= 20 ? 'text-info' : 'text-text-muted';
 
   return (
     <div className="score-ring">
@@ -56,7 +56,7 @@ function ScoreRing({ score }: { score: number }) {
           <Shield size={16} className={tierColor} />
           <span className={cn('font-medium', tierColor)}>{tier}</span>
         </div>
-        <span className="text-small text-muted">Reputation</span>
+        <span className="text-small text-text-muted">Reputation</span>
       </div>
     </div>
   );
@@ -68,7 +68,7 @@ export function UserStats({ authorId }: { authorId: string }) {
   if (isLoading) {
     return (
       <section className="section-divider stack-sm">
-        <h3 className="text-muted">Statistics</h3>
+        <h3 className="text-text-muted">Statistics</h3>
         <div className="stat-grid">
           {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-24 skeleton rounded-lg" />)}
         </div>
@@ -83,7 +83,7 @@ export function UserStats({ authorId }: { authorId: string }) {
       <div className="center">
         <UserAvatar radixAddress={data.radixAddress} avatarUrl={data.avatarUrl} size="lg" />
       </div>
-      <h3 className="text-muted">Statistics</h3>
+      <h3 className="text-text-muted">Statistics</h3>
       <div className="stat-grid">
         <ScoreRing score={data.score} />
         <StatItem icon={FileText} label="Pages" value={data.stats.pages} />

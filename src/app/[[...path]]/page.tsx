@@ -88,8 +88,10 @@ export default async function DynamicPage({ params, searchParams }: Props) {
 
   if (parsed.type === 'category') {
     if (isIdeasPath(parsed.tagPath)) {
+      const defaultSort = getSortOrder(parsed.tagPath.split('/'));
+      const ideasSort = (sortParam && VALID_SORTS.has(sortParam) ? sortParam : defaultSort) as SortOrder;
       const pages = await getIdeasPages(parsed.tagPath);
-      return <Suspense fallback={<PageSkeleton />}><IdeasView tagPath={parsed.tagPath.split('/')} pages={pages} /></Suspense>;
+      return <Suspense fallback={<PageSkeleton />}><IdeasView tagPath={parsed.tagPath.split('/')} pages={pages} sort={ideasSort} /></Suspense>;
     }
     const defaultSort = getSortOrder(parsed.tagPath.split('/'));
     const sort = (sortParam && VALID_SORTS.has(sortParam) ? sortParam : defaultSort) as SortOrder;

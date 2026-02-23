@@ -10,7 +10,7 @@ interface BreadcrumbsProps {
 
 export function Breadcrumbs({ path, suffix }: BreadcrumbsProps) {
   return (
-    <nav className="row wrap text-muted">
+    <nav className="row wrap text-text-muted">
       <Link href="/">Home</Link>
       {path.map((segment, i) => {
         const href = '/' + path.slice(0, i + 1).join('/');

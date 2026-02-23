@@ -176,14 +176,14 @@ function CodeBlockView({ node, updateAttributes }: { node: any; updateAttributes
 
   return (
     <NodeViewWrapper className="code-block-wrapper relative">
-      <div ref={dropdownRef} className="lang-selector">
+      <div ref={dropdownRef} className="absolute top-2 right-2 z-10">
         <button onClick={() => setShowLangs(!showLangs)} className="lang-btn">
           <Code size={12} /><span>{lang}</span><ChevronDown size={12} className={cn('transition-transform', showLangs && 'rotate-180')} />
         </button>
         {showLangs && (
           <div className="lang-dropdown">
             {CODE_LANGS.map(l => (
-              <button key={l} onClick={() => { updateAttributes({ language: l }); setShowLangs(false); }} className={cn('lang-option', l === lang && 'lang-option-active')}>
+              <button key={l} onClick={() => { updateAttributes({ language: l }); setShowLangs(false); }} className={cn('lang-option', l === lang && 'text-accent')}>
                 {l}{l === lang && <Check size={12} />}
               </button>
             ))}
@@ -314,7 +314,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
       {editor && (
         <div className="toolbar">
           {TOOLBAR_BUTTONS.map(({ key, icon: Icon, active, action }) => (
-            <button key={key} type="button" onClick={() => action(editor, () => fileInputRef.current?.click())} className={isActive(active) ? 'toolbar-btn-active' : 'toolbar-btn'} title={key}><Icon size={14} /></button>
+            <button key={key} type="button" onClick={() => action(editor, () => fileInputRef.current?.click())} className={cn('toolbar-btn', isActive(active) && 'bg-accent text-text-inverted')} title={key}><Icon size={14} /></button>
           ))}
           {editor.isActive('table') && (
             <>
@@ -328,7 +328,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
       )}
       <div className={cn('tiptap-editor tiptap-field', isUploading && 'tiptap-field-disabled')}>
         <EditorContent editor={editor} />
-        {isUploading && <div className="text-center text-muted text-small py-2">Uploading image...</div>}
+        {isUploading && <div className="text-center text-text-muted text-small py-2">Uploading image...</div>}
       </div>
     </div>
   );
@@ -359,7 +359,7 @@ function PageListBlockEdit({ block, onUpdate }: BlockProps<PageListBlock>) {
   const addPage = () => { if (newPageId.trim()) { onUpdate?.({ ...block, pageIds: [...block.pageIds, newPageId.trim()] }); setNewPageId(''); } };
   return (
     <EditWrapper icon={FileText} label="Curated Page List">
-      {block.pageIds.length > 0 && <div className="stack-sm">{block.pageIds.map((id, i) => <div key={i} className="row"><span className="flex-1 text-small truncate">{id}</span><button onClick={() => onUpdate?.({ ...block, pageIds: block.pageIds.filter((_, j) => j !== i) })} className="icon-btn text-muted hover:text-error"><Trash2 size={14} /></button></div>)}</div>}
+      {block.pageIds.length > 0 && <div className="stack-sm">{block.pageIds.map((id, i) => <div key={i} className="row"><span className="flex-1 text-small truncate">{id}</span><button onClick={() => onUpdate?.({ ...block, pageIds: block.pageIds.filter((_, j) => j !== i) })} className="icon-btn text-text-muted hover:text-error"><Trash2 size={14} /></button></div>)}</div>}
       <div className="row"><input type="text" value={newPageId} onChange={e => setNewPageId(e.target.value)} placeholder="Page ID..." className="flex-1 input" /><Button size="sm" onClick={addPage} disabled={!newPageId.trim()}>Add</Button></div>
       <small>Add page IDs to create a curated list</small>
     </EditWrapper>
@@ -372,7 +372,7 @@ function AssetPriceBlockEdit({ block, onUpdate }: BlockProps<AssetPriceBlock>) {
       <div className="stack-sm">
         <label className="font-medium">Resource Address</label>
         <input type="text" value={block.resourceAddress || ''} onChange={e => onUpdate?.({ ...block, resourceAddress: e.target.value })} placeholder="resource_rdx1..." className="input font-mono" />
-        <small className="text-muted">Enter any Radix resource address to fetch its price</small>
+        <small className="text-text-muted">Enter any Radix resource address to fetch its price</small>
       </div>
       <label className="row"><input type="checkbox" checked={block.showChange ?? true} onChange={e => onUpdate?.({ ...block, showChange: e.target.checked })} className="w-4 h-4 rounded border-border" />Show 24h change</label>
     </EditWrapper>
@@ -398,7 +398,7 @@ function InfoboxBlockEdit({ block, onUpdate }: BlockProps<InfoboxBlock>) {
       <div className="edit-wrapper-label"><Info size={18} /><span className="font-medium">Sidebar Content</span></div>
       <div className="stack-sm">
         {(block.blocks?.length ?? 0) === 0 ? (
-          <div className="empty-state"><p className="text-muted text-small mb-2">Empty sidebar</p><InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
+          <div className="empty-state"><p className="text-text-muted text-small mb-2">Empty sidebar</p><InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
         ) : (
           <>
             {(block.blocks || []).map((b, i) => <BlockWrapper key={b.id} block={b} index={i} total={(block.blocks || []).length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={handleBlockUpdate} onDelete={remove} onDuplicate={duplicate} onMove={move} compact />)}
@@ -423,7 +423,7 @@ function ColumnsBlockEdit({ block, onUpdate }: BlockProps<ColumnsBlock>) {
   return (
     <div className="stack">
       <div className="spread">
-        <div className="row text-muted"><Columns size={18} /><span className="font-medium">{block.columns.length} Column Layout</span></div>
+        <div className="row text-text-muted"><Columns size={18} /><span className="font-medium">{block.columns.length} Column Layout</span></div>
         <div className="row">
           <button onClick={() => setShowSettings(!showSettings)} className={cn('icon-btn p-1', showSettings && 'bg-surface-2')}><Settings size={14} /></button>
           {block.columns.length < 4 && <button onClick={addColumn} className="text-accent text-small hover:text-accent-hover">+ Add Column</button>}
@@ -431,8 +431,8 @@ function ColumnsBlockEdit({ block, onUpdate }: BlockProps<ColumnsBlock>) {
       </div>
       {showSettings && (
         <div className="toggle-group">
-          <div className="row"><span className="text-small text-muted">Gap:</span><div className="row wrap">{gaps.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, gap: opt })} className={(block.gap || 'md') === opt ? 'toggle-option-active' : 'toggle-option'}>{opt}</button>)}</div></div>
-          <div className="row"><span className="text-small text-muted">Align:</span><div className="row wrap">{aligns.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, align: opt })} className={(block.align || 'start') === opt ? 'toggle-option-active' : 'toggle-option'}>{opt}</button>)}</div></div>
+          <div className="row"><span className="text-small text-text-muted">Gap:</span><div className="row wrap">{gaps.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, gap: opt })} className={(block.gap || 'md') === opt ? 'toggle-option border-accent bg-accent text-text-inverted' : 'toggle-option'}>{opt}</button>)}</div></div>
+          <div className="row"><span className="text-small text-text-muted">Align:</span><div className="row wrap">{aligns.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, align: opt })} className={(block.align || 'start') === opt ? 'toggle-option border-accent bg-accent text-text-inverted' : 'toggle-option'}>{opt}</button>)}</div></div>
         </div>
       )}
       <div className={cn('flex', gapClass)}>{block.columns.map((col, i) => <ColumnEditor key={col.id} column={col} onUpdate={c => updateColumn(i, c)} onDelete={() => deleteColumn(i)} canDelete={block.columns.length > 1} />)}</div>
@@ -465,9 +465,9 @@ function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Colum
 
   return (
     <div className="column-editor">
-      <div className="spread"><span className="column-header">Column</span>{canDelete && <button onClick={onDelete} className="icon-btn p-1 text-muted hover:text-error"><Trash2 size={14} /></button>}</div>
+      <div className="spread"><span className="column-header">Column</span>{canDelete && <button onClick={onDelete} className="icon-btn p-1 text-text-muted hover:text-error"><Trash2 size={14} /></button>}</div>
       {(column.blocks?.length ?? 0) === 0 ? (
-        <div className="py-6 text-center"><p className="text-muted text-small mb-2">Empty column</p><InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
+        <div className="py-6 text-center"><p className="text-text-muted text-small mb-2">Empty column</p><InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
       ) : (
         <div className="stack-sm">
           {(column.blocks || []).map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={(column.blocks || []).length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={handleUpdate} onDelete={remove} onDuplicate={duplicate} onMove={move} compact />)}
@@ -494,7 +494,7 @@ function InsertButton({ onInsert, compact, blockTypes = INSERTABLE_BLOCKS }: { o
   const [showMenu, setShowMenu] = useState(false);
   return (
     <div className="relative center">
-      <button onClick={() => setShowMenu(!showMenu)} className={compact ? 'insert-btn-compact' : 'insert-btn'}>
+      <button onClick={() => setShowMenu(!showMenu)} className={cn('insert-btn', compact && 'rounded px-2 py-1 text-small')}>
         <Plus size={compact ? 14 : 16} /><span>{compact ? 'Add' : 'Add block'}</span>
       </button>
       {showMenu && (
@@ -522,7 +522,7 @@ const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelecte
 
   if (!meta) return (
     <div className={cn('block-unknown', compact ? 'p-3' : 'p-4 rounded-lg')}>
-      <div className="spread mb-2"><span className={cn('text-warning', compact ? 'text-small' : 'font-medium')}>Unknown block: {block.type}</span><button onClick={e => { e.stopPropagation(); handleDelete(); }} className="icon-btn p-1 text-muted hover:text-error"><Trash2 size={iconSize} /></button></div>
+      <div className="spread mb-2"><span className={cn('text-warning', compact ? 'text-small' : 'font-medium')}>Unknown block: {block.type}</span><button onClick={e => { e.stopPropagation(); handleDelete(); }} className="icon-btn p-1 text-text-muted hover:text-error"><Trash2 size={iconSize} /></button></div>
     </div>
   );
   const Icon = meta.icon;
@@ -531,16 +531,16 @@ const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelecte
     <div onClick={handleSelect} className={cn(
       'group',
       compact
-        ? (isSelected ? 'block-wrapper-compact-selected' : 'block-wrapper-compact')
-        : (isSelected ? 'block-wrapper-selected' : cn('block-wrapper', isContainer && 'block-wrapper-container'))
+        ? cn('block-wrapper-compact', isSelected && 'border-accent bg-accent/5')
+        : cn('block-wrapper', isContainer && 'block-wrapper-container', isSelected && 'border-accent bg-accent/5')
     )}>
       <div className={cn('spread', compact ? 'mb-2' : 'mb-3')}>
         <div className="row">{!(compact || isContainer) && <div className="block-label"><Icon size={18} /><span className="block-label-text">{meta.label}</span></div>}</div>
         <div className="block-actions">
-          <button onClick={e => { e.stopPropagation(); handleMoveUp(); }} disabled={index === 0} className="icon-btn p-1 text-muted disabled:opacity-30"><ChevronUp size={iconSize} /></button>
-          <button onClick={e => { e.stopPropagation(); handleMoveDown(); }} disabled={index === total - 1} className="icon-btn p-1 text-muted disabled:opacity-30"><ChevronDown size={iconSize} /></button>
-          {!compact && <button onClick={e => { e.stopPropagation(); handleDuplicate(); }} className="icon-btn p-1 text-muted" title="Duplicate"><Copy size={iconSize} /></button>}
-          <button onClick={e => { e.stopPropagation(); handleDelete(); }} className="icon-btn p-1 text-muted hover:text-error" title="Delete"><Trash2 size={iconSize} /></button>
+          <button onClick={e => { e.stopPropagation(); handleMoveUp(); }} disabled={index === 0} className="icon-btn p-1 text-text-muted disabled:opacity-30"><ChevronUp size={iconSize} /></button>
+          <button onClick={e => { e.stopPropagation(); handleMoveDown(); }} disabled={index === total - 1} className="icon-btn p-1 text-text-muted disabled:opacity-30"><ChevronDown size={iconSize} /></button>
+          {!compact && <button onClick={e => { e.stopPropagation(); handleDuplicate(); }} className="icon-btn p-1 text-text-muted" title="Duplicate"><Copy size={iconSize} /></button>}
+          <button onClick={e => { e.stopPropagation(); handleDelete(); }} className="icon-btn p-1 text-text-muted hover:text-error" title="Delete"><Trash2 size={iconSize} /></button>
         </div>
       </div>
       {renderBlockEdit(block, handleUpdate)}
@@ -551,7 +551,7 @@ const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelecte
 // ========== PUBLIC API ==========
 export function BlockEditor({ content, onChange }: { content: Block[]; onChange: (content: Block[]) => void }) {
   const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(content, onChange);
-  if (content.length === 0) return <div className="stack items-center empty-state"><p className="text-muted">No content yet. Add your first block!</p><InsertButton onInsert={insert} /></div>;
+  if (content.length === 0) return <div className="stack items-center empty-state"><p className="text-text-muted">No content yet. Add your first block!</p><InsertButton onInsert={insert} /></div>;
   return (
     <div className="stack">
       {content.map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={content.length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={update} onDelete={remove} onDuplicate={duplicate} onMove={move} />)}

@@ -46,8 +46,7 @@ function processHtml(html: string): string {
       const id = slugify(text);
       return id ? `<${tag}${attrs} id="${id}">${content}</${tag}>` : match;
     })
-    .replace(/<a\s+href="(https?:\/\/[^"]+)"([^>]*)>/gi, (match, href, rest) => rest.includes('target=') ? match : `<a href="${href}"${rest} target="_blank" rel="noopener noreferrer" class="link">`)
-    .replace(/<a\s+href="([^"]+)"([^>]*)>/gi, (match, href, rest) => rest.includes('class=') ? match : `<a href="${href}"${rest} class="link">`);
+    .replace(/<a\s+href="(https?:\/\/[^"]+)"([^>]*)>/gi, (match, href, rest) => rest.includes('target=') ? match : `<a href="${href}"${rest} target="_blank" rel="noopener noreferrer">`);
 }
 
 // ========== PAGE CARD ==========
@@ -79,7 +78,7 @@ const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; com
           <span className="page-card-title">{page.title}</span>
           {page.excerpt && <p className="page-card-excerpt">{page.excerpt}</p>}
           <div className="page-card-meta">
-            <small className="row text-muted"><Clock size={12} />{formatRelativeTime(page.updatedAt)}</small>
+            <small className="row text-text-muted"><Clock size={12} />{formatRelativeTime(page.updatedAt)}</small>
             {leafTag && <Badge variant="secondary" className="truncate max-w-full">{leafTag.name}</Badge>}
           </div>
         </div>
@@ -92,28 +91,28 @@ const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; com
 function RecentPagesFetcher({ block }: { block: RecentPagesBlock }) {
   const { pages, isLoading } = usePages({ type: 'recent', tagPath: block.tagPath, limit: block.limit });
   if (isLoading) return <div className="recent-pages-grid">{Array.from({ length: Math.min(block.limit, 3) }, (_, i) => <div key={i} className="h-32 skeleton" />)}</div>;
-  if (!pages.length) return <p className="text-muted">No pages found.</p>;
+  if (!pages.length) return <p className="text-text-muted">No pages found.</p>;
   return <div className="recent-pages-grid">{pages.map(p => <PageCard key={p.id} page={p} />)}</div>;
 }
 
 function RecentPagesBlockView({ block }: { block: RecentPagesBlock }) {
   if (!block.resolvedPages) return <RecentPagesFetcher block={block} />;
   const pages = block.resolvedPages;
-  if (!pages.length) return <p className="text-muted">No pages found.</p>;
+  if (!pages.length) return <p className="text-text-muted">No pages found.</p>;
   return <div className="recent-pages-grid">{pages.map((p: any) => <PageCard key={p.id} page={p} />)}</div>;
 }
 
 function PageListFetcher({ block }: { block: PageListBlock }) {
   const { pages, isLoading } = usePages({ type: 'byIds', pageIds: block.pageIds });
   if (isLoading) return <div className="row-md"><div className="flex-1 h-20 skeleton" /></div>;
-  if (!pages.length) return <p className="text-muted">No pages selected.</p>;
+  if (!pages.length) return <p className="text-text-muted">No pages selected.</p>;
   return <div className="row-md wrap">{pages.map(p => <PageCard key={p.id} page={p} compact />)}</div>;
 }
 
 function PageListBlockView({ block }: { block: PageListBlock }) {
   if (!block.resolvedPages) return <PageListFetcher block={block} />;
   const pages = block.resolvedPages;
-  if (!pages.length) return <p className="text-muted">No pages selected.</p>;
+  if (!pages.length) return <p className="text-text-muted">No pages selected.</p>;
   return <div className="row-md wrap">{pages.map((p: any) => <PageCard key={p.id} page={p} compact />)}</div>;
 }
 
@@ -134,7 +133,7 @@ function useResourcePrice(resourceAddress?: string) {
 
 function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
   const { data, isLoading, error } = useResourcePrice(block.resourceAddress);
-  if (!block.resourceAddress) return <p className="text-muted">No resource address configured</p>;
+  if (!block.resourceAddress) return <p className="text-text-muted">No resource address configured</p>;
   if (isLoading) return <div className="surface p-4 animate-pulse"><div className="h-8 w-32 bg-surface-2 rounded" /></div>;
   if (error || !data || typeof data.price !== 'number') return <p className="text-error text-small">{error || 'Price unavailable'}</p>;
   const displayName = data.symbol || data.name || block.resourceAddress.slice(0, 20) + '...';
@@ -143,7 +142,7 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
   return (
     <div className="asset-price">
       <div className="stack-xs">
-        <span className="text-small text-muted">${displayName}</span>
+        <span className="text-small text-text-muted">${displayName}</span>
         <span className="text-h3 font-semibold">${priceStr}</span>
       </div>
       {block.showChange && typeof data.change24h === 'number' && <span className={cn('font-medium', isPositive ? 'text-success' : 'text-error')}>{isPositive ? '↑' : '↓'} {Math.abs(data.change24h).toFixed(2)}%</span>}
@@ -252,7 +251,7 @@ export function InfoboxSidebar({ block, metadata, tagPath }: { block: InfoboxBlo
   const metaBlock = metadata && tagPath ? buildMetadataBlock(metadata, tagPath) : null;
   return (
     <aside className="infobox stack">
-      {metaBlock && <div className="infobox-metadata">{renderBlockView(metaBlock)}</div>}
+      {metaBlock && <div>{renderBlockView(metaBlock)}</div>}
       {(block.blocks || []).map(b => <div key={b.id}>{renderBlockView(b)}</div>)}
     </aside>
   );

@@ -61,16 +61,17 @@ Input.displayName = 'Input';
 
 // Card
 export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { interactive?: boolean }>(
-  ({ className, interactive, ...props }, ref) => <div ref={ref} className={cn(interactive ? 'surface-interactive p-6' : 'panel', className)} {...props} />
+  ({ className, interactive, ...props }, ref) => <div ref={ref} className={cn(interactive ? 'surface-interactive' : 'bg-surface-0 border border-border-muted rounded-lg', 'p-6', className)} {...props} />
 );
 Card.displayName = 'Card';
 
 // Badge - with static class mappings for Tailwind JIT
-type BadgeVariant = 'default' | 'secondary' | 'success' | 'warning' | 'danger';
+type BadgeVariant = 'default' | 'secondary' | 'info' | 'success' | 'warning' | 'danger';
 
 const badgeVariants: Record<BadgeVariant, string> = {
   default: 'badge-accent',
   secondary: '',
+  info: 'badge-info',
   success: 'badge-success',
   warning: 'badge-warning',
   danger: 'badge-danger',
@@ -104,7 +105,7 @@ export function StatusCard({ status, backHref }: { status: keyof typeof STATUS; 
         <div className="stack items-center py-12">
           <div className="status-icon"><FileText size={32} /></div>
           <h1>{title}</h1>
-          <p className="text-muted">{message}</p>
+          <p className="text-text-muted">{message}</p>
           <Link href={backHref}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link>
         </div>
       </Card>

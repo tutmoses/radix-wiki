@@ -12,7 +12,7 @@ import { getVisibleTags, type TagNode } from '@/lib/tags';
 
 function NavItem({ href, icon, label, isActive, onNavigate }: { href: string; icon: React.ReactNode; label: string; isActive?: boolean; onNavigate?: () => void }) {
   return (
-    <Link href={href} onClick={onNavigate} className={isActive ? 'nav-item-active' : 'nav-item'}>
+    <Link href={href} onClick={onNavigate} className={cn('nav-item', isActive && 'bg-accent-muted text-accent font-medium')}>
       {icon}<span>{label}</span>
     </Link>
   );
@@ -28,8 +28,8 @@ function TagNavItem({ node, parentPath, pathname, depth, onNavigate }: { node: T
   return (
     <div style={{ paddingLeft: `${depth * 1.5}rem` }}>
       <div className="row">
-        <span className="nav-indent">{hasChildren ? <button onClick={() => setIsExpanded(!isExpanded)} className="icon-btn p-1 text-muted">{isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button> : null}</span>
-        <Link href={href} onClick={onNavigate} className={isActive ? 'nav-link-active' : 'nav-link'}>{node.name}</Link>
+        <span className="nav-indent">{hasChildren ? <button onClick={() => setIsExpanded(!isExpanded)} className="icon-btn p-1 text-text-muted">{isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button> : null}</span>
+        <Link href={href} onClick={onNavigate} className={cn('nav-link', isActive && 'bg-accent-muted text-accent font-medium')}>{node.name}</Link>
       </div>
       {hasChildren && isExpanded && <div className="mt-1">{node.children!.map(child => <TagNavItem key={child.slug} node={child} parentPath={currentPath} pathname={pathname} depth={depth + 1} onNavigate={onNavigate} />)}</div>}
     </div>
@@ -102,7 +102,7 @@ export function Sidebar() {
   const showToc = (isHomepage || isPage) && !isEdit && !isHistory;
 
   return (
-    <aside className={cn('sidebar', sidebarOpen ? 'sidebar-open' : 'sidebar-closed')}>
+    <aside className={cn('sidebar', sidebarOpen ? 'w-[var(--sidebar-width)]' : 'w-0')}>
       <div className="sidebar-scroll">
         <div className="stack-sm p-4">
           <nav className="stack-sm">

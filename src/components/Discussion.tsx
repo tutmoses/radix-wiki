@@ -68,8 +68,8 @@ function CommentThread({ comment, depth, onReply, onDelete, currentUserId }: {
         <div className="row text-small">
           {comment.author && <UserAvatar radixAddress={comment.author.radixAddress} avatarUrl={comment.author.avatarUrl} size="sm" />}
           <span className="font-medium">{comment.author?.displayName || comment.author?.radixAddress?.slice(0, 12) + '...'}</span>
-          <span className="text-muted">·</span>
-          <span className="text-muted">{formatRelativeTime(comment.createdAt)}</span>
+          <span className="text-text-muted">·</span>
+          <span className="text-text-muted">{formatRelativeTime(comment.createdAt)}</span>
           {hasReplies && (
             <button onClick={() => setCollapsed(!collapsed)} className="comment-action ml-auto">
               {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
@@ -136,7 +136,7 @@ export function Discussion({ pageId, tagPath }: { pageId: string; tagPath: strin
   return (
     <section className="section-divider stack">
       <button onClick={() => setExpanded(!expanded)} className="spread w-full text-left">
-        <div className="row"><MessageSquare size={20} className="text-accent" /><h3 id="discussion" className="font-semibold">Discussion</h3><span className="text-muted">({countComments(comments)})</span></div>
+        <div className="row"><MessageSquare size={20} className="text-accent" /><h3 id="discussion" className="font-semibold">Discussion</h3><span className="text-text-muted">({countComments(comments)})</span></div>
         {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
       </button>
       {expanded && (
@@ -145,10 +145,10 @@ export function Discussion({ pageId, tagPath }: { pageId: string; tagPath: strin
             <>
               <CommentForm onSubmit={c => handlePost(c)} placeholder="Start a discussion..." />
             </>
-          ) : <p className="text-muted surface p-4 text-center">Connect your wallet to join the discussion.</p>}
+          ) : <p className="text-text-muted surface p-4 text-center">Connect your wallet to join the discussion.</p>}
           {isLoading ? <div className="stack">{[1, 2].map(i => <div key={i} className="h-20 skeleton" />)}</div>
             : comments.length > 0 ? <div className="stack">{comments.map(c => <CommentThread key={c.id} comment={c} depth={0} onReply={handlePost} onDelete={handleDelete} currentUserId={user?.id} />)}</div>
-            : <p className="text-muted text-center py-4">No comments yet. Be the first to start the discussion!</p>}
+            : <p className="text-text-muted text-center py-4">No comments yet. Be the first to start the discussion!</p>}
         </div>
       )}
     </section>
