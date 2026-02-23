@@ -2,7 +2,7 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { json, errors, handleRoute, requireAuth, type RouteContext } from '@/lib/api';
+import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, type RouteContext } from '@/lib/api';
 import { AUTHOR_SELECT } from '@/lib/wiki';
 import type { CommentInput } from '@/types';
 
@@ -12,8 +12,7 @@ export async function GET(request: NextRequest) {
   return handleRoute(async () => {
     const { searchParams } = new URL(request.url);
     const pageId = searchParams.get('pageId');
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-    const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '50', 10)));
+    const { page, pageSize } = parsePagination(searchParams, { pageSize: 50 });
 
     if (!pageId) return errors.badRequest('pageId is required');
 
@@ -29,7 +28,7 @@ export async function GET(request: NextRequest) {
       prisma.comment.count({ where }),
     ]);
 
-    return json({ items: comments, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
+    return json(paginatedResponse(comments, total, page, pageSize));
   }, 'Failed to fetch comments');
 }
 

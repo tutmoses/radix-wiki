@@ -5,20 +5,20 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, ChevronRight, ChevronDown, ListTree } from 'lucide-react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { useStore, useIsMobile } from '@/hooks';
-import { getVisibleTags, isValidTagPath, type TagNode } from '@/lib/tags';
+import { useStore, useIsMobile, usePagePath } from '@/hooks';
+import { getVisibleTags, type TagNode } from '@/lib/tags';
 
-function NavItem({ href, icon, label, isActive }: { href: string; icon: React.ReactNode; label: string; isActive?: boolean }) {
+function NavItem({ href, icon, label, isActive, onNavigate }: { href: string; icon: React.ReactNode; label: string; isActive?: boolean; onNavigate?: () => void }) {
   return (
-    <Link href={href} className={isActive ? 'nav-item-active' : 'nav-item'}>
+    <Link href={href} onClick={onNavigate} className={isActive ? 'nav-item-active' : 'nav-item'}>
       {icon}<span>{label}</span>
     </Link>
   );
 }
 
-function TagNavItem({ node, parentPath, pathname, depth }: { node: TagNode; parentPath: string; pathname: string; depth: number }) {
+function TagNavItem({ node, parentPath, pathname, depth, onNavigate }: { node: TagNode; parentPath: string; pathname: string; depth: number; onNavigate?: () => void }) {
   const currentPath = parentPath ? `${parentPath}/${node.slug}` : node.slug;
   const href = `/${currentPath}`;
   const isActive = pathname === href || pathname.startsWith(href + '/');
@@ -29,9 +29,9 @@ function TagNavItem({ node, parentPath, pathname, depth }: { node: TagNode; pare
     <div style={{ paddingLeft: `${depth * 1.5}rem` }}>
       <div className="row">
         <span className="nav-indent">{hasChildren ? <button onClick={() => setIsExpanded(!isExpanded)} className="icon-btn p-1 text-muted">{isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button> : null}</span>
-        <Link href={href} className={isActive ? 'nav-link-active' : 'nav-link'}>{node.name}</Link>
+        <Link href={href} onClick={onNavigate} className={isActive ? 'nav-link-active' : 'nav-link'}>{node.name}</Link>
       </div>
-      {hasChildren && isExpanded && <div className="mt-1">{node.children!.map(child => <TagNavItem key={child.slug} node={child} parentPath={currentPath} pathname={pathname} depth={depth + 1} />)}</div>}
+      {hasChildren && isExpanded && <div className="mt-1">{node.children!.map(child => <TagNavItem key={child.slug} node={child} parentPath={currentPath} pathname={pathname} depth={depth + 1} onNavigate={onNavigate} />)}</div>}
     </div>
   );
 }
@@ -95,15 +95,10 @@ export function Sidebar() {
   const isMobile = useIsMobile();
 
   useEffect(() => setSidebarOpen(!isMobile), [isMobile, setSidebarOpen]);
+  const closeMobile = useCallback(() => { if (isMobile) setSidebarOpen(false); }, [isMobile, setSidebarOpen]);
   const visibleTags = useMemo(() => getVisibleTags(), []);
 
-  const segments = pathname.split('/').filter(Boolean);
-  const last = segments[segments.length - 1];
-  const isEdit = last === 'edit';
-  const isHistory = last === 'history';
-  const viewSegs = (isEdit || isHistory) ? segments.slice(0, -1) : segments;
-  const isHomepage = viewSegs.length === 0;
-  const isPage = !isHomepage && !isValidTagPath(viewSegs) && viewSegs.length >= 2;
+  const { isHomepage, isPage, isEdit, isHistory } = usePagePath();
   const showToc = (isHomepage || isPage) && !isEdit && !isHistory;
 
   return (
@@ -111,7 +106,7 @@ export function Sidebar() {
       <div className="sidebar-scroll">
         <div className="stack-sm p-4">
           <nav className="stack-sm">
-            <NavItem href="/" icon={<Home size={18} />} label="Home" isActive={pathname === '/'} />
+            <NavItem href="/" icon={<Home size={18} />} label="Home" isActive={pathname === '/'} onNavigate={closeMobile} />
           </nav>
         </div>
 
@@ -124,7 +119,7 @@ export function Sidebar() {
         <div className="stack-sm p-4 flex-1">
           <span className="sidebar-label">Categories</span>
           <nav className="stack-sm">
-            {visibleTags.map(node => <TagNavItem key={node.slug} node={node} parentPath="" pathname={pathname} depth={0} />)}
+            {visibleTags.map(node => <TagNavItem key={node.slug} node={node} parentPath="" pathname={pathname} depth={0} onNavigate={closeMobile} />)}
           </nav>
         </div>
       </div>

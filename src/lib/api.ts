@@ -20,21 +20,25 @@ export const errors = {
 
 export type RouteContext<T = Record<string, string | string[]>> = { params: Promise<T> };
 
-type AuthError = { error: NextResponse };
-
-export async function requireAuth(request?: NextRequest): Promise<{ session: AuthSession } | AuthError>;
-export async function requireAuth(request: NextRequest, action: BalanceAction): Promise<{ session: AuthSession; user: { id: string; radixAddress: string }; balance: number } | AuthError>;
-export async function requireAuth(request?: NextRequest, action?: BalanceAction): Promise<{ session: AuthSession; user?: { id: string; radixAddress: string }; balance?: number } | AuthError> {
+export async function requireAuth(request?: NextRequest, action?: BalanceAction): Promise<{ session: AuthSession } | { error: NextResponse }> {
   const session = await getSession(request);
   if (!session) return { error: errors.unauthorized() };
-
   if (action) {
-    const balanceCheck = await requireBalance(session, action);
-    if (!balanceCheck.ok) return { error: balanceCheck.response };
-    return { session, user: balanceCheck.user, balance: balanceCheck.balance };
+    const check = await requireBalance(session, action);
+    if (!check.ok) return { error: check.response };
   }
-
   return { session };
+}
+
+export function parsePagination(searchParams: URLSearchParams, defaults?: { pageSize?: number }) {
+  return {
+    page: Math.max(1, parseInt(searchParams.get('page') || '1', 10)),
+    pageSize: Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || String(defaults?.pageSize ?? 20), 10))),
+  };
+}
+
+export function paginatedResponse<T>(items: T[], total: number, page: number, pageSize: number) {
+  return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
 }
 
 export async function handleRoute(fn: () => Promise<NextResponse>, errorMsg = 'Internal server error'): Promise<NextResponse> {

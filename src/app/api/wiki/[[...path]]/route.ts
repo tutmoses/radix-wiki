@@ -6,9 +6,9 @@ import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
 import { slugify } from '@/lib/utils';
 import { isValidTagPath, isAuthorOnlyPath, getMetadataKeys } from '@/lib/tags';
-import { json, errors, handleRoute, requireAuth, type RouteContext } from '@/lib/api';
+import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, type RouteContext } from '@/lib/api';
 import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, type BlockChange } from '@/lib/versioning';
-import { parsePath, AUTHOR_SELECT, PAGE_INCLUDE } from '@/lib/wiki';
+import { parsePath, AUTHOR_SELECT, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
 import { validateBlocks } from '@/lib/blocks';
 import { blocksToMdx } from '@/lib/mdx';
 import type { WikiPageInput } from '@/types';
@@ -55,8 +55,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
 
     // List mode
     if (!path?.length && (searchParams.has('page') || searchParams.has('pageSize') || searchParams.has('search') || searchParams.has('tagPath') || searchParams.has('sort'))) {
-      const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-      const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '20', 10)));
+      const { page, pageSize } = parsePagination(searchParams);
       const search = searchParams.get('search') || '';
       const tagPath = searchParams.get('tagPath');
       const sort = searchParams.get('sort') || 'updatedAt';
@@ -70,12 +69,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       const [pages, total] = await Promise.all([
         prisma.page.findMany({
           where,
-          select: {
-            id: true, slug: true, title: true, excerpt: true, bannerImage: true,
-            tagPath: true, metadata: true, version: true, createdAt: true, updatedAt: true,
-            author: AUTHOR_SELECT,
-            _count: { select: { revisions: true } },
-          },
+          select: PAGE_LIST_SELECT,
           orderBy,
           skip: (page - 1) * pageSize,
           take: pageSize,
@@ -83,7 +77,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
         prisma.page.count({ where }),
       ]);
 
-      return cachedJson({ items: pages, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
+      return cachedJson(paginatedResponse(pages, total, page, pageSize));
     }
 
     if (parsed.type === 'invalid') return errors.notFound('Invalid path');

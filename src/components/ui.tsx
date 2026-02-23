@@ -2,19 +2,15 @@
 
 'use client';
 
-import { forwardRef, useRef, useEffect, type ButtonHTMLAttributes, type InputHTMLAttributes, type HTMLAttributes } from 'react';
+import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type HTMLAttributes } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useClickOutside } from '@/hooks';
 
 // Dropdown
 export function Dropdown({ onClose, children, className, ...props }: HTMLAttributes<HTMLDivElement> & { onClose: () => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
+  const ref = useClickOutside<HTMLDivElement>(onClose);
   return <div ref={ref} className={cn('dropdown', className)} {...props}>{children}</div>;
 }
 

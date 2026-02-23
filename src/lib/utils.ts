@@ -52,17 +52,16 @@ const CATEGORY_PALETTES: Record<string, [string, string, string]> = {
   'blog':             ['#450a0a', '#dc2626', '#fca5a5'], // red
   'contents/history': ['#2e1065', '#7c3aed', '#c4b5fd'], // purple
   'forum':            ['#083344', '#0891b2', '#67e8f9'], // cyan
-  'meta':             ['#1f2937', '#6b7280', '#d1d5db'], // gray
 };
 const DEFAULT_PALETTE: [string, string, string] = ['#3b1520', '#c06a73', '#ff9da0'];
 
-function hashStr(s: string): number {
+export function hashStr(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
   return Math.abs(h);
 }
 
-function seededRandom(seed: number): () => number {
+export function seededRandom(seed: number): () => number {
   let s = seed;
   return () => { s = (s * 16807 + 0) % 2147483647; return s / 2147483647; };
 }

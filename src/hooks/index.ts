@@ -2,9 +2,51 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, type RefObject } from 'react';
+import { usePathname } from 'next/navigation';
 import { create } from 'zustand';
+import { isValidTagPath } from '@/lib/tags';
 import type { WikiPage, AuthSession, RadixWalletData } from '@/types';
+
+// ========== CLICK OUTSIDE HOOK ==========
+
+export function useClickOutside<T extends HTMLElement>(onClose: () => void): RefObject<T | null> {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+  return ref;
+}
+
+// ========== FETCH HOOK ==========
+
+export function useFetch<T>(url: string | null | undefined, opts?: { transform?: (data: any) => T; interval?: number }) {
+  const [data, setData] = useState<T | null>(null);
+  const [isLoading, setIsLoading] = useState(!!url);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!url) { setIsLoading(false); return; }
+    let cancelled = false;
+    const doFetch = async () => {
+      try {
+        setIsLoading(true);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(res.statusText);
+        const json = await res.json();
+        if (!cancelled) { setData(opts?.transform ? opts.transform(json) : json); setError(null); }
+      } catch (e) { if (!cancelled) setError(e instanceof Error ? e.message : 'Fetch failed'); }
+      finally { if (!cancelled) setIsLoading(false); }
+    };
+    doFetch();
+    const id = opts?.interval ? setInterval(doFetch, opts.interval) : undefined;
+    return () => { cancelled = true; if (id) clearInterval(id); };
+  }, [url]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { data, isLoading, error };
+}
 
 // ========== VIEWPORT HOOK ==========
 
@@ -24,12 +66,29 @@ export function useIsMobile() {
   return isMobile;
 }
 
+// ========== PAGE PATH HOOK ==========
+
+export function usePagePath() {
+  const pathname = usePathname();
+  const segments = pathname.split('/').filter(Boolean);
+  const last = segments[segments.length - 1];
+  const isEdit = last === 'edit';
+  const isHistory = last === 'history';
+  const viewSegs = (isEdit || isHistory) ? segments.slice(0, -1) : segments;
+  const isHomepage = viewSegs.length === 0;
+  const isPage = !isHomepage && !isValidTagPath(viewSegs) && viewSegs.length >= 2;
+  const viewPath = isHomepage ? '/' : `/${viewSegs.join('/')}`;
+  const tagPath = isPage ? viewSegs.slice(0, -1).join('/') : null;
+  const slug = isPage ? viewSegs[viewSegs.length - 1] : null;
+  return { isHomepage, isPage, isEdit, isHistory, viewPath, tagPath, slug };
+}
+
 // ========== STORE ==========
 
 export interface PageInfo {
   updatedAt: string | Date;
   createdAt: string | Date;
-  author?: { id: string; displayName?: string | null; radixAddress: string } | null;
+  author?: { id: string; displayName?: string | null; radixAddress: string; avatarUrl?: string | null } | null;
   revisionCount: number;
 }
 

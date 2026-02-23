@@ -2,14 +2,16 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
 import { FileText, MessageSquare, Edit3, Calendar, Users, Shield } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
+import { useFetch } from '@/hooks';
+import { UserAvatar } from '@/components/UserAvatar';
 
 interface UserStatsData {
   userId: string;
   displayName: string | null;
   radixAddress: string;
+  avatarUrl: string | null;
   memberSince: string;
   stats: {
     pages: number;
@@ -61,15 +63,7 @@ function ScoreRing({ score }: { score: number }) {
 }
 
 export function UserStats({ authorId }: { authorId: string }) {
-  const [data, setData] = useState<UserStatsData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(`/api/users/${authorId}/stats`)
-      .then(r => r.ok ? r.json() : null)
-      .then(setData)
-      .finally(() => setIsLoading(false));
-  }, [authorId]);
+  const { data, isLoading } = useFetch<UserStatsData>(`/api/users/${authorId}/stats`);
 
   if (isLoading) {
     return (
@@ -86,6 +80,9 @@ export function UserStats({ authorId }: { authorId: string }) {
 
   return (
     <section className="section-divider stack-sm">
+      <div className="center">
+        <UserAvatar radixAddress={data.radixAddress} avatarUrl={data.avatarUrl} size="lg" />
+      </div>
       <h3 className="text-muted">Statistics</h3>
       <div className="stat-grid">
         <ScoreRing score={data.score} />

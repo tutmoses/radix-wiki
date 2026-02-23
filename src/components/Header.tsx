@@ -7,29 +7,15 @@ import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, Info, Clock, FileCode } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useStore, useAuth, type PageInfo } from '@/hooks';
+import { useStore, useAuth, useClickOutside, usePagePath, type PageInfo } from '@/hooks';
 import { cn, shortenAddress, formatRelativeTime, formatDate, userProfileSlug } from '@/lib/utils';
 import { Button, Dropdown } from '@/components/ui';
-import { isValidTagPath } from '@/lib/tags';
+import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiPage } from '@/types';
 
 function usePageContext() {
-  const pathname = usePathname();
+  const { isHomepage, isPage, isEdit, isHistory, viewPath, tagPath, slug } = usePagePath();
   const { isAuthenticated } = useAuth();
-
-  const segments = pathname.split('/').filter(Boolean);
-  const last = segments[segments.length - 1];
-  const isEdit = last === 'edit';
-  const isHistory = last === 'history';
-  const viewSegs = (isEdit || isHistory) ? segments.slice(0, -1) : segments;
-
-  const isHomepage = viewSegs.length === 0;
-  const isPage = !isHomepage && !isValidTagPath(viewSegs) && viewSegs.length >= 2;
-  const viewPath = isHomepage ? '/' : `/${viewSegs.join('/')}`;
-
-  const tagPath = isPage ? viewSegs.slice(0, -1).join('/') : null;
-  const slug = isPage ? viewSegs[viewSegs.length - 1] : null;
-
   const mdxPath = (isHomepage || isPage) ? (isHomepage ? '/api/wiki/mdx' : `/api/wiki/${tagPath}/${slug}/mdx`) : null;
 
   return {
@@ -49,7 +35,7 @@ function PageInfoDropdown({ page, onClose }: { page: PageInfo; onClose: () => vo
       <div className="stack-sm text-small">
         {page.author && (
           <div className="row">
-            <User size={14} className="text-muted shrink-0" />
+            <UserAvatar radixAddress={page.author.radixAddress} avatarUrl={page.author.avatarUrl} size="sm" />
             <span className="text-muted">Author:</span>
             <span className="truncate">{page.author.displayName || page.author.radixAddress.slice(0, 16)}...</span>
           </div>
@@ -105,7 +91,8 @@ export function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<WikiPage[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
+  const clearSearchResults = useCallback(() => setSearchResults([]), []);
+  const searchRef = useClickOutside<HTMLDivElement>(clearSearchResults);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const displayName = user?.displayName || walletData?.persona?.label ||
@@ -114,14 +101,6 @@ export function Header() {
 
   const showAsConnected = isAuthenticated || (isConnected && walletData?.accounts?.length);
   const userProfilePath = user ? `/community/${userProfileSlug(user.displayName, user.radixAddress)}` : null;
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchResults([]);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
 
   useEffect(() => {
     if (showSearch && searchInputRef.current) searchInputRef.current.focus();
@@ -183,7 +162,7 @@ export function Header() {
               ) : showAsConnected ? (
                 <>
                   <button onClick={() => setShowUserMenu(!showUserMenu)} className="user-pill">
-                    <div className="user-dot" />
+                    <UserAvatar radixAddress={user?.radixAddress || walletData?.accounts?.[0]?.address || ''} size="sm" />
                     <span className="font-medium hidden-mobile">{displayName}</span>
                     <ChevronDown size={14} className={cn('transition-transform', showUserMenu && 'rotate-180')} />
                   </button>

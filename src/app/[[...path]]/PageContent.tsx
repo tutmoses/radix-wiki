@@ -2,21 +2,21 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, ArrowRight, Trash2, Save, FileText, Plus, Upload, X, Image as ImageIcon, Link2, MessageSquare } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Trash2, Save, FileText, Plus, Upload, X, Image as ImageIcon, Link2, MessageSquare, LayoutGrid, CalendarDays, List } from 'lucide-react';
 import { BlockRenderer, findInfobox, InfoboxSidebar } from '@/components/BlockRenderer';
 import { Footer } from '@/components/Footer';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
-import { Button, Card, Input, StatusCard } from '@/components/ui';
+import { Badge, Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
 import { slugify, formatRelativeTime, generateBannerSvg } from '@/lib/utils';
 import { findTagByPath, isAuthorOnlyPath, getMetadataKeys, getXrdRequired, type MetadataKeyDefinition, type SortOrder, type TagNode } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
-import type { WikiPage, AdjacentPages, PageMetadata, ForumThread } from '@/types';
+import type { WikiPage, AdjacentPages, PageMetadata, IdeasPage } from '@/types';
 import type { Block } from '@/types/blocks';
 
 const BlockEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.BlockEditor), {
@@ -337,14 +337,118 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
   );
 }
 
-// ========== FORUM VIEW ==========
-export function ForumView({ tagPath, threads, sort }: { tagPath: string[]; threads: ForumThread[]; sort: SortOrder }) {
+// ========== IDEAS PIPELINE ==========
+const IDEAS_STATUS_COLUMNS = ['Discussion', 'Proposed', 'Approved', 'In Progress', 'Testing', 'Done'] as const;
+const QUARTER_OPTIONS = ['Q1 2026', 'Q2 2026', 'Q3 2026', 'Q4 2026', 'Backlog'] as const;
+const PRIORITY_VARIANT: Record<string, 'danger' | 'warning' | 'success'> = { High: 'danger', Medium: 'warning', Low: 'success' };
+const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'danger'> = {
+  Discussion: 'secondary', Proposed: 'default', Approved: 'success', 'In Progress': 'warning', Testing: 'warning', Done: 'success',
+};
+
+function BoardCard({ page }: { page: WikiPage }) {
+  const meta = (page.metadata as PageMetadata) || {};
+  return (
+    <Link href={`/${page.tagPath}/${page.slug}`} className="board-card">
+      <span className="board-card-title">{page.title}</span>
+      <div className="board-card-meta">
+        {meta.priority && <Badge variant={PRIORITY_VARIANT[meta.priority] || 'default'}>{meta.priority}</Badge>}
+        {meta.category && <Badge>{meta.category}</Badge>}
+        {meta.owner && <span className="text-text-muted text-xs">{meta.owner}</span>}
+      </div>
+    </Link>
+  );
+}
+
+function TimelineView({ pages, categoryFilter }: { pages: WikiPage[]; categoryFilter: string }) {
+  const grouped = useMemo(() => {
+    const filtered = categoryFilter ? pages.filter(p => (p.metadata as PageMetadata)?.category === categoryFilter) : pages;
+    const groups: Record<string, WikiPage[]> = {};
+    for (const q of QUARTER_OPTIONS) groups[q] = [];
+    for (const p of filtered) {
+      const q = (p.metadata as PageMetadata)?.quarter || 'Backlog';
+      (groups[q] ??= []).push(p);
+    }
+    return Object.entries(groups).filter(([, items]) => items.length > 0);
+  }, [pages, categoryFilter]);
+
+  if (grouped.length === 0) return <div className="board-empty">No items yet.</div>;
+
+  return (
+    <div className="stack">
+      {grouped.map(([quarter, items]) => (
+        <div key={quarter} className="timeline-section">
+          <h3 className="timeline-head">{quarter}</h3>
+          <div className="timeline-grid">
+            {items.map(p => <BoardCard key={p.id} page={p} />)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function IdeasListView({ pages, categoryFilter, statusFilter }: { pages: IdeasPage[]; categoryFilter: string; statusFilter: string }) {
+  const filtered = useMemo(() => {
+    let result = pages;
+    if (categoryFilter) result = result.filter(p => (p.metadata as PageMetadata)?.category === categoryFilter);
+    if (statusFilter) result = result.filter(p => (p.metadata as PageMetadata)?.status === statusFilter);
+    return result;
+  }, [pages, categoryFilter, statusFilter]);
+
+  if (filtered.length === 0) return <div className="board-empty">No ideas yet.</div>;
+
+  return (
+    <div className="ideas-list">
+      {filtered.map(p => {
+        const meta = (p.metadata as PageMetadata) || {};
+        return (
+          <Link key={p.id} href={`/${p.tagPath}/${p.slug}`} className="ideas-row">
+            <div className="ideas-row-main">
+              <span className="ideas-row-title">{p.title}</span>
+              <div className="ideas-row-badges">
+                {meta.status && <Badge variant={STATUS_VARIANT[meta.status] || 'default'}>{meta.status}</Badge>}
+                {meta.category && <Badge>{meta.category}</Badge>}
+                {meta.priority && <Badge variant={PRIORITY_VARIANT[meta.priority] || 'default'}>{meta.priority}</Badge>}
+              </div>
+            </div>
+            <div className="ideas-row-meta">
+              <span className="ideas-row-replies"><MessageSquare size={14} />{p.replyCount}</span>
+              <span className="ideas-row-activity">{formatRelativeTime(p.lastActivity)}</span>
+            </div>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+export function IdeasView({ tagPath, pages }: { tagPath: string[]; pages: IdeasPage[] }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const pathStr = tagPath.join('/');
+  const tag = findTagByPath(tagPath);
+  const [view, setView] = useState<'list' | 'board' | 'timeline'>('list');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [newSlug, setNewSlug] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const tag = findTagByPath(tagPath);
+
+  const columns = useMemo(() => {
+    const filtered = categoryFilter ? pages.filter(p => (p.metadata as PageMetadata)?.category === categoryFilter) : pages;
+    return IDEAS_STATUS_COLUMNS.map(status => ({
+      status,
+      items: filtered.filter(p => (p.metadata as PageMetadata)?.status === status),
+    }));
+  }, [pages, categoryFilter]);
+
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of pages) {
+      const c = (p.metadata as PageMetadata)?.category;
+      if (c) set.add(c);
+    }
+    return [...set].sort();
+  }, [pages]);
 
   return (
     <div className="stack">
@@ -355,37 +459,58 @@ export function ForumView({ tagPath, threads, sort }: { tagPath: string[]; threa
           <div className="row">
             {showCreate ? (
               <>
-                <Input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="thread-slug" className="w-48" onKeyDown={e => e.key === 'Enter' && newSlug.trim() && router.push(`/${pathStr}/${slugify(newSlug)}`)} autoFocus />
+                <Input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="idea-slug" className="w-48" onKeyDown={e => e.key === 'Enter' && newSlug.trim() && router.push(`/${pathStr}/${slugify(newSlug)}`)} autoFocus />
                 <Button size="sm" onClick={() => { const s = slugify(newSlug); if (s) router.push(`/${pathStr}/${s}`); }} disabled={!newSlug.trim()}>Go</Button>
                 <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
               </>
-            ) : <Button size="sm" onClick={() => setShowCreate(true)}><Plus size={16} />New Thread</Button>}
+            ) : <Button size="sm" onClick={() => setShowCreate(true)}><Plus size={16} />New Idea</Button>}
           </div>
         )}
       </div>
-      <div className="center">
-        <SortToggle sort={sort} tagPath={pathStr} />
+      <div className="board-controls">
+        <div className="toggle-group-sm">
+          <button className={view === 'list' ? 'toggle-option-sm-active' : 'toggle-option-sm'} onClick={() => setView('list')}>
+            <List size={14} />List
+          </button>
+          <button className={view === 'board' ? 'toggle-option-sm-active' : 'toggle-option-sm'} onClick={() => setView('board')}>
+            <LayoutGrid size={14} />Board
+          </button>
+          <button className={view === 'timeline' ? 'toggle-option-sm-active' : 'toggle-option-sm'} onClick={() => setView('timeline')}>
+            <CalendarDays size={14} />Timeline
+          </button>
+        </div>
+        {categories.length > 0 && (
+          <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="input text-sm py-1 px-2 w-auto">
+            <option value="">All Categories</option>
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
+        {view === 'list' && (
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="input text-sm py-1 px-2 w-auto">
+            <option value="">All Statuses</option>
+            {IDEAS_STATUS_COLUMNS.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        )}
+        <span className="text-text-muted text-sm">{pages.length} ideas</span>
       </div>
-      {threads.length > 0 ? (
-        <div className="forum-list">
-          {threads.map(t => (
-            <Link key={t.id} href={`/${t.tagPath}/${t.slug}`} className="forum-row">
-              <div className="forum-row-main">
-                <span className="forum-row-title">{t.title}</span>
-                <span className="forum-row-author">{t.author?.displayName || t.author?.radixAddress?.slice(0, 12) + '...'}</span>
+      {view === 'list' ? (
+        <IdeasListView pages={pages} categoryFilter={categoryFilter} statusFilter={statusFilter} />
+      ) : view === 'board' ? (
+        <div className="board-columns">
+          {columns.map(({ status, items }) => (
+            <div key={status} className="board-column">
+              <div className="board-column-head">
+                <span>{status}</span>
+                <Badge>{items.length}</Badge>
               </div>
-              <div className="forum-row-meta">
-                <span className="forum-row-replies"><MessageSquare size={14} />{t.replyCount}</span>
-                <span className="forum-row-activity">{formatRelativeTime(t.lastActivity)}</span>
+              <div className="board-column-body">
+                {items.length > 0 ? items.map(p => <BoardCard key={p.id} page={p} />) : <div className="board-empty">No items</div>}
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       ) : (
-        <Card className="empty-state">
-          <p className="text-muted">No threads yet.</p>
-          {isAuthenticated && <small className="mt-2 block">Click &quot;New Thread&quot; to start a discussion.</small>}
-        </Card>
+        <TimelineView pages={pages} categoryFilter={categoryFilter} />
       )}
     </div>
   );
@@ -435,6 +560,48 @@ function RichInput({ value, onChange, placeholder }: { value: string; onChange: 
   );
 }
 
+function UserPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [query, setQuery] = useState(value || '');
+  const [results, setResults] = useState<{ id: string; displayName: string | null; radixAddress: string }[]>([]);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (query.length < 2) { setResults([]); return; }
+    const controller = new AbortController();
+    fetch(`/api/users/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
+      .then(r => r.json()).then(setResults).catch(() => {});
+    return () => controller.abort();
+  }, [query]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <Input
+        value={query}
+        onChange={e => { setQuery(e.target.value); setOpen(true); if (!e.target.value) onChange(''); }}
+        onFocus={() => setOpen(true)}
+        placeholder="Search users..."
+      />
+      {open && results.length > 0 && (
+        <div className="user-picker-dropdown">
+          {results.map(u => (
+            <button key={u.id} className="user-picker-option" onClick={() => { const name = u.displayName || u.radixAddress.slice(0, 12) + '...'; setQuery(name); onChange(name); setOpen(false); }}>
+              <span className="font-medium">{u.displayName || 'Anonymous'}</span>
+              <span className="text-text-muted text-xs">{u.radixAddress.slice(0, 12)}...</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MetadataFields({ metadataKeys, metadata, onChange }: { metadataKeys: MetadataKeyDefinition[]; metadata: PageMetadata; onChange: (metadata: PageMetadata) => void }) {
   if (metadataKeys.length === 0) return null;
 
@@ -480,6 +647,11 @@ function MetadataFields({ metadataKeys, metadata, onChange }: { metadataKeys: Me
                 type="date"
                 value={metadata[key] || ''}
                 onChange={e => updateField(key, e.target.value)}
+              />
+            ) : type === 'user' ? (
+              <UserPicker
+                value={metadata[key] || ''}
+                onChange={v => updateField(key, v)}
               />
             ) : (
               <Input

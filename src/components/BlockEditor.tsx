@@ -3,6 +3,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo, memo, type ReactNode } from 'react';
+import { useClickOutside } from '@/hooks';
 import { useEditor, EditorContent, type Editor, NodeViewWrapper, NodeViewContent, ReactNodeViewRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TiptapLink from '@tiptap/extension-link';
@@ -169,15 +170,9 @@ function TabGroupView({ node, getPos, editor, updateAttributes }: { node: any; g
 
 function CodeBlockView({ node, updateAttributes }: { node: any; updateAttributes: (attrs: Record<string, any>) => void }) {
   const [showLangs, setShowLangs] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const closeLangs = useCallback(() => setShowLangs(false), []);
+  const dropdownRef = useClickOutside<HTMLDivElement>(closeLangs);
   const lang = node.attrs.language || DEFAULT_LANG;
-
-  useEffect(() => {
-    if (!showLangs) return;
-    const handler = (e: MouseEvent) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setShowLangs(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showLangs]);
 
   return (
     <NodeViewWrapper className="code-block-wrapper relative">

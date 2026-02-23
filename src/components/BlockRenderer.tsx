@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { Clock, FileText } from 'lucide-react';
 import { cn, formatRelativeTime, slugify, generateBannerSvg } from '@/lib/utils';
 import { findTagByPath } from '@/lib/tags';
-import { usePages } from '@/hooks';
+import { usePages, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
 import type { WikiPage, PageMetadata } from '@/types';
 import renderMathInElement from 'katex/contrib/auto-render';
@@ -89,46 +89,47 @@ const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; com
 });
 
 // ========== BLOCK VIEW COMPONENTS ==========
-function RecentPagesBlockView({ block }: { block: RecentPagesBlock }) {
+function RecentPagesFetcher({ block }: { block: RecentPagesBlock }) {
   const { pages, isLoading } = usePages({ type: 'recent', tagPath: block.tagPath, limit: block.limit });
   if (isLoading) return <div className="recent-pages-grid">{Array.from({ length: Math.min(block.limit, 3) }, (_, i) => <div key={i} className="h-32 skeleton" />)}</div>;
   if (!pages.length) return <p className="text-muted">No pages found.</p>;
   return <div className="recent-pages-grid">{pages.map(p => <PageCard key={p.id} page={p} />)}</div>;
 }
 
-function PageListBlockView({ block }: { block: PageListBlock }) {
+function RecentPagesBlockView({ block }: { block: RecentPagesBlock }) {
+  if (!block.resolvedPages) return <RecentPagesFetcher block={block} />;
+  const pages = block.resolvedPages;
+  if (!pages.length) return <p className="text-muted">No pages found.</p>;
+  return <div className="recent-pages-grid">{pages.map((p: any) => <PageCard key={p.id} page={p} />)}</div>;
+}
+
+function PageListFetcher({ block }: { block: PageListBlock }) {
   const { pages, isLoading } = usePages({ type: 'byIds', pageIds: block.pageIds });
   if (isLoading) return <div className="row-md"><div className="flex-1 h-20 skeleton" /></div>;
   if (!pages.length) return <p className="text-muted">No pages selected.</p>;
   return <div className="row-md wrap">{pages.map(p => <PageCard key={p.id} page={p} compact />)}</div>;
 }
 
+function PageListBlockView({ block }: { block: PageListBlock }) {
+  if (!block.resolvedPages) return <PageListFetcher block={block} />;
+  const pages = block.resolvedPages;
+  if (!pages.length) return <p className="text-muted">No pages selected.</p>;
+  return <div className="row-md wrap">{pages.map((p: any) => <PageCard key={p.id} page={p} compact />)}</div>;
+}
+
+type PriceData = { price: number; change24h?: number; symbol?: string; name?: string };
+
+function transformPrice(json: any): PriceData {
+  const priceNow = parseFloat(json.price?.usd?.now) || 0;
+  const price24h = parseFloat(json.price?.usd?.['24h']) || 0;
+  return { price: priceNow, change24h: price24h > 0 ? ((priceNow - price24h) / price24h) * 100 : undefined, symbol: json.symbol, name: json.name };
+}
+
 function useResourcePrice(resourceAddress?: string) {
-  const [data, setData] = useState<{ price: number; change24h?: number; symbol?: string; name?: string } | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!resourceAddress) { setError('No resource address'); setIsLoading(false); return; }
-    const fetchPrice = async () => {
-      try {
-        const res = await fetch(`https://api.ociswap.com/tokens/${resourceAddress}`);
-        if (!res.ok) throw new Error('Token not found');
-        const json = await res.json();
-        const priceNow = parseFloat(json.price?.usd?.now) || 0;
-        const price24h = parseFloat(json.price?.usd?.['24h']) || 0;
-        setData({ price: priceNow, change24h: price24h > 0 ? ((priceNow - price24h) / price24h) * 100 : undefined, symbol: json.symbol, name: json.name });
-        setError(priceNow === 0 ? 'Price unavailable' : null);
-      } catch { setError('Price unavailable'); }
-      finally { setIsLoading(false); }
-    };
-    setIsLoading(true);
-    fetchPrice();
-    const interval = setInterval(fetchPrice, 60000);
-    return () => clearInterval(interval);
-  }, [resourceAddress]);
-
-  return { data, isLoading, error };
+  return useFetch<PriceData>(
+    resourceAddress ? `https://api.ociswap.com/tokens/${resourceAddress}` : null,
+    { transform: transformPrice, interval: 60000 },
+  );
 }
 
 function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
@@ -153,16 +154,8 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
 interface RssFeedItem { title: string; link: string; image?: string; source: string; date?: string; description?: string; }
 
 function RssFeedBlockView({ block }: { block: RssFeedBlock }) {
-  const [items, setItems] = useState<RssFeedItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(block.url)
-      .then(r => r.json())
-      .then(data => setItems(data.items || []))
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
-  }, [block.url]);
+  const { data, isLoading } = useFetch<RssFeedItem[]>(block.url, { transform: d => d.items || [] });
+  const items = data || [];
 
   if (isLoading) return <div className="rss-feed-scroll"><div className="stack-sm">{Array.from({ length: 3 }, (_, i) => <div key={i} className="h-[280px] skeleton rounded-md" />)}</div></div>;
   if (!items.length) return <p className="text-text-muted">No feed items found.</p>;

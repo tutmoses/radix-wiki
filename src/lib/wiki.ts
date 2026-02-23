@@ -4,15 +4,20 @@ import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { isValidTagPath, getSortOrder, getMetadataKeys, type SortOrder } from '@/lib/tags';
-import type { WikiPage, ForumThread } from '@/types';
+import type { WikiPage, IdeasPage } from '@/types';
+import type { Block, RecentPagesBlock, PageListBlock, ColumnsBlock } from '@/types/blocks';
 
 // ========== PRISMA QUERY FRAGMENTS ==========
-export const AUTHOR_SELECT = { select: { id: true, displayName: true, radixAddress: true } } as const;
+export const AUTHOR_SELECT = { select: { id: true, displayName: true, radixAddress: true, avatarUrl: true } } as const;
 export const PAGE_INCLUDE = { author: AUTHOR_SELECT, _count: { select: { revisions: true } } } as const;
-const CATEGORY_SELECT = {
+export const CATEGORY_SELECT = {
   id: true, slug: true, title: true, excerpt: true, bannerImage: true,
   tagPath: true, metadata: true, version: true, createdAt: true, updatedAt: true,
   authorId: true, author: AUTHOR_SELECT,
+} as const;
+export const PAGE_LIST_SELECT = {
+  ...CATEGORY_SELECT,
+  _count: { select: { revisions: true } },
 } as const;
 const CACHE_OPTS = { tags: ['wiki'], revalidate: 300 };
 
@@ -113,32 +118,30 @@ export const getCategoryPages = cache(unstable_cache(
   }, ['getCategoryPages'], CACHE_OPTS,
 ));
 
-export function isForumPath(tagPath: string): boolean {
-  return tagPath === 'forum' || tagPath.startsWith('forum/');
+export function isIdeasPath(tagPath: string): boolean {
+  return tagPath === 'ideas' || tagPath.startsWith('ideas/');
 }
 
-export const getForumThreads = cache(unstable_cache(
-  async (tagPath: string, sort?: SortOrder, limit = 50): Promise<ForumThread[]> => {
-    const resolvedSort = sort ?? getSortOrder(tagPath.split('/'));
+export const getIdeasPages = cache(unstable_cache(
+  async (tagPath: string, limit = 200): Promise<IdeasPage[]> => {
     const pages = await prisma.page.findMany({
       where: { tagPath: { startsWith: tagPath } },
       select: {
-        id: true, slug: true, title: true, tagPath: true, createdAt: true, updatedAt: true,
-        author: AUTHOR_SELECT,
+        ...CATEGORY_SELECT,
         _count: { select: { comments: true } },
-        comments: { orderBy: { createdAt: 'desc' as const }, take: 1, select: { createdAt: true, author: AUTHOR_SELECT } },
+        comments: { orderBy: { createdAt: 'desc' as const }, take: 1, select: { createdAt: true } },
       },
-      orderBy: sortOrderBy[resolvedSort],
+      orderBy: { updatedAt: 'desc' },
       take: limit,
     });
     return pages.map(p => ({
-      id: p.id, slug: p.slug, title: p.title, tagPath: p.tagPath,
-      createdAt: p.createdAt, updatedAt: p.updatedAt, author: p.author,
+      ...p,
+      content: null,
+      version: '',
       replyCount: p._count.comments,
       lastActivity: p.comments[0]?.createdAt ?? p.createdAt,
-      lastReplyAuthor: p.comments[0]?.author ?? null,
-    }));
-  }, ['getForumThreads'], CACHE_OPTS,
+    })) as unknown as IdeasPage[];
+  }, ['getIdeasPages'], CACHE_OPTS,
 ));
 
 export const getPageHistory = cache(unstable_cache(
@@ -195,3 +198,55 @@ export const getAdjacentPages = cache(unstable_cache(
     return { prev, next };
   }, ['getAdjacentPages'], CACHE_OPTS,
 ));
+
+// ========== BLOCK DATA RESOLUTION ==========
+
+const getRecentPages = unstable_cache(
+  async (tagPath: string | undefined, limit: number) => {
+    return prisma.page.findMany({
+      where: tagPath ? { tagPath } : undefined,
+      select: PAGE_LIST_SELECT,
+      orderBy: { updatedAt: 'desc' },
+      take: limit,
+    });
+  }, ['getRecentPages'], CACHE_OPTS,
+);
+
+const getPagesByIds = unstable_cache(
+  async (ids: string[]) => {
+    if (!ids.length) return [];
+    const pages = await prisma.page.findMany({
+      where: { id: { in: ids } },
+      select: PAGE_LIST_SELECT,
+    });
+    // Preserve original order
+    const map = new Map(pages.map(p => [p.id, p]));
+    return ids.map(id => map.get(id)).filter(Boolean);
+  }, ['getPagesByIds'], CACHE_OPTS,
+);
+
+/** Pre-resolve recentPages and pageList blocks server-side to avoid client waterfalls. */
+export async function resolveBlockData(blocks: Block[]): Promise<Block[]> {
+  const recentPending: { block: RecentPagesBlock; promise: Promise<any[]> }[] = [];
+  const listPending: { block: PageListBlock; promise: Promise<any[]> }[] = [];
+
+  function collect(list: (Block | import('@/types/blocks').AtomicBlock)[]) {
+    for (const b of list) {
+      if (b.type === 'recentPages') recentPending.push({ block: b, promise: getRecentPages(b.tagPath, b.limit) });
+      else if (b.type === 'pageList') listPending.push({ block: b as PageListBlock, promise: getPagesByIds((b as PageListBlock).pageIds) });
+      else if (b.type === 'columns') for (const col of (b as ColumnsBlock).columns) collect(col.blocks);
+      else if (b.type === 'infobox') collect((b as import('@/types/blocks').InfoboxBlock).blocks);
+    }
+  }
+
+  collect(blocks);
+  if (!recentPending.length && !listPending.length) return blocks;
+
+  const [recentResults, listResults] = await Promise.all([
+    Promise.all(recentPending.map(p => p.promise)),
+    Promise.all(listPending.map(p => p.promise)),
+  ]);
+  recentPending.forEach((p, i) => { p.block.resolvedPages = recentResults[i]; });
+  listPending.forEach((p, i) => { p.block.resolvedPages = listResults[i]; });
+  return blocks;
+}

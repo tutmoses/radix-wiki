@@ -2,12 +2,12 @@
 
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { parsePath, getHomepage, getPage, getCategoryPages, getForumThreads, isForumPath, getPageHistory, getAdjacentPages } from '@/lib/wiki';
+import { parsePath, getHomepage, getPage, getCategoryPages, isIdeasPath, getIdeasPages, getPageHistory, getAdjacentPages, resolveBlockData } from '@/lib/wiki';
 import { getSortOrder, TAG_HIERARCHY, type TagNode, type SortOrder } from '@/lib/tags';
 import { highlightBlocks } from '@/lib/highlight';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { prisma } from '@/lib/prisma/client';
-import { PageView, HomepageView, CategoryView, ForumView, PageSkeleton, StatusCard, HistoryView, type HistoryData } from './PageContent';
+import { PageView, HomepageView, CategoryView, IdeasView, PageSkeleton, StatusCard, HistoryView, type HistoryData } from './PageContent';
 import type { Block } from '@/types/blocks';
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -54,10 +54,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-async function withHighlightedContent<T extends { content: unknown }>(page: T | null): Promise<T | null> {
+async function withProcessedContent<T extends { content: unknown }>(page: T | null): Promise<T | null> {
   if (!page || !Array.isArray(page.content)) return page;
-  if (!hasCodeBlocksInContent(page.content as Block[])) return page;
-  return { ...page, content: await highlightBlocks(page.content as Block[]) };
+  let content = page.content as Block[];
+  content = await resolveBlockData(content);
+  if (hasCodeBlocksInContent(content)) content = await highlightBlocks(content);
+  return { ...page, content };
 }
 
 const VALID_SORTS = new Set<string>(['title', 'newest', 'oldest', 'recent']);
@@ -70,12 +72,12 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   if (parsed.type === 'invalid') return <StatusCard status="invalidPath" backHref="/" />;
 
   if (parsed.type === 'homepage') {
-    const page = await withHighlightedContent(await getHomepage());
+    const page = await withProcessedContent(await getHomepage());
     return <Suspense fallback={<PageSkeleton />}><HomepageView page={page} isEditing={false} /></Suspense>;
   }
 
   if (parsed.type === 'edit' && !parsed.tagPath && !parsed.slug) {
-    const page = await withHighlightedContent(await getHomepage());
+    const page = await withProcessedContent(await getHomepage());
     return <Suspense fallback={<PageSkeleton />}><HomepageView page={page} isEditing={true} /></Suspense>;
   }
 
@@ -85,12 +87,12 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   }
 
   if (parsed.type === 'category') {
+    if (isIdeasPath(parsed.tagPath)) {
+      const pages = await getIdeasPages(parsed.tagPath);
+      return <Suspense fallback={<PageSkeleton />}><IdeasView tagPath={parsed.tagPath.split('/')} pages={pages} /></Suspense>;
+    }
     const defaultSort = getSortOrder(parsed.tagPath.split('/'));
     const sort = (sortParam && VALID_SORTS.has(sortParam) ? sortParam : defaultSort) as SortOrder;
-    if (isForumPath(parsed.tagPath)) {
-      const threads = await getForumThreads(parsed.tagPath, sort);
-      return <Suspense fallback={<PageSkeleton />}><ForumView tagPath={parsed.tagPath.split('/')} threads={threads} sort={sort} /></Suspense>;
-    }
     const pages = await getCategoryPages(parsed.tagPath, sort);
     return <Suspense fallback={<PageSkeleton />}><CategoryView tagPath={parsed.tagPath.split('/')} pages={pages} sort={sort} /></Suspense>;
   }
@@ -101,7 +103,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   }
 
   const rawPage = await getPage(parsed.tagPath, parsed.slug);
-  const page = parsed.suffix === 'edit' ? rawPage : await withHighlightedContent(rawPage);
-  const adjacent = page ? await getAdjacentPages(parsed.tagPath, page.title, String(page.createdAt), String(page.updatedAt)) : { prev: null, next: null };
+  const page = parsed.suffix === 'edit' ? rawPage : await withProcessedContent(rawPage);
+  const adjacent = page ? await getAdjacentPages(parsed.tagPath, page.title, new Date(page.createdAt).toISOString(), new Date(page.updatedAt).toISOString()) : { prev: null, next: null };
   return <Suspense fallback={<PageSkeleton />}><PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} adjacent={adjacent} /></Suspense>;
 }

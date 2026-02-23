@@ -8,6 +8,7 @@ import { cn, formatRelativeTime } from '@/lib/utils';
 import { getXrdRequired } from '@/lib/tags';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/hooks';
+import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiComment } from '@/types';
 
 const MAX_DEPTH = 3;
@@ -65,6 +66,7 @@ function CommentThread({ comment, depth, onReply, onDelete, currentUserId }: {
     <div className={cn('stack-sm', depth > 0 && 'comment-thread')}>
       <div className="stack-xs">
         <div className="row text-small">
+          {comment.author && <UserAvatar radixAddress={comment.author.radixAddress} avatarUrl={comment.author.avatarUrl} size="sm" />}
           <span className="font-medium">{comment.author?.displayName || comment.author?.radixAddress?.slice(0, 12) + '...'}</span>
           <span className="text-muted">·</span>
           <span className="text-muted">{formatRelativeTime(comment.createdAt)}</span>

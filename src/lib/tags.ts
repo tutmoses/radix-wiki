@@ -3,7 +3,7 @@
 export interface MetadataKeyDefinition {
   key: string;
   label: string;
-  type: 'text' | 'date' | 'url' | 'select';
+  type: 'text' | 'date' | 'url' | 'select' | 'user';
   required?: boolean;
   options?: string[]; // For select type
 }
@@ -174,17 +174,21 @@ export const TAG_HIERARCHY: TagNode[] = [
     xrd: { create: 20_000 } },
   { name: '👥 Community', slug: 'community', sort: 'recent' },
   { name: '✍️ Blog', slug: 'blog', sort: 'newest', metadataKeys: [{ key: 'date', label: 'Published:', type: 'date' }], xrd: { create: 50_000 } },
-  { name: '🗣️ Forum', 
-    slug: 'forum', 
+  {
+    name: '💡 Ideas Pipeline',
+    slug: 'ideas',
+    sort: 'recent' as SortOrder,
     metadataKeys: [
-      { key: 'category', label: 'Category:', type: 'select', options: ['🌐 General', '⚖️ Governance', '👾 Developers'], required: true }
+      { key: 'status', label: 'Status:', type: 'select', options: ['Discussion', 'Proposed', 'Approved', 'In Progress', 'Testing', 'Done'], required: true },
+      { key: 'priority', label: 'Priority:', type: 'select', options: ['High', 'Medium', 'Low'] },
+      { key: 'category', label: 'Category:', type: 'select', options: ['Protocol', 'Ecosystem', 'Tooling', 'Community', 'Governance'] },
+      { key: 'assignee', label: 'Assignee:', type: 'user' },
     ],
-    sort: 'recent',
-    xrd: { create: 10_000, comment: 10_000 } },
-  { name: '🧠 Meta', slug: 'meta' },
+    xrd: { create: 10_000, comment: 10_000 },
+  },
 ];
 
-const AUTHOR_ONLY_PATHS = new Set(['community', 'blog', 'forum']);
+const AUTHOR_ONLY_PATHS = new Set(['community', 'blog', 'ideas']);
 
 interface TagPathContext {
   node: TagNode | null;

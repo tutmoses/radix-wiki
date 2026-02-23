@@ -38,7 +38,7 @@ export interface SignedChallenge {
 }
 
 // Wiki types - derive from Prisma
-export type WikiAuthor = Pick<User, 'id' | 'displayName' | 'radixAddress'>;
+export type WikiAuthor = Pick<User, 'id' | 'displayName' | 'radixAddress' | 'avatarUrl'>;
 
 export type PageMetadata = Record<string, string>;
 
@@ -71,17 +71,9 @@ export type CommentInput = {
   parentId?: string;
 };
 
-export type ForumThread = {
-  id: string;
-  slug: string;
-  title: string;
-  tagPath: string;
-  createdAt: Date;
-  updatedAt: Date;
-  author?: WikiAuthor;
+export type IdeasPage = WikiPage & {
   replyCount: number;
   lastActivity: Date;
-  lastReplyAuthor?: WikiAuthor | null;
 };
 
 export type AdjacentPage = { tagPath: string; slug: string; title: string } | null;
