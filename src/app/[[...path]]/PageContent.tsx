@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, ArrowRight, Trash2, Save, FileText, Plus, Upload, X, Image as ImageIcon, Link2, MessageSquare, LayoutGrid, CalendarDays, List } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Trash2, Save, FileText, Plus, Upload, X, Image as ImageIcon, Link2, MessageSquare, LayoutGrid, List } from 'lucide-react';
 import { BlockRenderer, findInfobox, InfoboxSidebar } from '@/components/BlockRenderer';
 import { Footer } from '@/components/Footer';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
@@ -339,7 +339,6 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
 
 // ========== IDEAS PIPELINE ==========
 const IDEAS_STATUS_COLUMNS = ['Discussion', 'Proposed', 'Approved', 'In Progress', 'Testing', 'Done'] as const;
-const QUARTER_OPTIONS = ['Q1 2026', 'Q2 2026', 'Q3 2026', 'Q4 2026', 'Backlog'] as const;
 const PRIORITY_VARIANT: Record<string, 'danger' | 'warning' | 'success'> = { High: 'danger', Medium: 'warning', Low: 'success' };
 const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'danger'> = {
   Discussion: 'secondary', Proposed: 'default', Approved: 'success', 'In Progress': 'warning', Testing: 'warning', Done: 'success',
@@ -356,34 +355,6 @@ function BoardCard({ page }: { page: WikiPage }) {
         {meta.owner && <span className="text-text-muted text-xs">{meta.owner}</span>}
       </div>
     </Link>
-  );
-}
-
-function TimelineView({ pages, categoryFilter }: { pages: WikiPage[]; categoryFilter: string }) {
-  const grouped = useMemo(() => {
-    const filtered = categoryFilter ? pages.filter(p => (p.metadata as PageMetadata)?.category === categoryFilter) : pages;
-    const groups: Record<string, WikiPage[]> = {};
-    for (const q of QUARTER_OPTIONS) groups[q] = [];
-    for (const p of filtered) {
-      const q = (p.metadata as PageMetadata)?.quarter || 'Backlog';
-      (groups[q] ??= []).push(p);
-    }
-    return Object.entries(groups).filter(([, items]) => items.length > 0);
-  }, [pages, categoryFilter]);
-
-  if (grouped.length === 0) return <div className="board-empty">No items yet.</div>;
-
-  return (
-    <div className="stack">
-      {grouped.map(([quarter, items]) => (
-        <div key={quarter} className="timeline-section">
-          <h3 className="timeline-head">{quarter}</h3>
-          <div className="timeline-grid">
-            {items.map(p => <BoardCard key={p.id} page={p} />)}
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -427,7 +398,7 @@ export function IdeasView({ tagPath, pages }: { tagPath: string[]; pages: IdeasP
   const { isAuthenticated } = useAuth();
   const pathStr = tagPath.join('/');
   const tag = findTagByPath(tagPath);
-  const [view, setView] = useState<'list' | 'board' | 'timeline'>('list');
+  const [view, setView] = useState<'list' | 'board'>('list');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [newSlug, setNewSlug] = useState('');
@@ -475,9 +446,6 @@ export function IdeasView({ tagPath, pages }: { tagPath: string[]; pages: IdeasP
           <button className={view === 'board' ? 'toggle-option-sm-active' : 'toggle-option-sm'} onClick={() => setView('board')}>
             <LayoutGrid size={14} />Board
           </button>
-          <button className={view === 'timeline' ? 'toggle-option-sm-active' : 'toggle-option-sm'} onClick={() => setView('timeline')}>
-            <CalendarDays size={14} />Timeline
-          </button>
         </div>
         {categories.length > 0 && (
           <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="input text-sm py-1 px-2 w-auto">
@@ -495,7 +463,7 @@ export function IdeasView({ tagPath, pages }: { tagPath: string[]; pages: IdeasP
       </div>
       {view === 'list' ? (
         <IdeasListView pages={pages} categoryFilter={categoryFilter} statusFilter={statusFilter} />
-      ) : view === 'board' ? (
+      ) : (
         <div className="board-columns">
           {columns.map(({ status, items }) => (
             <div key={status} className="board-column">
@@ -509,8 +477,6 @@ export function IdeasView({ tagPath, pages }: { tagPath: string[]; pages: IdeasP
             </div>
           ))}
         </div>
-      ) : (
-        <TimelineView pages={pages} categoryFilter={categoryFilter} />
       )}
     </div>
   );

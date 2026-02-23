@@ -411,9 +411,6 @@
   .board-card-title { @apply text-sm font-medium line-clamp-2; }
   .board-card-meta { @apply flex flex-wrap items-center gap-1.5; }
   .board-empty { @apply flex items-center justify-center py-8 text-sm text-text-muted; }
-  .timeline-section { @apply flex flex-col gap-3 pl-4 border-l-2 border-accent/30; }
-  .timeline-head { @apply text-lg font-medium -ml-[calc(1rem+1px)]; }
-  .timeline-grid { @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3; }
 
   /* ===== HISTORY / DIFF ===== */
   .diff-added { @apply flex items-start gap-2; }
