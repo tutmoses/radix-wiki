@@ -5,12 +5,6 @@ import { json, errors, handleRoute, type RouteContext } from '@/lib/api';
 
 type PathParams = { id: string };
 
-function geometricMean(values: number[]): number {
-  if (values.length === 0) return 0;
-  const product = values.reduce((acc, v) => acc * (v + 1), 1);
-  return Math.pow(product, 1 / values.length);
-}
-
 function dampen(value: number, base = 10): number {
   return value > 0 ? Math.log(value + 1) / Math.log(base) : 0;
 }
@@ -69,16 +63,15 @@ export async function GET(_request: Request, context: RouteContext<PathParams>) 
       accountAgeDays,
     };
 
-    const scoreComponents = [
-      dampen(stats.pages, 5),
-      dampen(stats.comments, 8),
-      dampen(stats.uniqueContributions, 6),
-      dampen(stats.edits, 7),
-      dampen(accountAgeDays, 30),
-    ];
+    const hasActivity = (stats.edits + stats.comments) > 0 ? 1 : 0;
 
-    const rawScore = geometricMean(scoreComponents);
-    const score = Math.min(Math.round(rawScore * 20), 100);
+    const score = Math.min(Math.round(
+      15 * dampen(stats.pages, 10) +
+       8 * dampen(stats.edits, 5) +
+       8 * dampen(stats.uniqueContributions, 5) +
+       7 * dampen(stats.comments, 8) +
+      10 * dampen(accountAgeDays, 50) * hasActivity
+    ), 100);
 
     return json({ userId: user.id, displayName: user.displayName, radixAddress: user.radixAddress, avatarUrl: user.avatarUrl, memberSince: user.createdAt, stats, score });
   }, 'Failed to fetch user stats');

@@ -270,8 +270,9 @@
 
   /* Nav items */
   .nav-item { @apply flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-text-muted hover:bg-surface-2 hover:text-text; }
-  .nav-indent { @apply inline-flex items-center justify-center w-6 shrink-0; }
-  .nav-link { @apply flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-text-muted hover:bg-surface-2 hover:text-text; }
+  .nav-indent { @apply inline-flex items-center justify-center w-4 shrink-0 text-text-muted hover:text-text transition-colors cursor-pointer p-0 bg-transparent border-none; }
+  .nav-leaf { @apply ml-4; }
+  .nav-link { @apply flex-1 min-w-0 truncate px-2 py-1.5 rounded-md transition-colors text-text-muted hover:bg-surface-2 hover:text-text; }
 
   /* Table of contents */
   .toc-btn { @apply flex items-center gap-2 px-3 py-2 text-text-muted hover:text-text transition-colors w-full; }

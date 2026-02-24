@@ -21,6 +21,10 @@
 Thumbs.db
 *.csv
 
+# Seed scripts
+/scripts/
+CLAUDE.md
+
 # Debug
 npm-debug.log*
 yarn-debug.log*

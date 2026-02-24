@@ -110,3 +110,21 @@ model Comment {
   @@index([authorId])
   @@map("comments")
 }
+
+model Tweet {
+  id          String   @id @default(cuid())
+  tweetId     String?  @unique @map("tweet_id")
+  type        String   @default("post")
+  pillar      String?
+  pageSlug    String?  @map("page_slug")
+  pageTagPath String?  @map("page_tag_path")
+  text        String
+  inReplyTo   String?  @map("in_reply_to")
+  status      String   @default("sent")
+  error       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([type, createdAt])
+  @@index([inReplyTo])
+  @@map("tweets")
+}
