@@ -15,17 +15,15 @@ export type BalanceAction = { type: 'create' | 'edit' | 'comment'; tagPath: stri
 
 async function getXrdBalance(address: string): Promise<number> {
   try {
-    const response = await fetch(`${getGatewayUrl(RADIX_CONFIG.networkId)}/state/entity/details`, {
+    const response = await fetch(`${getGatewayUrl(RADIX_CONFIG.networkId)}/state/entity/page/fungible-vaults/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ addresses: [address], aggregation_level: 'Vault', opt_ins: { explicit_metadata: [] } }),
+      body: JSON.stringify({ address, resource_address: XRD_RESOURCE[RADIX_CONFIG.networkId] }),
     });
     if (!response.ok) return 0;
 
     const data = await response.json();
-    const fungibles = data.items?.[0]?.fungible_resources?.items || [];
-    const xrd = fungibles.find((r: { resource_address: string }) => r.resource_address === XRD_RESOURCE[RADIX_CONFIG.networkId]);
-    return xrd?.vaults?.items?.reduce((sum: number, v: { amount: string }) => sum + parseFloat(v.amount || '0'), 0) || 0;
+    return (data.items as { amount: string }[])?.reduce((sum, v) => sum + parseFloat(v.amount || '0'), 0) || 0;
   } catch {
     return 0;
   }

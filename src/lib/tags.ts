@@ -34,6 +34,7 @@ export const TAG_HIERARCHY: TagNode[] = [
           { name: 'Comparisons', slug: 'comparisons' },
           { name: 'Core Concepts', slug: 'core-concepts' },
           { name: 'Core Protocols', slug: 'core-protocols' },
+          { name: 'DeSci', slug: 'desci' },
           { name: 'Releases', slug: 'releases' },
           { name: 'Research', slug: 'research' },
         ],
@@ -188,7 +189,7 @@ export const TAG_HIERARCHY: TagNode[] = [
   },
 ];
 
-const AUTHOR_ONLY_PATHS = new Set(['community', 'blog']);
+const AUTHOR_ONLY_PATHS = new Set(['blog', 'ecosystem']);
 
 interface TagPathContext {
   node: TagNode | null;
