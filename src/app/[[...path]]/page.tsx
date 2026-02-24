@@ -44,13 +44,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const title = page?.title || 'RADIX Wiki';
   const description = page?.excerpt || 'A decentralized wiki powered by Radix DLT';
-  const ogImage = page?.bannerImage || `${BASE_URL}/og-default.png`;
+  const segments = path?.length ? path.join('/') : '';
+  const canonical = segments ? `${BASE_URL}/${segments}` : BASE_URL;
+  const ogImage = page?.bannerImage;
 
   return {
     title,
     description,
-    openGraph: { title, description, type: 'article', images: [{ url: ogImage, width: 1200, height: 630 }] },
-    twitter: { card: 'summary_large_image', title, description, images: [ogImage] },
+    alternates: { canonical },
+    openGraph: {
+      title, description, type: 'article',
+      ...(ogImage && { images: [{ url: ogImage, width: 1200, height: 630 }] }),
+    },
+    twitter: {
+      card: 'summary_large_image', title, description,
+      ...(ogImage && { images: [ogImage] }),
+    },
   };
 }
 

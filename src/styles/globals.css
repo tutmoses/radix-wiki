@@ -191,6 +191,12 @@
 }
 
 @layer components {
+  /* ===== SKIP LINK ===== */
+  .skip-link {
+    @apply absolute -top-full left-4 z-50 px-4 py-2 bg-accent text-surface-0 rounded-b font-semibold text-sm;
+    &:focus { @apply top-0; }
+  }
+
   /* ===== LAYOUT ===== */
   .stack { @apply flex flex-col gap-4; }
   .stack-xs { @apply flex flex-col gap-1; }

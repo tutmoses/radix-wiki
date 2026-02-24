@@ -132,8 +132,7 @@ function Banner({ src, title, tagPath, editable, onUpload, onRemove, children }:
       {src ? (
         <Image src={src} alt="Page banner" fill className="banner-image" sizes="100vw" priority />
       ) : generativeSrc ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={generativeSrc} alt="" className="banner-image absolute inset-0" />
+        <Image src={generativeSrc} alt="" fill className="banner-image" unoptimized />
       ) : (
         <div className="banner-placeholder" />
       )}
@@ -315,8 +314,7 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
                   {p.bannerImage ? (
                     <Image src={p.bannerImage} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
                   ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={generateBannerSvg(p.title, p.tagPath)} alt="" className="w-full h-full object-cover" />
+                    <Image src={generateBannerSvg(p.title, p.tagPath)} alt="" fill className="object-cover" unoptimized />
                   )}
                 </div>
                 <div className="page-card-body">

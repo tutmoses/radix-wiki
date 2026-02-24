@@ -132,7 +132,7 @@ export function Header() {
     <header className="header">
       <div className="header-inner">
         <div className="header-bar">
-          <button onClick={toggleSidebar} className="icon-btn" aria-label="Toggle menu">
+          <button onClick={toggleSidebar} className="icon-btn" aria-label="Toggle menu" aria-expanded={sidebarOpen}>
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
@@ -142,11 +142,11 @@ export function Header() {
           </Link>
 
           <div className="header-actions">
-            <button onClick={() => setShowSearch(!showSearch)} className="icon-btn" aria-label="Search"><Search size={20} /></button>
+            <button onClick={() => setShowSearch(!showSearch)} className="icon-btn" aria-label="Search" aria-expanded={showSearch}><Search size={20} /></button>
 
             {canShowInfo && pageInfo && (
               <div className="relative">
-                <button onClick={() => setShowInfo(!showInfo)} className="icon-btn" aria-label="Page info"><Info size={20} /></button>
+                <button onClick={() => setShowInfo(!showInfo)} className="icon-btn" aria-label="Page info" aria-expanded={showInfo}><Info size={20} /></button>
                 {showInfo && <PageInfoDropdown page={pageInfo} onClose={() => setShowInfo(false)} />}
               </div>
             )}
@@ -161,7 +161,7 @@ export function Header() {
                 <div className="user-pill"><Loader2 size={14} className="animate-spin" /><span className="hidden sm:inline">Connecting...</span></div>
               ) : showAsConnected ? (
                 <>
-                  <button onClick={() => setShowUserMenu(!showUserMenu)} className="user-pill">
+                  <button onClick={() => setShowUserMenu(!showUserMenu)} className="user-pill" aria-expanded={showUserMenu} aria-label="User menu">
                     <UserAvatar radixAddress={user?.radixAddress || walletData?.accounts?.[0]?.address || ''} size="sm" />
                     <span className="font-medium hidden sm:inline">{displayName}</span>
                     <ChevronDown size={14} className={cn('transition-transform', showUserMenu && 'rotate-180')} />

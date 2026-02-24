@@ -14,7 +14,10 @@ const inter = Inter({
   display: 'swap',
 });
 
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
 export const metadata: Metadata = {
+  metadataBase: new URL(BASE_URL),
   title: {
     default: 'RADIX Wiki',
     template: '%s | RADIX Wiki',
@@ -30,6 +33,8 @@ export const metadata: Metadata = {
     title: 'RADIX Wiki',
     description: 'A decentralized wiki powered by Radix DLT',
     type: 'website',
+    siteName: 'RADIX Wiki',
+    locale: 'en_US',
   },
 };
 
@@ -47,10 +52,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Script>
         <RadixProvider>
           <div className="min-h-screen bg-surface-0">
+            <a href="#main" className="skip-link">Skip to content</a>
             <Header />
             <div className="flex">
               <Sidebar />
-              <main className="app-main">
+              <main id="main" className="app-main">
                 <div className="app-content">{children}</div>
               </main>
             </div>

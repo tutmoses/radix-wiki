@@ -1,10 +1,12 @@
 // src/components/UserAvatar.tsx
 
 import { Fragment } from 'react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { generateIdenticon } from '@/lib/identicon';
 
 type AvatarSize = 'sm' | 'md' | 'lg';
+const AVATAR_PX: Record<AvatarSize, number> = { sm: 20, md: 28, lg: 40 };
 
 export function UserAvatar({ radixAddress, avatarUrl, size = 'sm', className }: {
   radixAddress: string;
@@ -13,7 +15,8 @@ export function UserAvatar({ radixAddress, avatarUrl, size = 'sm', className }: 
   className?: string;
 }) {
   if (avatarUrl) {
-    return <img src={avatarUrl} alt="" className={cn('user-avatar', `user-avatar-${size}`, className)} />;
+    const px = AVATAR_PX[size];
+    return <Image src={avatarUrl} alt="" width={px} height={px} className={cn('user-avatar', `user-avatar-${size}`, className)} unoptimized />;
   }
 
   const { cells, fg, bg } = generateIdenticon(radixAddress);

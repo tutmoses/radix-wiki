@@ -188,7 +188,7 @@ export const TAG_HIERARCHY: TagNode[] = [
   },
 ];
 
-const AUTHOR_ONLY_PATHS = new Set(['community', 'blog', 'ideas']);
+const AUTHOR_ONLY_PATHS = new Set(['community', 'blog']);
 
 interface TagPathContext {
   node: TagNode | null;

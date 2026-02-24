@@ -42,38 +42,30 @@ function ChangeSummary({ changes }: { changes: BlockChange[] }) {
   return <span className="row gap-1.5 text-xs font-mono">{parts.length ? parts : '—'}</span>;
 }
 
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
+}
+
 function ContentDiff({ from, to }: { from: string; to: string }) {
-  const [diff, setDiff] = useState<{ removed: string[]; added: string[] } | null>(null);
+  const [parts, setParts] = useState<[number, string][] | null>(null);
 
   useEffect(() => {
-    if (from === to) return;
+    const a = stripHtml(from || '');
+    const b = stripHtml(to || '');
+    if (a === b) return;
     import('fast-diff').then(({ default: fastDiff }) => {
-      const result = fastDiff(from || '', to || '');
-      const removed: string[] = [];
-      const added: string[] = [];
-      for (const [type, text] of result) {
-        if (type === -1 && text.trim()) removed.push(text.trim());
-        if (type === 1 && text.trim()) added.push(text.trim());
-      }
-      setDiff({ removed, added });
+      setParts(fastDiff(a, b).filter(([, t]) => t.trim()));
     });
   }, [from, to]);
 
-  if (!diff || (!diff.removed.length && !diff.added.length)) return null;
+  if (!parts || parts.length === 0) return null;
 
   return (
-    <div className="mt-1 stack-xs text-xs">
-      {diff.removed.length > 0 && (
-        <div className="flex items-start gap-2">
-          <Minus size={10} className="text-error mt-0.5 shrink-0" />
-          <span className="text-error/80 line-through">{diff.removed.join(' … ')}</span>
-        </div>
-      )}
-      {diff.added.length > 0 && (
-        <div className="flex items-start gap-2">
-          <Plus size={10} className="text-success mt-0.5 shrink-0" />
-          <span className="text-success">{diff.added.join(' … ')}</span>
-        </div>
+    <div className="mt-1 text-xs leading-relaxed">
+      {parts.map(([type, text], i) =>
+        type === -1 ? <span key={i} className="text-error/80 line-through">{text}</span>
+        : type === 1 ? <span key={i} className="text-success bg-success/10 rounded-xs px-0.5">{text}</span>
+        : <span key={i} className="text-text-muted">{text.length > 60 ? text.slice(0, 30) + '…' + text.slice(-30) : text}</span>
       )}
     </div>
   );

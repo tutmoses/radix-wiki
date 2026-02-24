@@ -69,8 +69,7 @@ const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; com
           {page.bannerImage ? (
             <Image src={page.bannerImage} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
           ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={generateBannerSvg(page.title, page.tagPath)} alt="" className="w-full h-full object-cover" />
+            <Image src={generateBannerSvg(page.title, page.tagPath)} alt="" fill className="object-cover" unoptimized />
           )}
         </div>
         <div className="page-card-body">
@@ -165,7 +164,7 @@ function RssFeedBlockView({ block }: { block: RssFeedBlock }) {
           <div key={i} className="rss-card">
             {item.image && (
               <div className="rss-card-image">
-                <img src={item.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                <Image src={item.image} alt="" fill className="object-cover" unoptimized />
               </div>
             )}
             <div className="rss-card-body">
