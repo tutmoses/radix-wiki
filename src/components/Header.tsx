@@ -5,10 +5,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
-import { Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, Info, Clock, FileCode, Bell } from 'lucide-react';
+import { Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, FileCode, Bell } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useStore, useAuth, useClickOutside, usePagePath, type PageInfo } from '@/hooks';
-import { cn, shortenAddress, formatRelativeTime, formatDate, userProfileSlug } from '@/lib/utils';
+import { useStore, useAuth, useClickOutside, usePagePath } from '@/hooks';
+import { cn, shortenAddress, formatRelativeTime, userProfileSlug } from '@/lib/utils';
 import { Button, Dropdown } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiPage, WikiNotification } from '@/types';
@@ -21,45 +21,11 @@ function usePageContext() {
   return {
     canEdit: isAuthenticated && (isHomepage || isPage) && !isEdit && !isHistory,
     canShowHistory: (isHomepage || isPage) && !isHistory,
-    canShowInfo: (isHomepage || isPage) && !isEdit && !isHistory,
     canExportMdx: (isHomepage || isPage) && !isEdit && !isHistory,
     editPath: isHomepage ? '/edit' : `${viewPath}/edit`,
     historyPath: (isHomepage || isPage) ? (isHomepage ? '/history' : `${viewPath}/history`) : null,
     mdxPath,
   };
-}
-
-function PageInfoDropdown({ page, onClose }: { page: PageInfo; onClose: () => void }) {
-  return (
-    <Dropdown onClose={onClose} className="w-64 p-3">
-      <div className="stack-sm text-small">
-        {page.author && (
-          <div className="row">
-            <UserAvatar radixAddress={page.author.radixAddress} avatarUrl={page.author.avatarUrl} size="sm" />
-            <span className="text-text-muted">Author:</span>
-            <span className="truncate">{page.author.displayName || page.author.radixAddress.slice(0, 16)}...</span>
-          </div>
-        )}
-        <div className="row">
-          <Clock size={14} className="text-text-muted shrink-0" />
-          <span className="text-text-muted">Updated:</span>
-          <span>{formatRelativeTime(page.updatedAt)}</span>
-        </div>
-        <div className="row">
-          <Clock size={14} className="text-text-muted shrink-0" />
-          <span className="text-text-muted">Created:</span>
-          <span>{formatDate(page.createdAt)}</span>
-        </div>
-        {page.revisionCount > 0 && (
-          <div className="row">
-            <FileText size={14} className="text-text-muted shrink-0" />
-            <span className="text-text-muted">Revisions:</span>
-            <span>{page.revisionCount}</span>
-          </div>
-        )}
-      </div>
-    </Dropdown>
-  );
 }
 
 function notificationText(n: WikiNotification): string {
@@ -123,13 +89,11 @@ export function Header() {
   const sidebarOpen = useStore(s => s.sidebarOpen);
   const toggleSidebar = useStore(s => s.toggleSidebar);
   const _pendingConnect = useStore(s => s._pendingConnect);
-  const pageInfo = useStore(s => s.pageInfo);
   const fetchNotifications = useStore(s => s.fetchNotifications);
   const unreadCount = useStore(s => s.unreadCount);
-  const { canEdit, canShowHistory, canShowInfo, canExportMdx, editPath, historyPath, mdxPath } = usePageContext();
+  const { canEdit, canShowHistory, canExportMdx, editPath, historyPath, mdxPath } = usePageContext();
   const [showSearch, setShowSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showInfo, setShowInfo] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<WikiPage[]>([]);
@@ -195,13 +159,6 @@ export function Header() {
 
           <div className="header-actions">
             <button onClick={() => setShowSearch(!showSearch)} className="icon-btn" aria-label="Search" aria-expanded={showSearch}><Search size={20} /></button>
-
-            {canShowInfo && pageInfo && (
-              <div className="relative">
-                <button onClick={() => setShowInfo(!showInfo)} className="icon-btn" aria-label="Page info" aria-expanded={showInfo}><Info size={20} /></button>
-                {showInfo && <PageInfoDropdown page={pageInfo} onClose={() => setShowInfo(false)} />}
-              </div>
-            )}
 
             {canExportMdx && mdxPath && <a href={mdxPath} className="icon-btn" aria-label="Download MDX" download><FileCode size={20} /></a>}
             {canEdit && <Link href={editPath} className="icon-btn" aria-label="Edit page"><Edit size={20} /></Link>}

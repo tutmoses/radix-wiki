@@ -38,23 +38,6 @@ const UserStats = dynamic(() => import('@/components/UserStats').then(m => m.Use
 const BlockEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.BlockEditor), { ssr: false, loading: () => <div className="h-64 skeleton rounded-lg" /> });
 const InfoboxEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.InfoboxEditor), { ssr: false, loading: () => <div className="h-32 skeleton rounded-lg" /> });
 
-function useSyncPageInfo(page: WikiPage | null) {
-  const setPageInfo = useStore(s => s.setPageInfo);
-  useEffect(() => {
-    if (page) {
-      setPageInfo({
-        updatedAt: page.updatedAt,
-        createdAt: page.createdAt,
-        author: page.author,
-        revisionCount: page._count?.revisions ?? 0,
-      });
-    } else {
-      setPageInfo(null);
-    }
-    return () => setPageInfo(null);
-  }, [page, setPageInfo]);
-}
-
 export { StatusCard } from '@/components/ui';
 
 export function PageSkeleton() {
@@ -194,7 +177,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   const [content, setContent] = useState<Block[]>((page?.content as unknown as Block[]) || []);
   const [bannerImage, setBannerImage] = useState<string | null>(page?.bannerImage || null);
   const [isSaving, setIsSaving] = useState(false);
-  useSyncPageInfo(page);
+
 
   useEffect(() => {
     if (page) { setContent((page.content as unknown as Block[]) || []); setBannerImage(page.bannerImage || null); }
@@ -357,7 +340,7 @@ function PageViewContent({ page, adjacent }: { page: WikiPage; adjacent: Adjacen
             <Link href={`/${page.tagPath}/${page.slug}/edit`} className="edit-cta">Something missing? Edit this page →</Link>
           )}
         </div>
-        <InfoboxSidebar block={infobox} metadata={page.metadata} tagPath={page.tagPath} />
+        <InfoboxSidebar block={infobox} metadata={page.metadata} tagPath={page.tagPath} pageInfo={{ author: page.author, updatedAt: page.updatedAt, createdAt: page.createdAt, revisionCount: page._count?.revisions ?? 0 }} />
       </div>
     </article>
   );
@@ -366,7 +349,7 @@ function PageViewContent({ page, adjacent }: { page: WikiPage; adjacent: Adjacen
 // ========== PAGE VIEW WRAPPER ==========
 export function PageView({ page, tagPath, slug, isEditMode, adjacent }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; adjacent: AdjacentPages }) {
   const { isAuthenticated } = useAuth();
-  useSyncPageInfo(page);
+
   const viewPath = `/${tagPath}/${slug}`;
 
   if (isEditMode && !isAuthenticated) return <StatusCard status="authRequired" backHref={viewPath} />;

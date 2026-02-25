@@ -5,11 +5,12 @@
 import { useState, useEffect, useRef, memo, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Clock, FileText } from 'lucide-react';
-import { cn, formatRelativeTime, slugify, generateBannerSvg } from '@/lib/utils';
+import { Clock, FileText, User } from 'lucide-react';
+import { cn, formatRelativeTime, formatDate, slugify, generateBannerSvg } from '@/lib/utils';
 import { findTagByPath } from '@/lib/tags';
 import { usePages, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
+import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiPage, PageMetadata } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock } from '@/types/blocks';
 import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
@@ -239,12 +240,47 @@ function buildMetadataBlock(metadata: PageMetadata, tagPath: string): ContentBlo
   return { id: '__metadata__', type: 'content', text: `<table>${rows}</table>` };
 }
 
-export function InfoboxSidebar({ block, metadata, tagPath }: { block: InfoboxBlock; metadata?: PageMetadata | null; tagPath?: string }) {
+interface InfoboxPageInfo {
+  author?: { displayName?: string | null; radixAddress: string; avatarUrl?: string | null } | null;
+  updatedAt: string | Date;
+  createdAt: string | Date;
+  revisionCount?: number;
+}
+
+export function InfoboxSidebar({ block, metadata, tagPath, pageInfo }: { block: InfoboxBlock; metadata?: PageMetadata | null; tagPath?: string; pageInfo?: InfoboxPageInfo | null }) {
   const metaBlock = metadata && tagPath ? buildMetadataBlock(metadata, tagPath) : null;
   return (
     <aside className="infobox stack">
       {metaBlock && <div>{renderBlockView(metaBlock)}</div>}
       {(block.blocks || []).map(b => <div key={b.id}>{renderBlockView(b)}</div>)}
+      {pageInfo && (
+        <div className="infobox-page-info">
+          {pageInfo.author && (
+            <div className="row">
+              <UserAvatar radixAddress={pageInfo.author.radixAddress} avatarUrl={pageInfo.author.avatarUrl} size="sm" />
+              <span className="text-text-muted">Author:</span>
+              <span className="truncate">{pageInfo.author.displayName || pageInfo.author.radixAddress.slice(0, 16)}...</span>
+            </div>
+          )}
+          <div className="row">
+            <Clock size={14} className="text-text-muted shrink-0" />
+            <span className="text-text-muted">Updated:</span>
+            <span>{formatRelativeTime(pageInfo.updatedAt)}</span>
+          </div>
+          <div className="row">
+            <Clock size={14} className="text-text-muted shrink-0" />
+            <span className="text-text-muted">Created:</span>
+            <span>{formatDate(pageInfo.createdAt)}</span>
+          </div>
+          {(pageInfo.revisionCount ?? 0) > 0 && (
+            <div className="row">
+              <FileText size={14} className="text-text-muted shrink-0" />
+              <span className="text-text-muted">Revisions:</span>
+              <span>{pageInfo.revisionCount}</span>
+            </div>
+          )}
+        </div>
+      )}
     </aside>
   );
 }

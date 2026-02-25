@@ -439,6 +439,8 @@
   .infobox {
     @apply bg-surface-1 border border-border-muted rounded-lg overflow-hidden p-4;
     width: 100%;
+    overflow-wrap: anywhere;
+    table { table-layout: fixed; width: 100%; }
     th { @apply bg-surface-2; }
 
     @media (min-width: 768px) {
@@ -448,6 +450,10 @@
       max-height: calc(100dvh - var(--header-height) - 3rem);
       overflow-y: auto;
     }
+  }
+
+  .infobox-page-info {
+    @apply flex flex-col gap-1.5 border-t border-border-muted pt-3 text-sm;
   }
 
   /* Infobox editor sidebar */

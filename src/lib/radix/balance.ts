@@ -18,7 +18,7 @@ async function getXrdBalance(address: string): Promise<number> {
     const response = await fetch(`${getGatewayUrl(RADIX_CONFIG.networkId)}/state/entity/page/fungible-vaults/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entity_address: address, resource_address: XRD_RESOURCE[RADIX_CONFIG.networkId] }),
+      body: JSON.stringify({ address, resource_address: XRD_RESOURCE[RADIX_CONFIG.networkId] }),
     });
     if (!response.ok) return 0;
 
