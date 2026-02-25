@@ -122,7 +122,7 @@ export const useStore = create<AppStore>()((set, get) => ({
   isConnected: false,
   rdtReady: false,
   walletData: null,
-  sidebarOpen: true,
+  sidebarOpen: typeof window !== 'undefined' ? window.innerWidth >= 768 : true,
   pageInfo: null,
   _rdtDisconnect: null,
   _rdtConnect: null,

@@ -264,7 +264,9 @@
   .search-empty { @apply absolute top-full left-0 right-0 mt-2 bg-surface-1 border border-border rounded-lg shadow p-4 text-center text-text-muted z-50; }
 
   /* ===== SIDEBAR ===== */
-  .sidebar { @apply sticky top-[var(--header-height)] h-[calc(100dvh-var(--header-height))] bg-surface-0 border-r border-border-muted shrink-0 transition-all duration-200 overflow-hidden; }
+  .sidebar { @apply sticky top-[var(--header-height)] h-[calc(100dvh-var(--header-height))] bg-surface-0 border-r border-border-muted shrink-0 overflow-hidden transition-all duration-200; }
+  .sidebar-open { width: var(--sidebar-width); }
+  .sidebar-closed { width: 0; }
   .sidebar-scroll { @apply flex flex-col h-full overflow-y-auto w-[var(--sidebar-width)] pb-24; }
   .sidebar-label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3; }
 

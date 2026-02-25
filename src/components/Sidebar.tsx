@@ -102,7 +102,7 @@ export function Sidebar() {
   const showToc = (isHomepage || isPage) && !isEdit && !isHistory;
 
   return (
-    <aside className={cn('sidebar', sidebarOpen ? 'w-[var(--sidebar-width)]' : 'w-0')}>
+    <aside className={cn('sidebar', sidebarOpen ? 'sidebar-open' : 'sidebar-closed')}>
       <div className="sidebar-scroll">
         <div className="stack-sm p-4">
           <nav className="stack-sm">
