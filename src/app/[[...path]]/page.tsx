@@ -45,7 +45,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const parsed = parsePath(path);
 
   if (parsed.type === 'leaderboard') {
-    const ogUrl = `${BASE_URL}/api/og?title=${encodeURIComponent('Leaderboard')}&excerpt=${encodeURIComponent('Top RADIX.wiki contributors ranked by contribution points.')}`;
+    const ogUrl = `${BASE_URL}/og?title=${encodeURIComponent('Leaderboard')}&excerpt=${encodeURIComponent('Top RADIX.wiki contributors ranked by contribution points.')}`;
     return {
       title: 'Leaderboard', description: 'Top RADIX.wiki contributors ranked by contribution points.',
       openGraph: { title: 'Leaderboard', description: 'Top RADIX.wiki contributors ranked by contribution points.', type: 'article', images: [{ url: ogUrl, width: 1200, height: 630 }] },
@@ -63,7 +63,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const canonical = segments ? `${BASE_URL}/${segments}` : BASE_URL;
   const ogParams = new URLSearchParams({ title, excerpt: description, tagPath: page?.tagPath || '' });
   if (page?.bannerImage) ogParams.set('banner', page.bannerImage);
-  const ogUrl = `${BASE_URL}/api/og?${ogParams}`;
+  const ogUrl = `${BASE_URL}/og?${ogParams}`;
 
   const tagSegments = page?.tagPath?.split('/').filter(Boolean) || [];
   const section = tagSegments.length ? findTagByPath(tagSegments.slice(0, 1))?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') : undefined;

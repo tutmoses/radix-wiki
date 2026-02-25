@@ -64,10 +64,15 @@ const nextConfig: NextConfig = {
   },
 
   async rewrites() {
-    return [
-      { source: '/js/script.js', destination: 'https://plausible.io/js/pa-5NRG8r4xW19fPk-6FUmFm.js' },
-      { source: '/api/event', destination: 'https://plausible.io/api/event' },
-    ];
+    return {
+      beforeFiles: [
+        { source: '/og', destination: '/api/og' },
+      ],
+      afterFiles: [
+        { source: '/js/script.js', destination: 'https://plausible.io/js/pa-5NRG8r4xW19fPk-6FUmFm.js' },
+        { source: '/api/event', destination: 'https://plausible.io/api/event' },
+      ],
+    };
   },
 };
 
