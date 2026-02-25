@@ -20,7 +20,9 @@ model User {
   pages           Page[]
   revisions       Revision[]
   comments        Comment[]
-  
+  notifications       Notification[] @relation("notifications")
+  actedNotifications  Notification[] @relation("actedNotifications")
+
   @@map("users")
 }
 
@@ -36,9 +38,10 @@ model Page {
   version     String    @default("1.0.0")
   authorId    String    @map("author_id")
   author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  revisions   Revision[]
-  comments    Comment[]
-  createdAt   DateTime  @default(now()) @map("created_at")
+  revisions     Revision[]
+  comments      Comment[]
+  notifications Notification[]
+  createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
   @@unique([tagPath, slug])
@@ -109,6 +112,24 @@ model Comment {
   @@index([pageId, parentId])
   @@index([authorId])
   @@map("comments")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  type      String   // 'comment_on_page' | 'comment_reply' | 'page_edited'
+  actorId   String   @map("actor_id")
+  pageId    String   @map("page_id")
+  commentId String?  @map("comment_id")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User @relation("notifications", fields: [userId], references: [id], onDelete: Cascade)
+  actor User @relation("actedNotifications", fields: [actorId], references: [id], onDelete: Cascade)
+  page  Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt])
+  @@map("notifications")
 }
 
 model Tweet {

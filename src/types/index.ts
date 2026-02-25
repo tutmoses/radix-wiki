@@ -1,6 +1,6 @@
 // src/types/index.ts
 
-import type { User, Page, Revision, Comment, Prisma } from '@prisma/client';
+import type { User, Page, Revision, Comment, Notification, Prisma } from '@prisma/client';
 
 // Auth types
 export interface AuthSession {
@@ -78,3 +78,10 @@ export type IdeasPage = WikiPage & {
 
 export type AdjacentPage = { tagPath: string; slug: string; title: string } | null;
 export type AdjacentPages = { prev: AdjacentPage; next: AdjacentPage };
+
+export type NotificationType = 'comment_on_page' | 'comment_reply' | 'page_edited';
+
+export type WikiNotification = Notification & {
+  actor: WikiAuthor;
+  page: Pick<Page, 'id' | 'title' | 'tagPath' | 'slug'>;
+};

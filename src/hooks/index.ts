@@ -53,7 +53,7 @@ export function useFetch<T>(url: string | null | undefined, opts?: { transform?:
 const MOBILE_BREAKPOINT = 768;
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < MOBILE_BREAKPOINT : false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
@@ -122,7 +122,7 @@ export const useStore = create<AppStore>()((set, get) => ({
   isConnected: false,
   rdtReady: false,
   walletData: null,
-  sidebarOpen: typeof window !== 'undefined' ? window.innerWidth >= 768 : true,
+  sidebarOpen: false,
   pageInfo: null,
   _rdtDisconnect: null,
   _rdtConnect: null,

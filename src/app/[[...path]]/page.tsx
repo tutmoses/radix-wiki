@@ -12,7 +12,7 @@ import { LeaderboardView } from '@/components/LeaderboardView';
 import type { Block } from '@/types/blocks';
 import type { WikiPage } from '@/types';
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 
 function collectTagPaths(nodes: TagNode[], parent = ''): string[] {
   return nodes.flatMap(n => {
@@ -77,19 +77,58 @@ async function withProcessedContent<T extends { content: unknown }>(page: T | nu
   return { ...page, content };
 }
 
+function countWords(blocks: unknown): number {
+  if (!Array.isArray(blocks)) return 0;
+  let text = '';
+  for (const b of blocks) {
+    if (b?.type === 'content' && typeof b.text === 'string') text += ' ' + b.text.replace(/<[^>]+>/g, '');
+    if (b?.type === 'infobox' && Array.isArray(b.blocks)) text += ' ' + b.blocks.filter((c: any) => c?.type === 'content').map((c: any) => (c.text || '').replace(/<[^>]+>/g, '')).join(' ');
+    if (b?.type === 'columns' && Array.isArray(b.columns)) for (const col of b.columns) if (Array.isArray(col?.blocks)) text += ' ' + col.blocks.filter((c: any) => c?.type === 'content').map((c: any) => (c.text || '').replace(/<[^>]+>/g, '')).join(' ');
+  }
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
 function ArticleJsonLd({ page, url }: { page: WikiPage; url: string }) {
+  const tagSegments = page.tagPath?.split('/').filter(Boolean) || [];
+  const section = tagSegments.length ? (findTagByPath(tagSegments.slice(0, 1))?.name || tagSegments[0]).replace(/^\p{Emoji_Presentation}\s*/u, '') : undefined;
   const ld = {
     '@context': 'https://schema.org',
     '@type': 'Article',
+    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
     headline: page.title,
     description: page.excerpt || '',
     url,
     datePublished: page.createdAt,
     dateModified: page.updatedAt,
+    wordCount: countWords(page.content),
+    ...(section && { articleSection: section }),
     author: { '@type': 'Person', name: page.author?.displayName || 'Anonymous', identifier: page.author?.radixAddress },
-    publisher: { '@type': 'Organization', name: 'RADIX Wiki', url: BASE_URL },
+    publisher: { '@type': 'Organization', name: 'RADIX Wiki', url: BASE_URL, logo: { '@type': 'ImageObject', url: `${BASE_URL}/logo.png` } },
     ...(page.bannerImage && { image: page.bannerImage }),
     isPartOf: { '@type': 'WebSite', name: 'RADIX Wiki', url: BASE_URL },
+    inLanguage: 'en',
+  };
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />;
+}
+
+function CollectionJsonLd({ name, description, url, pages }: { name: string; description?: string; url: string; pages: { title: string; tagPath: string; slug: string }[] }) {
+  const ld = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name,
+    url,
+    ...(description && { description }),
+    isPartOf: { '@type': 'WebSite', name: 'RADIX Wiki', url: BASE_URL },
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: pages.length,
+      itemListElement: pages.slice(0, 50).map((p, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        url: `${BASE_URL}/${p.tagPath}/${p.slug}`,
+        name: p.title,
+      })),
+    },
   };
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />;
 }
@@ -137,16 +176,33 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   }
 
   if (parsed.type === 'category') {
+    const tagSegments = parsed.tagPath.split('/');
+    const tag = findTagByPath(tagSegments);
+    const categoryName = tag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagSegments.at(-1)?.replace(/-/g, ' ') || 'Category';
+    const categoryUrl = `${BASE_URL}/${parsed.tagPath}`;
+
     if (isIdeasPath(parsed.tagPath)) {
-      const defaultSort = getSortOrder(parsed.tagPath.split('/'));
+      const defaultSort = getSortOrder(tagSegments);
       const ideasSort = (sortParam && VALID_SORTS.has(sortParam) ? sortParam : defaultSort) as SortOrder;
       const pages = await getIdeasPages(parsed.tagPath);
-      return <Suspense fallback={<PageSkeleton />}><IdeasView tagPath={parsed.tagPath.split('/')} pages={pages} sort={ideasSort} /></Suspense>;
+      return (
+        <>
+          <CollectionJsonLd name={categoryName} description={tag?.description} url={categoryUrl} pages={pages} />
+          <BreadcrumbJsonLd path={tagSegments} />
+          <Suspense fallback={<PageSkeleton />}><IdeasView tagPath={tagSegments} pages={pages} sort={ideasSort} /></Suspense>
+        </>
+      );
     }
-    const defaultSort = getSortOrder(parsed.tagPath.split('/'));
+    const defaultSort = getSortOrder(tagSegments);
     const sort = (sortParam && VALID_SORTS.has(sortParam) ? sortParam : defaultSort) as SortOrder;
     const pages = await getCategoryPages(parsed.tagPath, sort);
-    return <Suspense fallback={<PageSkeleton />}><CategoryView tagPath={parsed.tagPath.split('/')} pages={pages} sort={sort} /></Suspense>;
+    return (
+      <>
+        <CollectionJsonLd name={categoryName} description={tag?.description} url={categoryUrl} pages={pages} />
+        <BreadcrumbJsonLd path={tagSegments} />
+        <Suspense fallback={<PageSkeleton />}><CategoryView tagPath={tagSegments} pages={pages} sort={sort} /></Suspense>
+      </>
+    );
   }
 
   if (parsed.type === 'history') {

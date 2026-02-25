@@ -6,7 +6,7 @@ import { TAG_HIERARCHY, type TagNode } from '@/lib/tags';
 
 export const revalidate = 3600;
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 
 function collectTagPaths(nodes: TagNode[], parentPath = ''): string[] {
   return nodes.flatMap(node => {

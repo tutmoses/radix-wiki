@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma/client';
 import { moltbook } from '@/lib/moltbook';
 import { json, errors, handleRoute } from '@/lib/api';
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 const SUBMOLTS = ['radix', 'crypto'];
 
 const TEMPLATES = {
