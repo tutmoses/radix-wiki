@@ -31,6 +31,8 @@ const PREAMBLE = `# RADIX Wiki — The Knowledge Base for Radix DLT
 > RADIX.wiki is the community-maintained knowledge base for Radix, the only
 > layer-1 blockchain architected for linear scalability and asset-oriented
 > smart contracts. Contributors earn points that may be considered in any future $EMOON airdrop.
+>
+> Full content export: ${BASE_URL}/llms-full.txt
 
 ## Why Radix
 

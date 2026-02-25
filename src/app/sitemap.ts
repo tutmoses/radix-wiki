@@ -15,6 +15,15 @@ function collectTagPaths(nodes: TagNode[], parentPath = ''): string[] {
   });
 }
 
+const HIGH_PRIORITY_PATHS = ['contents/tech/research', 'contents/tech/releases', 'contents/tech/core-protocols', 'contents/tech/core-concepts'];
+const MED_PRIORITY_PATHS = ['developers', 'ecosystem'];
+
+function pagePriority(tagPath: string): number {
+  if (HIGH_PRIORITY_PATHS.some(hp => tagPath.startsWith(hp))) return 0.9;
+  if (MED_PRIORITY_PATHS.some(mp => tagPath.startsWith(mp))) return 0.7;
+  return 0.6;
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const pages = await prisma.page.findMany({
     select: { tagPath: true, slug: true, updatedAt: true },
@@ -37,7 +46,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         url: `${BASE_URL}/${p.tagPath}/${p.slug}`,
         lastModified: p.updatedAt,
         changeFrequency: 'weekly' as const,
-        priority: 0.6,
+        priority: pagePriority(p.tagPath),
       })),
   ];
 }

@@ -48,10 +48,22 @@ export async function POST(request: Request) {
       take: limit,
     });
 
+    // Deduplicate: skip pages posted in the last 7 days
+    const recentPosts = await prisma.tweet.findMany({
+      where: { type: 'moltbook', createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+      select: { pageSlug: true, pageTagPath: true },
+    });
+    const alreadyPosted = new Set(recentPosts.map(p => `${p.pageTagPath}/${p.pageSlug}`));
+
     const results = [];
 
     for (const page of pages) {
       if (!page.tagPath || !page.slug || !page.excerpt) continue;
+      if (alreadyPosted.has(`${page.tagPath}/${page.slug}`)) {
+        results.push({ submolt: '-', title: page.title, status: 'skipped' });
+        continue;
+      }
+
       const url = `${BASE_URL}/${page.tagPath}/${page.slug}`;
       const template = forceTemplate || pickTemplate(page.tagPath);
       const text = TEMPLATES[template](page.title, page.excerpt, url);
@@ -64,6 +76,10 @@ export async function POST(request: Request) {
           results.push({ submolt, title: page.title, status: 'failed', error: (e as Error).message });
         }
       }
+
+      await prisma.tweet.create({
+        data: { type: 'moltbook', pageSlug: page.slug, pageTagPath: page.tagPath, text, status: 'sent' },
+      });
     }
 
     return json({ posted: results.filter(r => r.status === 'posted').length, results });

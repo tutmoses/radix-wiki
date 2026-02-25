@@ -23,16 +23,28 @@ export const metadata: Metadata = {
     default: 'RADIX Wiki',
     template: '%s | RADIX Wiki',
   },
-  description: 'A decentralized wiki powered by Radix DLT',
-  keywords: ['wiki', 'radix', 'blockchain', 'decentralized', 'web3'],
+  description: 'Community-maintained knowledge base for Radix DLT — the layer-1 blockchain with linear scalability and asset-oriented smart contracts.',
+  keywords: ['wiki', 'radix', 'blockchain', 'decentralized', 'web3', 'scrypto', 'defi', 'layer-1', 'radix dlt', 'xrd'],
   authors: [{ name: 'RADIX Wiki' }],
+  robots: {
+    index: true,
+    follow: true,
+    'max-snippet': -1,
+    'max-image-preview': 'large' as const,
+    'max-video-preview': -1,
+  },
+  verification: {
+    other: {
+      ...(process.env.BING_SITE_VERIFICATION ? { 'msvalidate.01': [process.env.BING_SITE_VERIFICATION] } : {}),
+    },
+  },
   icons: {
     icon: '/favicon.ico',
     apple: '/logo.png',
   },
   openGraph: {
     title: 'RADIX Wiki',
-    description: 'A decentralized wiki powered by Radix DLT',
+    description: 'Community-maintained knowledge base for Radix DLT — the layer-1 blockchain with linear scalability and asset-oriented smart contracts.',
     type: 'website',
     siteName: 'RADIX Wiki',
     locale: 'en_US',
@@ -46,7 +58,7 @@ const SITE_JSON_LD = JSON.stringify([
     name: 'RADIX Wiki',
     url: BASE_URL,
     description: 'Community-maintained knowledge base for Radix DLT — the layer-1 blockchain with linear scalability and asset-oriented smart contracts.',
-    sameAs: ['https://twitter.com/RadixWiki', 'https://www.moltbook.com/u/RadixWiki'],
+    sameAs: ['https://twitter.com/RadixWiki', 'https://www.moltbook.com/u/RadixWiki', 'https://github.com/radixdlt', 'https://t.me/RadixDevelopers'],
   },
   {
     '@context': 'https://schema.org',

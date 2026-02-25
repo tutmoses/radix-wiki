@@ -65,11 +65,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (page?.bannerImage) ogParams.set('banner', page.bannerImage);
   const ogUrl = `${BASE_URL}/api/og?${ogParams}`;
 
+  const tagSegments = page?.tagPath?.split('/').filter(Boolean) || [];
+  const section = tagSegments.length ? findTagByPath(tagSegments.slice(0, 1))?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') : undefined;
+
   return {
     title,
     description,
     alternates: { canonical },
-    openGraph: { title, description, type: 'article', images: [{ url: ogUrl, width: 1200, height: 630 }] },
+    openGraph: {
+      title, description, type: 'article',
+      images: [{ url: ogUrl, width: 1200, height: 630 }],
+      ...(page?.createdAt && { publishedTime: new Date(page.createdAt).toISOString() }),
+      ...(page?.updatedAt && { modifiedTime: new Date(page.updatedAt).toISOString() }),
+      ...(section && { section }),
+      ...(page?.tagPath && { tags: page.tagPath.split('/') }),
+    },
     twitter: { card: 'summary_large_image', title, description, images: [ogUrl] },
   };
 }
@@ -154,6 +164,40 @@ function BreadcrumbJsonLd({ path }: { path: string[] }) {
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />;
 }
 
+const FAQ_SKIP = new Set(['external links', 'references', 'see also', 'further reading']);
+
+function extractFaqPairs(blocks: unknown) {
+  if (!Array.isArray(blocks)) return [];
+  const pairs: { question: string; answer: string }[] = [];
+  for (const block of blocks) {
+    if (block?.type !== 'content' || typeof block.text !== 'string') continue;
+    const sections = block.text.split(/<h2[^>]*>/i);
+    for (let i = 1; i < sections.length; i++) {
+      const [rawHeading, ...rest] = sections[i].split(/<\/h2>/i);
+      const heading = rawHeading.replace(/<[^>]+>/g, '').trim();
+      if (!heading || FAQ_SKIP.has(heading.toLowerCase())) continue;
+      const answer = rest.join('').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 300);
+      if (answer.length < 50) continue;
+      pairs.push({ question: heading.endsWith('?') ? heading : `What is ${heading}?`, answer });
+    }
+  }
+  return pairs.slice(0, 10);
+}
+
+function FAQPageJsonLd({ pairs }: { pairs: { question: string; answer: string }[] }) {
+  if (pairs.length < 2) return null;
+  const ld = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: pairs.map(p => ({
+      '@type': 'Question',
+      name: p.question,
+      acceptedAnswer: { '@type': 'Answer', text: p.answer },
+    })),
+  };
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />;
+}
+
 const VALID_SORTS = new Set<string>(['title', 'newest', 'oldest', 'recent']);
 
 export default async function DynamicPage({ params, searchParams }: Props) {
@@ -217,6 +261,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   }
 
   const rawPage = await getPage(parsed.tagPath, parsed.slug);
+  const faqPairs = rawPage ? extractFaqPairs(rawPage.content) : [];
   const page = parsed.suffix === 'edit' ? rawPage : await withProcessedContent(rawPage);
   const adjacent = page ? await getAdjacentPages(parsed.tagPath, page.title, new Date(page.createdAt).toISOString(), new Date(page.updatedAt).toISOString()) : { prev: null, next: null };
   const pathSegments = [...parsed.tagPath.split('/'), parsed.slug];
@@ -224,6 +269,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   return (
     <>
       {page && <ArticleJsonLd page={page} url={pageUrl} />}
+      <FAQPageJsonLd pairs={faqPairs} />
       <BreadcrumbJsonLd path={pathSegments} />
       <Suspense fallback={<PageSkeleton />}><PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} adjacent={adjacent} /></Suspense>
     </>
