@@ -11,6 +11,7 @@ import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, typ
 import { parsePath, AUTHOR_SELECT, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
 import { validateBlocks } from '@/lib/blocks';
 import { blocksToMdx } from '@/lib/mdx';
+import { createNotification } from '@/lib/notifications';
 import type { WikiPageInput } from '@/types';
 import type { Block } from '@/types/blocks';
 
@@ -110,7 +111,11 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     });
 
     if (!page && parsed.type === 'homepage') return cachedJson(null);
-    if (!page) return errors.notFound('Page not found');
+    if (!page) {
+      const res = errors.notFound('Page not found');
+      res.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+      return res;
+    }
 
     return cachedJson(page);
   }, 'Failed to fetch');
@@ -213,8 +218,9 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
       return p;
     });
 
+    const priorRevisions = await prisma.revision.count({ where: { authorId: auth.session.userId } });
     revalidateTag('wiki');
-    return json(page, 201);
+    return json({ ...page, isFirstContribution: priorRevisions === 1 }, 201);
   }, 'Failed to create');
 }
 
@@ -334,8 +340,12 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
       return p;
     });
 
+    if (existing.authorId !== auth.session.userId) {
+      createNotification({ userId: existing.authorId, actorId: auth.session.userId, type: 'page_edited', pageId: existing.id }).catch(() => {});
+    }
+    const totalRevisions = await prisma.revision.count({ where: { authorId: auth.session.userId } });
     revalidateTag('wiki');
-    return json(page);
+    return json({ ...page, isFirstContribution: totalRevisions === 1 });
   }, 'Failed to update');
 }
 

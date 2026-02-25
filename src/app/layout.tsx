@@ -7,6 +7,7 @@ import '@/styles/globals.css';
 import { RadixProvider } from '@/components/RadixProvider';
 import { Header } from '@/components/Header';
 import { Sidebar } from '@/components/Sidebar';
+import { Toast } from '@/components/Toast';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -80,6 +81,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </main>
             </div>
           </div>
+          <Toast />
         </RadixProvider>
       </body>
     </html>

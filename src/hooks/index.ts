@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo, useRef, type RefObject } from 'react';
 import { usePathname } from 'next/navigation';
 import { create } from 'zustand';
 import { isValidTagPath } from '@/lib/tags';
-import type { WikiPage, AuthSession, RadixWalletData } from '@/types';
+import type { WikiPage, AuthSession, RadixWalletData, WikiNotification } from '@/types';
 
 // ========== CLICK OUTSIDE HOOK ==========
 
@@ -114,6 +114,13 @@ interface AppStore {
   toggleSidebar: () => void;
   connect: () => void;
   logout: () => Promise<void>;
+  toast: { message: string; type: 'success' | 'info' } | null;
+  showToast: (message: string, type?: 'success' | 'info') => void;
+  dismissToast: () => void;
+  notifications: WikiNotification[];
+  unreadCount: number;
+  fetchNotifications: () => Promise<void>;
+  markNotificationsRead: (ids?: string[]) => Promise<void>;
 }
 
 export const useStore = create<AppStore>()((set, get) => ({
@@ -160,7 +167,44 @@ export const useStore = create<AppStore>()((set, get) => ({
       console.error('Failed to clear server session:', error);
     }
     _rdtDisconnect?.();
-    set({ session: null, isConnected: false, walletData: null, isLoading: false });
+    set({ session: null, isConnected: false, walletData: null, isLoading: false, notifications: [], unreadCount: 0 });
+  },
+  toast: null,
+  showToast: (message, type = 'success') => {
+    set({ toast: { message, type } });
+    setTimeout(() => set({ toast: null }), 5000);
+  },
+  dismissToast: () => set({ toast: null }),
+  notifications: [],
+  unreadCount: 0,
+  fetchNotifications: async () => {
+    try {
+      const res = await fetch('/api/notifications?pageSize=20');
+      if (res.ok) {
+        const data = await res.json();
+        set({ notifications: data.items, unreadCount: data.unreadCount });
+      }
+    } catch { /* silent */ }
+  },
+  markNotificationsRead: async (ids) => {
+    try {
+      await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      if (ids) {
+        set(s => ({
+          notifications: s.notifications.map(n => ids.includes(n.id) ? { ...n, read: true } : n),
+          unreadCount: Math.max(0, s.unreadCount - ids.length),
+        }));
+      } else {
+        set(s => ({
+          notifications: s.notifications.map(n => ({ ...n, read: true })),
+          unreadCount: 0,
+        }));
+      }
+    } catch { /* silent */ }
   },
 }));
 

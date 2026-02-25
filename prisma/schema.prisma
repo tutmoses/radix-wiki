@@ -47,6 +47,7 @@ model Page {
   @@unique([tagPath, slug])
   @@index([slug])
   @@index([authorId])
+  @@index([authorId, createdAt])
   @@index([tagPath])
   @@index([tagPath, createdAt])
   @@index([tagPath, updatedAt])
@@ -71,6 +72,7 @@ model Revision {
   @@index([pageId, createdAt])
   @@index([createdAt])
   @@index([authorId])
+  @@index([authorId, createdAt])
   @@map("revisions")
 }
 
@@ -109,6 +111,7 @@ model Comment {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   
+  @@index([pageId])
   @@index([pageId, parentId])
   @@index([authorId])
   @@map("comments")

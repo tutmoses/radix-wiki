@@ -5,13 +5,13 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
-import { Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, Info, Clock, FileCode } from 'lucide-react';
+import { Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, Info, Clock, FileCode, Bell } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth, useClickOutside, usePagePath, type PageInfo } from '@/hooks';
 import { cn, shortenAddress, formatRelativeTime, formatDate, userProfileSlug } from '@/lib/utils';
 import { Button, Dropdown } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
-import type { WikiPage } from '@/types';
+import type { WikiPage, WikiNotification } from '@/types';
 
 function usePageContext() {
   const { isHomepage, isPage, isEdit, isHistory, viewPath, tagPath, slug } = usePagePath();
@@ -62,6 +62,46 @@ function PageInfoDropdown({ page, onClose }: { page: PageInfo; onClose: () => vo
   );
 }
 
+function notificationText(n: WikiNotification): string {
+  const actor = n.actor.displayName || 'Someone';
+  if (n.type === 'comment_on_page') return `${actor} commented on "${n.page.title}"`;
+  if (n.type === 'comment_reply') return `${actor} replied to your comment on "${n.page.title}"`;
+  return `${actor} edited "${n.page.title}"`;
+}
+
+function NotificationDropdown({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
+  const notifications = useStore(s => s.notifications);
+  const markNotificationsRead = useStore(s => s.markNotificationsRead);
+  const unreadCount = useStore(s => s.unreadCount);
+
+  return (
+    <Dropdown onClose={onClose} className="notification-dropdown">
+      <div className="notification-header">
+        <span className="font-medium">Notifications</span>
+        {unreadCount > 0 && <button onClick={() => markNotificationsRead()} className="notification-mark-read">Mark all read</button>}
+      </div>
+      {notifications.length === 0 ? (
+        <div className="notification-empty">No notifications yet</div>
+      ) : (
+        <div className="notification-list">
+          {notifications.map(n => (
+            <button key={n.id} className={cn('notification-item', !n.read && 'notification-unread')}
+              onClick={() => { markNotificationsRead([n.id]); router.push(`/${n.page.tagPath}/${n.page.slug}`); onClose(); }}>
+              <UserAvatar radixAddress={n.actor.radixAddress} avatarUrl={n.actor.avatarUrl} size="sm" />
+              <div className="min-w-0 flex-1">
+                <div className="text-small truncate">{notificationText(n)}</div>
+                <div className="text-xs text-text-muted">{formatRelativeTime(n.createdAt)}</div>
+              </div>
+              {!n.read && <span className="notification-dot" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </Dropdown>
+  );
+}
+
 function UserMenuDropdown({ onClose, onLogout }: { onClose: () => void; onLogout: () => void }) {
   return (
     <Dropdown onClose={onClose}>
@@ -84,10 +124,13 @@ export function Header() {
   const toggleSidebar = useStore(s => s.toggleSidebar);
   const _pendingConnect = useStore(s => s._pendingConnect);
   const pageInfo = useStore(s => s.pageInfo);
+  const fetchNotifications = useStore(s => s.fetchNotifications);
+  const unreadCount = useStore(s => s.unreadCount);
   const { canEdit, canShowHistory, canShowInfo, canExportMdx, editPath, historyPath, mdxPath } = usePageContext();
   const [showSearch, setShowSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<WikiPage[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -101,6 +144,15 @@ export function Header() {
 
   const showAsConnected = isAuthenticated || (isConnected && walletData?.accounts?.length);
   const userProfilePath = user ? `/community/${userProfileSlug(user.displayName, user.radixAddress)}` : null;
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60_000);
+    const onFocus = () => fetchNotifications();
+    window.addEventListener('focus', onFocus);
+    return () => { clearInterval(interval); window.removeEventListener('focus', onFocus); };
+  }, [isAuthenticated, fetchNotifications]);
 
   useEffect(() => {
     if (showSearch && searchInputRef.current) searchInputRef.current.focus();
@@ -155,6 +207,16 @@ export function Header() {
             {canEdit && <Link href={editPath} className="icon-btn" aria-label="Edit page"><Edit size={20} /></Link>}
             {canShowHistory && historyPath && <Link href={historyPath} className="icon-btn" aria-label="Page history"><History size={20} /></Link>}
             {isAuthenticated && userProfilePath && <Link href={userProfilePath} className="icon-btn" aria-label="Your profile"><User size={20} /></Link>}
+
+            {isAuthenticated && (
+              <div className="relative">
+                <button onClick={() => setShowNotifications(!showNotifications)} className="icon-btn" aria-label="Notifications" aria-expanded={showNotifications}>
+                  <Bell size={20} />
+                  {unreadCount > 0 && <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+                </button>
+                {showNotifications && <NotificationDropdown onClose={() => setShowNotifications(false)} />}
+              </div>
+            )}
 
             <div id="radix-connect-btn" className="relative">
               {isLoading || _pendingConnect ? (

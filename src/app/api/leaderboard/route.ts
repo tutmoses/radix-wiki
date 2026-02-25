@@ -2,64 +2,86 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { json, handleRoute, parsePagination, paginatedResponse } from '@/lib/api';
+import { unstable_cache } from 'next/cache';
 
 export const revalidate = 300;
 
 const WEIGHTS = { page: 150, edit: 80, contribution: 80, comment: 70, tenure: 50 } as const;
 
-export async function GET(request: Request) {
-  return handleRoute(async () => {
-    const { page, pageSize } = parsePagination(new URL(request.url).searchParams, { pageSize: 25 });
+interface LeaderboardRow {
+  id: string;
+  display_name: string | null;
+  radix_address: string;
+  avatar_url: string | null;
+  created_at: Date;
+  page_count: bigint;
+  edit_slots: bigint;
+  unique_pages: bigint;
+  comment_slots: bigint;
+}
 
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        displayName: true,
-        radixAddress: true,
-        avatarUrl: true,
-        createdAt: true,
-        _count: { select: { pages: true } },
-        revisions: { select: { pageId: true, createdAt: true } },
-        comments: { select: { pageId: true, createdAt: true } },
-      },
-    });
+const getLeaderboardScores = unstable_cache(
+  async () => {
+    const rows = await prisma.$queryRaw<LeaderboardRow[]>`
+      SELECT
+        u.id,
+        u.display_name,
+        u.radix_address,
+        u.avatar_url,
+        u.created_at,
+        (SELECT COUNT(*) FROM pages p WHERE p.author_id = u.id) AS page_count,
+        COALESCE(r.edit_slots, 0) AS edit_slots,
+        COALESCE(r.unique_pages, 0) AS unique_pages,
+        COALESCE(c.comment_slots, 0) AS comment_slots
+      FROM users u
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(DISTINCT page_id || ':' || EXTRACT(EPOCH FROM date_trunc('hour', created_at))::BIGINT) AS edit_slots,
+          COUNT(DISTINCT page_id) AS unique_pages
+        FROM revisions WHERE author_id = u.id
+      ) r ON true
+      LEFT JOIN LATERAL (
+        SELECT COUNT(DISTINCT page_id || ':' || EXTRACT(EPOCH FROM date_trunc('hour', created_at))::BIGINT) AS comment_slots
+        FROM comments WHERE author_id = u.id
+      ) c ON true
+    `;
 
-    const scored = users.map(u => {
-      const editSlots = new Set<string>();
-      const uniquePages = new Set<string>();
-      for (const rev of u.revisions) {
-        uniquePages.add(rev.pageId);
-        editSlots.add(`${rev.pageId}:${Math.floor(rev.createdAt.getTime() / 3_600_000)}`);
-      }
-      const commentSlots = new Set<string>();
-      for (const c of u.comments) {
-        commentSlots.add(`${c.pageId}:${Math.floor(c.createdAt.getTime() / 3_600_000)}`);
-      }
-      const ageDays = Math.floor((Date.now() - u.createdAt.getTime()) / 86_400_000);
+    return rows.map(u => {
+      const pages = Number(u.page_count);
+      const edits = Number(u.edit_slots);
+      const contributions = Number(u.unique_pages);
+      const comments = Number(u.comment_slots);
+      const ageDays = Math.floor((Date.now() - new Date(u.created_at).getTime()) / 86_400_000);
       const points =
-        u._count.pages * WEIGHTS.page +
-        editSlots.size * WEIGHTS.edit +
-        uniquePages.size * WEIGHTS.contribution +
-        commentSlots.size * WEIGHTS.comment +
+        pages * WEIGHTS.page +
+        edits * WEIGHTS.edit +
+        contributions * WEIGHTS.contribution +
+        comments * WEIGHTS.comment +
         Math.floor(ageDays / 30) * WEIGHTS.tenure;
 
       return {
         id: u.id,
-        displayName: u.displayName,
-        radixAddress: u.radixAddress,
-        avatarUrl: u.avatarUrl,
-        pages: u._count.pages,
-        edits: editSlots.size,
-        contributions: uniquePages.size,
-        comments: commentSlots.size,
+        displayName: u.display_name,
+        radixAddress: u.radix_address,
+        avatarUrl: u.avatar_url,
+        pages,
+        edits,
+        contributions,
+        comments,
         points,
       };
-    });
+    }).sort((a, b) => b.points - a.points);
+  },
+  ['leaderboard-scores'],
+  { revalidate: 3600, tags: ['leaderboard'] }
+);
 
-    scored.sort((a, b) => b.points - a.points);
+export async function GET(request: Request) {
+  return handleRoute(async () => {
+    const { page, pageSize } = parsePagination(new URL(request.url).searchParams, { pageSize: 25 });
+    const scored = await getLeaderboardScores();
     const total = scored.length;
     const slice = scored.slice((page - 1) * pageSize, page * pageSize);
-
     return json(paginatedResponse(slice, total, page, pageSize));
   }, 'Failed to fetch leaderboard');
 }

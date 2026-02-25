@@ -4,6 +4,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, type RouteContext } from '@/lib/api';
 import { AUTHOR_SELECT } from '@/lib/wiki';
+import { createNotification } from '@/lib/notifications';
 import type { CommentInput } from '@/types';
 
 type PathParams = { path?: string[] };
@@ -28,7 +29,9 @@ export async function GET(request: NextRequest) {
       prisma.comment.count({ where }),
     ]);
 
-    return json(paginatedResponse(comments, total, page, pageSize));
+    const res = json(paginatedResponse(comments, total, page, pageSize));
+    res.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+    return res;
   }, 'Failed to fetch comments');
 }
 
@@ -41,15 +44,16 @@ export async function POST(request: NextRequest) {
     if (!content?.trim()) return errors.badRequest('Content is required');
     if (content.length > 5000) return errors.badRequest('Comment too long (max 5000 chars)');
 
-    const page = await prisma.page.findUnique({ where: { id: pageId }, select: { id: true, tagPath: true } });
+    const page = await prisma.page.findUnique({ where: { id: pageId }, select: { id: true, tagPath: true, authorId: true } });
     if (!page) return errors.notFound('Page not found');
 
     const auth = await requireAuth(request, { type: 'comment', tagPath: page.tagPath });
     if ('error' in auth) return auth.error;
 
+    let parentComment: { id: string; authorId: string; pageId: string } | null = null;
     if (parentId) {
-      const parent = await prisma.comment.findUnique({ where: { id: parentId } });
-      if (!parent || parent.pageId !== pageId) {
+      parentComment = await prisma.comment.findUnique({ where: { id: parentId }, select: { id: true, authorId: true, pageId: true } });
+      if (!parentComment || parentComment.pageId !== pageId) {
         return errors.badRequest('Parent comment not found');
       }
     }
@@ -63,6 +67,12 @@ export async function POST(request: NextRequest) {
       },
       include: { author: AUTHOR_SELECT },
     });
+
+    // Fire-and-forget notifications
+    createNotification({ userId: page.authorId, actorId: auth.session.userId, type: 'comment_on_page', pageId, commentId: comment.id }).catch(() => {});
+    if (parentComment) {
+      createNotification({ userId: parentComment.authorId, actorId: auth.session.userId, type: 'comment_reply', pageId, commentId: comment.id }).catch(() => {});
+    }
 
     return json(comment, 201);
   }, 'Failed to create comment');

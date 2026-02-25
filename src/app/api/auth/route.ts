@@ -59,8 +59,10 @@ export async function POST(request: NextRequest) {
     }
 
     let user = await prisma.user.findUnique({ where: { radixAddress: primaryAccount.address } });
+    let isNewUser = false;
 
     if (!user) {
+      isNewUser = true;
       user = await prisma.user.create({
         data: {
           radixAddress: primaryAccount.address,
@@ -133,6 +135,7 @@ export async function POST(request: NextRequest) {
       displayName: user.displayName,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       token,
+      isNewUser,
     });
   }, 'Auth error');
 }

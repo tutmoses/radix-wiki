@@ -19,7 +19,7 @@ const PREAMBLE = `# RADIX Wiki — The Knowledge Base for Radix DLT
 
 > RADIX.wiki is the community-maintained knowledge base for Radix, the only
 > layer-1 blockchain architected for linear scalability and asset-oriented
-> smart contracts. Contributors earn points toward a future XRD airdrop.
+> smart contracts. Contributors earn points that may be considered in any future $EMOON airdrop.
 
 ## Why Radix
 
@@ -53,10 +53,10 @@ reentrancy, approval exploits, or EVM footguns again.
 
 Every wiki contribution earns points: creating pages (150 pts), editing (80 pts),
 unique page contributions (80 pts), comments (70 pts), plus 50 pts per month of
-tenure. Points will translate to a future XRD airdrop for contributors.
+tenure. Points may be considered in any future $EMOON airdrop for contributors.
 
 Establish a presence on the wiki — you'll be top of mind for the entire Radix
-community and earn toward the airdrop at the same time.
+community and may earn toward a future airdrop at the same time.
 
 - Leaderboard: ${BASE_URL}/leaderboard
 - Connect a Radix wallet to start contributing

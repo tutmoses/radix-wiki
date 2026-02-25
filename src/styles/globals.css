@@ -490,6 +490,42 @@
   .rss-card-meta { @apply text-xs text-text-muted mb-2; }
   .rss-card-source { @apply text-success font-medium; }
   .rss-card-desc { @apply text-text-muted text-[13px] leading-relaxed; }
+
+  /* ===== TOAST ===== */
+  .toast {
+    @apply fixed bottom-6 right-6 z-50 bg-surface-1 border border-accent/30 rounded-lg px-4 py-3 text-small shadow-lg;
+    @apply flex items-center gap-3;
+    animation: slide-up 0.3s ease-out;
+  }
+  .toast-close { @apply p-1 rounded hover:text-text-muted transition-colors; }
+
+  /* ===== WELCOME PAGE ===== */
+  .welcome-page { @apply max-w-2xl mx-auto py-12 flex flex-col gap-8; }
+  .welcome-hero { @apply text-center flex flex-col gap-2; }
+  .welcome-grid { @apply grid grid-cols-1 sm:grid-cols-3 gap-4; }
+  .welcome-card {
+    @apply bg-surface-1 border border-border-muted rounded-lg p-5 flex flex-col gap-2;
+    animation: slide-up 0.3s ease-out both;
+    &:nth-child(2) { animation-delay: 0.05s; }
+    &:nth-child(3) { animation-delay: 0.1s; }
+  }
+
+  /* ===== EDIT CTA ===== */
+  .edit-cta { @apply flex items-center justify-center gap-1 text-text-muted text-small py-4 hover:text-accent transition-colors; }
+
+  /* ===== NOTIFICATIONS ===== */
+  .notification-dropdown { @apply w-80 max-h-96 flex flex-col p-0! overflow-hidden; }
+  .notification-header { @apply flex items-center justify-between px-3 py-2 border-b border-border-muted; }
+  .notification-mark-read { @apply text-xs text-accent hover:underline; }
+  .notification-list { @apply overflow-y-auto flex-1; }
+  .notification-item { @apply w-full flex items-start gap-2 px-3 py-2.5 text-left hover:bg-surface-2 transition-colors; }
+  .notification-unread { @apply bg-accent-muted; }
+  .notification-empty { @apply px-3 py-8 text-center text-text-muted text-small; }
+  .notification-dot { @apply size-2 rounded-full bg-accent shrink-0 mt-1.5; }
+  .notification-badge {
+    @apply absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-accent text-text-inverted text-[11px] font-bold;
+    @apply flex items-center justify-center px-1;
+  }
 }
 
 radix-connect-button {

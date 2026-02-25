@@ -7,8 +7,12 @@ import { findTagByPath, getSortOrder, TAG_HIERARCHY, type TagNode, type SortOrde
 import { highlightBlocks } from '@/lib/highlight';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { prisma } from '@/lib/prisma/client';
-import { PageView, HomepageView, CategoryView, IdeasView, PageSkeleton, StatusCard, HistoryView, type HistoryData } from './PageContent';
-import { LeaderboardView } from '@/components/LeaderboardView';
+import { PageView, HomepageView, CategoryView, PageSkeleton, StatusCard, HistoryView, type HistoryData } from './PageContent';
+import dynamic from 'next/dynamic';
+
+const IdeasView = dynamic(() => import('./IdeasView'), { loading: () => <PageSkeleton /> });
+const LeaderboardView = dynamic(() => import('@/components/LeaderboardView'), { loading: () => <PageSkeleton /> });
+const WelcomeView = dynamic(() => import('@/components/WelcomeView'), { loading: () => <PageSkeleton /> });
 import type { Block } from '@/types/blocks';
 import type { WikiPage } from '@/types';
 
@@ -41,7 +45,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const parsed = parsePath(path);
 
   if (parsed.type === 'leaderboard') {
-    return { title: 'Leaderboard', description: 'Top RADIX.wiki contributors ranked by contribution points.' };
+    const ogUrl = `${BASE_URL}/api/og?title=${encodeURIComponent('Leaderboard')}&excerpt=${encodeURIComponent('Top RADIX.wiki contributors ranked by contribution points.')}`;
+    return {
+      title: 'Leaderboard', description: 'Top RADIX.wiki contributors ranked by contribution points.',
+      openGraph: { title: 'Leaderboard', description: 'Top RADIX.wiki contributors ranked by contribution points.', type: 'article', images: [{ url: ogUrl, width: 1200, height: 630 }] },
+      twitter: { card: 'summary_large_image', title: 'Leaderboard', images: [ogUrl] },
+    };
   }
 
   let page = null;
@@ -52,20 +61,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = page?.excerpt || 'A decentralized wiki powered by Radix DLT';
   const segments = path?.length ? path.join('/') : '';
   const canonical = segments ? `${BASE_URL}/${segments}` : BASE_URL;
-  const ogImage = page?.bannerImage;
+  const ogParams = new URLSearchParams({ title, excerpt: description, tagPath: page?.tagPath || '' });
+  if (page?.bannerImage) ogParams.set('banner', page.bannerImage);
+  const ogUrl = `${BASE_URL}/api/og?${ogParams}`;
 
   return {
     title,
     description,
     alternates: { canonical },
-    openGraph: {
-      title, description, type: 'article',
-      ...(ogImage && { images: [{ url: ogImage, width: 1200, height: 630 }] }),
-    },
-    twitter: {
-      card: 'summary_large_image', title, description,
-      ...(ogImage && { images: [ogImage] }),
-    },
+    openGraph: { title, description, type: 'article', images: [{ url: ogUrl, width: 1200, height: 630 }] },
+    twitter: { card: 'summary_large_image', title, description, images: [ogUrl] },
   };
 }
 
@@ -159,6 +164,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   if (parsed.type === 'invalid') return <StatusCard status="invalidPath" backHref="/" />;
 
   if (parsed.type === 'leaderboard') return <LeaderboardView />;
+  if (parsed.type === 'welcome') return <WelcomeView />;
 
   if (parsed.type === 'homepage') {
     const page = await withProcessedContent(await getHomepage());

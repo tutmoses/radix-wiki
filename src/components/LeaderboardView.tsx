@@ -35,7 +35,7 @@ function RankBadge({ rank }: { rank: number }) {
   return <span className="text-text-muted">#{rank}</span>;
 }
 
-export function LeaderboardView() {
+export default function LeaderboardView() {
   const { data, isLoading } = useFetch<LeaderboardResponse>('/api/leaderboard');
 
   return (
@@ -45,7 +45,7 @@ export function LeaderboardView() {
           <Trophy size={24} className="text-accent" />
           <h1>Leaderboard</h1>
         </div>
-        <p className="text-text-muted">Top contributors ranked by points. Every contribution earns points toward a future XRD airdrop.</p>
+        <p className="text-text-muted">Top contributors ranked by points. Points may be considered in any future $EMOON airdrop.</p>
       </div>
 
       <div className="surface rounded-lg overflow-hidden">

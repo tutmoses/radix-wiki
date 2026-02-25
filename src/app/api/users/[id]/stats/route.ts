@@ -9,11 +9,17 @@ function dampen(value: number, base = 10): number {
   return value > 0 ? Math.log(value + 1) / Math.log(base) : 0;
 }
 
+interface AggRow {
+  edit_slots: bigint;
+  unique_pages: bigint;
+  comment_slots: bigint;
+}
+
 export async function GET(_request: Request, context: RouteContext<PathParams>) {
   return handleRoute(async () => {
     const { id } = await context.params;
 
-    const [user, revisions, comments] = await Promise.all([
+    const [user, agg] = await Promise.all([
       prisma.user.findUnique({
         where: { id },
         select: {
@@ -25,41 +31,33 @@ export async function GET(_request: Request, context: RouteContext<PathParams>) 
           _count: { select: { pages: true } },
         },
       }),
-      prisma.revision.findMany({
-        where: { authorId: id },
-        select: { pageId: true, createdAt: true },
-      }),
-      prisma.comment.findMany({
-        where: { authorId: id },
-        select: { pageId: true, createdAt: true },
-      }),
+      prisma.$queryRaw<AggRow[]>`
+        SELECT
+          COALESCE((
+            SELECT COUNT(DISTINCT page_id || ':' || EXTRACT(EPOCH FROM date_trunc('hour', created_at))::BIGINT)
+            FROM revisions WHERE author_id = ${id}
+          ), 0) AS edit_slots,
+          COALESCE((
+            SELECT COUNT(DISTINCT page_id)
+            FROM revisions WHERE author_id = ${id}
+          ), 0) AS unique_pages,
+          COALESCE((
+            SELECT COUNT(DISTINCT page_id || ':' || EXTRACT(EPOCH FROM date_trunc('hour', created_at))::BIGINT)
+            FROM comments WHERE author_id = ${id}
+          ), 0) AS comment_slots
+      `,
     ]);
 
     if (!user) return errors.notFound('User not found');
 
-    // Aggregate edits into 1-hour slots per page
-    const editSlots = new Set<string>();
-    const uniquePages = new Set<string>();
-    for (const rev of revisions) {
-      uniquePages.add(rev.pageId);
-      const hourSlot = Math.floor(rev.createdAt.getTime() / (1000 * 60 * 60));
-      editSlots.add(`${rev.pageId}:${hourSlot}`);
-    }
-
-    // Aggregate comments into 1-hour slots per page
-    const commentSlots = new Set<string>();
-    for (const comment of comments) {
-      const hourSlot = Math.floor(comment.createdAt.getTime() / (1000 * 60 * 60));
-      commentSlots.add(`${comment.pageId}:${hourSlot}`);
-    }
-
+    const { edit_slots, unique_pages, comment_slots } = agg[0];
     const accountAgeDays = Math.floor((Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24));
 
     const stats = {
       pages: user._count.pages,
-      comments: commentSlots.size,
-      edits: editSlots.size,
-      uniqueContributions: uniquePages.size,
+      comments: Number(comment_slots),
+      edits: Number(edit_slots),
+      uniqueContributions: Number(unique_pages),
       accountAgeDays,
     };
 
@@ -75,9 +73,9 @@ export async function GET(_request: Request, context: RouteContext<PathParams>) 
 
     const breakdown = {
       pages: stats.pages * 150,
-      edits: editSlots.size * 80,
-      contributions: uniquePages.size * 80,
-      comments: commentSlots.size * 70,
+      edits: stats.edits * 80,
+      contributions: stats.uniqueContributions * 80,
+      comments: stats.comments * 70,
       tenure: Math.floor(accountAgeDays / 30) * 50,
     };
     const points = Object.values(breakdown).reduce((a, b) => a + b, 0);

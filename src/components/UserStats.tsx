@@ -102,7 +102,7 @@ export function UserStats({ authorId }: { authorId: string }) {
         <StatItem icon={Edit3} label="Edits" value={data.stats.edits} />
         <StatItem icon={Calendar} label="Member Since" value={formatDate(data.memberSince, { month: 'short', year: 'numeric' })} />
       </div>
-      <p className="text-small text-text-muted text-center">Points count toward a future XRD airdrop for contributors.</p>
+      <p className="text-small text-text-muted text-center">Points may be considered in any future $EMOON airdrop for contributors.</p>
     </section>
   );
 }

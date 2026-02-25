@@ -57,7 +57,7 @@ function TableOfContents() {
     updateHeadings();
     const observer = new MutationObserver(updateHeadings);
     const main = document.querySelector('main');
-    if (main) observer.observe(main, { childList: true, subtree: true });
+    if (main) observer.observe(main, { childList: true, subtree: true, characterData: false, attributes: false });
     return () => { clearTimeout(timer); observer.disconnect(); };
   }, []);
 

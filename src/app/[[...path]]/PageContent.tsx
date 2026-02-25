@@ -2,31 +2,26 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, ArrowRight, Trash2, Save, FileText, Plus, Upload, X, Image as ImageIcon, Link2, MessageSquare, LayoutGrid, List, ArrowDownAZ, CalendarPlus, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Save, Plus, Upload, X, Image as ImageIcon, ArrowDownAZ, CalendarPlus, RefreshCw } from 'lucide-react';
 import { BlockRenderer, findInfobox, InfoboxSidebar } from '@/components/BlockRenderer';
 import { Footer } from '@/components/Footer';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Badge, Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
-import { cn, slugify, formatRelativeTime, generateBannerSvg } from '@/lib/utils';
-import { findTagByPath, isAuthorOnlyPath, getMetadataKeys, getXrdRequired, type MetadataKeyDefinition, type SortOrder, type TagNode } from '@/lib/tags';
+import { cn, slugify, generateBannerSvg } from '@/lib/utils';
+import { findTagByPath, getXrdRequired, type SortOrder, type TagNode } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
-import type { WikiPage, AdjacentPages, PageMetadata, IdeasPage } from '@/types';
+import type { WikiPage, AdjacentPages } from '@/types';
 import type { Block } from '@/types/blocks';
 
-const BlockEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.BlockEditor), {
+const LazyPageEditor = dynamic(() => import('./PageEditor'), {
   ssr: false,
   loading: () => <div className="h-64 skeleton rounded-lg" />,
-});
-
-const InfoboxEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.InfoboxEditor), {
-  ssr: false,
-  loading: () => <div className="h-32 skeleton rounded-lg" />,
 });
 
 const HistoryView = dynamic(() => import('@/components/HistoryView'), {
@@ -39,6 +34,9 @@ export { HistoryView };
 
 const Discussion = dynamic(() => import('@/components/Discussion').then(m => m.Discussion), { ssr: false });
 const UserStats = dynamic(() => import('@/components/UserStats').then(m => m.UserStats));
+
+const BlockEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.BlockEditor), { ssr: false, loading: () => <div className="h-64 skeleton rounded-lg" /> });
+const InfoboxEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.InfoboxEditor), { ssr: false, loading: () => <div className="h-32 skeleton rounded-lg" /> });
 
 function useSyncPageInfo(page: WikiPage | null) {
   const setPageInfo = useStore(s => s.setPageInfo);
@@ -92,7 +90,7 @@ function PageNav({ adjacent }: { adjacent: AdjacentPages }) {
 }
 
 // ========== BANNER ==========
-function Banner({ src, title, tagPath, editable, onUpload, onRemove, children }: { src?: string | null; title?: string; tagPath?: string; editable?: boolean; onUpload?: (url: string) => void; onRemove?: () => void; children?: ReactNode }) {
+export function Banner({ src, title, tagPath, editable, onUpload, onRemove, children }: { src?: string | null; title?: string; tagPath?: string; editable?: boolean; onUpload?: (url: string) => void; onRemove?: () => void; children?: ReactNode }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -142,6 +140,46 @@ function Banner({ src, title, tagPath, editable, onUpload, onRemove, children }:
           {FileInput}
           <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="banner-action-btn" title="Change banner"><Upload size={16} /></button>
           {onRemove && src && <button onClick={onRemove} className="banner-action-btn text-error hover:text-error" title="Remove banner"><X size={16} /></button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ========== SORT TOGGLE ==========
+const SORT_OPTIONS: { value: SortOrder; label: string; icon: typeof ArrowDownAZ }[] = [
+  { value: 'title', label: 'A–Z', icon: ArrowDownAZ },
+  { value: 'newest', label: 'Newest', icon: CalendarPlus },
+  { value: 'recent', label: 'Updated', icon: RefreshCw },
+];
+
+export function SortToggle({ sort, tagPath }: { sort: SortOrder; tagPath: string }) {
+  const router = useRouter();
+  return (
+    <div className="toggle-group-sm">
+      {SORT_OPTIONS.map(o => (
+        <button key={o.value} className={cn('toggle-option-sm', sort === o.value && 'bg-accent text-text-inverted')}
+          onClick={() => router.push(`/${tagPath}?sort=${o.value}`)} title={o.label}><o.icon size={14} /></button>
+      ))}
+    </div>
+  );
+}
+
+// ========== CATEGORY HERO ==========
+function CategoryHero({ tag, tagPath }: { tag: TagNode; tagPath: string }) {
+  const children = tag.children?.filter(c => !c.hidden);
+  if (!tag.description && !children?.length) return null;
+  return (
+    <div className="category-hero">
+      {tag.description && <p className="text-text-muted text-lg">{tag.description}</p>}
+      {children && children.length > 0 && (
+        <div className="category-hero-grid">
+          {children.map(child => (
+            <Link key={child.slug} href={`/${tagPath}/${child.slug}`} className="category-hero-card">
+              <span className="font-medium">{child.name}</span>
+              {child.description && <span className="text-text-muted text-small">{child.description}</span>}
+            </Link>
+          ))}
         </div>
       )}
     </div>
@@ -234,46 +272,6 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   );
 }
 
-// ========== SORT TOGGLE ==========
-const SORT_OPTIONS: { value: SortOrder; label: string; icon: typeof ArrowDownAZ }[] = [
-  { value: 'title', label: 'A–Z', icon: ArrowDownAZ },
-  { value: 'newest', label: 'Newest', icon: CalendarPlus },
-  { value: 'recent', label: 'Updated', icon: RefreshCw },
-];
-
-function SortToggle({ sort, tagPath }: { sort: SortOrder; tagPath: string }) {
-  const router = useRouter();
-  return (
-    <div className="toggle-group-sm">
-      {SORT_OPTIONS.map(o => (
-        <button key={o.value} className={cn('toggle-option-sm', sort === o.value && 'bg-accent text-text-inverted')}
-          onClick={() => router.push(`/${tagPath}?sort=${o.value}`)} title={o.label}><o.icon size={14} /></button>
-      ))}
-    </div>
-  );
-}
-
-// ========== CATEGORY HERO ==========
-function CategoryHero({ tag, tagPath }: { tag: TagNode; tagPath: string }) {
-  const children = tag.children?.filter(c => !c.hidden);
-  if (!tag.description && !children?.length) return null;
-  return (
-    <div className="category-hero">
-      {tag.description && <p className="text-text-muted text-lg">{tag.description}</p>}
-      {children && children.length > 0 && (
-        <div className="category-hero-grid">
-          {children.map(child => (
-            <Link key={child.slug} href={`/${tagPath}/${child.slug}`} className="category-hero-card">
-              <span className="font-medium">{child.name}</span>
-              {child.description && <span className="text-text-muted text-small">{child.description}</span>}
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ========== CATEGORY VIEW ==========
 export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; pages: WikiPage[]; sort: SortOrder }) {
   const router = useRouter();
@@ -335,443 +333,9 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
   );
 }
 
-// ========== IDEAS PIPELINE ==========
-const IDEAS_STATUS_COLUMNS = ['Discussion', 'Proposed', 'Approved', 'In Progress', 'Testing', 'Done'] as const;
-const PRIORITY_VARIANT: Record<string, 'danger' | 'warning' | 'success'> = { High: 'danger', Medium: 'warning', Low: 'success' };
-const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'info' | 'success' | 'warning' | 'danger'> = {
-  Discussion: 'default', Proposed: 'danger', Approved: 'warning', 'In Progress': 'info', Testing: 'secondary', Done: 'success',
-};
-const STATUS_TAB_COLOR: Record<string, string> = {
-  Discussion: 'border-accent text-accent', Proposed: 'border-danger text-danger',
-  Approved: 'border-warning text-warning', 'In Progress': 'border-info text-info',
-  Testing: 'border-purple text-purple', Done: 'border-success text-success',
-};
-const STATUS_DOT: Record<string, string> = {
-  Discussion: 'bg-accent', Proposed: 'bg-danger', Approved: 'bg-warning',
-  'In Progress': 'bg-info', Testing: 'bg-purple', Done: 'bg-success',
-};
-
-function BoardCard({ page }: { page: WikiPage }) {
-  const meta = (page.metadata as PageMetadata) || {};
-  return (
-    <Link href={`/${page.tagPath}/${page.slug}`} className="board-card">
-      <span className="board-card-title">{page.title}</span>
-      <div className="board-card-meta">
-        {meta.priority && <Badge variant={PRIORITY_VARIANT[meta.priority] || 'default'}>{meta.priority}</Badge>}
-        {meta.category && <Badge variant="secondary">{meta.category}</Badge>}
-        {meta.owner && <span className="text-text-muted text-xs">{meta.owner.replace(/<[^>]*>/g, ' ').trim()}</span>}
-      </div>
-    </Link>
-  );
-}
-
-function IdeasListView({ pages, categoryFilter, statusFilter }: { pages: IdeasPage[]; categoryFilter: string; statusFilter: string }) {
-  const filtered = useMemo(() => {
-    let result = pages;
-    if (categoryFilter) result = result.filter(p => (p.metadata as PageMetadata)?.category === categoryFilter);
-    if (statusFilter) result = result.filter(p => (p.metadata as PageMetadata)?.status === statusFilter);
-    return result;
-  }, [pages, categoryFilter, statusFilter]);
-
-  if (filtered.length === 0) return <div className="board-empty">No ideas yet.</div>;
-
-  return (
-    <div className="ideas-list">
-      {filtered.map(p => {
-        const meta = (p.metadata as PageMetadata) || {};
-        return (
-          <Link key={p.id} href={`/${p.tagPath}/${p.slug}`} className="ideas-row">
-            <div className="ideas-row-main">
-              <span className="ideas-row-title">{p.title}</span>
-              <div className="ideas-row-badges">
-                {meta.status && <Badge variant={STATUS_VARIANT[meta.status] || 'default'}>{meta.status}</Badge>}
-                {meta.category && <Badge variant="secondary">{meta.category}</Badge>}
-                {meta.priority && <Badge variant={PRIORITY_VARIANT[meta.priority] || 'default'}>{meta.priority}</Badge>}
-              </div>
-            </div>
-            <div className="ideas-row-meta">
-              <span className="ideas-row-replies"><MessageSquare size={14} />{p.replyCount}</span>
-              <span className="ideas-row-activity">{formatRelativeTime(p.lastActivity)}</span>
-            </div>
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
-
-function sortPages(pages: IdeasPage[], sort: SortOrder): IdeasPage[] {
-  return [...pages].sort((a, b) => {
-    if (sort === 'title') return a.title.localeCompare(b.title);
-    if (sort === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    return new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime();
-  });
-}
-
-export function IdeasView({ tagPath, pages, sort }: { tagPath: string[]; pages: IdeasPage[]; sort: SortOrder }) {
-  const router = useRouter();
-  const { isAuthenticated } = useAuth();
-  const pathStr = tagPath.join('/');
-  const tag = findTagByPath(tagPath);
-  const [view, setView] = useState<'list' | 'board'>('list');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [newSlug, setNewSlug] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
-
-  const sorted = useMemo(() => sortPages(pages, sort), [pages, sort]);
-
-  const columns = useMemo(() => {
-    const filtered = categoryFilter ? sorted.filter(p => (p.metadata as PageMetadata)?.category === categoryFilter) : sorted;
-    return IDEAS_STATUS_COLUMNS.map(status => ({
-      status,
-      items: filtered.filter(p => (p.metadata as PageMetadata)?.status === status),
-    }));
-  }, [sorted, categoryFilter]);
-
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    for (const p of pages) {
-      const c = (p.metadata as PageMetadata)?.category;
-      if (c) set.add(c);
-    }
-    return [...set].sort();
-  }, [pages]);
-
-  return (
-    <div className="stack">
-      <Breadcrumbs path={tagPath} />
-      <div className="spread">
-        <h1>{tag?.name || tagPath[tagPath.length - 1]}</h1>
-        <div className="row">
-          <SortToggle sort={sort} tagPath={pathStr} />
-          <button className={cn('icon-btn', view === 'list' && 'text-accent')} onClick={() => setView('list')} title="List view"><List size={18} /></button>
-          <button className={cn('icon-btn', view === 'board' && 'text-accent')} onClick={() => setView('board')} title="Board view"><LayoutGrid size={18} /></button>
-          {isAuthenticated && (
-            showCreate ? (
-              <>
-                <Input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="idea-slug" className="w-48" onKeyDown={e => e.key === 'Enter' && newSlug.trim() && router.push(`/${pathStr}/${slugify(newSlug)}`)} autoFocus />
-                <Button size="sm" onClick={() => { const s = slugify(newSlug); if (s) router.push(`/${pathStr}/${s}`); }} disabled={!newSlug.trim()}>Go</Button>
-                <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
-              </>
-            ) : <Button size="sm" onClick={() => setShowCreate(true)}><Plus size={16} />New Idea</Button>
-          )}
-        </div>
-      </div>
-      {view === 'list' ? (
-        <div className="ideas-panel">
-          <div className="status-tabs">
-            <button className={cn('status-tab', statusFilter === '' && 'border-accent text-accent')} onClick={() => setStatusFilter('')}>All</button>
-            {IDEAS_STATUS_COLUMNS.map(s => (
-              <button key={s} className={cn('status-tab', statusFilter === s && STATUS_TAB_COLOR[s])} onClick={() => setStatusFilter(s)}>{s}</button>
-            ))}
-          </div>
-          {categories.length > 0 && (
-            <div className="status-tabs">
-              <button className={cn('status-tab', categoryFilter === '' && 'border-text text-text')} onClick={() => setCategoryFilter('')}>All Types</button>
-              {categories.map(c => (
-                <button key={c} className={cn('status-tab', categoryFilter === c && 'border-text text-text')} onClick={() => setCategoryFilter(c)}>{c}</button>
-              ))}
-            </div>
-          )}
-          <IdeasListView pages={sorted} categoryFilter={categoryFilter} statusFilter={statusFilter} />
-        </div>
-      ) : (
-        <div className="ideas-panel">
-          {categories.length > 0 && (
-            <div className="status-tabs">
-              <button className={cn('status-tab', categoryFilter === '' && 'border-text text-text')} onClick={() => setCategoryFilter('')}>All Types</button>
-              {categories.map(c => (
-                <button key={c} className={cn('status-tab', categoryFilter === c && 'border-text text-text')} onClick={() => setCategoryFilter(c)}>{c}</button>
-              ))}
-            </div>
-          )}
-          <div className="board-columns">
-          {columns.map(({ status, items }) => (
-            <div key={status} className="board-column">
-              <div className="board-column-head">
-                <span className="flex items-center gap-2"><span className={cn('size-2 rounded-full', STATUS_DOT[status])} />{status}</span>
-                <Badge>{items.length}</Badge>
-              </div>
-              <div className="board-column-body">
-                {items.length > 0 ? items.map(p => <BoardCard key={p.id} page={p} />) : <div className="board-empty">No items</div>}
-              </div>
-            </div>
-          ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ========== METADATA FIELDS ==========
-function RichInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
-
-  useEffect(() => {
-    if (ref.current && ref.current.innerHTML !== value) ref.current.innerHTML = value || '';
-  }, [value]);
-
-  const handlePaste = useCallback((e: React.ClipboardEvent) => {
-    const html = e.clipboardData.getData('text/html');
-    if (!html) return;
-    e.preventDefault();
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    doc.body.querySelectorAll('*').forEach(el => {
-      if (el.tagName === 'A') { Array.from(el.attributes).forEach(a => { if (a.name !== 'href') el.removeAttribute(a.name); }); return; }
-      const parent = el.parentNode!;
-      while (el.firstChild) parent.insertBefore(el.firstChild, el);
-      parent.removeChild(el);
-    });
-    const sel = window.getSelection();
-    if (!sel?.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    range.deleteContents();
-    const frag = range.createContextualFragment(doc.body.innerHTML);
-    range.insertNode(frag);
-    range.collapse(false);
-    onChangeRef.current(ref.current?.innerHTML || '');
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      contentEditable
-      suppressContentEditableWarning
-      onInput={() => onChangeRef.current(ref.current?.innerHTML || '')}
-      onPaste={handlePaste}
-      data-placeholder={placeholder}
-      className="rich-input"
-    />
-  );
-}
-
-function UserPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [query, setQuery] = useState(value || '');
-  const [results, setResults] = useState<{ id: string; displayName: string | null; radixAddress: string }[]>([]);
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (query.length < 2) { setResults([]); return; }
-    const controller = new AbortController();
-    fetch(`/api/users/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
-      .then(r => r.json()).then(setResults).catch(() => {});
-    return () => controller.abort();
-  }, [query]);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  return (
-    <div ref={ref} className="relative">
-      <Input
-        value={query}
-        onChange={e => { setQuery(e.target.value); setOpen(true); if (!e.target.value) onChange(''); }}
-        onFocus={() => setOpen(true)}
-        placeholder="Search users..."
-      />
-      {open && results.length > 0 && (
-        <div className="user-picker-dropdown">
-          {results.map(u => (
-            <button key={u.id} className="user-picker-option" onClick={() => { const name = u.displayName || u.radixAddress.slice(0, 12) + '...'; setQuery(name); onChange(name); setOpen(false); }}>
-              <span className="font-medium">{u.displayName || 'Anonymous'}</span>
-              <span className="text-text-muted text-xs">{u.radixAddress.slice(0, 12)}...</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function MetadataFields({ metadataKeys, metadata, onChange }: { metadataKeys: MetadataKeyDefinition[]; metadata: PageMetadata; onChange: (metadata: PageMetadata) => void }) {
-  if (metadataKeys.length === 0) return null;
-
-  const updateField = (key: string, value: string) => {
-    onChange({ ...metadata, [key]: value });
-  };
-
-  return (
-    <div className="metadata-panel">
-      <h4 className="text-small font-medium text-text-muted m-0!">Page Metadata</h4>
-      <div className="metadata-grid">
-        {metadataKeys.map(({ key, label, type, required, options }) => (
-          <div key={key} className="stack-xs">
-            <label className="text-small font-medium">
-              {label}{required && <span className="text-error ml-1">*</span>}
-            </label>
-            {type === 'select' && options ? (
-              <select
-                value={metadata[key] || ''}
-                onChange={e => updateField(key, e.target.value)}
-                className="input"
-              >
-                <option value="">Select...</option>
-                {options.map(opt => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
-            ) : type === 'text' ? (
-              <RichInput
-                value={metadata[key] || ''}
-                onChange={v => updateField(key, v)}
-                placeholder={label}
-              />
-            ) : type === 'url' ? (
-              <Input
-                type="url"
-                value={metadata[key] || ''}
-                onChange={e => updateField(key, e.target.value)}
-                placeholder={label}
-              />
-            ) : type === 'date' ? (
-              <Input
-                type="date"
-                value={metadata[key] || ''}
-                onChange={e => updateField(key, e.target.value)}
-              />
-            ) : type === 'user' ? (
-              <UserPicker
-                value={metadata[key] || ''}
-                onChange={v => updateField(key, v)}
-              />
-            ) : (
-              <Input
-                value={metadata[key] || ''}
-                onChange={e => updateField(key, e.target.value)}
-                placeholder={label}
-              />
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ========== PAGE EDITOR ==========
-function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string; slug: string }) {
-  const router = useRouter();
-  const { user } = useAuth();
-  const isCreating = !page;
-  const viewPath = `/${tagPath}/${slug}`;
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState<Block[]>([]);
-  const [bannerImage, setBannerImage] = useState<string | null>(null);
-  const [metadata, setMetadata] = useState<PageMetadata>({});
-  const [editSlug, setEditSlug] = useState(slug);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const isAuthor = user && page?.authorId === user.id;
-  const metadataKeys = getMetadataKeys(tagPath.split('/'));
-
-  useEffect(() => {
-    if (page) {
-      setTitle(page.title);
-      setContent(page.content as unknown as Block[]);
-      setBannerImage(page.bannerImage || null);
-      setMetadata((page.metadata as PageMetadata) || {});
-      setEditSlug(page.slug);
-    } else {
-      setTitle('');
-      setContent([createBlock('content')]);
-      setBannerImage(null);
-      setMetadata({});
-    }
-  }, [page, tagPath, slug]);
-
-  const save = async () => {
-    if (!title.trim()) { alert('Title is required'); return; }
-    const requiredKeys = metadataKeys.filter(k => k.required);
-    const missingKeys = requiredKeys.filter(k => !metadata[k.key]?.trim());
-    if (missingKeys.length > 0) {
-      alert(`Missing required metadata: ${missingKeys.map(k => k.label).join(', ')}`);
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const exists = page || (await fetch(`/api/wiki/${tagPath}/${slug}`).then(r => r.ok));
-      const method = exists ? 'PUT' : 'POST';
-      const endpoint = exists ? `/api/wiki/${tagPath}/${slug}` : '/api/wiki';
-      const newSlug = slugify(editSlug);
-      const body = exists ? { title, content, bannerImage, metadata, newSlug } : { title, content, bannerImage, metadata, tagPath, slug: newSlug || slug };
-      const res = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      const data = await res.json();
-      if (res.ok) window.location.href = `/${data.tagPath}/${data.slug}`;
-      else { alert(data.error || 'Failed to save'); setIsSaving(false); }
-    } catch { alert('Failed to save'); setIsSaving(false); }
-  };
-
-  const handleDelete = async () => {
-    if (!page || !confirm('Are you sure you want to delete this page?')) return;
-    setIsDeleting(true);
-    try {
-      const r = await fetch(`/api/wiki/${page.tagPath}/${page.slug}`, { method: 'DELETE' });
-      if (r.ok) router.push(`/${page.tagPath}`);
-      else alert('Failed to delete');
-    } catch { alert('Failed to delete'); }
-    finally { setIsDeleting(false); }
-  };
-
-  if (page && user && isAuthorOnlyPath(page.tagPath) && page.authorId !== user.id) {
-    return <StatusCard status="notAuthorized" backHref={viewPath} />;
-  }
-
-  const canSave = isCreating ? title.trim() : true;
-  const backHref = isCreating ? `/${tagPath}` : viewPath;
-  const saveLabel = isCreating ? (isSaving ? 'Creating...' : 'Create Page') : (isSaving ? 'Saving...' : 'Save Changes');
-
-  const infobox = findInfobox(content) || createBlock('infobox') as import('@/types/blocks').InfoboxBlock;
-  const mainBlocks = content.filter(b => b.type !== 'infobox');
-  const updateMainBlocks = (blocks: Block[]) => setContent([...blocks, infobox]);
-  const updateInfobox = (block: Block) => setContent([...content.filter(b => b.type !== 'infobox'), block]);
-
-  return (
-    <article className="stack">
-      <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix={isCreating ? 'Create' : 'Edit'} />
-      <header className="stack pb-6 border-b border-border">
-        <div className="spread">
-          <Link href={backHref} className="row link-muted"><ArrowLeft size={16} /><span>{isCreating ? 'Back to Category' : 'Back to Page'}</span></Link>
-          <Button onClick={save} disabled={isSaving || !canSave} size="sm"><Save size={16} />{saveLabel}</Button>
-        </div>
-        <div data-callout="info"><p>{isCreating ? `Creating new page at` : `Editing page at`} <code>/{tagPath}/{slug}</code> — requires <strong>{getXrdRequired(isCreating ? 'create' : 'edit', tagPath).toLocaleString()} XRD</strong></p></div>
-        <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
-        <div className="slug-editor">
-          <Link2 size={14} />
-          <span>/{tagPath}/</span>
-          <input type="text" value={editSlug} onChange={e => setEditSlug(e.target.value.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-'))} onBlur={() => setEditSlug(slugify(editSlug))} placeholder="page-slug" />
-        </div>
-      </header>
-      <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
-      <MetadataFields metadataKeys={metadataKeys} metadata={metadata} onChange={setMetadata} />
-      <div className="page-with-infobox">
-        <div className="page-main-content">
-          <BlockEditor content={mainBlocks} onChange={updateMainBlocks} />
-        </div>
-        <aside className="infobox-editor">
-          <InfoboxEditor block={infobox} onChange={updateInfobox} />
-        </aside>
-      </div>
-      {isAuthor && !isCreating && (
-        <div className="section-divider">
-          <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isDeleting} className="text-error hover:bg-error/10">
-            <Trash2 size={16} />{isDeleting ? 'Deleting...' : 'Delete Page'}
-          </Button>
-        </div>
-      )}
-    </article>
-  );
-}
-
 // ========== PAGE VIEW (Read-only) ==========
 function PageViewContent({ page, adjacent }: { page: WikiPage; adjacent: AdjacentPages }) {
+  const { isAuthenticated } = useAuth();
   const isCommunityPage = page.tagPath.startsWith('community');
   const blocks = (page.content as unknown as Block[]) || [];
   const infobox = findInfobox(blocks) || { id: '__infobox__', type: 'infobox' as const, blocks: [] };
@@ -789,6 +353,9 @@ function PageViewContent({ page, adjacent }: { page: WikiPage; adjacent: Adjacen
           {isCommunityPage && <UserStats authorId={page.authorId} />}
           <Discussion pageId={page.id} tagPath={page.tagPath} />
           <PageNav adjacent={adjacent} />
+          {isAuthenticated && (
+            <Link href={`/${page.tagPath}/${page.slug}/edit`} className="edit-cta">Something missing? Edit this page →</Link>
+          )}
         </div>
         <InfoboxSidebar block={infobox} metadata={page.metadata} tagPath={page.tagPath} />
       </div>
@@ -804,7 +371,7 @@ export function PageView({ page, tagPath, slug, isEditMode, adjacent }: { page: 
 
   if (isEditMode && !isAuthenticated) return <StatusCard status="authRequired" backHref={viewPath} />;
   if (!page && !isAuthenticated) return <StatusCard status="notFound" backHref="/" />;
-  if (!page && isAuthenticated) return <PageEditor tagPath={tagPath} slug={slug} />;
+  if (!page && isAuthenticated) return <LazyPageEditor tagPath={tagPath} slug={slug} />;
   if (!page) return <StatusCard status="notFound" backHref="/" />;
-  return isEditMode ? <PageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} adjacent={adjacent} />;
+  return isEditMode ? <LazyPageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} adjacent={adjacent} />;
 }

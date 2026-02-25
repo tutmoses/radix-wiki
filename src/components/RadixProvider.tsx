@@ -3,6 +3,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useStore } from '@/hooks';
 import { RADIX_CONFIG } from '@/lib/radix/config';
 import type { RadixWalletData } from '@/types';
@@ -10,6 +11,7 @@ import type { RadixWalletData } from '@/types';
 type RadixDappToolkitType = Awaited<ReturnType<typeof import('@radixdlt/radix-dapp-toolkit').RadixDappToolkit>>;
 
 export function RadixProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const rdtRef = useRef<RadixDappToolkitType | null>(null);
   const isAuthenticatingRef = useRef(false);
   const setSession = useStore(s => s.setSession);
@@ -34,6 +36,7 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const session = await response.json();
         setSession(session);
+        if (session.isNewUser) router.push('/welcome');
       }
     } catch (error) {
       console.error('Session creation error:', error);
