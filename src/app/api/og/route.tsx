@@ -19,6 +19,7 @@ function getPalette(tagPath: string) {
 }
 
 const SIZE = { width: 1200, height: 630 };
+const CACHE_HEADERS = { 'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800' };
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -49,7 +50,7 @@ export async function GET(req: Request) {
           </div>
         </div>
       ),
-      SIZE,
+      { ...SIZE, headers: CACHE_HEADERS },
     );
   }
 
@@ -93,6 +94,6 @@ export async function GET(req: Request) {
         </div>
       </div>
     ),
-    SIZE,
+    { ...SIZE, headers: CACHE_HEADERS },
   );
 }
