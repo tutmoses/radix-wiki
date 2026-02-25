@@ -27,7 +27,7 @@ const SUFFIXES = ['edit', 'history', 'mdx'] as const;
 type Suffix = typeof SUFFIXES[number];
 
 export interface ParsedPath {
-  type: 'homepage' | 'category' | 'page' | 'history' | 'edit' | 'mdx' | 'invalid';
+  type: 'homepage' | 'category' | 'page' | 'history' | 'edit' | 'mdx' | 'leaderboard' | 'invalid';
   tagPath: string;
   slug: string;
   suffix: Suffix | null;
@@ -36,6 +36,11 @@ export interface ParsedPath {
 export function parsePath(segments: string[] = [], mode: 'client' | 'api' = 'client'): ParsedPath {
   const base: ParsedPath = { type: 'homepage', tagPath: '', slug: '', suffix: null };
   if (segments.length === 0) return base;
+
+  // Static pages
+  if (segments.length === 1 && segments[0] === 'leaderboard') {
+    return { ...base, type: 'leaderboard' };
+  }
 
   // Single-segment suffix (e.g., /edit, /history, /mdx)
   if (segments.length === 1 && SUFFIXES.includes(segments[0] as Suffix)) {

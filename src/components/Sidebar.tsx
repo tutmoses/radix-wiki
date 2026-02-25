@@ -4,7 +4,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, ChevronRight, ChevronDown, ListTree } from 'lucide-react';
+import { Home, Trophy, ChevronRight, ChevronDown, ListTree } from 'lucide-react';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { useStore, useIsMobile, usePagePath } from '@/hooks';
@@ -107,6 +107,7 @@ export function Sidebar() {
         <div className="stack-sm p-4">
           <nav className="stack-sm">
             <NavItem href="/" icon={<Home size={18} />} label="Home" isActive={pathname === '/'} onNavigate={closeMobile} />
+            <NavItem href="/leaderboard" icon={<Trophy size={18} />} label="Leaderboard" isActive={pathname === '/leaderboard'} onNavigate={closeMobile} />
           </nav>
         </div>
 

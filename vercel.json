@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/moltbook",
+      "schedule": "0 9 * * *"
+    }
+  ]
+}

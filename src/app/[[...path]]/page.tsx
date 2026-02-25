@@ -3,12 +3,14 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { parsePath, getHomepage, getPage, getCategoryPages, isIdeasPath, getIdeasPages, getPageHistory, getAdjacentPages, resolveBlockData } from '@/lib/wiki';
-import { getSortOrder, TAG_HIERARCHY, type TagNode, type SortOrder } from '@/lib/tags';
+import { findTagByPath, getSortOrder, TAG_HIERARCHY, type TagNode, type SortOrder } from '@/lib/tags';
 import { highlightBlocks } from '@/lib/highlight';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { prisma } from '@/lib/prisma/client';
 import { PageView, HomepageView, CategoryView, IdeasView, PageSkeleton, StatusCard, HistoryView, type HistoryData } from './PageContent';
+import { LeaderboardView } from '@/components/LeaderboardView';
 import type { Block } from '@/types/blocks';
+import type { WikiPage } from '@/types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
@@ -37,6 +39,10 @@ type Props = { params: Promise<{ path?: string[] }>; searchParams: Promise<{ sor
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { path } = await params;
   const parsed = parsePath(path);
+
+  if (parsed.type === 'leaderboard') {
+    return { title: 'Leaderboard', description: 'Top RADIX.wiki contributors ranked by contribution points.' };
+  }
 
   let page = null;
   if (parsed.type === 'homepage') page = await getHomepage();
@@ -71,6 +77,39 @@ async function withProcessedContent<T extends { content: unknown }>(page: T | nu
   return { ...page, content };
 }
 
+function ArticleJsonLd({ page, url }: { page: WikiPage; url: string }) {
+  const ld = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: page.title,
+    description: page.excerpt || '',
+    url,
+    datePublished: page.createdAt,
+    dateModified: page.updatedAt,
+    author: { '@type': 'Person', name: page.author?.displayName || 'Anonymous', identifier: page.author?.radixAddress },
+    publisher: { '@type': 'Organization', name: 'RADIX Wiki', url: BASE_URL },
+    ...(page.bannerImage && { image: page.bannerImage }),
+    isPartOf: { '@type': 'WebSite', name: 'RADIX Wiki', url: BASE_URL },
+  };
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />;
+}
+
+function BreadcrumbJsonLd({ path }: { path: string[] }) {
+  const items = [{ '@type': 'ListItem' as const, position: 1, name: 'Home', item: BASE_URL }];
+  for (let i = 0; i < path.length; i++) {
+    const segments = path.slice(0, i + 1);
+    const tag = findTagByPath(segments);
+    items.push({
+      '@type': 'ListItem',
+      position: i + 2,
+      name: tag?.name || segments[i].replace(/-/g, ' '),
+      item: `${BASE_URL}/${segments.join('/')}`,
+    });
+  }
+  const ld = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: items };
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />;
+}
+
 const VALID_SORTS = new Set<string>(['title', 'newest', 'oldest', 'recent']);
 
 export default async function DynamicPage({ params, searchParams }: Props) {
@@ -79,6 +118,8 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   const parsed = parsePath(path);
 
   if (parsed.type === 'invalid') return <StatusCard status="invalidPath" backHref="/" />;
+
+  if (parsed.type === 'leaderboard') return <LeaderboardView />;
 
   if (parsed.type === 'homepage') {
     const page = await withProcessedContent(await getHomepage());
@@ -116,5 +157,13 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   const rawPage = await getPage(parsed.tagPath, parsed.slug);
   const page = parsed.suffix === 'edit' ? rawPage : await withProcessedContent(rawPage);
   const adjacent = page ? await getAdjacentPages(parsed.tagPath, page.title, new Date(page.createdAt).toISOString(), new Date(page.updatedAt).toISOString()) : { prev: null, next: null };
-  return <Suspense fallback={<PageSkeleton />}><PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} adjacent={adjacent} /></Suspense>;
+  const pathSegments = [...parsed.tagPath.split('/'), parsed.slug];
+  const pageUrl = `${BASE_URL}/${pathSegments.join('/')}`;
+  return (
+    <>
+      {page && <ArticleJsonLd page={page} url={pageUrl} />}
+      <BreadcrumbJsonLd path={pathSegments} />
+      <Suspense fallback={<PageSkeleton />}><PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} adjacent={adjacent} /></Suspense>
+    </>
+  );
 }

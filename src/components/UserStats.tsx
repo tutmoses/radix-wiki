@@ -2,7 +2,7 @@
 
 'use client';
 
-import { FileText, MessageSquare, Edit3, Calendar, Users, Shield } from 'lucide-react';
+import { FileText, MessageSquare, Edit3, Calendar, Users, Shield, Star } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { useFetch } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -21,6 +21,14 @@ interface UserStatsData {
     accountAgeDays: number;
   };
   score: number;
+  points: number;
+  breakdown: {
+    pages: number;
+    edits: number;
+    contributions: number;
+    comments: number;
+    tenure: number;
+  };
 }
 
 function StatItem({ icon: Icon, label, value }: { icon: typeof FileText; label: string; value: number | string }) {
@@ -33,7 +41,7 @@ function StatItem({ icon: Icon, label, value }: { icon: typeof FileText; label: 
   );
 }
 
-function ScoreRing({ score }: { score: number }) {
+function ScoreRing({ score, points }: { score: number; points: number }) {
   const radius = 40;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
@@ -56,7 +64,10 @@ function ScoreRing({ score }: { score: number }) {
           <Shield size={16} className={tierColor} />
           <span className={cn('font-medium', tierColor)}>{tier}</span>
         </div>
-        <span className="text-small text-text-muted">Reputation</span>
+        <div className="row text-small">
+          <Star size={12} className="text-accent" />
+          <span className="text-text-muted">{points.toLocaleString()} pts</span>
+        </div>
       </div>
     </div>
   );
@@ -83,14 +94,15 @@ export function UserStats({ authorId }: { authorId: string }) {
       <div className="center">
         <UserAvatar radixAddress={data.radixAddress} avatarUrl={data.avatarUrl} size="lg" />
       </div>
-      <h3 className="text-text-muted">Statistics</h3>
+      <h3 className="text-text-muted">Contribution Points</h3>
       <div className="stat-grid">
-        <ScoreRing score={data.score} />
+        <ScoreRing score={data.score} points={data.points} />
         <StatItem icon={FileText} label="Pages" value={data.stats.pages} />
         <StatItem icon={Users} label="Contributions" value={data.stats.uniqueContributions} />
         <StatItem icon={Edit3} label="Edits" value={data.stats.edits} />
         <StatItem icon={Calendar} label="Member Since" value={formatDate(data.memberSince, { month: 'short', year: 'numeric' })} />
       </div>
+      <p className="text-small text-text-muted text-center">Points count toward a future XRD airdrop for contributors.</p>
     </section>
   );
 }

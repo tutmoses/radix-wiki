@@ -73,6 +73,15 @@ export async function GET(_request: Request, context: RouteContext<PathParams>) 
       10 * dampen(accountAgeDays, 50) * hasActivity
     ), 100);
 
-    return json({ userId: user.id, displayName: user.displayName, radixAddress: user.radixAddress, avatarUrl: user.avatarUrl, memberSince: user.createdAt, stats, score });
+    const breakdown = {
+      pages: stats.pages * 150,
+      edits: editSlots.size * 80,
+      contributions: uniquePages.size * 80,
+      comments: commentSlots.size * 70,
+      tenure: Math.floor(accountAgeDays / 30) * 50,
+    };
+    const points = Object.values(breakdown).reduce((a, b) => a + b, 0);
+
+    return json({ userId: user.id, displayName: user.displayName, radixAddress: user.radixAddress, avatarUrl: user.avatarUrl, memberSince: user.createdAt, stats, score, points, breakdown });
   }, 'Failed to fetch user stats');
 }
