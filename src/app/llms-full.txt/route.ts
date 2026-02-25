@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import type { Block, AtomicBlock } from '@/types/blocks';
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 

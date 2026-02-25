@@ -86,18 +86,12 @@ const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; com
 });
 
 // ========== BLOCK VIEW COMPONENTS ==========
-function RecentPagesFetcher({ block }: { block: RecentPagesBlock }) {
-  const { pages, isLoading } = usePages({ type: 'recent', tagPath: block.tagPath, limit: block.limit });
-  if (isLoading) return <div className="recent-pages-grid">{Array.from({ length: Math.min(block.limit, 3) }, (_, i) => <div key={i} className="h-32 skeleton" />)}</div>;
-  if (!pages.length) return <p className="text-text-muted">No pages found.</p>;
-  return <div className="recent-pages-grid">{pages.map(p => <PageCard key={p.id} page={p} />)}</div>;
-}
-
 function RecentPagesBlockView({ block }: { block: RecentPagesBlock }) {
-  if (!block.resolvedPages) return <RecentPagesFetcher block={block} />;
-  const pages = block.resolvedPages;
-  if (!pages.length) return <p className="text-text-muted">No pages found.</p>;
-  return <div className="recent-pages-grid">{pages.map((p: any) => <PageCard key={p.id} page={p} />)}</div>;
+  const { pages, isLoading } = usePages({ type: 'recent', tagPath: block.tagPath, limit: block.limit });
+  const display = pages.length ? pages : block.resolvedPages || [];
+  if (isLoading && !display.length) return <div className="recent-pages-grid">{Array.from({ length: Math.min(block.limit, 3) }, (_, i) => <div key={i} className="h-32 skeleton" />)}</div>;
+  if (!display.length) return <p className="text-text-muted">No pages found.</p>;
+  return <div className="recent-pages-grid">{display.map((p: any) => <PageCard key={p.id} page={p} />)}</div>;
 }
 
 function PageListFetcher({ block }: { block: PageListBlock }) {
