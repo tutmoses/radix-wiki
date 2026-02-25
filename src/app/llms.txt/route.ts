@@ -15,6 +15,17 @@ function collectCategories(nodes: TagNode[], parent = ''): { path: string; name:
 
 const ROADMAP_PATHS = ['contents/tech/research', 'contents/tech/releases', 'contents/tech/core-protocols', 'contents/tech/core-concepts'];
 
+/** Strip URLs, parenthesised URLs, and clean up whitespace from excerpts */
+function cleanExcerpt(s: string): string {
+  return s
+    .replace(/\(https?:\/\/[^)]*\)/g, '')
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/\(\s*\)/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    .slice(0, 160);
+}
+
 const PREAMBLE = `# RADIX Wiki — The Knowledge Base for Radix DLT
 
 > RADIX.wiki is the community-maintained knowledge base for Radix, the only
@@ -98,7 +109,7 @@ export async function GET() {
     '',
     ...roadmapPages
       .filter(p => p.tagPath && p.slug)
-      .map(p => `- [${p.title}](${BASE_URL}/${p.tagPath}/${p.slug})${p.excerpt ? `: ${p.excerpt}` : ''}`),
+      .map(p => { const e = p.excerpt ? cleanExcerpt(p.excerpt) : ''; return `- [${p.title}](${BASE_URL}/${p.tagPath}/${p.slug})${e ? `: ${e}` : ''}`; }),
     '',
     '## Categories',
     '',
@@ -108,7 +119,7 @@ export async function GET() {
     '',
     ...pages
       .filter(p => p.tagPath && p.slug)
-      .map(p => `- [${p.title}](${BASE_URL}/${p.tagPath}/${p.slug})${p.excerpt ? `: ${p.excerpt}` : ''}`),
+      .map(p => { const e = p.excerpt ? cleanExcerpt(p.excerpt) : ''; return `- [${p.title}](${BASE_URL}/${p.tagPath}/${p.slug})${e ? `: ${e}` : ''}`; }),
   ];
 
   return new NextResponse(lines.join('\n'), {

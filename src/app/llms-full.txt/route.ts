@@ -8,8 +8,9 @@ const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 
 function stripHtml(html: string): string {
   return html
+    .replace(/<a[^>]+href="([^"]*)"[^>]*>(.*?)<\/a>/gi, ' $2 ($1) ')
     .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/(?:p|h[1-6]|li|tr|div)>/gi, '\n')
+    .replace(/<\/(?:p|h[1-6]|li|tr|th|td|div)>/gi, '\n')
     .replace(/<(?:li)>/gi, '- ')
     .replace(/<[^>]+>/g, '')
     .replace(/&amp;/g, '&')
@@ -20,6 +21,16 @@ function stripHtml(html: string): string {
     .replace(/&nbsp;/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+function cleanExcerpt(s: string): string {
+  return s
+    .replace(/\(https?:\/\/[^)]*\)/g, '')
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/\(\s*\)/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    .slice(0, 160);
 }
 
 function extractText(blocks: Block[]): string {
@@ -58,7 +69,7 @@ export async function GET() {
     .map(p => {
       const url = `${BASE_URL}/${p.tagPath}/${p.slug}`;
       const body = extractText((p.content as unknown as Block[]) || []);
-      return `## ${p.title}\n\nURL: ${url}\nUpdated: ${p.updatedAt.toISOString().split('T')[0]}\n${p.excerpt ? `Summary: ${p.excerpt}\n` : ''}\n${body}`;
+      return `## ${p.title}\n\nURL: ${url}\nUpdated: ${p.updatedAt.toISOString().split('T')[0]}\n${p.excerpt ? `Summary: ${cleanExcerpt(p.excerpt)}\n` : ''}\n${body}`;
     });
 
   const text = [
