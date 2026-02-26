@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     if (!process.env.MOLTBOOK_API_KEY) return errors.badRequest('MOLTBOOK_API_KEY not configured');
 
     const body = await request.json().catch(() => ({}));
-    const { template: forceTemplate, limit = 3 } = body as { template?: Template; limit?: number };
+    const { template: forceTemplate, limit = 1 } = body as { template?: Template; limit?: number };
 
     // Get recently updated pages not yet posted
     const pages = await prisma.page.findMany({

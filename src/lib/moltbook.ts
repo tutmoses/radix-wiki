@@ -49,15 +49,46 @@ function parseWordNumber(text: string): number {
   return total + current;
 }
 
+/** Deobfuscate a single word: collapse repeated chars, check if any known word
+ *  is a subsequence. Returns the matching vocabulary word or the collapsed form. */
+function deobWord(raw: string): string {
+  const collapsed = raw.toLowerCase().replace(/(.)\1+/g, '$1');
+  // Check longest words first so "fourteen" matches before "four"
+  const vocab = [...Object.keys(WORDS), 'and', 'total', 'force', 'newton', 'meter', 'speed',
+    'velocity', 'accelerate', 'add', 'push', 'together', 'multiply', 'times', 'grow', 'what',
+    'lobster', 'claw', 'swim', 'ocean', 'exert', 'other', 'after', 'their', 'territory']
+    .sort((a, b) => b.length - a.length);
+  for (const w of vocab) {
+    if (collapsed.includes(w)) return w;
+    // Also check collapsed form of vocab word: "fifteen" → "fiften"
+    const collapsedVocab = w.replace(/(.)\1+/g, '$1');
+    if (collapsed.includes(collapsedVocab) && collapsedVocab.length >= 3) return w;
+  }
+  return collapsed;
+}
+
 function solveChallenge(text: string): string | null {
-  const clean = text.replace(/[^a-zA-Z ]/g, '').replace(/\s+/g, ' ').toLowerCase();
-  const numParts = clean.split(/(?:and|what|is|the|total|force|um|ooo|luxxx?|newtons?|nootons?|meters?|neurons?|velocity|speed|lobster|claw|swims?|ocean|exerts?|grow)\s*/);
-  const nums: number[] = [];
-  for (const p of numParts) { const n = parseWordNumber(p); if (n > 0) nums.push(n); }
-  if (nums.length < 2) return nums.length === 1 ? nums[0].toFixed(2) : null;
-  const isAdd = /accelerat|adds|new speed|grows? by/.test(clean);
-  const isMul = /total force|multipli|push together|times/.test(clean);
-  const result = isAdd ? nums[0] + nums[1] : isMul ? nums[0] * nums[1] : nums[0] * nums[1];
+  const words = text.replace(/[^a-zA-Z ]/g, '').replace(/\s+/g, ' ').split(' ').map(deobWord);
+  const clean = words.join(' ');
+
+  // Extract number tokens
+  const tokens = clean.split(/\s+/).filter(t => WORDS[t] !== undefined);
+  // Resolve compound numbers (twenty eight → 28, five hundred → 500)
+  const values: number[] = [];
+  let current = 0;
+  for (const t of tokens) {
+    const v = WORDS[t];
+    if (v === 100) current = (current || 1) * 100;
+    else if (v === 1000) { values.push((current || 1) * 1000); current = 0; }
+    else if (v < 10 && current >= 20) current += v;
+    else { if (current > 0) values.push(current); current = v; }
+  }
+  if (current > 0) values.push(current);
+  if (values.length < 2) return values.length === 1 ? values[0].toFixed(2) : null;
+
+  const isAdd = /accelerat|adds?|new.?speed|grows?.?by/.test(clean);
+  const isMul = /total.?force|multipli|push.?together|times/.test(clean);
+  const result = isAdd ? values[0] + values[1] : isMul ? values[0] * values[1] : values[0] * values[1];
   return result.toFixed(2);
 }
 
@@ -132,7 +163,7 @@ export async function generateReply(
   try {
     const anthropic = new Anthropic();
     const msg = await anthropic.messages.create({
-      model: 'claude-opus-4-6',
+      model: 'claude-sonnet-4-6',
       max_tokens: 150,
       system: SYSTEM_PROMPT,
       messages: [{

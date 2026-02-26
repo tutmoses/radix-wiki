@@ -9,7 +9,9 @@ import {
 import { json, errors, handleRoute } from '@/lib/api';
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
-const MAX_ENGAGEMENTS = 3;
+const MAX_ENGAGEMENTS = 4;
+
+export const maxDuration = 120;
 
 export async function POST(request: Request) {
   return handleRoute(async () => {
