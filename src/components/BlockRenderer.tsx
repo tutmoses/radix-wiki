@@ -251,8 +251,6 @@ export function InfoboxSidebar({ block, metadata, tagPath, pageInfo }: { block: 
   const metaBlock = metadata && tagPath ? buildMetadataBlock(metadata, tagPath) : null;
   return (
     <aside className="infobox stack">
-      {metaBlock && <div>{renderBlockView(metaBlock)}</div>}
-      {(block.blocks || []).map(b => <div key={b.id}>{renderBlockView(b)}</div>)}
       {pageInfo && (
         <div className="infobox-page-info">
           {pageInfo.author && (
@@ -281,6 +279,8 @@ export function InfoboxSidebar({ block, metadata, tagPath, pageInfo }: { block: 
           )}
         </div>
       )}
+      {metaBlock && <div>{renderBlockView(metaBlock)}</div>}
+      {(block.blocks || []).map(b => <div key={b.id}>{renderBlockView(b)}</div>)}
     </aside>
   );
 }

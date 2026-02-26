@@ -453,7 +453,7 @@
   }
 
   .infobox-page-info {
-    @apply flex flex-col gap-1.5 border-t border-border-muted pt-3 text-sm;
+    @apply flex flex-col gap-1.5 border-b border-border-muted pb-3 text-sm;
   }
 
   /* Infobox editor sidebar */
@@ -479,9 +479,6 @@
 
   /* ===== EMPTY STATES ===== */
   .empty-state { @apply py-12 text-center; }
-
-
-
 
   /* ===== ASSET PRICE ===== */
   .asset-price { @apply bg-surface-1 border border-border-muted rounded-lg p-4 flex items-center gap-4; }

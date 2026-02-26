@@ -41,6 +41,17 @@ export function paginatedResponse<T>(items: T[], total: number, page: number, pa
   return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
 }
 
+export const CACHE = {
+  short: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+  medium: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+  long: { 'Cache-Control': 'public, s-maxage=3600' },
+  og: { 'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800' },
+} as const;
+
+export function cachedJson<T>(data: T, headers: Record<string, string> = CACHE.short, status?: number) {
+  return NextResponse.json(data, { status, headers });
+}
+
 export async function handleRoute(fn: () => Promise<NextResponse>, errorMsg = 'Internal server error'): Promise<NextResponse> {
   try {
     return await fn();

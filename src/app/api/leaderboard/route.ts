@@ -2,12 +2,11 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { json, handleRoute, parsePagination, paginatedResponse } from '@/lib/api';
+import { totalPoints } from '@/lib/scoring';
 import { unstable_cache } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 300;
-
-const WEIGHTS = { page: 150, edit: 80, contribution: 80, comment: 70, tenure: 50 } as const;
 
 interface LeaderboardRow {
   id: string;
@@ -53,12 +52,7 @@ const getLeaderboardScores = unstable_cache(
       const contributions = Number(u.unique_pages);
       const comments = Number(u.comment_slots);
       const ageDays = Math.floor((Date.now() - new Date(u.created_at).getTime()) / 86_400_000);
-      const points =
-        pages * WEIGHTS.page +
-        edits * WEIGHTS.edit +
-        contributions * WEIGHTS.contribution +
-        comments * WEIGHTS.comment +
-        Math.floor(ageDays / 30) * WEIGHTS.tenure;
+      const points = totalPoints({ pages, edits, contributions, comments, ageDays });
 
       return {
         id: u.id,

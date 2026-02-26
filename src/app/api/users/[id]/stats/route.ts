@@ -2,12 +2,9 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { json, errors, handleRoute, type RouteContext } from '@/lib/api';
+import { computePoints, totalPoints, ringScore } from '@/lib/scoring';
 
 type PathParams = { id: string };
-
-function dampen(value: number, base = 10): number {
-  return value > 0 ? Math.log(value + 1) / Math.log(base) : 0;
-}
 
 interface AggRow {
   edit_slots: bigint;
@@ -61,24 +58,10 @@ export async function GET(_request: Request, context: RouteContext<PathParams>) 
       accountAgeDays,
     };
 
-    const hasActivity = (stats.edits + stats.comments) > 0 ? 1 : 0;
-
-    const score = Math.min(Math.round(
-      15 * dampen(stats.pages, 10) +
-       8 * dampen(stats.edits, 5) +
-       8 * dampen(stats.uniqueContributions, 5) +
-       7 * dampen(stats.comments, 8) +
-      10 * dampen(accountAgeDays, 50) * hasActivity
-    ), 100);
-
-    const breakdown = {
-      pages: stats.pages * 150,
-      edits: stats.edits * 80,
-      contributions: stats.uniqueContributions * 80,
-      comments: stats.comments * 70,
-      tenure: Math.floor(accountAgeDays / 30) * 50,
-    };
-    const points = Object.values(breakdown).reduce((a, b) => a + b, 0);
+    const input = { pages: stats.pages, edits: stats.edits, contributions: stats.uniqueContributions, comments: stats.comments, ageDays: accountAgeDays };
+    const score = ringScore(input);
+    const breakdown = computePoints(input);
+    const points = totalPoints(input);
 
     return json({ userId: user.id, displayName: user.displayName, radixAddress: user.radixAddress, avatarUrl: user.avatarUrl, memberSince: user.createdAt, stats, score, points, breakdown });
   }, 'Failed to fetch user stats');

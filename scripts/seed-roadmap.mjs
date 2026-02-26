@@ -1,12 +1,4 @@
-import pg from 'pg';
-import { randomUUID, randomBytes } from 'crypto';
-import { config } from 'dotenv';
-config();
-
-const uid = () => randomUUID();
-const cuid = () => 'c' + randomBytes(12).toString('hex').slice(0, 24);
-const AUTHOR_ID = 'cmk5t48vx0000005zc5se4dqz';
-const TAG_PATH = 'roadmap';
+import { uid, insertPages } from './seed-utils.mjs';
 
 const pages = [
   // ── PROTOCOL ──────────────────────────────────────────────
@@ -286,53 +278,5 @@ const pages = [
   },
 ];
 
-// ── INSERT ──────────────────────────────────────────────────
-
-const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, ssl: { rejectUnauthorized: false } });
-
-async function main() {
-  const client = await pool.connect();
-  let inserted = 0, skipped = 0;
-
-  try {
-    for (const page of pages) {
-      const existing = await client.query(
-        'SELECT id FROM pages WHERE tag_path = $1 AND slug = $2',
-        [TAG_PATH, page.slug],
-      );
-      if (existing.rows.length > 0) { skipped++; continue; }
-
-      const id = cuid();
-      const revId = cuid();
-      const now = new Date().toISOString();
-
-      await client.query('BEGIN');
-
-      await client.query(
-        `INSERT INTO pages (id, slug, title, content, excerpt, tag_path, metadata, version, author_id, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)`,
-        [id, page.slug, page.title, JSON.stringify(page.content), page.excerpt, TAG_PATH, JSON.stringify(page.metadata), '1.0.0', AUTHOR_ID, now],
-      );
-
-      await client.query(
-        `INSERT INTO revisions (id, page_id, content, title, version, change_type, author_id, message, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [revId, id, JSON.stringify(page.content), page.title, '1.0.0', 'major', AUTHOR_ID, 'Initial roadmap item', now],
-      );
-
-      await client.query('COMMIT');
-      inserted++;
-    }
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
-
-  console.log(`Done. Inserted: ${inserted}, Skipped: ${skipped}`);
-  await pool.end();
-}
-
-main().catch(err => { console.error(err); process.exit(1); });
+insertPages(pages, 'roadmap', 'Initial roadmap item')
+  .catch(err => { console.error(err); process.exit(1); });

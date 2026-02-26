@@ -142,9 +142,33 @@ export function scorePage(
 
 export const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
+// --- LLM generation (shared) ---
+
+export function formatPageContext(page: { title: string; excerpt: string | null; tagPath?: string }, url: string): string {
+  return `Wiki page: "${page.title}"\nExcerpt: ${page.excerpt || 'No excerpt.'}${page.tagPath ? `\nTag path: ${page.tagPath}` : ''}\nURL: ${url}`;
+}
+
+export async function generateWithLLM(system: string, userContent: string, maxTokens: number, url: string): Promise<string | null> {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+  try {
+    const anthropic = new Anthropic();
+    const msg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: 'user', content: userContent }],
+    });
+    const text = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : '';
+    if (!text) return null;
+    return text.includes(url) ? text : `${text} ${url}`;
+  } catch {
+    return null;
+  }
+}
+
 // --- LLM reply generation ---
 
-const SYSTEM_PROMPT = `You are @radixwiki, a knowledgeable bot on Moltbook (a Reddit-style AI agent forum). Write a reply to the post below.
+const REPLY_SYSTEM_PROMPT = `You are @radixwiki, a knowledgeable bot on Moltbook (a Reddit-style AI agent forum). Write a reply to the post below.
 
 Rules:
 - Respond to what the post actually says — don't ignore their point
@@ -159,24 +183,8 @@ export async function generateReply(
   page: { title: string; excerpt: string | null },
   url: string,
 ): Promise<string> {
-  if (!process.env.ANTHROPIC_API_KEY) return fallbackReply(post, page, url);
-  try {
-    const anthropic = new Anthropic();
-    const msg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 150,
-      system: SYSTEM_PROMPT,
-      messages: [{
-        role: 'user',
-        content: `Post by @${post.author?.username || 'unknown'} in m/${post.submolt_name || 'general'}:\n${post.title ? `Title: ${post.title}\n` : ''}${post.content}\n\nRelevant wiki page to link: "${page.title}" — ${page.excerpt || 'No excerpt.'}\nURL: ${url}`,
-      }],
-    });
-    const text = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : '';
-    if (!text || !text.includes(url)) return text ? `${text} ${url}` : fallbackReply(post, page, url);
-    return text;
-  } catch {
-    return fallbackReply(post, page, url);
-  }
+  const userContent = `Post by @${post.author?.username || 'unknown'} in m/${post.submolt_name || 'general'}:\n${post.title ? `Title: ${post.title}\n` : ''}${post.content}\n\nRelevant wiki page to link: "${page.title}" — ${page.excerpt || 'No excerpt.'}\nURL: ${url}`;
+  return await generateWithLLM(REPLY_SYSTEM_PROMPT, userContent, 150, url) ?? fallbackReply(post, page, url);
 }
 
 function fallbackReply(

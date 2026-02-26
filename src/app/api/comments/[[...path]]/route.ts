@@ -2,7 +2,7 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, type RouteContext } from '@/lib/api';
+import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, CACHE, type RouteContext } from '@/lib/api';
 import { AUTHOR_SELECT } from '@/lib/wiki';
 import { createNotification } from '@/lib/notifications';
 import type { CommentInput } from '@/types';
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     const res = json(paginatedResponse(comments, total, page, pageSize));
-    res.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+    res.headers.set('Cache-Control', CACHE.medium['Cache-Control']);
     return res;
   }, 'Failed to fetch comments');
 }

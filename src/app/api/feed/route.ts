@@ -3,6 +3,7 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { NextResponse } from 'next/server';
+import { CACHE } from '@/lib/api';
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 
@@ -50,7 +51,7 @@ ${items}
 </rss>`;
 
   return new NextResponse(xml, {
-    headers: { 'Content-Type': 'application/rss+xml; charset=utf-8', 'Cache-Control': 'public, s-maxage=3600' },
+    headers: { 'Content-Type': 'application/rss+xml; charset=utf-8', ...CACHE.long },
   });
 }
 

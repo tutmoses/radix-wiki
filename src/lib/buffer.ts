@@ -1,6 +1,6 @@
 // src/lib/buffer.ts — Tweet generation helpers for Twitter automation via RSS
 
-import Anthropic from '@anthropic-ai/sdk';
+import { generateWithLLM, formatPageContext } from '@/lib/moltbook';
 
 const TWEET_SYSTEM_PROMPT = `You are @RadixWiki, a knowledgeable Twitter account for the Radix DLT ecosystem wiki. Write a tweet about the wiki page below.
 
@@ -16,29 +16,6 @@ export async function generateTweet(
   page: { title: string; excerpt: string | null; tagPath: string },
   url: string,
 ): Promise<string> {
-  if (!process.env.ANTHROPIC_API_KEY) return fallbackTweet(page, url);
-  try {
-    const anthropic = new Anthropic();
-    const msg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 100,
-      system: TWEET_SYSTEM_PROMPT,
-      messages: [{
-        role: 'user',
-        content: `Wiki page: "${page.title}"\nExcerpt: ${page.excerpt || 'No excerpt.'}\nTag path: ${page.tagPath}\nURL: ${url}`,
-      }],
-    });
-    const text = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : '';
-    if (!text) return fallbackTweet(page, url);
-    return text.includes(url) ? text : `${text} ${url}`;
-  } catch {
-    return fallbackTweet(page, url);
-  }
-}
-
-function fallbackTweet(
-  page: { title: string; excerpt: string | null },
-  url: string,
-): string {
-  return `${page.title}: ${page.excerpt || 'Read more on the Radix wiki.'} ${url}`;
+  return await generateWithLLM(TWEET_SYSTEM_PROMPT, formatPageContext(page, url), 100, url)
+    ?? `${page.title}: ${page.excerpt || 'Read more on the Radix wiki.'} ${url}`;
 }

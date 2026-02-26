@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
 import { slugify } from '@/lib/utils';
 import { isValidTagPath, isAuthorOnlyPath, getMetadataKeys } from '@/lib/tags';
-import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, type RouteContext } from '@/lib/api';
+import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, type BlockChange } from '@/lib/versioning';
 import { parsePath, AUTHOR_SELECT, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
 import { validateBlocks } from '@/lib/blocks';
@@ -17,11 +17,7 @@ import type { Block } from '@/types/blocks';
 
 type PathParams = { path?: string[] };
 
-const CACHE_HEADERS = { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' };
 
-function cachedJson<T>(data: T, status?: number) {
-  return NextResponse.json(data, { status, headers: CACHE_HEADERS });
-}
 
 export async function GET(request: NextRequest, context: RouteContext<PathParams>) {
   const { path } = await context.params;
@@ -113,7 +109,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     if (!page && parsed.type === 'homepage') return cachedJson(null);
     if (!page) {
       const res = errors.notFound('Page not found');
-      res.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+      res.headers.set('Cache-Control', CACHE.short['Cache-Control']);
       return res;
     }
 

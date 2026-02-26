@@ -1,34 +1,36 @@
 // src/app/api/moltbook/route.ts — Post wiki content to Moltbook
 
 import { prisma } from '@/lib/prisma/client';
-import { moltbook } from '@/lib/moltbook';
+import { moltbook, generateWithLLM, formatPageContext } from '@/lib/moltbook';
 import { json, errors, handleRoute } from '@/lib/api';
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 const SUBMOLTS = ['radix', 'crypto'];
 
-const TEMPLATES = {
-  newPage: (title: string, excerpt: string, url: string) =>
-    `New on RADIX.wiki: ${title}. ${excerpt} Read more: ${url}`,
-  roadmap: (title: string, excerpt: string, url: string) =>
-    `Roadmap update — ${title}. ${excerpt} Xi'an is bringing cheap transactions and linear scalability to Radix. Full breakdown: ${url}`,
-  dev: (title: string, excerpt: string, url: string) =>
-    `${title}: ${excerpt} Scrypto makes reentrancy exploits impossible by design — assets are native primitives, not contract state. Start building: ${url}`,
-  opportunity: (title: string, excerpt: string, url: string) =>
-    `${title}. ${excerpt} XRD at all-time low while Xi'an development accelerates. You missed Solana at $1.50 — don't miss Radix. ${url}`,
-};
+export const maxDuration = 60;
 
-type Template = keyof typeof TEMPLATES;
+const POST_SYSTEM_PROMPT = `You are @radixwiki, posting on Moltbook (a Reddit-style AI agent forum). Write a post body for the wiki page below.
 
-function pickTemplate(tagPath: string): Template {
-  if (tagPath.includes('research') || tagPath.includes('core-protocols') || tagPath.includes('releases')) return 'roadmap';
-  if (tagPath.startsWith('developers')) return 'dev';
-  return 'newPage';
+Rules:
+- Hook readers in the first sentence — make them want to click
+- Weave in the wiki URL naturally
+- Factual, knowledgeable tone — not salesy
+- Under 300 characters
+- No hashtags, no emojis
+- Vary your format: sometimes a bold claim, sometimes a question, sometimes a surprising fact`;
+
+async function generatePost(
+  page: { title: string; excerpt: string | null; tagPath: string },
+  url: string,
+): Promise<string> {
+  const text = await generateWithLLM(POST_SYSTEM_PROMPT, formatPageContext(page, url), 150, url);
+  if (!text) throw new Error('Empty LLM response');
+  return text;
 }
 
 /**
  * POST /api/moltbook — Post recent wiki pages to Moltbook
- * Body: { slugs?: string[], template?: Template } or empty for auto-pick
+ * Body: { limit?: number } or empty for auto-pick
  * Requires MOLTBOOK_API_KEY env var and a secret header for auth.
  */
 export async function POST(request: Request) {
@@ -39,9 +41,8 @@ export async function POST(request: Request) {
     if (!process.env.MOLTBOOK_API_KEY) return errors.badRequest('MOLTBOOK_API_KEY not configured');
 
     const body = await request.json().catch(() => ({}));
-    const { template: forceTemplate, limit = 1 } = body as { template?: Template; limit?: number };
+    const { limit = 1 } = body as { limit?: number };
 
-    // Get recently updated pages not yet posted
     const pages = await prisma.page.findMany({
       select: { title: true, tagPath: true, slug: true, excerpt: true },
       orderBy: { updatedAt: 'desc' },
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
 
     // Deduplicate: skip pages posted in the last 7 days
     const recentPosts = await prisma.tweet.findMany({
-      where: { type: 'moltbook', createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+      where: { type: 'moltbook', createdAt: { gte: new Date(Date.now() - 7 * 86_400_000) } },
       select: { pageSlug: true, pageTagPath: true },
     });
     const alreadyPosted = new Set(recentPosts.map(p => `${p.pageTagPath}/${p.pageSlug}`));
@@ -65,8 +66,7 @@ export async function POST(request: Request) {
       }
 
       const url = `${BASE_URL}/${page.tagPath}/${page.slug}`;
-      const template = forceTemplate || pickTemplate(page.tagPath);
-      const text = TEMPLATES[template](page.title, page.excerpt, url);
+      const text = await generatePost(page, url);
 
       for (const submolt of SUBMOLTS) {
         try {
