@@ -3,6 +3,10 @@
     {
       "path": "/api/moltbook",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/moltbook/engage",
+      "schedule": "30 9 * * *"
     }
   ]
 }

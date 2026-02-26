@@ -1,4 +1,4 @@
-// src/lib/moltbook.ts — Thin Moltbook API client
+// src/lib/moltbook.ts — Moltbook API client + engagement helpers
 
 const API_BASE = 'https://www.moltbook.com/api/v1';
 
@@ -13,6 +13,20 @@ async function request<T>(path: string, opts?: RequestInit): Promise<T> {
   if (!res.ok) throw new Error(`Moltbook ${path}: ${res.status} ${await res.text()}`);
   return res.json();
 }
+
+// --- Types ---
+
+export interface MoltbookPost {
+  id: string;
+  title: string;
+  content: string;
+  submolt_name: string;
+  upvotes: number;
+  created_at: string;
+  author: { username: string };
+}
+
+// --- Challenge solver ---
 
 const WORDS: Record<string, number> = {
   zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
@@ -35,21 +49,69 @@ function parseWordNumber(text: string): number {
 
 function solveChallenge(text: string): string | null {
   const clean = text.replace(/[^a-zA-Z ]/g, '').replace(/\s+/g, ' ').toLowerCase();
-  // Extract all numbers from text
   const numParts = clean.split(/(?:and|what|is|the|total|force|um|ooo|luxxx?|newtons?|nootons?|meters?|neurons?|velocity|speed|lobster|claw|swims?|ocean|exerts?|grow)\s*/);
   const nums: number[] = [];
   for (const p of numParts) { const n = parseWordNumber(p); if (n > 0) nums.push(n); }
   if (nums.length < 2) return nums.length === 1 ? nums[0].toFixed(2) : null;
-  // Addition: "accelerates by", "adds", "new speed", "grows by"
   const isAdd = /accelerat|adds|new speed|grows? by/.test(clean);
-  // Multiplication: "total force", "multiplied", "push together", "times"
   const isMul = /total force|multipli|push together|times/.test(clean);
   const result = isAdd ? nums[0] + nums[1] : isMul ? nums[0] * nums[1] : nums[0] * nums[1];
   return result.toFixed(2);
 }
 
+// --- Engagement helpers ---
+
+export const ENGAGEMENT_KEYWORDS = [
+  'defi', 'smart contract security', 'blockchain scalability',
+  'layer 1', 'radix', 'scrypto',
+] as const;
+
+export const TOPIC_MAP: Record<string, string[]> = {
+  'defi':                     ['ecosystem', 'contents/tech/core-concepts'],
+  'smart contract security':  ['developers/scrypto', 'contents/tech/core-concepts'],
+  'blockchain scalability':   ['contents/tech/research', 'contents/tech/core-protocols'],
+  'layer 1':                  ['contents/tech/core-protocols', 'contents/tech/research'],
+  'radix':                    ['contents/tech/core-concepts', 'contents/tech/core-protocols'],
+  'scrypto':                  ['developers', 'developers/scrypto'],
+};
+
+export const REPLY_TEMPLATES = {
+  scalability: (title: string, excerpt: string, url: string) =>
+    `Radix's Cerberus consensus solves this with atomic cross-shard commits — no bridging, no fragmentation. ${title}: ${excerpt} ${url}`,
+  defi: (title: string, excerpt: string, url: string) =>
+    `On Radix, tokens are native resources, not contract state — meaning no approval exploits or reentrancy by design. Relevant: ${title}. ${excerpt} ${url}`,
+  security: (title: string, excerpt: string, url: string) =>
+    `Scrypto eliminates entire exploit classes (reentrancy, approval attacks) through asset-oriented programming. More on this: ${title}. ${excerpt} ${url}`,
+  dev: (title: string, excerpt: string, url: string) =>
+    `If you're building smart contracts, Scrypto is worth a look — Rust-based, assets as native primitives. ${title}: ${excerpt} ${url}`,
+  generic: (title: string, excerpt: string, url: string) =>
+    `We've covered this on the Radix wiki — ${title}: ${excerpt} ${url}`,
+} as const;
+
+export type ReplyTemplate = keyof typeof REPLY_TEMPLATES;
+
+export function pickReplyTemplate(keyword: string): ReplyTemplate {
+  if (/scalab|layer.?1|cerberus|shard/.test(keyword)) return 'scalability';
+  if (/defi|yield|swap|liquidity|amm/.test(keyword)) return 'defi';
+  if (/security|audit|exploit|hack|vuln/.test(keyword)) return 'security';
+  if (/scrypto|develop|build|smart.?contract|rust/.test(keyword)) return 'dev';
+  return 'generic';
+}
+
+export function scorePage(
+  post: MoltbookPost,
+  page: { title: string; excerpt: string | null; tagPath: string; slug: string },
+): number {
+  const postText = `${post.title} ${post.content}`.toLowerCase();
+  const pageTokens = `${page.title} ${page.excerpt || ''}`.toLowerCase().split(/\W+/).filter(t => t.length > 3);
+  return pageTokens.reduce((score, token) => score + (postText.includes(token) ? 1 : 0), 0);
+}
+
+export const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+// --- API client ---
+
 export const moltbook = {
-  /** Create a post in a submolt and auto-verify */
   async post(submolt: string, title: string, content: string) {
     const res = await request<{ post: { verification?: { verification_code: string; challenge_text: string } } }>(
       '/posts', { method: 'POST', body: JSON.stringify({ submolt_name: submolt, title, content }) },
@@ -62,28 +124,23 @@ export const moltbook = {
     return res;
   },
 
-  /** Reply to a post */
   comment(postId: string, body: string) {
-    return request(`/posts/${postId}/comments`, { method: 'POST', body: JSON.stringify({ body }) });
+    return request(`/posts/${postId}/comments`, { method: 'POST', body: JSON.stringify({ content: body }) });
   },
 
-  /** Upvote a post */
   upvote(postId: string) {
     return request(`/posts/${postId}/upvote`, { method: 'POST' });
   },
 
-  /** Get the agent's home feed */
   feed(sort?: string) {
     const params = sort ? `?sort=${sort}` : '';
-    return request<{ posts: unknown[] }>(`/feed${params}`);
+    return request<{ posts: MoltbookPost[] }>(`/feed${params}`);
   },
 
-  /** Semantic search across Moltbook */
   search(query: string) {
-    return request<{ results: unknown[] }>(`/search?q=${encodeURIComponent(query)}`);
+    return request<{ results: MoltbookPost[] }>(`/search?q=${encodeURIComponent(query)}`);
   },
 
-  /** Get dashboard/activity overview */
   home() {
     return request('/home');
   },
