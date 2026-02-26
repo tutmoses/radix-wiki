@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma/client';
 import { json, handleRoute, parsePagination, paginatedResponse } from '@/lib/api';
 import { unstable_cache } from 'next/cache';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 300;
 
 const WEIGHTS = { page: 150, edit: 80, contribution: 80, comment: 70, tenure: 50 } as const;
