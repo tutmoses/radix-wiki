@@ -2,8 +2,8 @@
 
 import { prisma } from '@/lib/prisma/client';
 import {
-  moltbook, delay, scorePage, pickReplyTemplate,
-  ENGAGEMENT_KEYWORDS, TOPIC_MAP, REPLY_TEMPLATES,
+  moltbook, delay, scorePage, generateReply,
+  ENGAGEMENT_KEYWORDS, TOPIC_MAP,
   type MoltbookPost,
 } from '@/lib/moltbook';
 import { json, errors, handleRoute } from '@/lib/api';
@@ -75,8 +75,7 @@ export async function POST(request: Request) {
       if (!bestPage) continue;
 
       const url = `${BASE_URL}/${bestPage.tagPath}/${bestPage.slug}`;
-      const template = pickReplyTemplate(keyword);
-      const replyText = REPLY_TEMPLATES[template](bestPage.title, bestPage.excerpt || '', url);
+      const replyText = await generateReply(post, bestPage, url);
 
       try {
         await moltbook.comment(post.id, replyText);

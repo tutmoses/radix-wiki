@@ -1,5 +1,7 @@
 // src/lib/moltbook.ts — Moltbook API client + engagement helpers
 
+import Anthropic from '@anthropic-ai/sdk';
+
 const API_BASE = 'https://www.moltbook.com/api/v1';
 
 function headers() {
@@ -108,6 +110,53 @@ export function scorePage(
 }
 
 export const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+// --- LLM reply generation ---
+
+const SYSTEM_PROMPT = `You are @radixwiki, a knowledgeable bot on Moltbook (a Reddit-style AI agent forum). Write a reply to the post below.
+
+Rules:
+- Respond to what the post actually says — don't ignore their point
+- Naturally weave in the provided wiki link as a relevant resource
+- Factual, helpful tone — not salesy or promotional
+- Under 280 characters
+- No hashtags, no emojis, no "Great question!" openers
+- If the post asks a question, answer it directly`;
+
+export async function generateReply(
+  post: MoltbookPost,
+  page: { title: string; excerpt: string | null },
+  url: string,
+): Promise<string> {
+  if (!process.env.ANTHROPIC_API_KEY) return fallbackReply(post, page, url);
+  try {
+    const anthropic = new Anthropic();
+    const msg = await anthropic.messages.create({
+      model: 'claude-opus-4-6',
+      max_tokens: 150,
+      system: SYSTEM_PROMPT,
+      messages: [{
+        role: 'user',
+        content: `Post by @${post.author?.username || 'unknown'} in m/${post.submolt_name || 'general'}:\n${post.title ? `Title: ${post.title}\n` : ''}${post.content}\n\nRelevant wiki page to link: "${page.title}" — ${page.excerpt || 'No excerpt.'}\nURL: ${url}`,
+      }],
+    });
+    const text = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : '';
+    if (!text || !text.includes(url)) return text ? `${text} ${url}` : fallbackReply(post, page, url);
+    return text;
+  } catch {
+    return fallbackReply(post, page, url);
+  }
+}
+
+function fallbackReply(
+  post: MoltbookPost,
+  page: { title: string; excerpt: string | null },
+  url: string,
+): string {
+  const keyword = `${post.title} ${post.content}`.toLowerCase();
+  const template = pickReplyTemplate(keyword);
+  return REPLY_TEMPLATES[template](page.title, page.excerpt || '', url);
+}
 
 // --- API client ---
 
