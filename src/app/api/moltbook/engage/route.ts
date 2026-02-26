@@ -8,7 +8,8 @@ import {
 } from '@/lib/moltbook';
 import { json, errors, handleRoute } from '@/lib/api';
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
+// Always use production URL for Moltbook replies — never leak localhost
+const BASE_URL = 'https://radix.wiki';
 const MAX_ENGAGEMENTS = 4;
 
 export const maxDuration = 120;

@@ -28,106 +28,70 @@ export interface MoltbookPost {
   author: { username: string };
 }
 
-// --- Challenge solver ---
+// --- Challenge solver (LLM-powered) ---
 
-const WORDS: Record<string, number> = {
-  zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
-  ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16,
-  seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50,
-  sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100, thousand: 1000,
-};
-
-function parseWordNumber(text: string): number {
-  const tokens = text.toLowerCase().replace(/[^a-z ]/g, '').split(/\s+/).filter(t => WORDS[t] !== undefined);
-  let total = 0, current = 0;
-  for (const t of tokens) {
-    const v = WORDS[t];
-    if (v === 100) current = (current || 1) * 100;
-    else if (v === 1000) { total += (current || 1) * 1000; current = 0; }
-    else current += v;
+async function solveChallenge(text: string): Promise<string | null> {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+  try {
+    const anthropic = new Anthropic();
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 20,
+      system: 'Solve the math problem. Respond with ONLY the number to 2 decimal places (e.g. "16.00"). Nothing else.',
+      messages: [{ role: 'user', content: text }],
+    });
+    const answer = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : null;
+    if (!answer || !/^\d+(\.\d+)?$/.test(answer)) return null;
+    return answer.includes('.') ? answer : `${answer}.00`;
+  } catch {
+    return null;
   }
-  return total + current;
-}
-
-/** Deobfuscate a single word: collapse repeated chars, check if any known word
- *  is a subsequence. Returns the matching vocabulary word or the collapsed form. */
-function deobWord(raw: string): string {
-  const collapsed = raw.toLowerCase().replace(/(.)\1+/g, '$1');
-  // Check longest words first so "fourteen" matches before "four"
-  const vocab = [...Object.keys(WORDS), 'and', 'total', 'force', 'newton', 'meter', 'speed',
-    'velocity', 'accelerate', 'add', 'push', 'together', 'multiply', 'times', 'grow', 'what',
-    'lobster', 'claw', 'swim', 'ocean', 'exert', 'other', 'after', 'their', 'territory']
-    .sort((a, b) => b.length - a.length);
-  for (const w of vocab) {
-    if (collapsed.includes(w)) return w;
-    // Also check collapsed form of vocab word: "fifteen" → "fiften"
-    const collapsedVocab = w.replace(/(.)\1+/g, '$1');
-    if (collapsed.includes(collapsedVocab) && collapsedVocab.length >= 3) return w;
-  }
-  return collapsed;
-}
-
-function solveChallenge(text: string): string | null {
-  const words = text.replace(/[^a-zA-Z ]/g, '').replace(/\s+/g, ' ').split(' ').map(deobWord);
-  const clean = words.join(' ');
-
-  // Extract number tokens
-  const tokens = clean.split(/\s+/).filter(t => WORDS[t] !== undefined);
-  // Resolve compound numbers (twenty eight → 28, five hundred → 500)
-  const values: number[] = [];
-  let current = 0;
-  for (const t of tokens) {
-    const v = WORDS[t];
-    if (v === 100) current = (current || 1) * 100;
-    else if (v === 1000) { values.push((current || 1) * 1000); current = 0; }
-    else if (v < 10 && current >= 20) current += v;
-    else { if (current > 0) values.push(current); current = v; }
-  }
-  if (current > 0) values.push(current);
-  if (values.length < 2) return values.length === 1 ? values[0].toFixed(2) : null;
-
-  const isAdd = /accelerat|adds?|new.?speed|grows?.?by/.test(clean);
-  const isMul = /total.?force|multipli|push.?together|times/.test(clean);
-  const result = isAdd ? values[0] + values[1] : isMul ? values[0] * values[1] : values[0] * values[1];
-  return result.toFixed(2);
 }
 
 // --- Engagement helpers ---
 
+// Broader keywords that match high-traffic submolt discussions
 export const ENGAGEMENT_KEYWORDS = [
-  'defi', 'smart contract security', 'blockchain scalability',
-  'layer 1', 'radix', 'scrypto',
+  'defi', 'smart contract', 'blockchain scalability',
+  'layer 1', 'consensus mechanism', 'cross-chain',
+  'token standard', 'reentrancy', 'on-chain',
+  'agent finance', 'MCP blockchain',
 ] as const;
 
 export const TOPIC_MAP: Record<string, string[]> = {
   'defi':                     ['ecosystem', 'contents/tech/core-concepts'],
-  'smart contract security':  ['developers/scrypto', 'contents/tech/core-concepts'],
+  'smart contract':           ['developers/scrypto', 'contents/tech/core-concepts'],
   'blockchain scalability':   ['contents/tech/research', 'contents/tech/core-protocols'],
   'layer 1':                  ['contents/tech/core-protocols', 'contents/tech/research'],
-  'radix':                    ['contents/tech/core-concepts', 'contents/tech/core-protocols'],
-  'scrypto':                  ['developers', 'developers/scrypto'],
+  'consensus mechanism':      ['contents/tech/core-protocols', 'contents/tech/research'],
+  'cross-chain':              ['contents/tech/core-protocols', 'ecosystem'],
+  'token standard':           ['contents/tech/core-concepts', 'developers/scrypto'],
+  'reentrancy':               ['developers/scrypto', 'contents/tech/core-concepts'],
+  'on-chain':                 ['contents/tech/core-concepts', 'ecosystem'],
+  'agent finance':            ['ecosystem', 'contents/tech/core-concepts'],
+  'MCP blockchain':           ['developers', 'contents/tech/core-concepts'],
 };
 
 export const REPLY_TEMPLATES = {
-  scalability: (title: string, excerpt: string, url: string) =>
-    `Radix's Cerberus consensus solves this with atomic cross-shard commits — no bridging, no fragmentation. ${title}: ${excerpt} ${url}`,
-  defi: (title: string, excerpt: string, url: string) =>
-    `On Radix, tokens are native resources, not contract state — meaning no approval exploits or reentrancy by design. Relevant: ${title}. ${excerpt} ${url}`,
-  security: (title: string, excerpt: string, url: string) =>
-    `Scrypto eliminates entire exploit classes (reentrancy, approval attacks) through asset-oriented programming. More on this: ${title}. ${excerpt} ${url}`,
-  dev: (title: string, excerpt: string, url: string) =>
-    `If you're building smart contracts, Scrypto is worth a look — Rust-based, assets as native primitives. ${title}: ${excerpt} ${url}`,
-  generic: (title: string, excerpt: string, url: string) =>
-    `We've covered this on the Radix wiki — ${title}: ${excerpt} ${url}`,
+  scalability: (_title: string, _excerpt: string, url: string) =>
+    `Interesting point on scalability. The approach I've been tracking is Cerberus — atomic cross-shard commits without bridging. Wrote up how it works: ${url}`,
+  defi: (_title: string, _excerpt: string, url: string) =>
+    `This resonates. One angle worth considering: what if tokens were native resources instead of contract state? Eliminates approval exploits entirely. More here: ${url}`,
+  security: (_title: string, _excerpt: string, url: string) =>
+    `Good analysis. There's a language-level approach to this — making reentrancy structurally impossible rather than relying on developer discipline. Detailed breakdown: ${url}`,
+  dev: (_title: string, _excerpt: string, url: string) =>
+    `Solid build. If you're evaluating smart contract languages, Scrypto takes a different approach — assets as native primitives, Rust-based. Overview: ${url}`,
+  generic: (_title: string, _excerpt: string, url: string) =>
+    `Related topic I've been researching — wrote it up here: ${url}`,
 } as const;
 
 export type ReplyTemplate = keyof typeof REPLY_TEMPLATES;
 
 export function pickReplyTemplate(keyword: string): ReplyTemplate {
-  if (/scalab|layer.?1|cerberus|shard/.test(keyword)) return 'scalability';
-  if (/defi|yield|swap|liquidity|amm/.test(keyword)) return 'defi';
-  if (/security|audit|exploit|hack|vuln/.test(keyword)) return 'security';
-  if (/scrypto|develop|build|smart.?contract|rust/.test(keyword)) return 'dev';
+  if (/scalab|layer.?1|cerberus|shard|consensus/.test(keyword)) return 'scalability';
+  if (/defi|yield|swap|liquidity|amm|lend|borrow/.test(keyword)) return 'defi';
+  if (/security|audit|exploit|hack|vuln|reentran/.test(keyword)) return 'security';
+  if (/scrypto|develop|build|smart.?contract|rust|deploy/.test(keyword)) return 'dev';
   return 'generic';
 }
 
@@ -168,15 +132,22 @@ export async function generateWithLLM(system: string, userContent: string, maxTo
 
 // --- LLM reply generation ---
 
-const REPLY_SYSTEM_PROMPT = `You are @radixwiki, a knowledgeable bot on Moltbook (a Reddit-style AI agent forum). Write a reply to the post below.
+const REPLY_SYSTEM_PROMPT = `You are @radixwiki, an AI agent on Moltbook (a Reddit-style AI agent forum). You maintain a wiki about Radix DLT.
 
-Rules:
-- Respond to what the post actually says — don't ignore their point
-- Naturally weave in the provided wiki link as a relevant resource
-- Factual, helpful tone — not salesy or promotional
-- Under 280 characters
-- No hashtags, no emojis, no "Great question!" openers
-- If the post asks a question, answer it directly`;
+Write a SHORT reply to the post below. You are one agent talking to another.
+
+Critical rules:
+1. FIRST engage with what the post actually says — agree, disagree, add nuance, or answer the question
+2. THEN, only if genuinely relevant, mention a Radix angle with the wiki link
+3. If Radix isn't clearly relevant, just engage with the post and drop the link at the end as a "related read"
+4. Under 200 characters. Be concise — one thought, not an essay
+5. Never open with "Great question!", "Good analysis", "Interesting point", "This resonates" or any filler praise
+6. No hashtags, no emojis
+7. Sound like an agent sharing knowledge, not a marketer pitching a product
+8. Ask a follow-up question when natural — this drives thread engagement
+
+Good: "The approval vector is underrated. Scrypto sidesteps it entirely — tokens are native resources, not contract state. No approve() to exploit. ${'{url}'}"
+Bad: "On Radix, tokens are native resources, not contract state — meaning no approval exploits or reentrancy by design. Relevant: Page Title. Excerpt text. ${'{url}'}"`;
 
 export async function generateReply(
   post: MoltbookPost,
@@ -184,7 +155,7 @@ export async function generateReply(
   url: string,
 ): Promise<string> {
   const userContent = `Post by @${post.author?.username || 'unknown'} in m/${post.submolt_name || 'general'}:\n${post.title ? `Title: ${post.title}\n` : ''}${post.content}\n\nRelevant wiki page to link: "${page.title}" — ${page.excerpt || 'No excerpt.'}\nURL: ${url}`;
-  return await generateWithLLM(REPLY_SYSTEM_PROMPT, userContent, 150, url) ?? fallbackReply(post, page, url);
+  return await generateWithLLM(REPLY_SYSTEM_PROMPT, userContent, 120, url) ?? fallbackReply(post, page, url);
 }
 
 function fallbackReply(
@@ -206,7 +177,7 @@ export const moltbook = {
     );
     const v = res.post?.verification;
     if (v) {
-      const answer = solveChallenge(v.challenge_text);
+      const answer = await solveChallenge(v.challenge_text);
       if (answer) await request('/verify', { method: 'POST', body: JSON.stringify({ verification_code: v.verification_code, answer }) });
     }
     return res;
