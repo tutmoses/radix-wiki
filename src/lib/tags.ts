@@ -3,7 +3,7 @@
 export interface MetadataKeyDefinition {
   key: string;
   label: string;
-  type: 'text' | 'date' | 'url' | 'select' | 'user';
+  type: 'text' | 'date' | 'url' | 'select' | 'user' | 'resource_address';
   required?: boolean;
   options?: string[]; // For select type
 }
@@ -164,13 +164,13 @@ export const TAG_HIERARCHY: TagNode[] = [
     slug: 'ecosystem',
     sort: 'recent',
     metadataKeys: [
+      { key: 'assets', label: 'Asset:', type: 'resource_address' },
       { key: 'status', label: 'Status:', type: 'select', options: ['🟢','🟠','🔴'], required: true },
       { key: 'category', label: 'Category:', type: 'select', options: ['Finance', 'Studio', 'Launchpad', 'DAO Platform', 'Media', 'Education', 'Infrastructure', 'Oracle', 'Healthcare', 'NFT Platform', 'LoFi', 'Gaming', 'Stablecoin', 'Token', 'Open Source', 'DeSci'], required: true },
       { key: 'founded', label: 'Founded:', type: 'date' },
       { key: 'website', label: 'Website:', type: 'url' },
       { key: 'socials', label: 'Socials:', type: 'text' },
       { key: 'team', label: 'Team:', type: 'text' },
-      { key: 'assets', label: 'Assets:', type: 'text' },
       { key: 'open positions', label: 'Open Positions:', type: 'text' },
     ],
     xrd: { create: 20_000 } },

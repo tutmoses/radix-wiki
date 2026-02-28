@@ -371,12 +371,17 @@ function formatMetadataValue(value: string, type: string): string {
 function buildMetadataBlock(metadata: PageMetadata, tagPath: string): ContentBlock | null {
   const keys = getMetadataKeys(tagPath.split('/'));
   if (!keys.length || !metadata) return null;
-  const entries = keys.filter(k => metadata[k.key]?.trim());
+  const entries = keys.filter(k => metadata[k.key]?.trim() && k.type !== 'resource_address');
   if (!entries.length) return null;
   const rows = entries.map(({ key, label, type }) =>
     `<tr><th>${label}</th><td>${formatMetadataValue(metadata[key], type)}</td></tr>`
   ).join('');
   return { id: '__metadata__', type: 'content', text: `<table>${rows}</table>` };
+}
+
+function getResourceAddressEntries(metadata: PageMetadata, tagPath: string): { key: string; label: string; value: string }[] {
+  const keys = getMetadataKeys(tagPath.split('/'));
+  return keys.filter(k => k.type === 'resource_address' && metadata[k.key]?.trim()).map(k => ({ key: k.key, label: k.label, value: metadata[k.key] }));
 }
 
 interface InfoboxPageInfo {
@@ -388,6 +393,7 @@ interface InfoboxPageInfo {
 
 export function InfoboxSidebar({ block, metadata, tagPath, pageInfo }: { block: InfoboxBlock; metadata?: PageMetadata | null; tagPath?: string; pageInfo?: InfoboxPageInfo | null }) {
   const metaBlock = metadata && tagPath ? buildMetadataBlock(metadata, tagPath) : null;
+  const assetEntries = metadata && tagPath ? getResourceAddressEntries(metadata, tagPath) : [];
   return (
     <aside className="infobox stack">
       {pageInfo && (
@@ -418,6 +424,11 @@ export function InfoboxSidebar({ block, metadata, tagPath, pageInfo }: { block: 
           )}
         </div>
       )}
+      {assetEntries.map(entry => (
+        <div key={entry.key}>
+          <AssetPriceBlockView block={{ id: `__asset_${entry.key}__`, type: 'assetPrice', resourceAddress: entry.value, showChange: true, showChart: true, chartTimeframe: '30d' }} />
+        </div>
+      ))}
       {metaBlock && <div>{renderBlockView(metaBlock)}</div>}
       {(block.blocks || []).map(b => <div key={b.id}>{renderBlockView(b)}</div>)}
     </aside>

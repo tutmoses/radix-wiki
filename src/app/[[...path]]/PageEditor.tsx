@@ -160,6 +160,13 @@ function MetadataFields({ metadataKeys, metadata, onChange }: { metadataKeys: Me
                 value={metadata[key] || ''}
                 onChange={e => updateField(key, e.target.value)}
               />
+            ) : type === 'resource_address' ? (
+              <Input
+                value={metadata[key] || ''}
+                onChange={e => updateField(key, e.target.value)}
+                placeholder="resource_rdx1..."
+                className="font-mono"
+              />
             ) : type === 'user' ? (
               <UserPicker
                 value={metadata[key] || ''}
