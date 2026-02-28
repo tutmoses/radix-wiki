@@ -19,7 +19,7 @@ export const PAGE_LIST_SELECT = {
   ...CATEGORY_SELECT,
   _count: { select: { revisions: true } },
 } as const;
-const CACHE_OPTS = { tags: ['wiki'], revalidate: 300 };
+const CACHE_OPTS = { tags: ['wiki'], revalidate: 60 };
 
 // ========== UNIFIED PATH PARSING ==========
 
@@ -27,7 +27,7 @@ const SUFFIXES = ['edit', 'history', 'mdx'] as const;
 type Suffix = typeof SUFFIXES[number];
 
 export interface ParsedPath {
-  type: 'homepage' | 'category' | 'page' | 'history' | 'edit' | 'mdx' | 'leaderboard' | 'welcome' | 'invalid';
+  type: 'homepage' | 'category' | 'page' | 'history' | 'edit' | 'mdx' | 'leaderboard' | 'welcome' | 'rewards' | 'invalid';
   tagPath: string;
   slug: string;
   suffix: Suffix | null;
@@ -43,6 +43,9 @@ export function parsePath(segments: string[] = [], mode: 'client' | 'api' = 'cli
   }
   if (segments.length === 1 && segments[0] === 'welcome') {
     return { ...base, type: 'welcome' };
+  }
+  if (segments.length === 1 && segments[0] === 'rewards') {
+    return { ...base, type: 'rewards' };
   }
 
   // Single-segment suffix (e.g., /edit, /history, /mdx)

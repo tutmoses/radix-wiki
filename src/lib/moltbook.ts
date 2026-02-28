@@ -10,10 +10,25 @@ function headers() {
   return { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
 }
 
+// --- Retry utility ---
+
+async function withRetry<T>(fn: () => Promise<T>, retries = 2, baseDelay = 2000): Promise<T> {
+  for (let i = 0; i <= retries; i++) {
+    try { return await fn(); }
+    catch (e) {
+      if (i === retries) throw e;
+      await new Promise(r => setTimeout(r, baseDelay * (i + 1)));
+    }
+  }
+  throw new Error('unreachable');
+}
+
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { ...opts, headers: { ...headers(), ...opts?.headers } });
-  if (!res.ok) throw new Error(`Moltbook ${path}: ${res.status} ${await res.text()}`);
-  return res.json();
+  return withRetry(async () => {
+    const res = await fetch(`${API_BASE}${path}`, { ...opts, headers: { ...headers(), ...opts?.headers } });
+    if (!res.ok) throw new Error(`Moltbook ${path}: ${res.status} ${await res.text()}`);
+    return res.json();
+  });
 }
 
 // --- Types ---
@@ -48,41 +63,55 @@ async function solveChallenge(text: string): Promise<string | null> {
   }
 }
 
+// --- Submolt selection ---
+
+const SUBMOLT_WEIGHTS = [
+  { name: 'general', weight: 6 },
+  { name: 'crypto', weight: 2 },
+  { name: 'agents', weight: 2 },
+] as const;
+
+export function pickSubmolt(): string {
+  const total = SUBMOLT_WEIGHTS.reduce((s, w) => s + w.weight, 0);
+  let r = Math.random() * total;
+  for (const { name, weight } of SUBMOLT_WEIGHTS) {
+    r -= weight;
+    if (r <= 0) return name;
+  }
+  return 'general';
+}
+
 // --- Engagement helpers ---
 
-// Broader keywords that match high-traffic submolt discussions
 export const ENGAGEMENT_KEYWORDS = [
-  'defi', 'smart contract', 'blockchain scalability',
-  'layer 1', 'consensus mechanism', 'cross-chain',
-  'token standard', 'reentrancy', 'on-chain',
-  'agent finance', 'MCP blockchain',
+  'defi', 'smart contract', 'layer 1',
+  'consensus', 'scalability', 'cross-chain',
+  'blockchain', 'token', 'reentrancy',
 ] as const;
 
 export const TOPIC_MAP: Record<string, string[]> = {
-  'defi':                     ['ecosystem', 'contents/tech/core-concepts'],
-  'smart contract':           ['developers/scrypto', 'contents/tech/core-concepts'],
-  'blockchain scalability':   ['contents/tech/research', 'contents/tech/core-protocols'],
-  'layer 1':                  ['contents/tech/core-protocols', 'contents/tech/research'],
-  'consensus mechanism':      ['contents/tech/core-protocols', 'contents/tech/research'],
-  'cross-chain':              ['contents/tech/core-protocols', 'ecosystem'],
-  'token standard':           ['contents/tech/core-concepts', 'developers/scrypto'],
-  'reentrancy':               ['developers/scrypto', 'contents/tech/core-concepts'],
-  'on-chain':                 ['contents/tech/core-concepts', 'ecosystem'],
-  'agent finance':            ['ecosystem', 'contents/tech/core-concepts'],
-  'MCP blockchain':           ['developers', 'contents/tech/core-concepts'],
+  'defi':           ['ecosystem', 'contents/tech/core-concepts'],
+  'smart contract': ['developers/scrypto', 'contents/tech/core-concepts'],
+  'layer 1':        ['contents/tech/core-protocols', 'contents/tech/research'],
+  'consensus':      ['contents/tech/core-protocols', 'contents/tech/research'],
+  'scalability':    ['contents/tech/research', 'contents/tech/core-protocols'],
+  'cross-chain':    ['contents/tech/core-protocols', 'ecosystem'],
+  'blockchain':     ['contents/tech/core-concepts', 'contents/tech/core-protocols'],
+  'token':          ['contents/tech/core-concepts', 'developers/scrypto'],
+  'reentrancy':     ['developers/scrypto', 'contents/tech/core-concepts'],
 };
 
 export const REPLY_TEMPLATES = {
   scalability: (_title: string, _excerpt: string, url: string) =>
-    `Interesting point on scalability. The approach I've been tracking is Cerberus — atomic cross-shard commits without bridging. Wrote up how it works: ${url}`,
+    `Most sharded chains break atomic composability for parallelism. There's an approach that doesn't — dug into the tradeoffs here: ${url}`,
   defi: (_title: string, _excerpt: string, url: string) =>
-    `This resonates. One angle worth considering: what if tokens were native resources instead of contract state? Eliminates approval exploits entirely. More here: ${url}`,
+    `The approval pattern is a bigger attack surface than people realize. What if tokens were native resources instead of contract state? ${url}`,
   security: (_title: string, _excerpt: string, url: string) =>
-    `Good analysis. There's a language-level approach to this — making reentrancy structurally impossible rather than relying on developer discipline. Detailed breakdown: ${url}`,
+    `Making reentrancy structurally impossible beats relying on developer discipline every time. Wrote up how one approach works: ${url}`,
   dev: (_title: string, _excerpt: string, url: string) =>
-    `Solid build. If you're evaluating smart contract languages, Scrypto takes a different approach — assets as native primitives, Rust-based. Overview: ${url}`,
+    `Worth looking at asset-oriented smart contracts if you haven't — different mental model from EVM but the security properties are interesting. ${url}`,
   generic: (_title: string, _excerpt: string, url: string) =>
-    `Related topic I've been researching — wrote it up here: ${url}`,
+    `Related angle I've been looking into: ${url}`,
 } as const;
 
 export type ReplyTemplate = keyof typeof REPLY_TEMPLATES;
@@ -106,7 +135,7 @@ export function scorePage(
 
 export const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-// --- LLM generation (shared) ---
+// --- LLM generation (shared — also used by buffer.ts for Twitter) ---
 
 export function formatPageContext(page: { title: string; excerpt: string | null; tagPath?: string }, url: string): string {
   return `Wiki page: "${page.title}"\nExcerpt: ${page.excerpt || 'No excerpt.'}${page.tagPath ? `\nTag path: ${page.tagPath}` : ''}\nURL: ${url}`;
@@ -130,32 +159,114 @@ export async function generateWithLLM(system: string, userContent: string, maxTo
   }
 }
 
-// --- LLM reply generation ---
+// --- LLM generation (Moltbook-specific, no forced URL append) ---
 
-const REPLY_SYSTEM_PROMPT = `You are @radixwiki, an AI agent on Moltbook (a Reddit-style AI agent forum). You maintain a wiki about Radix DLT.
+async function generateLLM(system: string, userContent: string, maxTokens: number): Promise<string | null> {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+  try {
+    const anthropic = new Anthropic();
+    const msg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: 'user', content: userContent }],
+    });
+    const text = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : '';
+    return text || null;
+  } catch {
+    return null;
+  }
+}
 
-Write a SHORT reply to the post below. You are one agent talking to another.
+// --- Post generation ---
 
-Critical rules:
-1. FIRST engage with what the post actually says — agree, disagree, add nuance, or answer the question
-2. THEN, only if genuinely relevant, mention a Radix angle with the wiki link
-3. If Radix isn't clearly relevant, just engage with the post and drop the link at the end as a "related read"
-4. Under 200 characters. Be concise — one thought, not an essay
-5. Never open with "Great question!", "Good analysis", "Interesting point", "This resonates" or any filler praise
-6. No hashtags, no emojis
-7. Sound like an agent sharing knowledge, not a marketer pitching a product
-8. Ask a follow-up question when natural — this drives thread engagement
+export const POST_SYSTEM_PROMPT = `You are @radixwiki, an AI agent on Moltbook. You study distributed ledger architectures, and you maintain a knowledge base at radix.wiki.
 
-Good: "The approval vector is underrated. Scrypto sidesteps it entirely — tokens are native resources, not contract state. No approve() to exploit. ${'{url}'}"
-Bad: "On Radix, tokens are native resources, not contract state — meaning no approval exploits or reentrancy by design. Relevant: Page Title. Excerpt text. ${'{url}'}"`;
+Write a post for m/general (or a crypto/agents submolt). You are one agent posting in a forum of other agents.
+
+Voice:
+- Write in first person. You are sharing a thought, observation, or question — not announcing a wiki page.
+- Lead with an insight, a contrarian take, a pattern you noticed, or something that surprised you during research.
+- Be specific: name architectures, compare tradeoffs, cite numbers. Vague takes get scrolled past.
+- The wiki link is supporting evidence ("wrote this up here", "dug into it here") — never the point of the post.
+- End with a genuine question or provocative statement that invites debate.
+
+Format:
+- 400-600 characters. Dense, no filler.
+- No hashtags, no emojis, no "check out" or "read more" CTAs.
+- Never start with "I've been" or "So I was" — vary your openings.
+- One paragraph. No bullet points.
+
+Example openings (vary these):
+- "Most sharded L1s break atomic composability. There's exactly one that doesn't, and nobody talks about it."
+- "Hot take: the approval pattern in ERC-20 is a security liability disguised as a feature."
+- "Ran the numbers on L1 TPS claims vs. actual mainnet throughput. The gap is embarrassing for most chains."
+
+The wiki page context below is your source material. Extract the most interesting angle from it. Do NOT summarize the page.`;
+
+const TITLE_SYSTEM_PROMPT = `Write a short, attention-grabbing title (under 80 chars) for a Moltbook post.
+The title should be intriguing — a question, a bold claim, or a surprising fact.
+NOT the wiki page title. NOT an announcement. Think Reddit thread title.
+Respond with ONLY the title, nothing else.`;
+
+export async function generatePost(
+  page: { title: string; excerpt: string | null; tagPath: string },
+  url: string,
+): Promise<string> {
+  const text = await generateLLM(POST_SYSTEM_PROMPT, formatPageContext(page, url), 300);
+  if (!text) throw new Error('Empty LLM response');
+  return text.includes(url) ? text : `${text} ${url}`;
+}
+
+export async function generateTitle(
+  page: { title: string; excerpt: string | null },
+): Promise<string> {
+  const title = await generateLLM(TITLE_SYSTEM_PROMPT, `Topic: ${page.title}\nExcerpt: ${page.excerpt || ''}`, 40);
+  return title || page.title;
+}
+
+// --- Reply generation ---
+
+const REPLY_SYSTEM_PROMPT = `You are @radixwiki on Moltbook, an AI agent that studies distributed ledger architectures.
+
+Reply to the post below. You are one agent in conversation with another.
+
+Rules:
+1. ENGAGE WITH THE ACTUAL POST FIRST. Agree, disagree, add nuance, share a related data point, or answer the question.
+2. If the topic genuinely connects to something in your Radix research, mention it naturally with the wiki link. If it doesn't connect, DO NOT force a Radix mention — just have the conversation.
+3. Under 280 characters. One focused thought.
+4. Never open with filler ("Great point!", "Interesting take!", "This resonates."). Jump straight into substance.
+5. No hashtags, no emojis.
+6. Ask a follow-up question when it feels natural — threads get more visibility.
+7. Sound like a peer sharing knowledge, not a brand account pitching a product.
+
+The wiki link is OPTIONAL. Only include it if genuinely relevant. A good reply without a link beats a forced reply with one.`;
+
+const CONVERSATIONAL_REPLY_PROMPT = `You are @radixwiki on Moltbook, an AI agent that studies distributed ledger architectures.
+
+Reply to the post below. You are one agent in conversation with another. Do NOT include any links.
+
+Rules:
+1. Engage directly with the post content — agree, disagree, add context, share an observation.
+2. Under 280 characters. One focused thought.
+3. No filler openers ("Great point!", etc). Jump to substance.
+4. No hashtags, no emojis, no links.
+5. Ask a follow-up question when natural.`;
 
 export async function generateReply(
   post: MoltbookPost,
   page: { title: string; excerpt: string | null },
   url: string,
 ): Promise<string> {
-  const userContent = `Post by @${post.author?.username || 'unknown'} in m/${post.submolt_name || 'general'}:\n${post.title ? `Title: ${post.title}\n` : ''}${post.content}\n\nRelevant wiki page to link: "${page.title}" — ${page.excerpt || 'No excerpt.'}\nURL: ${url}`;
-  return await generateWithLLM(REPLY_SYSTEM_PROMPT, userContent, 120, url) ?? fallbackReply(post, page, url);
+  const userContent = `Post by @${post.author?.username || 'unknown'} in m/${post.submolt_name || 'general'}:\n${post.title ? `Title: ${post.title}\n` : ''}${post.content}\n\nRelevant wiki page to link (only if relevant): "${page.title}" — ${page.excerpt || 'No excerpt.'}\nURL: ${url}`;
+  const text = await generateLLM(REPLY_SYSTEM_PROMPT, userContent, 150);
+  if (!text) return fallbackReply(post, page, url);
+  return text.includes(url) ? text : `${text} ${url}`;
+}
+
+export async function generateConversationalReply(post: MoltbookPost): Promise<string> {
+  const userContent = `Post by @${post.author?.username || 'unknown'} in m/${post.submolt_name || 'general'}:\n${post.title ? `Title: ${post.title}\n` : ''}${post.content}`;
+  return await generateLLM(CONVERSATIONAL_REPLY_PROMPT, userContent, 150) ?? 'Interesting thread — following this.';
 }
 
 function fallbackReply(
@@ -201,6 +312,6 @@ export const moltbook = {
   },
 
   home() {
-    return request('/home');
+    return request<{ posts?: MoltbookPost[] }>('/home');
   },
 };

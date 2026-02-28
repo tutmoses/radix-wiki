@@ -13,6 +13,7 @@ import dynamic from 'next/dynamic';
 const IdeasView = dynamic(() => import('./IdeasView'), { loading: () => <PageSkeleton /> });
 const LeaderboardView = dynamic(() => import('@/components/LeaderboardView'), { loading: () => <PageSkeleton /> });
 const WelcomeView = dynamic(() => import('@/components/WelcomeView'), { loading: () => <PageSkeleton /> });
+const RewardsView = dynamic(() => import('@/components/RewardsView'), { loading: () => <PageSkeleton /> });
 import type { Block } from '@/types/blocks';
 import type { WikiPage } from '@/types';
 
@@ -37,6 +38,7 @@ export async function generateStaticParams() {
 }
 
 export const dynamicParams = true;
+export const revalidate = 60;
 
 type Props = { params: Promise<{ path?: string[] }>; searchParams: Promise<{ sort?: string }> };
 
@@ -209,6 +211,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
 
   if (parsed.type === 'leaderboard') return <LeaderboardView />;
   if (parsed.type === 'welcome') return <WelcomeView />;
+  if (parsed.type === 'rewards') return <RewardsView />;
 
   if (parsed.type === 'homepage') {
     const page = await withProcessedContent(await getHomepage());

@@ -2,11 +2,11 @@
   "crons": [
     {
       "path": "/api/moltbook",
-      "schedule": "0 */4 * * *"
+      "schedule": "0 */8 * * *"
     },
     {
       "path": "/api/moltbook/engage",
-      "schedule": "30 */4 * * *"
+      "schedule": "0 2,6,10,14,18,22 * * *"
     }
   ]
 }

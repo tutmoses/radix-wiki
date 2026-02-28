@@ -152,3 +152,14 @@ model Tweet {
   @@index([inReplyTo])
   @@map("tweets")
 }
+
+model Airdrop {
+  id           String    @id @default(cuid())
+  totalXrd     Float     @map("total_xrd")
+  editorCount  Int       @map("editor_count")
+  txHash       String?   @map("tx_hash")
+  snapshotJson Json      @map("snapshot_json")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@map("airdrops")
+}

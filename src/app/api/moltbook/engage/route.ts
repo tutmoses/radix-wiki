@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma/client';
 import {
-  moltbook, delay, scorePage, generateReply,
+  moltbook, delay, scorePage, generateReply, generateConversationalReply,
   ENGAGEMENT_KEYWORDS, TOPIC_MAP,
   type MoltbookPost,
 } from '@/lib/moltbook';
@@ -10,7 +10,8 @@ import { json, errors, handleRoute } from '@/lib/api';
 
 // Always use production URL for Moltbook replies — never leak localhost
 const BASE_URL = 'https://radix.wiki';
-const MAX_ENGAGEMENTS = 4;
+const MAX_ENGAGEMENTS = 8;
+const MIN_RELEVANCE_SCORE = 2;
 
 export const maxDuration = 120;
 
@@ -47,7 +48,31 @@ export async function POST(request: Request) {
       await delay(2000);
     }
 
-    // 4. Deduplicate by post ID, sort by upvotes desc
+    // 4. Browse trending/hot feed for high-engagement posts
+    try {
+      const { posts: hotPosts } = await moltbook.feed('hot') as { posts: MoltbookPost[] };
+      for (const post of hotPosts) {
+        if (repliedTo.has(post.id)) continue;
+        if (post.author?.username === 'radixwiki') continue;
+        if (!post.content?.trim()) continue;
+        if (post.upvotes < 5) continue;
+        candidates.push({ post, keyword: '_trending' });
+      }
+    } catch { /* feed failed, continue */ }
+
+    // 5. Browse home feed
+    try {
+      const homeData = await moltbook.home();
+      const homePosts = homeData.posts || [];
+      for (const post of homePosts) {
+        if (repliedTo.has(post.id)) continue;
+        if (post.author?.username === 'radixwiki') continue;
+        if (!post.content?.trim()) continue;
+        candidates.push({ post, keyword: '_home' });
+      }
+    } catch { /* home failed, continue */ }
+
+    // 6. Deduplicate by post ID, sort by upvotes desc
     const seen = new Set<string>();
     const unique = candidates.filter(c => {
       if (seen.has(c.post.id)) return false;
@@ -55,7 +80,7 @@ export async function POST(request: Request) {
       return true;
     }).sort((a, b) => b.post.upvotes - a.post.upvotes);
 
-    // 5. Reply to top N
+    // 7. Reply to top N
     const results: Array<{ postId: string; keyword: string; page: string; status: string; error?: string }> = [];
     let engaged = 0;
 
@@ -63,7 +88,7 @@ export async function POST(request: Request) {
       if (engaged >= MAX_ENGAGEMENTS) break;
 
       // Match to best wiki page
-      const tagPrefixes = TOPIC_MAP[keyword] || [];
+      const tagPrefixes = keyword.startsWith('_') ? [] : (TOPIC_MAP[keyword] || []);
       const relevantPages = tagPrefixes.length
         ? wikiPages.filter(p => tagPrefixes.some(prefix => p.tagPath.startsWith(prefix)))
         : wikiPages;
@@ -75,24 +100,40 @@ export async function POST(request: Request) {
         if (s > bestScore) { bestScore = s; bestPage = page; }
       }
       if (!bestPage) bestPage = wikiPages.find(p => p.tagPath.startsWith('contents/tech/core-concepts')) ?? wikiPages[0];
-      if (!bestPage) continue;
 
-      const url = `${BASE_URL}/${bestPage.tagPath}/${bestPage.slug}`;
-      const replyText = await generateReply(post, bestPage, url);
+      // Decide: conversational reply (no link) vs wiki-linked reply
+      const hasRelevantPage = bestScore >= MIN_RELEVANCE_SCORE && bestPage;
+
+      let replyText: string;
+      let pageSlug: string | null = null;
+      let pageTagPath: string | null = null;
+
+      if (hasRelevantPage) {
+        const url = `${BASE_URL}/${bestPage.tagPath}/${bestPage.slug}`;
+        replyText = await generateReply(post, bestPage, url);
+        pageSlug = bestPage.slug;
+        pageTagPath = bestPage.tagPath;
+      } else {
+        replyText = await generateConversationalReply(post);
+      }
 
       try {
         await moltbook.comment(post.id, replyText);
-        await moltbook.upvote(post.id).catch(() => {}); // upvote is best-effort
+        await moltbook.upvote(post.id).catch(() => {});
 
         await prisma.tweet.create({
-          data: { type: 'moltbook_reply', text: replyText, inReplyTo: post.id, pageSlug: bestPage.slug, pageTagPath: bestPage.tagPath, status: 'sent' },
+          data: { type: 'moltbook_reply', text: replyText, inReplyTo: post.id, pageSlug, pageTagPath, status: 'sent' },
         });
 
-        results.push({ postId: post.id, keyword, page: bestPage.title, status: 'replied' });
+        results.push({ postId: post.id, keyword, page: bestPage?.title || 'none', status: 'replied' });
         engaged++;
         if (engaged < MAX_ENGAGEMENTS) await delay(2000);
       } catch (e) {
-        results.push({ postId: post.id, keyword, page: bestPage.title, status: 'failed', error: (e as Error).message });
+        const errorMsg = (e as Error).message;
+        results.push({ postId: post.id, keyword, page: bestPage?.title || 'none', status: 'failed', error: errorMsg });
+        await prisma.tweet.create({
+          data: { type: 'moltbook_reply', text: '', inReplyTo: post.id, status: 'failed', error: errorMsg },
+        }).catch(() => {});
       }
     }
 

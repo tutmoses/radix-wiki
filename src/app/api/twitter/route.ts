@@ -1,7 +1,7 @@
 // src/app/api/twitter/route.ts — Generate tweets and store for RSS distribution
 
 import { prisma } from '@/lib/prisma/client';
-import { generateTweet } from '@/lib/buffer';
+import { generateTweet } from '@/lib/twitter';
 import { json, errors, handleRoute } from '@/lib/api';
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';

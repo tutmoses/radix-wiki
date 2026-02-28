@@ -162,6 +162,7 @@ export const TAG_HIERARCHY: TagNode[] = [
     ] },
   { name: '🌐 Ecosystem',
     slug: 'ecosystem',
+    sort: 'recent',
     metadataKeys: [
       { key: 'status', label: 'Status:', type: 'select', options: ['🟢','🟠','🔴'], required: true },
       { key: 'category', label: 'Category:', type: 'select', options: ['Finance', 'Studio', 'Launchpad', 'DAO Platform', 'Media', 'Education', 'Infrastructure', 'Oracle', 'Healthcare', 'NFT Platform', 'LoFi', 'Gaming', 'Stablecoin', 'Token', 'Open Source', 'DeSci'], required: true },
@@ -189,7 +190,7 @@ export const TAG_HIERARCHY: TagNode[] = [
   },
 ];
 
-const AUTHOR_ONLY_PATHS = new Set(['blog', 'ecosystem']);
+const AUTHOR_ONLY_PATHS = new Set(['blog']);
 
 interface TagPathContext {
   node: TagNode | null;

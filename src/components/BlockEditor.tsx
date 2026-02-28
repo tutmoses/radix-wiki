@@ -375,6 +375,19 @@ function AssetPriceBlockEdit({ block, onUpdate }: BlockProps<AssetPriceBlock>) {
         <small className="text-text-muted">Enter any Radix resource address to fetch its price</small>
       </div>
       <label className="row"><input type="checkbox" checked={block.showChange ?? true} onChange={e => onUpdate?.({ ...block, showChange: e.target.checked })} className="w-4 h-4 rounded border-border" />Show 24h change</label>
+      <label className="row"><input type="checkbox" checked={block.showChart ?? false} onChange={e => onUpdate?.({ ...block, showChart: e.target.checked })} className="w-4 h-4 rounded border-border" />Show price chart</label>
+      {block.showChart && (
+        <div className="stack-xs">
+          <label className="font-medium text-small">Default timeframe</label>
+          <div className="toggle-group">
+            {(['24h', '7d', '30d'] as const).map(tf => (
+              <button key={tf} onClick={() => onUpdate?.({ ...block, chartTimeframe: tf })} className={`toggle-option ${(block.chartTimeframe || '7d') === tf ? 'toggle-option-active' : ''}`}>
+                {{ '24h': '24H', '7d': '7D', '30d': '30D' }[tf]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </EditWrapper>
   );
 }

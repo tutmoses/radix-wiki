@@ -1,4 +1,4 @@
-// src/lib/buffer.ts — Tweet generation helpers for Twitter automation via RSS
+// src/lib/twitter.ts — Tweet generation helpers for Twitter automation via RSS
 
 import { generateWithLLM, formatPageContext } from '@/lib/moltbook';
 

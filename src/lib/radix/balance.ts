@@ -14,19 +14,38 @@ const XRD_RESOURCE: Record<number, string> = {
 export type BalanceAction = { type: 'create' | 'edit' | 'comment'; tagPath: string };
 
 async function getXrdBalance(address: string): Promise<number> {
-  try {
-    const response = await fetch(`${getGatewayUrl(RADIX_CONFIG.networkId)}/state/entity/page/fungible-vaults/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address, resource_address: XRD_RESOURCE[RADIX_CONFIG.networkId] }),
-    });
-    if (!response.ok) return 0;
+  const url = `${getGatewayUrl(RADIX_CONFIG.networkId)}/state/entity/page/fungible-vaults/`;
+  const resource_address = XRD_RESOURCE[RADIX_CONFIG.networkId];
+  let total = 0;
+  let cursor: string | undefined;
 
-    const data = await response.json();
-    return (data.items as { amount: string }[])?.reduce((sum, v) => sum + parseFloat(v.amount || '0'), 0) || 0;
-  } catch {
-    return 0;
+  try {
+    do {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address, resource_address, ...(cursor && { cursor }) }),
+        cache: 'no-store',
+      });
+
+      if (!response.ok) {
+        console.error(`[balance] Gateway ${response.status} for ${address.slice(0, 20)}…: ${await response.text().catch(() => '')}`);
+        return total;
+      }
+
+      const data = await response.json() as {
+        items?: { amount: string }[];
+        next_cursor?: string | null;
+      };
+
+      total += data.items?.reduce((sum, v) => sum + parseFloat(v.amount || '0'), 0) ?? 0;
+      cursor = data.next_cursor ?? undefined;
+    } while (cursor);
+  } catch (err) {
+    console.error(`[balance] Gateway error for ${address.slice(0, 20)}…:`, err);
   }
+
+  return total;
 }
 
 type BalanceResult =
