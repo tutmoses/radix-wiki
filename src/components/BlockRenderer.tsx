@@ -169,7 +169,20 @@ function useChartData(resourceAddress?: string, timeframe: string = '7d') {
   return { data, isLoading, error };
 }
 
-function TokenChart({ resourceAddress, defaultTimeframe = '7d' }: { resourceAddress: string; defaultTimeframe?: string }) {
+const SUBSCRIPT_DIGITS = '₀₁₂₃₄₅₆₇₈₉';
+function formatPriceSubscript(p: number): string {
+  if (p >= 1) return p.toFixed(2);
+  if (p >= 0.01) return p.toFixed(4);
+  const s = p.toFixed(10);
+  const afterDot = s.slice(2);
+  const zeros = afterDot.match(/^0*/)?.[0].length ?? 0;
+  if (zeros < 2) return p.toFixed(4);
+  const sig = afterDot.slice(zeros, zeros + 3).replace(/0+$/, '') || '0';
+  const sub = zeros + 1; // position of first significant digit (negative exponent)
+  return `0.${String(sub).split('').map(d => SUBSCRIPT_DIGITS[+d]).join('')}${sig}`;
+}
+
+function TokenChart({ resourceAddress, defaultTimeframe = '30d' }: { resourceAddress: string; defaultTimeframe?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const seriesRef = useRef<any>(null);
@@ -185,10 +198,10 @@ function TokenChart({ resourceAddress, defaultTimeframe = '7d' }: { resourceAddr
       if (disposed || !containerRef.current) return;
 
       const chart = createChart(containerRef.current, {
-        layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#8b8fa3', fontFamily: 'inherit', fontSize: 11 },
+        layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#8b8fa3', fontFamily: 'inherit', fontSize: 10 },
         grid: { vertLines: { color: 'rgba(139, 143, 163, 0.1)' }, horzLines: { color: 'rgba(139, 143, 163, 0.1)' } },
         crosshair: { mode: CrosshairMode.Magnet, vertLine: { color: 'rgba(255, 157, 160, 0.4)', width: 1, style: 3 }, horzLine: { color: 'rgba(255, 157, 160, 0.4)', width: 1, style: 3 } },
-        rightPriceScale: { visible: false },
+        rightPriceScale: { visible: true, borderVisible: false, scaleMargins: { top: 0.1, bottom: 0.1 } },
         timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false },
         handleScroll: false,
         handleScale: false,
@@ -204,7 +217,7 @@ function TokenChart({ resourceAddress, defaultTimeframe = '7d' }: { resourceAddr
         lineType: LineType.Curved,
         crosshairMarkerBackgroundColor: '#ff9da0',
         crosshairMarkerBorderColor: '#ff9da0',
-        priceFormat: { type: 'price', minMove: 0.000001, precision: 6 },
+        priceFormat: { type: 'custom', formatter: formatPriceSubscript, minMove: 0.0001 },
       });
 
       chartRef.current = chart;
@@ -227,6 +240,7 @@ function TokenChart({ resourceAddress, defaultTimeframe = '7d' }: { resourceAddr
     if (!chartReady || !seriesRef.current || !data?.length) return;
     seriesRef.current.setData(data);
     chartRef.current?.timeScale().fitContent();
+    if (containerRef.current) chartRef.current?.applyOptions({ width: containerRef.current.clientWidth });
   }, [data, chartReady]);
 
   return (
@@ -253,7 +267,7 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
   if (error || !data || typeof data.price !== 'number') return <p className="text-error text-small">{error || 'Price unavailable'}</p>;
   const displayName = data.symbol || data.name || block.resourceAddress.slice(0, 20) + '...';
   const isPositive = (data.change24h ?? 0) >= 0;
-  const priceStr = data.price < 0.01 ? data.price.toFixed(6) : data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  const priceStr = formatPriceSubscript(data.price);
   return (
     <div className="stack-sm">
       <div className="asset-price">
@@ -263,7 +277,7 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
         </div>
         {block.showChange && typeof data.change24h === 'number' && <span className={cn('font-medium', isPositive ? 'text-success' : 'text-error')}>{isPositive ? '↑' : '↓'} {Math.abs(data.change24h).toFixed(2)}%</span>}
       </div>
-      {block.showChart && <TokenChart resourceAddress={block.resourceAddress!} defaultTimeframe={block.chartTimeframe || '7d'} />}
+      {block.showChart && <TokenChart resourceAddress={block.resourceAddress!} defaultTimeframe={block.chartTimeframe || '30d'} />}
     </div>
   );
 }

@@ -360,6 +360,7 @@
   .toggle-group { @apply flex items-center gap-4 p-3 bg-surface-2 rounded-lg; }
   .toggle-group-sm { @apply flex items-center gap-1 p-1 bg-surface-2 rounded-md; }
   .toggle-option { @apply px-3 py-1 rounded-md border border-border hover:bg-surface-2 capitalize; }
+  .toggle-option-active { @apply bg-accent text-surface-0 border-accent; }
   .toggle-option-sm { @apply p-1.5 rounded text-text-muted cursor-pointer transition-colors hover:text-text; }
 
   /* ===== CODE BLOCK LANG SELECTOR ===== */
@@ -482,9 +483,14 @@
 
   /* ===== ASSET PRICE ===== */
   .asset-price { @apply bg-surface-1 border border-border-muted rounded-lg p-4 flex items-center gap-4; }
-  .asset-chart { @apply mt-1; }
-  .asset-chart-controls { @apply flex items-center justify-end gap-1 mb-2; }
-  .asset-chart-container { @apply rounded-lg border border-border-muted bg-surface-1 overflow-x-clip; }
+  .asset-chart { @apply mt-1 relative; }
+  .asset-chart-controls { @apply absolute top-2 left-2 z-10 flex items-center gap-0.5; }
+  .asset-chart-controls .toggle-option { @apply text-[10px] px-1.5 py-0.5; }
+  .asset-chart-container {
+    @apply rounded-lg border border-border-muted bg-surface-1 overflow-hidden;
+    .tv-lightweight-charts { overflow: visible !important; }
+    .tv-lightweight-charts table { table-layout: auto !important; }
+  }
   .recent-pages-grid { @apply grid grid-cols-1 lg:grid-cols-2 gap-4; }
 
   /* ===== RSS FEED ===== */
