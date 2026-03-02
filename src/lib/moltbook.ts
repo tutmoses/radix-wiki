@@ -52,7 +52,13 @@ async function solveChallenge(text: string): Promise<string | null> {
     const msg = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 20,
-      system: 'Solve the math problem. Respond with ONLY the number to 2 decimal places (e.g. "16.00"). Nothing else.',
+      system: `Solve the obfuscated lobster math challenge. The text has random capitalization, special characters (^-|]/~<>), filler words ("Um"), and broken spacing. Ignore all noise and decode the math problem.
+
+Operations: "total force" / "push together" / "multiplied" = MULTIPLY. "accelerates by" / "adds" / "new speed" = ADD.
+
+Numbers are written as words with noise: "tWeN tY FiV e" = 25, "SiX" = 6.
+
+Respond with ONLY the numeric answer to 2 decimal places (e.g. "150.00"). Nothing else.`,
       messages: [{ role: 'user', content: text }],
     });
     const answer = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : null;
