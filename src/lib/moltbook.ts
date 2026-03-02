@@ -289,7 +289,8 @@ export const moltbook = {
     const v = res.post?.verification;
     if (v) {
       const answer = await solveChallenge(v.challenge_text);
-      if (answer) await request('/verify', { method: 'POST', body: JSON.stringify({ verification_code: v.verification_code, answer }) });
+      if (!answer) throw new Error(`Failed to solve verification challenge: ${v.challenge_text}`);
+      await request('/verify', { method: 'POST', body: JSON.stringify({ verification_code: v.verification_code, answer }) });
     }
     return res;
   },

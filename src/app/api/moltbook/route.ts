@@ -10,7 +10,7 @@ const STALENESS_DAYS = 90;
 
 export const maxDuration = 60;
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   return handleRoute(async () => {
     const secret = request.headers.get('authorization')?.replace('Bearer ', '') || request.headers.get('x-cron-secret');
     if (secret !== process.env.CRON_SECRET) return errors.unauthorized();
