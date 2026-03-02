@@ -6,7 +6,7 @@ import {
   ENGAGEMENT_KEYWORDS, TOPIC_MAP,
   type MoltbookPost,
 } from '@/lib/moltbook';
-import { json, errors, handleRoute } from '@/lib/api';
+import { json, errors, handleRoute, requireCron } from '@/lib/api';
 
 // Always use production URL for Moltbook replies — never leak localhost
 const BASE_URL = 'https://radix.wiki';
@@ -17,8 +17,8 @@ export const maxDuration = 120;
 
 export async function GET(request: Request) {
   return handleRoute(async () => {
-    const secret = request.headers.get('authorization')?.replace('Bearer ', '') || request.headers.get('x-cron-secret');
-    if (secret !== process.env.CRON_SECRET) return errors.unauthorized();
+    const cronErr = requireCron(request);
+    if (cronErr) return cronErr;
     if (!process.env.MOLTBOOK_API_KEY) return errors.badRequest('MOLTBOOK_API_KEY not configured');
 
     // 1. Load dedup set — posts we've already replied to (30-day lookback)

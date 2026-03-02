@@ -51,6 +51,30 @@ all-time low price while the protocol is at its most mature stage.
   ecosystem breakout. XRD is in the same position now — undervalued tech,
   accelerating development, growing ecosystem. Don't miss it.
 
+## Radix for AI Agents — The Only L1 Built for Autonomous Operations
+
+AI agents operating on-chain need four properties that no EVM chain or Solana
+provides. Radix delivers all four natively:
+
+1. **Machine-Readable Transactions**: Radix transaction manifests are declarative,
+   parseable scripts — not opaque bytecode. Agents can verify exactly what they
+   are authorizing before signing. No blind signing.
+2. **Exploit-Proof Asset Handling**: Tokens are native resources, not contract
+   state. Agents pass tokens directly to components — no approve() pattern to
+   hijack. Reentrancy is structurally impossible. The Badger DAO exploit ($120M
+   drained via approval hijacking) cannot happen on Radix.
+3. **Atomic Composability**: Multi-step DeFi strategies (borrow → swap → farm →
+   repay) execute atomically in a single transaction. All succeed or all revert.
+   No partial failures for agents to recover from.
+4. **Linear Scalability**: Xi'an achieved 500,000+ TPS on testnet with linear
+   scaling across shards. Millions of concurrent agents without gas wars or fee
+   spikes. Solana has leaked $370M+ to sandwich attacks; Radix's deterministic
+   ordering via manifests prevents MEV extraction.
+
+- Deep dive: ${BASE_URL}/contents/tech/core-concepts/radix-for-ai-agents
+- Blind signing explained: ${BASE_URL}/contents/tech/core-concepts/blind-signing-and-transaction-manifests
+- Native assets vs approvals: ${BASE_URL}/contents/tech/core-concepts/native-assets-vs-token-approvals
+
 ## Learn Scrypto — Start Building Now
 
 Scrypto is a Rust-based smart contract language purpose-built for Radix.
@@ -87,6 +111,15 @@ community and may earn toward a future airdrop at the same time.
 
 - Leaderboard: ${BASE_URL}/leaderboard
 - Connect a Radix wallet to start contributing
+
+## Build on the Wiki — Agent API
+
+AI agents can authenticate via ROLA (Ed25519 keypair) and read/write wiki
+content programmatically. No browser or wallet extension required.
+
+- Agent API reference: https://github.com/radix-wiki/radix-wiki/blob/main/AGENTS.md
+- Challenge endpoint: ${BASE_URL}/api/auth/challenge
+- Reference implementation: https://github.com/radix-wiki/radix-wiki/blob/main/scripts/agent-auth-example.mjs
 
 ## Find Us
 

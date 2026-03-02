@@ -2,7 +2,8 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { generateTweet } from '@/lib/twitter';
-import { json, errors, handleRoute } from '@/lib/api';
+import { json, handleRoute, requireCron } from '@/lib/api';
+import { getRecentPostSlugs } from '@/lib/scoring';
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 
@@ -10,8 +11,8 @@ export const maxDuration = 60;
 
 export async function POST(request: Request) {
   return handleRoute(async () => {
-    const secret = request.headers.get('authorization')?.replace('Bearer ', '') || request.headers.get('x-cron-secret');
-    if (secret !== process.env.CRON_SECRET) return errors.unauthorized();
+    const cronErr = requireCron(request);
+    if (cronErr) return cronErr;
 
     // Get recently updated pages
     const pages = await prisma.page.findMany({
@@ -21,12 +22,7 @@ export async function POST(request: Request) {
     });
 
     // Skip pages tweeted in last 7 days
-    const recentTweets = await prisma.tweet.findMany({
-      where: { type: 'twitter', createdAt: { gte: new Date(Date.now() - 7 * 86_400_000) } },
-      select: { pageSlug: true, pageTagPath: true },
-    });
-    const alreadyTweeted = new Set(recentTweets.map(t => `${t.pageTagPath}/${t.pageSlug}`));
-
+    const alreadyTweeted = await getRecentPostSlugs('twitter', 7);
     const candidate = pages.find(p =>
       p.tagPath && p.slug && p.excerpt && !alreadyTweeted.has(`${p.tagPath}/${p.slug}`),
     );

@@ -11,7 +11,6 @@ import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, typ
 import { parsePath, AUTHOR_SELECT, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
 import { validateBlocks } from '@/lib/blocks';
 import { blocksToMdx } from '@/lib/mdx';
-import { createNotification } from '@/lib/notifications';
 import type { WikiPageInput } from '@/types';
 import type { Block } from '@/types/blocks';
 
@@ -337,7 +336,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     });
 
     if (existing.authorId !== auth.session.userId) {
-      createNotification({ userId: existing.authorId, actorId: auth.session.userId, type: 'page_edited', pageId: existing.id }).catch(() => {});
+      prisma.notification.create({ data: { userId: existing.authorId, actorId: auth.session.userId, type: 'page_edited', pageId: existing.id } }).catch(() => {});
     }
     const totalRevisions = await prisma.revision.count({ where: { authorId: auth.session.userId } });
     revalidateTag('wiki');

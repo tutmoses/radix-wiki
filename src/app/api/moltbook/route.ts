@@ -2,7 +2,8 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { moltbook, generatePost, generateTitle, pickSubmolt } from '@/lib/moltbook';
-import { json, errors, handleRoute } from '@/lib/api';
+import { json, errors, handleRoute, requireCron } from '@/lib/api';
+import { getRecentPostSlugs } from '@/lib/scoring';
 
 // Always use production URL for Moltbook posts — never leak localhost
 const BASE_URL = 'https://radix.wiki';
@@ -12,8 +13,8 @@ export const maxDuration = 60;
 
 export async function GET(request: Request) {
   return handleRoute(async () => {
-    const secret = request.headers.get('authorization')?.replace('Bearer ', '') || request.headers.get('x-cron-secret');
-    if (secret !== process.env.CRON_SECRET) return errors.unauthorized();
+    const cronErr = requireCron(request);
+    if (cronErr) return cronErr;
     if (!process.env.MOLTBOOK_API_KEY) return errors.badRequest('MOLTBOOK_API_KEY not configured');
 
     const freshCutoff = new Date(Date.now() - STALENESS_DAYS * 86_400_000);
@@ -34,12 +35,7 @@ export async function GET(request: Request) {
     });
 
     // Deduplicate: skip pages posted in the last 7 days
-    const recentPosts = await prisma.tweet.findMany({
-      where: { type: 'moltbook', createdAt: { gte: new Date(Date.now() - 7 * 86_400_000) } },
-      select: { pageSlug: true, pageTagPath: true },
-    });
-    const alreadyPosted = new Set(recentPosts.map(p => `${p.pageTagPath}/${p.pageSlug}`));
-
+    const alreadyPosted = await getRecentPostSlugs('moltbook', 7);
     const eligible = pages.filter(p => p.tagPath && p.slug && !alreadyPosted.has(`${p.tagPath}/${p.slug}`));
     if (eligible.length === 0) return json({ posted: 0, results: [{ status: 'no_eligible_pages' }] });
 

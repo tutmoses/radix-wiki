@@ -20,6 +20,11 @@ export const errors = {
 
 export type RouteContext<T = Record<string, string | string[]>> = { params: Promise<T> };
 
+export function requireCron(request: Request): NextResponse | null {
+  const secret = request.headers.get('authorization')?.replace('Bearer ', '') || request.headers.get('x-cron-secret');
+  return secret === process.env.CRON_SECRET ? null : errors.unauthorized();
+}
+
 export async function requireAuth(request?: NextRequest, action?: BalanceAction): Promise<{ session: AuthSession } | { error: NextResponse }> {
   const session = await getSession(request);
   if (!session) return { error: errors.unauthorized() };

@@ -2,8 +2,7 @@
 
 import { Fragment } from 'react';
 import Image from 'next/image';
-import { cn } from '@/lib/utils';
-import { generateIdenticon } from '@/lib/identicon';
+import { cn, generateIdenticon } from '@/lib/utils';
 
 type AvatarSize = 'sm' | 'md' | 'lg';
 const AVATAR_PX: Record<AvatarSize, number> = { sm: 20, md: 28, lg: 40 };

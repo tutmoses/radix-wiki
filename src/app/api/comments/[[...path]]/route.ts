@@ -4,7 +4,6 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, CACHE, type RouteContext } from '@/lib/api';
 import { AUTHOR_SELECT } from '@/lib/wiki';
-import { createNotification } from '@/lib/notifications';
 import type { CommentInput } from '@/types';
 
 type PathParams = { path?: string[] };
@@ -69,9 +68,11 @@ export async function POST(request: NextRequest) {
     });
 
     // Fire-and-forget notifications
-    createNotification({ userId: page.authorId, actorId: auth.session.userId, type: 'comment_on_page', pageId, commentId: comment.id }).catch(() => {});
-    if (parentComment) {
-      createNotification({ userId: parentComment.authorId, actorId: auth.session.userId, type: 'comment_reply', pageId, commentId: comment.id }).catch(() => {});
+    if (page.authorId !== auth.session.userId) {
+      prisma.notification.create({ data: { userId: page.authorId, actorId: auth.session.userId, type: 'comment_on_page', pageId, commentId: comment.id } }).catch(() => {});
+    }
+    if (parentComment && parentComment.authorId !== auth.session.userId) {
+      prisma.notification.create({ data: { userId: parentComment.authorId, actorId: auth.session.userId, type: 'comment_reply', pageId, commentId: comment.id } }).catch(() => {});
     }
 
     return json(comment, 201);
