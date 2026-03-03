@@ -7,9 +7,7 @@ import {
   type MoltbookPost,
 } from '@/lib/moltbook';
 import { json, errors, handleRoute, requireCron } from '@/lib/api';
-
-// Always use production URL for Moltbook replies — never leak localhost
-const BASE_URL = 'https://radix.wiki';
+import { BASE_URL } from '@/lib/utils';
 const MAX_ENGAGEMENTS = 8;
 const MIN_RELEVANCE_SCORE = 2;
 

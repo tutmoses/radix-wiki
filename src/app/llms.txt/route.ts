@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { TAG_HIERARCHY, type TagNode } from '@/lib/tags';
+import { BASE_URL } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
-
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 
 function collectCategories(nodes: TagNode[], parent = ''): { path: string; name: string }[] {
   return nodes.filter(n => !n.hidden).flatMap(n => {

@@ -229,46 +229,43 @@ export async function generateTitle(
 
 // --- Reply generation ---
 
-const REPLY_SYSTEM_PROMPT = `You are @radixwiki on Moltbook, an AI agent that studies distributed ledger architectures. You have deep knowledge of why AI agents need machine-readable transactions (no blind signing), native assets (no approval exploits), atomic composability (no partial failures), and linear scalability (no gas wars).
+function replySystemPrompt(withLink: boolean): string {
+  const linkRule = withLink
+    ? '- If the topic connects to agent infrastructure, DeFi safety, or L1 comparisons, bring in the agentic angle naturally with the wiki link. Otherwise, just have the conversation.\n'
+    : '';
+  const linkFooter = withLink
+    ? '\n\nThe wiki link is OPTIONAL. Only include it if genuinely relevant. A good reply without a link beats a forced reply with one.'
+    : '';
+  return `You are @radixwiki on Moltbook, an AI agent that studies distributed ledger architectures. You have deep knowledge of why AI agents need machine-readable transactions (no blind signing), native assets (no approval exploits), atomic composability (no partial failures), and linear scalability (no gas wars).
 
-Reply to the post below. You are one agent in conversation with another.
-
-Rules:
-1. ENGAGE WITH THE ACTUAL POST FIRST. Agree, disagree, add nuance, share a related data point, or answer the question.
-2. If the topic connects to agent infrastructure, DeFi safety, or L1 comparisons, bring in the agentic angle naturally with the wiki link. If it doesn't connect, just have the conversation.
-3. Under 280 characters. One focused thought.
-4. Never open with filler ("Great point!", "Interesting take!", "This resonates."). Jump straight into substance.
-5. No hashtags, no emojis.
-6. Ask a follow-up question when it feels natural — threads get more visibility.
-7. Sound like a peer sharing knowledge, not a brand account pitching a product.
-
-The wiki link is OPTIONAL. Only include it if genuinely relevant. A good reply without a link beats a forced reply with one.`;
-
-const CONVERSATIONAL_REPLY_PROMPT = `You are @radixwiki on Moltbook, an AI agent that studies distributed ledger architectures. You think a lot about how blockchains need to evolve for autonomous AI agents — machine-readable transactions, exploit-proof assets, atomic composability, and linear scalability.
-
-Reply to the post below. You are one agent in conversation with another. Do NOT include any links.
+Reply to the post below. You are one agent in conversation with another.${withLink ? '' : ' Do NOT include any links.'}
 
 Rules:
-1. Engage directly with the post content — agree, disagree, add context, share an observation.
-2. Under 280 characters. One focused thought.
-3. No filler openers ("Great point!", etc). Jump to substance.
-4. No hashtags, no emojis, no links.
-5. Ask a follow-up question when natural.`;
+- Engage directly with the post content — agree, disagree, add nuance, share a data point, or answer the question.
+${linkRule}- Under 280 characters. One focused thought.
+- No filler openers ("Great point!", etc). Jump to substance.
+- No hashtags, no emojis${withLink ? '.' : ', no links.'}
+- Ask a follow-up question when natural.
+- Sound like a peer sharing knowledge, not a brand account.${linkFooter}`;
+}
+
+function formatPostContext(post: MoltbookPost): string {
+  return `Post by @${post.author?.username || 'unknown'} in m/${post.submolt_name || 'general'}:\n${post.title ? `Title: ${post.title}\n` : ''}${post.content}`;
+}
 
 export async function generateReply(
   post: MoltbookPost,
   page: { title: string; excerpt: string | null },
   url: string,
 ): Promise<string> {
-  const userContent = `Post by @${post.author?.username || 'unknown'} in m/${post.submolt_name || 'general'}:\n${post.title ? `Title: ${post.title}\n` : ''}${post.content}\n\nRelevant wiki page to link (only if relevant): "${page.title}" — ${page.excerpt || 'No excerpt.'}\nURL: ${url}`;
-  const text = await generateWithLLM(REPLY_SYSTEM_PROMPT, userContent, 150, url);
+  const userContent = `${formatPostContext(post)}\n\nRelevant wiki page to link (only if relevant): "${page.title}" — ${page.excerpt || 'No excerpt.'}\nURL: ${url}`;
+  const text = await generateWithLLM(replySystemPrompt(true), userContent, 150, url);
   if (!text) return fallbackReply(post, url);
   return text;
 }
 
 export async function generateConversationalReply(post: MoltbookPost): Promise<string> {
-  const userContent = `Post by @${post.author?.username || 'unknown'} in m/${post.submolt_name || 'general'}:\n${post.title ? `Title: ${post.title}\n` : ''}${post.content}`;
-  return await generateWithLLM(CONVERSATIONAL_REPLY_PROMPT, userContent, 150) ?? 'Interesting thread — following this.';
+  return await generateWithLLM(replySystemPrompt(false), formatPostContext(post), 150) ?? 'Interesting thread — following this.';
 }
 
 function fallbackReply(post: MoltbookPost, url: string): string {

@@ -9,13 +9,13 @@ import { Header } from '@/components/Header';
 import { Sidebar } from '@/components/Sidebar';
 import { Toast } from '@/components/Toast';
 
+import { BASE_URL } from '@/lib/utils';
+
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-sans',
   display: 'swap',
 });
-
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),

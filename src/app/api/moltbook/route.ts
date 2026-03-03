@@ -4,9 +4,7 @@ import { prisma } from '@/lib/prisma/client';
 import { moltbook, generatePost, generateTitle, pickSubmolt } from '@/lib/moltbook';
 import { json, errors, handleRoute, requireCron } from '@/lib/api';
 import { getRecentPostSlugs } from '@/lib/scoring';
-
-// Always use production URL for Moltbook posts — never leak localhost
-const BASE_URL = 'https://radix.wiki';
+import { BASE_URL } from '@/lib/utils';
 const STALENESS_DAYS = 90;
 
 export const maxDuration = 60;

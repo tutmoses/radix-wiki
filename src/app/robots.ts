@@ -1,6 +1,5 @@
 import type { MetadataRoute } from 'next';
-
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
+import { BASE_URL } from '@/lib/utils';
 
 export default function robots(): MetadataRoute.Robots {
   return {

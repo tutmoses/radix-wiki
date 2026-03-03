@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
+import { BASE_URL } from '@/lib/utils';
 import type { Block, AtomicBlock } from '@/types/blocks';
 
 export const dynamic = 'force-dynamic';
-
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 
 function stripHtml(html: string): string {
   return html

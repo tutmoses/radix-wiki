@@ -3,11 +3,10 @@
 import type { MetadataRoute } from 'next';
 import { prisma } from '@/lib/prisma/client';
 import { TAG_HIERARCHY, type TagNode } from '@/lib/tags';
+import { BASE_URL } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
-
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 
 function collectTagPaths(nodes: TagNode[], parentPath = ''): string[] {
   return nodes.flatMap(node => {

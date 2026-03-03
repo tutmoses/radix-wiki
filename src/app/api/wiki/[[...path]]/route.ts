@@ -9,7 +9,7 @@ import { isValidTagPath, isAuthorOnlyPath, getMetadataKeys } from '@/lib/tags';
 import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, type BlockChange } from '@/lib/versioning';
 import { parsePath, AUTHOR_SELECT, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
-import { validateBlocks } from '@/lib/blocks';
+import { validateBlocks } from '@/lib/block-utils';
 import { blocksToMdx } from '@/lib/mdx';
 import type { WikiPageInput } from '@/types';
 import type { Block } from '@/types/blocks';

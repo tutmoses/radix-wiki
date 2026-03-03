@@ -3,6 +3,8 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
+export const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
+
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
 }

@@ -14,10 +14,9 @@ const IdeasView = dynamic(() => import('./IdeasView'), { loading: () => <PageSke
 const LeaderboardView = dynamic(() => import('@/components/LeaderboardView'), { loading: () => <PageSkeleton /> });
 const WelcomeView = dynamic(() => import('@/components/WelcomeView'), { loading: () => <PageSkeleton /> });
 const RewardsView = dynamic(() => import('@/components/RewardsView'), { loading: () => <PageSkeleton /> });
+import { BASE_URL } from '@/lib/utils';
 import type { Block } from '@/types/blocks';
 import type { WikiPage } from '@/types';
-
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 
 function collectTagPaths(nodes: TagNode[], parent = ''): string[] {
   return nodes.flatMap(n => {
