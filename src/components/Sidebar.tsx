@@ -38,7 +38,7 @@ function TagNavItem({ node, parentPath, pathname, depth, onNavigate }: { node: T
 
 function TableOfContents() {
   const [headings, setHeadings] = useState<{ text: string; level: number; id: string }[]>([]);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
