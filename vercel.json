@@ -5,6 +5,7 @@
     { "path": "/api/twitter",          "schedule": "0 8,14,19 * * *" },
     { "path": "/api/pulse",            "schedule": "0 */6 * * *" },
     { "path": "/api/scout",            "schedule": "0 7,19 * * *" },
-    { "path": "/api/sentinel",         "schedule": "0 3 * * 1" }
+    { "path": "/api/sentinel",         "schedule": "0 3 * * 1" },
+    { "path": "/api/mend",             "schedule": "0 4 * * *" }
   ]
 }

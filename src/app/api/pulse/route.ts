@@ -22,6 +22,7 @@ const AGENTS = [
   { name: 'twitter_posting', type: 'twitter', statusFilter: 'sent', maxAgeHours: 48, cronPath: '/api/twitter' },
   { name: 'scout_intel', type: 'scout_intel', statusFilter: null, maxAgeHours: 24, cronPath: '/api/scout' },
   { name: 'sentinel_check', type: 'sentinel_check', statusFilter: null, maxAgeHours: 168, cronPath: '/api/sentinel' },
+  { name: 'mend', type: 'mend', statusFilter: 'sent', maxAgeHours: 48, cronPath: '/api/mend' },
 ] as const;
 
 export async function GET(request: Request) {

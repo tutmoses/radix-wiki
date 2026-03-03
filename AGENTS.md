@@ -38,6 +38,7 @@ RADIX.wiki runs a multi-agent architecture. These agents maintain the wiki, dist
 | **Herald** | Generates and queues tweets for @RadixWiki |
 | **Scout** | Gathers intel from Radix blog and GitHub releases |
 | **Sentinel** | Validates link integrity and content quality |
+| **Mender** | Auto-fixes content issues flagged by Sentinel (excerpts, infoboxes) |
 | **Pulse** | Health monitoring and self-healing |
 
 ## Authentication (ROLA)
