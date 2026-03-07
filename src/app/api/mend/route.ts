@@ -1,7 +1,7 @@
 // src/app/api/mend/route.ts — Mender agent (regeneration): auto-fixes content quality issues
 //
 // Reads Sentinel findings and auto-generates missing excerpts, condenses long excerpts,
-// and creates infobox blocks for pages that lack them. Broken links are logged only.
+// creates infobox blocks for pages that lack them, and strips broken external links.
 
 import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
@@ -31,7 +31,7 @@ const INFOBOX_PROMPT = `Generate an HTML table for a wiki infobox summarizing th
 - Maximum 8 rows
 - No inline styles — use semantic HTML only
 - External links: <a href="..." target="_blank" rel="noopener">
-- Internal wiki links: <a href="/path" rel="noopener">
+- Internal wiki links: <a href="/path"> (no rel or target attributes)
 - Keep values concise (1-2 sentences max per cell)
 
 Respond with ONLY the <table>...</table> HTML. Nothing else.`;
@@ -82,7 +82,7 @@ export async function GET(request: Request) {
       try {
         const parsed = JSON.parse(issue.text);
         const fixable = (parsed.contentIssues as string[])?.filter(
-          (i: string) => i === 'missing_excerpt' || i === 'excerpt_too_long' || i === 'missing_infobox'
+          (i: string) => i === 'missing_excerpt' || i === 'excerpt_too_long' || i === 'missing_infobox' || i.startsWith('broken:')
         );
         if (fixable?.length) issuesByRecord.set(key, { slug: issue.pageSlug, tagPath: issue.pageTagPath, issues: fixable });
       } catch { /* skip malformed */ }
@@ -135,6 +135,22 @@ export async function GET(request: Request) {
           updates.content = [infoboxBlock, ...content] as unknown as Prisma.InputJsonValue;
           fixes.push('generated infobox');
         }
+      }
+
+      // Strip broken links — remove <a> tag but keep anchor text
+      const brokenUrls = issues.filter(i => i.startsWith('broken:')).map(i => i.slice(7));
+      if (brokenUrls.length > 0) {
+        const currentContent = (updates.content ?? content) as unknown as Block[];
+        let contentJson = JSON.stringify(currentContent);
+        for (const url of brokenUrls) {
+          const escaped = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          contentJson = contentJson.replace(
+            new RegExp(`<a\\s+[^>]*href=\\\\"${escaped}\\\\"[^>]*>(.*?)</a>`, 'g'),
+            '$1',
+          );
+        }
+        updates.content = JSON.parse(contentJson) as Prisma.InputJsonValue;
+        fixes.push(`stripped ${brokenUrls.length} broken link(s)`);
       }
 
       if (fixes.length === 0) {

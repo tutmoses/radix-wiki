@@ -15,7 +15,7 @@ export function UserAvatar({ radixAddress, avatarUrl, size = 'sm', className }: 
 }) {
   if (avatarUrl) {
     const px = AVATAR_PX[size];
-    return <Image src={avatarUrl} alt="" width={px} height={px} className={cn('user-avatar', `user-avatar-${size}`, className)} unoptimized />;
+    return <Image src={avatarUrl} alt="User avatar" width={px} height={px} className={cn('user-avatar', `user-avatar-${size}`, className)} unoptimized />;
   }
 
   const { cells, fg, bg } = generateIdenticon(radixAddress);

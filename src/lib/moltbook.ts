@@ -65,7 +65,7 @@ async function solveChallenge(text: string): Promise<string | null> {
     const cleaned = deobfuscate(text);
     const anthropic = new Anthropic();
     const msg = await anthropic.messages.create({
-      model: 'claude-opus-4-6',
+      model: 'claude-sonnet-4-6',
       max_tokens: 20,
       system: `Solve the lobster math challenge. The text may still have minor noise — ignore anything that isn't part of the math problem.
 
@@ -174,17 +174,19 @@ export function formatPageContext(page: { title: string; excerpt: string | null;
 export async function generateWithLLM(system: string, userContent: string, maxTokens: number, url?: string): Promise<string | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
   try {
-    const anthropic = new Anthropic();
-    const msg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: maxTokens,
-      system,
-      messages: [{ role: 'user', content: userContent }],
-    });
-    const text = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : '';
-    if (!text) return null;
-    if (url && !text.includes(url)) return `${text} ${url}`;
-    return text;
+    return await withRetry(async () => {
+      const anthropic = new Anthropic();
+      const msg = await anthropic.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: maxTokens,
+        system,
+        messages: [{ role: 'user', content: userContent }],
+      });
+      const text = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : '';
+      if (!text) throw new Error('Empty LLM response');
+      if (url && !text.includes(url)) return `${text} ${url}`;
+      return text;
+    }, 1, 3000);
   } catch {
     return null;
   }

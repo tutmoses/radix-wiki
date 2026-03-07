@@ -7,13 +7,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, ArrowRight, Save, Plus, Upload, X, Image as ImageIcon, ArrowDownAZ, CalendarPlus, RefreshCw } from 'lucide-react';
-import { BlockRenderer, findInfobox, InfoboxSidebar } from '@/components/BlockRenderer';
+import { ArrowLeft, ArrowRight, Save, Plus, Upload, X, Image as ImageIcon, ArrowDownAZ, CalendarPlus, RefreshCw, Clock, FileText } from 'lucide-react';
+import { BlockRenderer, findInfobox, InfoboxSidebar, type InfoboxPageInfo } from '@/components/BlockRenderer';
+import { UserAvatar } from '@/components/UserAvatar';
 import { Footer } from '@/components/Footer';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Badge, Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
-import { cn, slugify, generateBannerSvg } from '@/lib/utils';
+import { cn, slugify, generateBannerSvg, formatRelativeTime, formatDate } from '@/lib/utils';
 import { findTagByPath, getXrdRequired, type SortOrder, type TagNode } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
 import type { WikiPage, AdjacentPages } from '@/types';
@@ -73,7 +74,7 @@ function PageNav({ adjacent }: { adjacent: AdjacentPages }) {
 }
 
 // ========== BANNER ==========
-export function Banner({ src, title, tagPath, editable, onUpload, onRemove, children }: { src?: string | null; title?: string; tagPath?: string; editable?: boolean; onUpload?: (url: string) => void; onRemove?: () => void; children?: ReactNode }) {
+export function Banner({ src, title, tagPath, editable, onUpload, onRemove, pageInfo, children }: { src?: string | null; title?: string; tagPath?: string; editable?: boolean; onUpload?: (url: string) => void; onRemove?: () => void; pageInfo?: InfoboxPageInfo | null; children?: ReactNode }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -93,6 +94,31 @@ export function Banner({ src, title, tagPath, editable, onUpload, onRemove, chil
 
   const FileInput = <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />;
 
+  const pageInfoEl = pageInfo ? (
+    <div className="banner-page-info">
+      {pageInfo.author && (
+        <div className="banner-info-row">
+          <UserAvatar radixAddress={pageInfo.author.radixAddress} avatarUrl={pageInfo.author.avatarUrl} size="sm" />
+          <span className="truncate">{pageInfo.author.displayName || pageInfo.author.radixAddress.slice(0, 16)}...</span>
+        </div>
+      )}
+      <div className="banner-info-row">
+        <Clock size={14} className="shrink-0 opacity-60" />
+        <span>Updated {formatRelativeTime(pageInfo.updatedAt)}</span>
+      </div>
+      <div className="banner-info-row">
+        <Clock size={14} className="shrink-0 opacity-60" />
+        <span>Created {formatDate(pageInfo.createdAt)}</span>
+      </div>
+      {(pageInfo.revisionCount ?? 0) > 0 && (
+        <div className="banner-info-row">
+          <FileText size={14} className="shrink-0 opacity-60" />
+          <span>{pageInfo.revisionCount} revisions</span>
+        </div>
+      )}
+    </div>
+  ) : null;
+
   if (editable && !src) {
     return (
       <div className="banner-empty">
@@ -111,13 +137,20 @@ export function Banner({ src, title, tagPath, editable, onUpload, onRemove, chil
   return (
     <div className="banner-container">
       {src ? (
-        <Image src={src} alt="Page banner" fill className="banner-image" sizes="100vw" priority />
+        <Image src={src} alt={title ? `${title} banner` : 'Page banner'} fill className="banner-image" sizes="100vw" priority />
       ) : generativeSrc ? (
-        <Image src={generativeSrc} alt="" fill className="banner-image" unoptimized />
+        <Image src={generativeSrc} alt={title || 'Page banner'} fill className="banner-image" unoptimized />
       ) : (
         <div className="banner-placeholder" />
       )}
-      {children && <div className="banner-overlay">{children}</div>}
+      {(children || pageInfoEl) && (
+        <div className="banner-overlay">
+          <div className="banner-overlay-inner">
+            <div className="banner-overlay-left">{children}</div>
+            {pageInfoEl}
+          </div>
+        </div>
+      )}
       {editable && (
         <div className="banner-actions">
           {FileInput}
@@ -240,9 +273,13 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
     </>
   );
 
+  const pageInfo = page ? { author: page.author, updatedAt: page.updatedAt, createdAt: page.createdAt, revisionCount: page._count?.revisions ?? 0 } : null;
+
   return (
     <div className="stack">
-      <Banner src={bannerImage} title="Homepage" />
+      <Banner src={bannerImage} title="Homepage" pageInfo={pageInfo}>
+        <h1 className="sr-only">RADIX Wiki</h1>
+      </Banner>
       {infobox ? (
         <div className="page-with-infobox">
           <div className="page-main-content stack">{mainContent}</div>
@@ -293,9 +330,9 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
               <Card interactive className="h-full overflow-hidden p-0!">
                 <div className="page-card-thumb">
                   {p.bannerImage ? (
-                    <Image src={p.bannerImage} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
+                    <Image src={p.bannerImage} alt={p.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
                   ) : (
-                    <Image src={generateBannerSvg(p.title, p.tagPath)} alt="" fill className="object-cover" unoptimized />
+                    <Image src={generateBannerSvg(p.title, p.tagPath)} alt={p.title} fill className="object-cover" unoptimized />
                   )}
                 </div>
                 <div className="page-card-body">
@@ -324,9 +361,11 @@ function PageViewContent({ page, adjacent }: { page: WikiPage; adjacent: Adjacen
   const infobox = findInfobox(blocks) || { id: '__infobox__', type: 'infobox' as const, blocks: [] };
   const mainBlocks = blocks.filter(b => b.type !== 'infobox');
 
+  const pageInfo = { author: page.author, updatedAt: page.updatedAt, createdAt: page.createdAt, revisionCount: page._count?.revisions ?? 0 };
+
   return (
     <article className="stack">
-      <Banner src={page.bannerImage} title={page.title} tagPath={page.tagPath}>
+      <Banner src={page.bannerImage} title={page.title} tagPath={page.tagPath} pageInfo={pageInfo}>
         <Breadcrumbs path={[...page.tagPath.split('/'), page.slug]} />
         <h1 id={slugify(page.title)} className="m-0!">{page.title}</h1>
       </Banner>
@@ -340,7 +379,7 @@ function PageViewContent({ page, adjacent }: { page: WikiPage; adjacent: Adjacen
             <Link href={`/${page.tagPath}/${page.slug}/edit`} className="edit-cta">Something missing? Edit this page →</Link>
           )}
         </div>
-        <InfoboxSidebar block={infobox} metadata={page.metadata} tagPath={page.tagPath} pageInfo={{ author: page.author, updatedAt: page.updatedAt, createdAt: page.createdAt, revisionCount: page._count?.revisions ?? 0 }} />
+        <InfoboxSidebar block={infobox} metadata={page.metadata} tagPath={page.tagPath} />
       </div>
     </article>
   );

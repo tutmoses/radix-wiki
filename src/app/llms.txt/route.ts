@@ -12,7 +12,10 @@ function collectCategories(nodes: TagNode[], parent = ''): { path: string; name:
   });
 }
 
-const ROADMAP_PATHS = ['contents/tech/research', 'contents/tech/releases', 'contents/tech/core-protocols', 'contents/tech/core-concepts'];
+/** Build a display-name lookup from top-level TAG_HIERARCHY slugs */
+const SECTION_NAMES = new Map(
+  TAG_HIERARCHY.filter(n => !n.hidden && n.slug).map(n => [n.slug, n.name.replace(/^\S+\s/, '')]),  // strip emoji prefix
+);
 
 /** Strip URLs, parenthesised URLs, and clean up whitespace from excerpts */
 function cleanExcerpt(s: string): string {
@@ -133,27 +136,34 @@ export async function GET() {
     orderBy: { updatedAt: 'desc' },
   });
 
-  const roadmapPages = pages.filter(p => ROADMAP_PATHS.some(rp => p.tagPath?.startsWith(rp)));
   const categories = collectCategories(TAG_HIERARCHY);
+  const validPages = pages.filter(p => p.tagPath && p.slug);
+  const fmt = (p: typeof validPages[number]) => {
+    const e = p.excerpt ? cleanExcerpt(p.excerpt) : '';
+    return `- [${p.title}](${BASE_URL}/${p.tagPath}/${p.slug})${e ? `: ${e}` : ''}`;
+  };
+
+  // Group pages by top-level tag path
+  const grouped = new Map<string, typeof validPages>();
+  for (const p of validPages) {
+    const topSlug = p.tagPath!.split('/')[0];
+    if (!grouped.has(topSlug)) grouped.set(topSlug, []);
+    grouped.get(topSlug)!.push(p);
+  }
+
+  const sectionLines: string[] = [];
+  for (const [slug, group] of grouped) {
+    const name = SECTION_NAMES.get(slug) || slug;
+    sectionLines.push(`## ${name}`, '', ...group.map(fmt), '');
+  }
 
   const lines = [
     PREAMBLE,
     '',
-    '## Roadmap & Technical Highlights',
-    '',
-    ...roadmapPages
-      .filter(p => p.tagPath && p.slug)
-      .map(p => { const e = p.excerpt ? cleanExcerpt(p.excerpt) : ''; return `- [${p.title}](${BASE_URL}/${p.tagPath}/${p.slug})${e ? `: ${e}` : ''}`; }),
-    '',
+    ...sectionLines,
     '## Categories',
     '',
     ...categories.map(c => `- [${c.name}](${BASE_URL}/${c.path})`),
-    '',
-    '## All Pages',
-    '',
-    ...pages
-      .filter(p => p.tagPath && p.slug)
-      .map(p => { const e = p.excerpt ? cleanExcerpt(p.excerpt) : ''; return `- [${p.title}](${BASE_URL}/${p.tagPath}/${p.slug})${e ? `: ${e}` : ''}`; }),
   ];
 
   return new NextResponse(lines.join('\n'), {

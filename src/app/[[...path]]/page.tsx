@@ -45,12 +45,37 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { path } = await params;
   const parsed = parsePath(path);
 
-  if (parsed.type === 'leaderboard') {
-    const ogUrl = `${BASE_URL}/og?title=${encodeURIComponent('Leaderboard')}&excerpt=${encodeURIComponent('Top RADIX.wiki contributors ranked by contribution points.')}`;
+  // Static pages with fixed metadata
+  const STATIC_META: Record<string, { title: string; description: string }> = {
+    leaderboard: { title: 'Leaderboard', description: 'Top RADIX.wiki contributors ranked by contribution points.' },
+    welcome: { title: 'Welcome', description: 'Get started with RADIX Wiki — connect your Radix wallet and begin contributing to the decentralized knowledge base.' },
+    rewards: { title: 'Rewards', description: 'Track contributor rewards and XRD airdrop eligibility on RADIX Wiki.' },
+  };
+
+  const staticMeta = STATIC_META[parsed.type];
+  if (staticMeta) {
+    const ogUrl = `${BASE_URL}/og?title=${encodeURIComponent(staticMeta.title)}&excerpt=${encodeURIComponent(staticMeta.description)}`;
     return {
-      title: 'Leaderboard', description: 'Top RADIX.wiki contributors ranked by contribution points.',
-      openGraph: { title: 'Leaderboard', description: 'Top RADIX.wiki contributors ranked by contribution points.', type: 'article', images: [{ url: ogUrl, width: 1200, height: 630 }] },
-      twitter: { card: 'summary_large_image', title: 'Leaderboard', images: [ogUrl] },
+      title: staticMeta.title, description: staticMeta.description,
+      alternates: { canonical: `${BASE_URL}/${parsed.type}` },
+      openGraph: { title: staticMeta.title, description: staticMeta.description, type: 'article', images: [{ url: ogUrl, width: 1200, height: 630 }] },
+      twitter: { card: 'summary_large_image', title: staticMeta.title, images: [ogUrl] },
+    };
+  }
+
+  // Category pages — unique title + description from tag hierarchy
+  if (parsed.type === 'category') {
+    const tagSegments = parsed.tagPath.split('/');
+    const tag = findTagByPath(tagSegments);
+    const categoryName = tag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagSegments.at(-1)?.replace(/-/g, ' ') || 'Category';
+    const categoryDescription = tag?.description || `Browse ${categoryName} articles on RADIX Wiki.`;
+    const categoryUrl = `${BASE_URL}/${parsed.tagPath}`;
+    const ogUrl = `${BASE_URL}/og?title=${encodeURIComponent(categoryName)}&excerpt=${encodeURIComponent(categoryDescription)}`;
+    return {
+      title: categoryName, description: categoryDescription,
+      alternates: { canonical: categoryUrl },
+      openGraph: { title: categoryName, description: categoryDescription, type: 'website', images: [{ url: ogUrl, width: 1200, height: 630 }] },
+      twitter: { card: 'summary_large_image', title: categoryName, images: [ogUrl] },
     };
   }
 
@@ -59,7 +84,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   else if (parsed.type === 'page' || parsed.type === 'edit') page = await getPage(parsed.tagPath, parsed.slug);
 
   const title = page?.title || 'RADIX Wiki';
-  const description = page?.excerpt || 'A decentralized wiki powered by Radix DLT';
+  const description = page?.excerpt || `${title} — community-maintained article on RADIX Wiki.`;
   const segments = path?.length ? path.join('/') : '';
   const canonical = segments ? `${BASE_URL}/${segments}` : BASE_URL;
   const ogParams = new URLSearchParams({ title, excerpt: description, tagPath: page?.tagPath || '' });

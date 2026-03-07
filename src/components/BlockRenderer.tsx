@@ -40,13 +40,30 @@ function processHtml(html: string): string {
   if (!html.trim()) return html;
   const stripTags = (s: string) => s.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').trim();
   return html
-    .replace(/<(h[1-4])([^>]*)>([\s\S]*?)<\/\1>/gi, (match, tag, attrs, content) => {
+    // Demote h1 in content to h2 (page title is the only h1)
+    .replace(/<h1(\s[^>]*)?>([\s\S]*?)<\/h1>/gi, '<h2$1>$2</h2>')
+    // Add IDs to headings for anchor links
+    .replace(/<(h[2-4])([^>]*)>([\s\S]*?)<\/\1>/gi, (match, tag, attrs, content) => {
       if (attrs.includes(' id=')) return match;
       const text = stripTags(content);
       const id = slugify(text);
       return id ? `<${tag}${attrs} id="${id}">${content}</${tag}>` : match;
     })
-    .replace(/<a\s+href="(https?:\/\/[^"]+)"([^>]*)>/gi, (match, href, rest) => rest.includes('target=') ? match : `<a href="${href}"${rest} target="_blank" rel="noopener noreferrer">`);
+    // Convert absolute internal links to relative paths
+    .replace(/<a\s+href="https?:\/\/(?:www\.)?radix\.wiki(\/[^"]*)"([^>]*)>/gi, '<a href="$1"$2>')
+    // Remove nofollow/noopener from internal (relative) links
+    .replace(/<a\s+href="(\/[^"]*)"([^>]*)>/gi, (match, href, rest) => {
+      const cleaned = rest.replace(/\s*rel="[^"]*"/gi, '').replace(/\s*target="[^"]*"/gi, '');
+      return `<a href="${href}"${cleaned}>`;
+    })
+    // Add target + rel to external links (noopener only, no noreferrer)
+    .replace(/<a\s+href="(https?:\/\/[^"]+)"([^>]*)>/gi, (match, href, rest) => {
+      if (rest.includes('target=')) {
+        // Already has target — just ensure rel is noopener without noreferrer
+        return match.replace(/rel="[^"]*"/gi, 'rel="noopener"');
+      }
+      return `<a href="${href}"${rest} target="_blank" rel="noopener">`;
+    });
 }
 
 // ========== PAGE CARD ==========
@@ -57,7 +74,7 @@ const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; com
   if (compact) {
     return (
       <Link href={href} className="page-card-compact">
-        {page.bannerImage ? <Image src={page.bannerImage} alt="" width={32} height={32} className="rounded object-cover shrink-0" /> : <FileText size={16} className="text-accent shrink-0" />}
+        {page.bannerImage ? <Image src={page.bannerImage} alt={page.title} width={32} height={32} className="rounded object-cover shrink-0" /> : <FileText size={16} className="text-accent shrink-0" />}
         <span className="group-hover:text-accent transition-colors truncate">{page.title}</span>
       </Link>
     );
@@ -68,9 +85,9 @@ const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; com
       <div className="page-card">
         <div className="page-card-thumb">
           {page.bannerImage ? (
-            <Image src={page.bannerImage} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
+            <Image src={page.bannerImage} alt={page.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
           ) : (
-            <Image src={generateBannerSvg(page.title, page.tagPath)} alt="" fill className="object-cover" unoptimized />
+            <Image src={generateBannerSvg(page.title, page.tagPath)} alt={page.title} fill className="object-cover" unoptimized />
           )}
         </div>
         <div className="page-card-body">
@@ -178,7 +195,7 @@ function formatPriceSubscript(p: number): string {
   const zeros = afterDot.match(/^0*/)?.[0].length ?? 0;
   if (zeros < 2) return p.toFixed(4);
   const sig = afterDot.slice(zeros, zeros + 3).replace(/0+$/, '') || '0';
-  const sub = zeros + 1; // position of first significant digit (negative exponent)
+  const sub = zeros; // count of leading zeros after decimal point
   return `0.${String(sub).split('').map(d => SUBSCRIPT_DIGITS[+d]).join('')}${sig}`;
 }
 
@@ -298,11 +315,11 @@ function RssFeedBlockView({ block }: { block: RssFeedBlock }) {
           <div key={i} className="rss-card">
             {item.image && (
               <div className="rss-card-image">
-                <Image src={item.image} alt="" fill className="object-cover" unoptimized />
+                <Image src={item.image} alt={item.title} fill className="object-cover" unoptimized />
               </div>
             )}
             <div className="rss-card-body">
-              <div className="rss-card-title"><a href={item.link} target="_blank" rel="noopener noreferrer">{item.title}</a></div>
+              <div className="rss-card-title"><a href={item.link} target="_blank" rel="noopener">{item.title}</a></div>
               <div className="rss-card-meta">
                 <span className="rss-card-source">{item.source}</span>
                 {item.date && <>{' · '}{new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</>}
@@ -349,7 +366,7 @@ function ColumnsBlockView({ block }: { block: ColumnsBlock }) {
 
 function linkify(v: string): string {
   const href = /^https?:\/\//.test(v) ? v : `https://${v}`;
-  return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="link break-all">${v.replace(/^https?:\/\/(www\.)?/, '')}</a>`;
+  return `<a href="${href}" target="_blank" rel="noopener" class="link break-all">${v.replace(/^https?:\/\/(www\.)?/, '')}</a>`;
 }
 
 function formatMetadataValue(value: string, type: string): string {
@@ -384,46 +401,18 @@ function getResourceAddressEntries(metadata: PageMetadata, tagPath: string): { k
   return keys.filter(k => k.type === 'resource_address' && metadata[k.key]?.trim()).map(k => ({ key: k.key, label: k.label, value: metadata[k.key] }));
 }
 
-interface InfoboxPageInfo {
+export interface InfoboxPageInfo {
   author?: { displayName?: string | null; radixAddress: string; avatarUrl?: string | null } | null;
   updatedAt: string | Date;
   createdAt: string | Date;
   revisionCount?: number;
 }
 
-export function InfoboxSidebar({ block, metadata, tagPath, pageInfo }: { block: InfoboxBlock; metadata?: PageMetadata | null; tagPath?: string; pageInfo?: InfoboxPageInfo | null }) {
+export function InfoboxSidebar({ block, metadata, tagPath }: { block: InfoboxBlock; metadata?: PageMetadata | null; tagPath?: string }) {
   const metaBlock = metadata && tagPath ? buildMetadataBlock(metadata, tagPath) : null;
   const assetEntries = metadata && tagPath ? getResourceAddressEntries(metadata, tagPath) : [];
   return (
     <aside className="infobox stack">
-      {pageInfo && (
-        <div className="infobox-page-info">
-          {pageInfo.author && (
-            <div className="row">
-              <UserAvatar radixAddress={pageInfo.author.radixAddress} avatarUrl={pageInfo.author.avatarUrl} size="sm" />
-              <span className="text-text-muted">Author:</span>
-              <span className="truncate">{pageInfo.author.displayName || pageInfo.author.radixAddress.slice(0, 16)}...</span>
-            </div>
-          )}
-          <div className="row">
-            <Clock size={14} className="text-text-muted shrink-0" />
-            <span className="text-text-muted">Updated:</span>
-            <span>{formatRelativeTime(pageInfo.updatedAt)}</span>
-          </div>
-          <div className="row">
-            <Clock size={14} className="text-text-muted shrink-0" />
-            <span className="text-text-muted">Created:</span>
-            <span>{formatDate(pageInfo.createdAt)}</span>
-          </div>
-          {(pageInfo.revisionCount ?? 0) > 0 && (
-            <div className="row">
-              <FileText size={14} className="text-text-muted shrink-0" />
-              <span className="text-text-muted">Revisions:</span>
-              <span>{pageInfo.revisionCount}</span>
-            </div>
-          )}
-        </div>
-      )}
       {assetEntries.map(entry => (
         <div key={entry.key}>
           <AssetPriceBlockView block={{ id: `__asset_${entry.key}__`, type: 'assetPrice', resourceAddress: entry.value, showChange: true, showChart: true, chartTimeframe: '30d' }} />

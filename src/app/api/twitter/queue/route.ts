@@ -9,7 +9,7 @@ import { prisma } from '@/lib/prisma/client';
 import { json, handleRoute, requireCron } from '@/lib/api';
 
 const MIN_GAP_MS = 2 * 3_600_000;   // 2 hours between posts
-const EXPIRY_MS  = 48 * 3_600_000;  // Tweets older than 48h get expired
+const EXPIRY_MS  = 7 * 24 * 3_600_000;  // Tweets older than 7 days get expired (wiki content is evergreen)
 
 export async function GET(request: Request) {
   return handleRoute(async () => {

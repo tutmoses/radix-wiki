@@ -285,7 +285,11 @@
   .banner-container { @apply relative w-full aspect-[4/1] max-h-48 overflow-hidden bg-surface-1 rounded-lg; }
   .banner-image { @apply w-full h-full object-cover object-center; }
   .banner-placeholder { @apply w-full h-full bg-linear-to-br from-surface-1 to-surface-2; }
-  .banner-overlay { @apply absolute inset-0 flex flex-col justify-end p-3 sm:p-4 lg:p-6 bg-linear-to-t from-black/80 via-black/40 to-transparent text-text gap-1 sm:gap-2; h1 { @apply text-base sm:text-h3 lg:text-h1 leading-tight; text-shadow: 0 2px 8px rgba(0,0,0,0.5); } nav { @apply text-xs sm:text-small font-medium; text-shadow: 0 1px 4px rgba(0,0,0,0.6); a, span { @apply text-white/90 hover:text-white; } } }
+  .banner-overlay { @apply absolute inset-0 flex flex-col justify-end p-3 sm:p-4 lg:p-6 text-text; h1 { @apply text-base sm:text-h3 lg:text-h1 leading-tight; text-shadow: 0 2px 8px rgba(0,0,0,0.5); } nav { @apply text-xs sm:text-small font-medium; text-shadow: 0 1px 4px rgba(0,0,0,0.6); a, span { @apply text-white/90 hover:text-white; } } }
+  .banner-overlay-inner { @apply flex items-end justify-between gap-4 w-full; }
+  .banner-overlay-left { @apply flex flex-col gap-1 sm:gap-2 min-w-0; }
+  .banner-page-info { @apply hidden md:flex flex-col gap-1 text-xs text-white/80 shrink-0 items-end; text-shadow: 0 1px 4px rgba(0,0,0,0.6); }
+  .banner-info-row { @apply flex items-center gap-1.5; }
   .banner-empty { @apply relative w-full aspect-[4/1] max-h-48 overflow-hidden bg-surface-1 rounded-lg border-2 border-dashed border-border-muted bg-surface-1/50; }
   .banner-upload-btn { @apply w-full h-full flex items-center justify-center text-text-muted hover:text-text hover:bg-surface-2/50 transition-colors; }
   .banner-actions { @apply absolute top-2 right-2 flex items-center gap-2 z-10; }
@@ -453,9 +457,6 @@
     }
   }
 
-  .infobox-page-info {
-    @apply flex flex-col gap-1.5 border-b border-border-muted text-sm;
-  }
 
   /* Infobox editor sidebar */
   .infobox-editor {

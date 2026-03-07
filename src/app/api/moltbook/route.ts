@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     });
 
     // Deduplicate: skip pages posted in the last 7 days
-    const alreadyPosted = await getRecentPostSlugs('moltbook', 7);
+    const alreadyPosted = await getRecentPostSlugs(['moltbook', 'twitter'], 7);
     const eligible = pages.filter(p => p.tagPath && p.slug && !alreadyPosted.has(`${p.tagPath}/${p.slug}`));
     if (eligible.length === 0) return json({ posted: 0, results: [{ status: 'no_eligible_pages' }] });
 

@@ -103,9 +103,10 @@ export const getEditorScores = unstable_cache(
 
 // --- Distribution dedup ---
 
-export async function getRecentPostSlugs(type: string, days: number): Promise<Set<string>> {
+export async function getRecentPostSlugs(type: string | string[], days: number): Promise<Set<string>> {
+  const types = Array.isArray(type) ? type : [type];
   const rows = await prisma.tweet.findMany({
-    where: { type, createdAt: { gte: new Date(Date.now() - days * 86_400_000) } },
+    where: { type: { in: types }, createdAt: { gte: new Date(Date.now() - days * 86_400_000) } },
     select: { pageSlug: true, pageTagPath: true },
   });
   return new Set(rows.map(r => `${r.pageTagPath}/${r.pageSlug}`));

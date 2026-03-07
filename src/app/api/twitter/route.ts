@@ -19,7 +19,7 @@ Rules:
 - No emojis, no "NEW:" or "BREAKING:" openers
 - Vary format: sometimes a question, sometimes a fact, sometimes a hook
 - End naturally — the URL will be appended after your text`;
-const MAX_QUEUED = 3;
+const MAX_QUEUED = 5;
 
 // Sun=0 .. Sat=6 → content pillar for the day
 const PILLARS = ['review', 'ecosystem', 'dev', 'roadmap', 'protocol', 'community', 'ecosystem'] as const;
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
       take: 20,
     });
 
-    const alreadyTweeted = await getRecentPostSlugs('twitter', 7);
+    const alreadyTweeted = await getRecentPostSlugs(['twitter', 'moltbook'], 7);
     const eligible = pages.filter(p =>
       p.tagPath && p.slug && p.excerpt && !alreadyTweeted.has(`${p.tagPath}/${p.slug}`),
     );

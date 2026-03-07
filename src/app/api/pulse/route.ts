@@ -89,15 +89,18 @@ export async function GET(request: Request) {
     const overall = checks.every(c => c.status === 'healthy') ? 'healthy'
       : checks.some(c => c.status === 'error') ? 'error' : 'degraded';
 
+    // Count pending scout intel for awareness
+    const pendingIntel = await prisma.tweet.count({ where: { type: 'scout_intel', status: 'flagged' } });
+
     // Log pulse result for trend tracking
     await prisma.tweet.create({
       data: {
         type: 'pulse',
-        text: JSON.stringify({ overall, checks, healed }),
+        text: JSON.stringify({ overall, checks, healed, pendingIntel }),
         status: overall,
       },
     }).catch(() => {});
 
-    return json({ status: overall, checks, healed, timestamp: new Date().toISOString() });
+    return json({ status: overall, checks, healed, pendingIntel, timestamp: new Date().toISOString() });
   }, 'Pulse: health check failed');
 }
