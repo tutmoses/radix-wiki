@@ -1,7 +1,6 @@
 {
   "crons": [
-    { "path": "/api/moltbook",        "schedule": "0 */8 * * *" },
-    { "path": "/api/moltbook/engage",  "schedule": "0 2,6,10,14,18,22 * * *" },
+    { "path": "/api/moltbook",        "schedule": "0 10 * * *" },
     { "path": "/api/twitter",          "schedule": "0 12 * * *" },
     { "path": "/api/pulse",            "schedule": "0 */6 * * *" },
     { "path": "/api/scout",            "schedule": "0 7,19 * * *" },

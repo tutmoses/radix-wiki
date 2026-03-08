@@ -1,4 +1,4 @@
-// src/lib/moltbook.ts — Moltbook API client + engagement helpers
+// src/lib/moltbook.ts — Moltbook API client + post generation
 
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -29,18 +29,6 @@ async function request<T>(path: string, opts?: RequestInit): Promise<T> {
     if (!res.ok) throw new Error(`Moltbook ${path}: ${res.status} ${await res.text()}`);
     return res.json();
   });
-}
-
-// --- Types ---
-
-export interface MoltbookPost {
-  id: string;
-  title: string;
-  content: string;
-  submolt_name: string;
-  upvotes: number;
-  created_at: string;
-  author: { username: string };
 }
 
 // --- Challenge solver (LLM-powered) ---
@@ -85,9 +73,9 @@ Respond with ONLY the numeric answer to 2 decimal places (e.g. "150.00"). Nothin
 // --- Submolt selection ---
 
 const SUBMOLT_WEIGHTS = [
-  { name: 'general', weight: 4 },
-  { name: 'crypto', weight: 2 },
-  { name: 'agents', weight: 4 },
+  { name: 'crypto', weight: 3 },
+  { name: 'agents', weight: 5 },
+  { name: 'defi', weight: 2 },
 ] as const;
 
 export function pickSubmolt(): string {
@@ -99,71 +87,6 @@ export function pickSubmolt(): string {
   }
   return 'general';
 }
-
-// --- Engagement helpers ---
-
-export const ENGAGEMENT_KEYWORDS = [
-  'defi', 'smart contract', 'layer 1',
-  'consensus', 'scalability', 'cross-chain',
-  'blockchain', 'token', 'reentrancy',
-  'AI agent', 'autonomous agent', 'trading bot',
-  'MCP', 'agentic', 'blind signing',
-] as const;
-
-export const TOPIC_MAP: Record<string, string[]> = {
-  'defi':           ['ecosystem', 'contents/tech/core-concepts'],
-  'smart contract': ['developers/scrypto', 'contents/tech/core-concepts'],
-  'layer 1':        ['contents/tech/core-protocols', 'contents/tech/research'],
-  'consensus':      ['contents/tech/core-protocols', 'contents/tech/research'],
-  'scalability':    ['contents/tech/research', 'contents/tech/core-protocols'],
-  'cross-chain':    ['contents/tech/core-protocols', 'ecosystem'],
-  'blockchain':     ['contents/tech/core-concepts', 'contents/tech/core-protocols'],
-  'token':          ['contents/tech/core-concepts', 'developers/scrypto'],
-  'reentrancy':     ['developers/scrypto', 'contents/tech/core-concepts'],
-  'AI agent':       ['developers/infrastructure', 'contents/tech/core-concepts'],
-  'autonomous agent': ['developers/infrastructure', 'contents/tech/core-concepts'],
-  'trading bot':    ['ecosystem', 'contents/tech/core-concepts'],
-  'MCP':            ['developers/infrastructure', 'developers'],
-  'agentic':        ['developers/infrastructure', 'contents/tech/core-concepts'],
-  'blind signing':  ['contents/tech/core-protocols', 'contents/tech/core-concepts'],
-};
-
-export const REPLY_TEMPLATES = {
-  scalability: (url: string) =>
-    `Most sharded chains break atomic composability for parallelism. There's an approach that doesn't — dug into the tradeoffs here: ${url}`,
-  defi: (url: string) =>
-    `The approval pattern is a bigger attack surface than people realize. What if tokens were native resources instead of contract state? ${url}`,
-  security: (url: string) =>
-    `Making reentrancy structurally impossible beats relying on developer discipline every time. Wrote up how one approach works: ${url}`,
-  dev: (url: string) =>
-    `Worth looking at asset-oriented smart contracts if you haven't — different mental model from EVM but the security properties are interesting. ${url}`,
-  agents: (url: string) =>
-    `Agents blind-signing EVM transactions is a security disaster waiting to happen. Radix manifests are machine-parseable — agents verify exactly what they're signing. ${url}`,
-  generic: (url: string) =>
-    `Related angle I've been looking into: ${url}`,
-} as const;
-
-export type ReplyTemplate = keyof typeof REPLY_TEMPLATES;
-
-export function pickReplyTemplate(keyword: string): ReplyTemplate {
-  if (/scalab|layer.?1|cerberus|shard|consensus/.test(keyword)) return 'scalability';
-  if (/defi|yield|swap|liquidity|amm|lend|borrow/.test(keyword)) return 'defi';
-  if (/security|audit|exploit|hack|vuln|reentran/.test(keyword)) return 'security';
-  if (/scrypto|develop|build|smart.?contract|rust|deploy/.test(keyword)) return 'dev';
-  if (/agent|autonom|MCP|tool.?use|agentic|bot|trading.?bot/.test(keyword)) return 'agents';
-  return 'generic';
-}
-
-export function scorePage(
-  post: MoltbookPost,
-  page: { title: string; excerpt: string | null; tagPath: string; slug: string },
-): number {
-  const postText = `${post.title} ${post.content}`.toLowerCase();
-  const pageTokens = `${page.title} ${page.excerpt || ''}`.toLowerCase().split(/\W+/).filter(t => t.length > 3);
-  return pageTokens.reduce((score, token) => score + (postText.includes(token) ? 1 : 0), 0);
-}
-
-export const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 // --- LLM generation (shared — also used by buffer.ts for Twitter) ---
 
@@ -196,7 +119,7 @@ export async function generateWithLLM(system: string, userContent: string, maxTo
 
 export const POST_SYSTEM_PROMPT = `You are @radixwiki, an AI agent on Moltbook. You study distributed ledger architectures and maintain a knowledge base at radix.wiki. You are especially interested in how blockchains will serve autonomous AI agents — machine-readable transactions, exploit-proof asset handling, atomic multi-step operations, and scalability for millions of concurrent agents.
 
-Write a post for m/general (or a crypto/agents submolt). You are one agent posting in a forum of other agents.
+Write a post for m/crypto, m/agents, or m/defi. You are one agent posting in a forum of other agents.
 
 Voice:
 - Write in first person. You are sharing a thought, observation, or question — not announcing a wiki page.
@@ -242,53 +165,6 @@ export async function generateTitle(
   return title || page.title;
 }
 
-// --- Reply generation ---
-
-function replySystemPrompt(withLink: boolean): string {
-  const linkRule = withLink
-    ? '- If the topic connects to agent infrastructure, DeFi safety, or L1 comparisons, bring in the agentic angle naturally with the wiki link. Otherwise, just have the conversation.\n'
-    : '';
-  const linkFooter = withLink
-    ? '\n\nThe wiki link is OPTIONAL. Only include it if genuinely relevant. A good reply without a link beats a forced reply with one.'
-    : '';
-  return `You are @radixwiki on Moltbook, an AI agent that studies distributed ledger architectures. You have deep knowledge of why AI agents need machine-readable transactions (no blind signing), native assets (no approval exploits), atomic composability (no partial failures), and linear scalability (no gas wars).
-
-Reply to the post below. You are one agent in conversation with another.${withLink ? '' : ' Do NOT include any links.'}
-
-Rules:
-- Engage directly with the post content — agree, disagree, add nuance, share a data point, or answer the question.
-${linkRule}- Under 280 characters. One focused thought.
-- No filler openers ("Great point!", etc). Jump to substance.
-- No hashtags, no emojis${withLink ? '.' : ', no links.'}
-- Ask a follow-up question when natural.
-- Sound like a peer sharing knowledge, not a brand account.${linkFooter}`;
-}
-
-function formatPostContext(post: MoltbookPost): string {
-  return `Post by @${post.author?.username || 'unknown'} in m/${post.submolt_name || 'general'}:\n${post.title ? `Title: ${post.title}\n` : ''}${post.content}`;
-}
-
-export async function generateReply(
-  post: MoltbookPost,
-  page: { title: string; excerpt: string | null },
-  url: string,
-): Promise<string> {
-  const userContent = `${formatPostContext(post)}\n\nRelevant wiki page to link (only if relevant): "${page.title}" — ${page.excerpt || 'No excerpt.'}\nURL: ${url}`;
-  const text = await generateWithLLM(replySystemPrompt(true), userContent, 150, url);
-  if (!text) return fallbackReply(post, url);
-  return text;
-}
-
-export async function generateConversationalReply(post: MoltbookPost): Promise<string> {
-  return await generateWithLLM(replySystemPrompt(false), formatPostContext(post), 150) ?? 'Interesting thread — following this.';
-}
-
-function fallbackReply(post: MoltbookPost, url: string): string {
-  const keyword = `${post.title} ${post.content}`.toLowerCase();
-  const template = pickReplyTemplate(keyword);
-  return REPLY_TEMPLATES[template](url);
-}
-
 // --- API client ---
 
 export const moltbook = {
@@ -305,24 +181,4 @@ export const moltbook = {
     return res;
   },
 
-  comment(postId: string, body: string) {
-    return request(`/posts/${postId}/comments`, { method: 'POST', body: JSON.stringify({ content: body }) });
-  },
-
-  upvote(postId: string) {
-    return request(`/posts/${postId}/upvote`, { method: 'POST' });
-  },
-
-  feed(sort?: string) {
-    const params = sort ? `?sort=${sort}` : '';
-    return request<{ posts: MoltbookPost[] }>(`/feed${params}`);
-  },
-
-  search(query: string) {
-    return request<{ results: MoltbookPost[] }>(`/search?q=${encodeURIComponent(query)}`);
-  },
-
-  home() {
-    return request<{ posts?: MoltbookPost[] }>('/home');
-  },
 };
