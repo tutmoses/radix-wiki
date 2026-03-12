@@ -77,13 +77,13 @@ function formatBlockPath(path: string, type: string): string {
 
   for (let i = 0; i < parts.length; i++) {
     if (parts[i] === 'columns' && parts[i + 1] !== undefined) {
-      segments.push(`Col ${parseInt(parts[i + 1]) + 1}`);
+      segments.push(`Col ${parseInt(parts[i + 1]!) + 1}`);
       i++; // skip the column index
     } else if (parts[i] === 'blocks' && parts[i + 1] !== undefined) {
-      segments.push(`Block ${parseInt(parts[i + 1]) + 1}`);
+      segments.push(`Block ${parseInt(parts[i + 1]!) + 1}`);
       i++; // skip the block index
-    } else if (!isNaN(parseInt(parts[i]))) {
-      segments.push(`Block ${parseInt(parts[i]) + 1}`);
+    } else if (!isNaN(parseInt(parts[i]!))) {
+      segments.push(`Block ${parseInt(parts[i]!) + 1}`);
     }
   }
 
@@ -172,7 +172,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
             <tbody>
               {data.revisions.map((rev, i) => {
                 const isCurrent = i === 0;
-                const type = TYPE_BADGE[rev.changeType] || TYPE_BADGE.patch;
+                const type = TYPE_BADGE[rev.changeType] ?? TYPE_BADGE.patch!;
                 const changes = rev.changes || [];
                 const isExpanded = expandedId === rev.id;
                 return (

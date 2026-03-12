@@ -164,7 +164,7 @@ function useChartData(resourceAddress?: string, timeframe: string = '7d') {
     setIsLoading(true);
     setError(null);
 
-    const cfg = TIMEFRAME_CONFIG[timeframe] || TIMEFRAME_CONFIG['7d'];
+    const cfg = TIMEFRAME_CONFIG[timeframe] ?? TIMEFRAME_CONFIG['7d']!;
     const now = Math.floor(Date.now() / 1000);
     const from = now - cfg.seconds;
     const url = `https://api.ociswap.com/udf/history?symbol=${resourceAddress}&resolution=${cfg.resolution}&from=${from}&to=${now}&countback=${cfg.countback}&currencyCode=USD`;
@@ -203,6 +203,7 @@ function TokenChart({ resourceAddress, defaultTimeframe = '30d' }: { resourceAdd
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const seriesRef = useRef<any>(null);
+  const roRef = useRef<ResizeObserver | null>(null);
   const [timeframe, setTimeframe] = useState(defaultTimeframe);
   const [chartReady, setChartReady] = useState(false);
   const { data, isLoading, error } = useChartData(resourceAddress, timeframe);
@@ -246,11 +247,10 @@ function TokenChart({ resourceAddress, defaultTimeframe = '30d' }: { resourceAdd
         if (w && chart) chart.applyOptions({ width: w });
       });
       ro.observe(containerRef.current);
-
-      return () => { ro.disconnect(); };
+      roRef.current = ro;
     });
 
-    return () => { disposed = true; chartRef.current?.remove(); chartRef.current = null; seriesRef.current = null; setChartReady(false); };
+    return () => { disposed = true; roRef.current?.disconnect(); roRef.current = null; chartRef.current?.remove(); chartRef.current = null; seriesRef.current = null; setChartReady(false); };
   }, []);
 
   useEffect(() => {
@@ -391,14 +391,14 @@ function buildMetadataBlock(metadata: PageMetadata, tagPath: string): ContentBlo
   const entries = keys.filter(k => metadata[k.key]?.trim() && k.type !== 'resource_address');
   if (!entries.length) return null;
   const rows = entries.map(({ key, label, type }) =>
-    `<tr><th>${label}</th><td>${formatMetadataValue(metadata[key], type)}</td></tr>`
+    `<tr><th>${label}</th><td>${formatMetadataValue(metadata[key]!, type)}</td></tr>`
   ).join('');
   return { id: '__metadata__', type: 'content', text: `<table>${rows}</table>` };
 }
 
 function getResourceAddressEntries(metadata: PageMetadata, tagPath: string): { key: string; label: string; value: string }[] {
   const keys = getMetadataKeys(tagPath.split('/'));
-  return keys.filter(k => k.type === 'resource_address' && metadata[k.key]?.trim()).map(k => ({ key: k.key, label: k.label, value: metadata[k.key] }));
+  return keys.filter(k => k.type === 'resource_address' && metadata[k.key]?.trim()).map(k => ({ key: k.key, label: k.label, value: metadata[k.key]! }));
 }
 
 export interface InfoboxPageInfo {

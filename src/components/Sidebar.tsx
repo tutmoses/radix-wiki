@@ -48,7 +48,7 @@ function TableOfContents() {
         const els = document.querySelector('main')?.querySelectorAll('h1[id], h2[id], h3[id]') || [];
         setHeadings(Array.from(els).map(el => ({
           text: el.textContent?.trim() || '',
-          level: parseInt(el.tagName[1]),
+          level: parseInt(el.tagName[1]!),
           id: el.id,
         })).filter(h => h.text && h.id));
       }, 200);

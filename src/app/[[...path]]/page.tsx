@@ -131,7 +131,7 @@ function countWords(blocks: unknown): number {
 
 function ArticleJsonLd({ page, url }: { page: WikiPage; url: string }) {
   const tagSegments = page.tagPath?.split('/').filter(Boolean) || [];
-  const section = tagSegments.length ? (findTagByPath(tagSegments.slice(0, 1))?.name || tagSegments[0]).replace(/^\p{Emoji_Presentation}\s*/u, '') : undefined;
+  const section = tagSegments.length ? (findTagByPath(tagSegments.slice(0, 1))?.name ?? tagSegments[0] ?? '').replace(/^\p{Emoji_Presentation}\s*/u, '') : undefined;
   const ld = {
     '@context': 'https://schema.org',
     '@type': 'Article',
@@ -182,7 +182,7 @@ function BreadcrumbJsonLd({ path }: { path: string[] }) {
     items.push({
       '@type': 'ListItem',
       position: i + 2,
-      name: tag?.name || segments[i].replace(/-/g, ' '),
+      name: tag?.name || segments[i]!.replace(/-/g, ' '),
       item: `${BASE_URL}/${segments.join('/')}`,
     });
   }

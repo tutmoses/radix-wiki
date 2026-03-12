@@ -20,7 +20,7 @@ function extractExternalLinks(content: unknown): string[] {
   const text = JSON.stringify(content);
   const links: string[] = [];
   for (const match of text.matchAll(/href="(https?:\/\/[^"]+)"/g)) {
-    links.push(match[1]);
+    links.push(match[1]!);
   }
   return [...new Set(links)];
 }

@@ -49,11 +49,11 @@ export async function GET(request: Request) {
 
     if (eligible.length === 0) return json({ status: 'skipped', reason: 'no fresh pages' });
 
-    const page = eligible[Math.floor(Math.random() * Math.min(eligible.length, 10))];
+    const page = eligible[Math.floor(Math.random() * Math.min(eligible.length, 10))]!;
     const url = `${BASE_URL}/${page.tagPath}/${page.slug}`;
     const text = await generateWithLLM(TWEET_SYSTEM_PROMPT, formatPageContext(page, url), 100, url)
       ?? `${page.title}: ${page.excerpt || 'Read more on the Radix wiki.'} ${url}`;
-    const pillar = PILLARS[new Date().getUTCDay()];
+    const pillar = PILLARS[new Date().getUTCDay()]!;
 
     await prisma.tweet.create({
       data: { type: 'twitter', pillar, pageSlug: page.slug, pageTagPath: page.tagPath, text, status: 'queued' },

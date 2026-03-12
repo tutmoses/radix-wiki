@@ -20,5 +20,5 @@ const GATEWAY_URLS: Record<number, string> = {
 };
 
 export function getGatewayUrl(networkId = RADIX_CONFIG.networkId): string {
-  return GATEWAY_URLS[networkId] || GATEWAY_URLS[RadixNetworkId.Mainnet];
+  return GATEWAY_URLS[networkId] ?? GATEWAY_URLS[RadixNetworkId.Mainnet]!;
 }

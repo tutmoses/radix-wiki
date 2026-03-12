@@ -35,7 +35,7 @@ async function fetchGitHubReleases(): Promise<IntelItem[]> {
           title: `${repo.split('/')[1]}: ${r.name || r.tag_name}`,
           url: r.html_url,
           summary: (r.body || '').slice(0, 300),
-          date: r.published_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          date: r.published_at?.split('T')[0] ?? new Date().toISOString().split('T')[0]!,
         });
       }
     } catch { continue; }
@@ -54,7 +54,7 @@ async function fetchRadixBlog(): Promise<IntelItem[]> {
     const linkPattern = /href="(\/blog\/[a-z0-9-]+)"/g;
     const seen = new Set<string>();
     for (const match of html.matchAll(linkPattern)) {
-      const path = match[1];
+      const path = match[1]!;
       if (seen.has(path) || path === '/blog/rss.xml') continue;
       seen.add(path);
       if (items.length >= 8) break;
@@ -63,7 +63,7 @@ async function fetchRadixBlog(): Promise<IntelItem[]> {
         title: path.replace('/blog/', '').replace(/-/g, ' '),
         url: `https://www.radixdlt.com${path}`,
         summary: '',
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString().split('T')[0]!,
       });
     }
     return items;
@@ -79,14 +79,14 @@ async function fetchRadixLearn(): Promise<IntelItem[]> {
     const items: IntelItem[] = [];
     const linkPattern = /href="(\/[a-z0-9/-]+)"[^>]*>[^<]*<[^>]*>([^<]+)/g;
     for (const match of html.matchAll(linkPattern)) {
-      const path = match[1];
+      const path = match[1]!;
       if (path === '/' || items.length >= 5) continue;
       items.push({
         source: 'radix_learn',
-        title: match[2].trim(),
+        title: match[2]!.trim(),
         url: `https://learn.radixdlt.com${path}`,
         summary: '',
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString().split('T')[0]!,
       });
     }
     return items;

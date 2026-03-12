@@ -47,7 +47,7 @@ export async function GET(_request: Request, context: RouteContext<PathParams>) 
 
     if (!user) return errors.notFound('User not found');
 
-    const { edit_slots, unique_pages, comment_slots } = agg[0];
+    const { edit_slots, unique_pages, comment_slots } = agg[0]!; // Scalar SELECT (no FROM) always returns one row
     const accountAgeDays = Math.floor((Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24));
 
     const stats = {

@@ -53,7 +53,7 @@ function htmlToMarkdown(html: string): string {
         const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'gi');
         let match;
         while ((match = regex.exec(row))) {
-          cells.push(match[1].replace(/<[^>]*>/g, '').trim());
+          cells.push(match[1]!.replace(/<[^>]*>/g, '').trim());
         }
         return cells;
       };

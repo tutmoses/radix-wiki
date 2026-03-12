@@ -465,8 +465,8 @@ function useBlockOperations<T extends Block | AtomicBlock>(blocks: T[], setBlock
     selectedIndex, setSelectedIndex,
     update: useCallback((i: number, b: T) => setBlocksRef.current(blocksRef.current.map((x, j) => j === i ? b : x)), []),
     remove: useCallback((i: number) => { setBlocksRef.current(blocksRef.current.filter((_, j) => j !== i)); setSelectedIndex(null); }, []),
-    duplicate: useCallback((i: number) => { const next = [...blocksRef.current]; next.splice(i + 1, 0, duplicateBlock(blocksRef.current[i]) as T); setBlocksRef.current(next); setSelectedIndex(i + 1); }, []),
-    move: useCallback((from: number, to: number) => { if (to < 0 || to >= blocksRef.current.length) return; const next = [...blocksRef.current]; const [m] = next.splice(from, 1); next.splice(to, 0, m); setBlocksRef.current(next); setSelectedIndex(to); }, []),
+    duplicate: useCallback((i: number) => { const next = [...blocksRef.current]; next.splice(i + 1, 0, duplicateBlock(blocksRef.current[i]!) as T); setBlocksRef.current(next); setSelectedIndex(i + 1); }, []),
+    move: useCallback((from: number, to: number) => { if (to < 0 || to >= blocksRef.current.length) return; const next = [...blocksRef.current]; const [m] = next.splice(from, 1); next.splice(to, 0, m!); setBlocksRef.current(next); setSelectedIndex(to); }, []),
     insert: useCallback((type: BlockType, at?: number) => { const next = [...blocksRef.current]; const i = at ?? blocksRef.current.length; next.splice(i, 0, createBlock(type) as T); setBlocksRef.current(next); setSelectedIndex(i); }, []),
   };
 }

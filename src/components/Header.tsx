@@ -203,7 +203,7 @@ export function Header() {
               <Search className="search-icon-left" size={18} />
               <input ref={searchInputRef} type="search" placeholder="Search pages..." className="input pl-10" value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && searchResults.length) handleSearchSelect(searchResults[0]); else if (e.key === 'Escape') { setShowSearch(false); setSearchQuery(''); setSearchResults([]); } }} />
+                onKeyDown={e => { if (e.key === 'Enter' && searchResults.length) handleSearchSelect(searchResults[0]!); else if (e.key === 'Escape') { setShowSearch(false); setSearchQuery(''); setSearchResults([]); } }} />
               {isSearching && <Loader2 className="search-icon-right" size={18} />}
 
               {searchResults.length > 0 && (

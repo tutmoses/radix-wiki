@@ -4,7 +4,6 @@ import { NextRequest } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma/client';
 import { getSession, createSession, destroySession, verifySignedChallenge } from '@/lib/auth';
-import { RADIX_CONFIG } from '@/lib/radix/config';
 import { json, errors, handleRoute } from '@/lib/api';
 import { userProfileSlug } from '@/lib/utils';
 import type { SignedChallenge, RadixAccount, RadixPersona } from '@/types';
@@ -49,10 +48,10 @@ export async function POST(request: NextRequest) {
       return errors.badRequest('No accounts provided');
     }
 
-    const primaryAccount = accounts[0];
+    const primaryAccount = accounts[0]!;
 
     if (signedChallenge) {
-      const verification = await verifySignedChallenge(signedChallenge, RADIX_CONFIG.applicationUrl);
+      const verification = await verifySignedChallenge(signedChallenge);
       if (!verification.isValid) {
         return json({ error: verification.error || 'Verification failed' }, { status: 401 });
       }

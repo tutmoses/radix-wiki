@@ -38,7 +38,7 @@ export async function GET(request: Request) {
     if (eligible.length === 0) return json({ posted: 0, results: [{ status: 'no_eligible_pages' }] });
 
     // Random pick from top 10 eligible
-    const page = eligible[Math.floor(Math.random() * Math.min(eligible.length, 10))];
+    const page = eligible[Math.floor(Math.random() * Math.min(eligible.length, 10))]!;
     const url = `${BASE_URL}/${page.tagPath}/${page.slug}`;
     const submolt = pickSubmolt();
 

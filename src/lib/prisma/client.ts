@@ -19,7 +19,7 @@ function createPool(): pg.Pool {
   // For serverless (Neon/Supabase), use minimal pool
   const pool = new pg.Pool({
     connectionString,
-    max: 10,
+    max: 1,
     idleTimeoutMillis: 20000,
     connectionTimeoutMillis: 30000,
   });

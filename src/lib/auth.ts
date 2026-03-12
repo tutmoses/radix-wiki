@@ -3,10 +3,14 @@
 import { SignJWT, jwtVerify, JWTPayload } from 'jose';
 import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
+import { Rola } from '@radixdlt/rola';
 import { prisma } from '@/lib/prisma/client';
-import { RADIX_CONFIG, getGatewayUrl } from '@/lib/radix/config';
+import { RADIX_CONFIG } from '@/lib/radix/config';
 import type { AuthSession, SignedChallenge } from '@/types';
 
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('JWT_SECRET environment variable is required in production');
+}
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'default-secret-change-in-production-min-32-chars'
 );
@@ -20,10 +24,7 @@ interface SessionPayload extends JWTPayload {
   displayName?: string;
 }
 
-const hexToBytes = (hex: string): Uint8Array => 
-  Uint8Array.from((hex.startsWith('0x') ? hex.slice(2) : hex).match(/.{2}/g)!, b => parseInt(b, 16));
-
-const bytesToHex = (bytes: Uint8Array): string => 
+const bytesToHex = (bytes: Uint8Array): string =>
   Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
 
 async function verifyToken(token: string): Promise<AuthSession | null> {
@@ -118,62 +119,31 @@ async function validateChallenge(challenge: string): Promise<boolean> {
   return true;
 }
 
+const rola = Rola({
+  expectedOrigin: RADIX_CONFIG.applicationUrl,
+  dAppDefinitionAddress: RADIX_CONFIG.dAppDefinitionAddress,
+  networkId: RADIX_CONFIG.networkId,
+  applicationName: RADIX_CONFIG.applicationName,
+});
+
 export async function verifySignedChallenge(
   signedChallenge: SignedChallenge,
-  expectedOrigin: string
 ): Promise<{ isValid: boolean; error?: string }> {
   try {
     if (!(await validateChallenge(signedChallenge.challenge))) {
       return { isValid: false, error: 'Invalid or expired challenge' };
     }
 
-    const response = await fetch(`${getGatewayUrl()}/state/entity/details`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        addresses: [signedChallenge.address],
-        aggregation_level: 'Vault',
-        opt_ins: { explicit_metadata: ['owner_keys'] },
-      }),
+    const result = await rola.verifySignedChallenge({
+      ...signedChallenge,
+      type: 'account',
     });
 
-    if (!response.ok) return { isValid: false, error: 'Failed to verify with Radix Gateway' };
-
-    const { items = [] } = await response.json();
-    if (!items.length) return { isValid: false, error: 'Entity not found on network' };
-
-    const ownerKeysEntry = items[0].metadata?.items?.find((m: { key: string }) => m.key === 'owner_keys');
-    if (!ownerKeysEntry) return { isValid: false, error: 'No owner_keys metadata found' };
-
-    const ownerKeys = ownerKeysEntry.value?.typed?.values || [];
-    const keyBytes = hexToBytes(signedChallenge.proof.publicKey);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', keyBytes.buffer as ArrayBuffer);
-    const providedKeyHash = bytesToHex(new Uint8Array(hashBuffer).slice(-29));
-    
-    const keyMatches = ownerKeys.some((key: { value: string }) =>
-      key.value === providedKeyHash || key.value === signedChallenge.proof.publicKey
-    );
-
-    if (!keyMatches) return { isValid: false, error: 'Public key does not match owner keys' };
-
-    if (signedChallenge.proof.curve !== 'curve25519') {
-      return { isValid: false, error: 'Unsupported signature curve' };
+    if (result.isErr()) {
+      return { isValid: false, error: result.error.reason };
     }
 
-    const messageBytes = new TextEncoder().encode(
-      `ROLA${signedChallenge.challenge}${RADIX_CONFIG.dAppDefinitionAddress}${expectedOrigin}`
-    );
-    const signatureBytes = hexToBytes(signedChallenge.proof.signature);
-    const publicKeyBytes = hexToBytes(signedChallenge.proof.publicKey);
-
-    const key = await crypto.subtle.importKey(
-      'raw', publicKeyBytes.buffer as ArrayBuffer, { name: 'Ed25519' }, false, ['verify']
-    );
-    const isValid = await crypto.subtle.verify(
-      'Ed25519', key, signatureBytes.buffer as ArrayBuffer, messageBytes
-    );
-
-    return isValid ? { isValid: true } : { isValid: false, error: 'Invalid signature' };
+    return { isValid: true };
   } catch (error) {
     console.error('ROLA verification error:', error);
     return { isValid: false, error: 'Verification failed' };

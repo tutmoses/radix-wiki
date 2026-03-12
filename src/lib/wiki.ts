@@ -73,7 +73,7 @@ export function parsePath(segments: string[] = [], mode: 'client' | 'api' = 'cli
     return mode === 'api' ? { ...base, type: 'invalid' } : { ...base, type: 'invalid' };
   }
 
-  const slug = pathSegments[pathSegments.length - 1];
+  const slug = pathSegments[pathSegments.length - 1]!;
   const tagPathSegments = pathSegments.slice(0, -1);
 
   if (!isValidTagPath(tagPathSegments)) {
@@ -187,7 +187,7 @@ export const getAdjacentPages = cache(unstable_cache(
       const pages = await prisma.page.findMany({ where: { tagPath }, select });
       const sorted = sortByDateMeta(pages, sort === 'oldest' ? 1 : -1);
       const idx = sorted.findIndex(p => p.title === title);
-      return { prev: idx > 0 ? sorted[idx - 1] : null, next: idx < sorted.length - 1 ? sorted[idx + 1] : null };
+      return { prev: idx > 0 ? sorted[idx - 1] ?? null : null, next: idx < sorted.length - 1 ? sorted[idx + 1] ?? null : null };
     }
 
     const field = sort === 'recent' ? 'updatedAt' : sort !== 'title' && createdAt ? 'createdAt' : 'title';

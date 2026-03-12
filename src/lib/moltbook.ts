@@ -39,7 +39,7 @@ function deobfuscate(raw: string): string {
   // Collapse case-insensitive duplicate adjacent letters: "FfIiVvEe" → "FIVE"
   let out = '';
   for (let i = 0; i < stripped.length; i++) {
-    const c = stripped[i];
+    const c = stripped[i]!;
     const next = stripped[i + 1];
     out += c;
     if (next && c.toLowerCase() === next.toLowerCase()) i++; // skip duplicate

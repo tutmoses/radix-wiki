@@ -146,7 +146,7 @@ export async function GET() {
   // Group pages by top-level tag path
   const grouped = new Map<string, typeof validPages>();
   for (const p of validPages) {
-    const topSlug = p.tagPath!.split('/')[0];
+    const topSlug = p.tagPath!.split('/')[0]!;
     if (!grouped.has(topSlug)) grouped.set(topSlug, []);
     grouped.get(topSlug)!.push(p);
   }
