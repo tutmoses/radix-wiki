@@ -72,8 +72,13 @@ function RichInput({ value, onChange, placeholder }: { value: string; onChange: 
   );
 }
 
+function parseAssignee(raw: string): string {
+  if (!raw) return '';
+  try { return JSON.parse(raw).name || raw; } catch { return raw; }
+}
+
 function UserPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [query, setQuery] = useState(value || '');
+  const [query, setQuery] = useState(() => parseAssignee(value));
   const [results, setResults] = useState<{ id: string; displayName: string | null; radixAddress: string }[]>([]);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -103,7 +108,7 @@ function UserPicker({ value, onChange }: { value: string; onChange: (v: string) 
       {open && results.length > 0 && (
         <div className="user-picker-dropdown">
           {results.map(u => (
-            <button key={u.id} className="user-picker-option" onClick={() => { const name = u.displayName || u.radixAddress.slice(0, 12) + '...'; setQuery(name); onChange(name); setOpen(false); }}>
+            <button key={u.id} className="user-picker-option" onClick={() => { const name = u.displayName || u.radixAddress.slice(0, 12) + '...'; setQuery(name); onChange(JSON.stringify({ id: u.id, name, address: u.radixAddress })); setOpen(false); }}>
               <span className="font-medium">{u.displayName || 'Anonymous'}</span>
               <span className="text-text-muted text-xs">{u.radixAddress.slice(0, 12)}...</span>
             </button>

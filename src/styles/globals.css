@@ -444,6 +444,7 @@
   .board-card-title { @apply text-sm font-medium line-clamp-2; }
   .board-card-meta { @apply flex flex-wrap items-center gap-1.5; }
   .board-empty { @apply flex items-center justify-center py-8 text-sm text-text-muted italic; }
+  .assignee-chip { @apply flex items-center gap-1.5 text-xs text-text-muted; }
 
   /* ===== HISTORY / DIFF ===== */
   .restore-btn { @apply flex items-center gap-1 text-accent hover:text-accent-hover disabled:opacity-50; }

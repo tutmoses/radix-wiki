@@ -7,12 +7,29 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, MessageSquare, LayoutGrid, List } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
+import { UserAvatar } from '@/components/UserAvatar';
 import { Badge, Button, Input } from '@/components/ui';
 import { useAuth } from '@/hooks';
 import { cn, slugify, formatRelativeTime } from '@/lib/utils';
 import { findTagByPath, type SortOrder } from '@/lib/tags';
 import { SortToggle } from './PageContent';
 import type { WikiPage, PageMetadata, IdeasPage } from '@/types';
+
+function parseAssignee(raw?: string): { name: string; address: string } | null {
+  if (!raw) return null;
+  try { const p = JSON.parse(raw); return p.name ? p : null; } catch { return raw ? { name: raw, address: '' } : null; }
+}
+
+function AssigneeChip({ raw }: { raw?: string }) {
+  const assignee = parseAssignee(raw);
+  if (!assignee) return null;
+  return (
+    <span className="assignee-chip">
+      {assignee.address ? <UserAvatar radixAddress={assignee.address} size="sm" /> : null}
+      <span>{assignee.name}</span>
+    </span>
+  );
+}
 
 const IDEAS_STATUS_COLUMNS = ['Discussion', 'Proposed', 'Approved', 'In Progress', 'Testing', 'Done'] as const;
 const PRIORITY_VARIANT: Record<string, 'danger' | 'warning' | 'success'> = { High: 'danger', Medium: 'warning', Low: 'success' };
@@ -37,7 +54,7 @@ function BoardCard({ page }: { page: WikiPage }) {
       <div className="board-card-meta">
         {meta.priority && <Badge variant={PRIORITY_VARIANT[meta.priority] || 'default'}>{meta.priority}</Badge>}
         {meta.category && <Badge variant="secondary">{meta.category}</Badge>}
-        {meta.owner && <span className="text-text-muted text-xs">{meta.owner.replace(/<[^>]*>/g, ' ').trim()}</span>}
+        <AssigneeChip raw={meta.assignee} />
       </div>
     </Link>
   );
@@ -68,6 +85,7 @@ function IdeasListView({ pages, categoryFilter, statusFilter }: { pages: IdeasPa
               </div>
             </div>
             <div className="ideas-row-meta">
+              <AssigneeChip raw={meta.assignee} />
               <span className="ideas-row-replies"><MessageSquare size={14} />{p.replyCount}</span>
               <span className="ideas-row-activity">{formatRelativeTime(p.lastActivity)}</span>
             </div>
@@ -91,7 +109,7 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
   const { isAuthenticated } = useAuth();
   const pathStr = tagPath.join('/');
   const tag = findTagByPath(tagPath);
-  const [view, setView] = useState<'list' | 'board'>('list');
+  const [view, setView] = useState<'list' | 'board'>('board');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [newSlug, setNewSlug] = useState('');
