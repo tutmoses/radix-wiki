@@ -12,7 +12,7 @@ import { usePages, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiPage, PageMetadata } from '@/types';
-import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock } from '@/types/blocks';
+import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock, StoreBlock, FooterBlock, StatsBlock, TestimonialBlock } from '@/types/blocks';
 import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
 
 // ========== COPY BUTTON ==========
@@ -476,6 +476,72 @@ const ContentBlockView = memo(function ContentBlockView({ html }: { html: string
   return processedHtml.trim() ? <div ref={ref} className="prose-content" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: processedHtml }} /> : null;
 });
 
+function StoreBlockView({ block }: { block: StoreBlock }) {
+  const cols = block.columns || 3;
+  return (
+    <div className="product-grid" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+      {Array.from({ length: cols }, (_, i) => (
+        <div key={i} className="product-card">
+          <div className="product-card-image center"><span className="text-text-muted text-small">Product {i + 1}</span></div>
+          <div className="product-card-body">
+            <span className="product-card-title">Product {i + 1}</span>
+            {block.showPrice && <span className="product-card-price">0 XRD</span>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FooterBlockView({ block }: { block: FooterBlock }) {
+  return (
+    <div className="footer-block">
+      {block.text ? <p className="text-small">{block.text}</p> : <p className="text-small text-text-muted">Site Footer</p>}
+      {block.showLinks && (
+        <div className="flex items-center gap-3 mt-2">
+          <span className="text-small text-text-muted">Privacy</span>
+          <span className="text-small text-text-muted">Terms</span>
+          <span className="text-small text-text-muted">Contact</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatsBlockView({ block }: { block: StatsBlock }) {
+  const cols = block.columns || 3;
+  return (
+    <div className="stats-grid" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+      {(block.items || []).map(item => (
+        <div key={item.id} className="stat-card">
+          <span className="stat-value">{item.value}</span>
+          <span className="stat-label">{item.label}</span>
+          {item.suffix && <span className="stat-suffix">{item.suffix}</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TestimonialBlockView({ block }: { block: TestimonialBlock }) {
+  return (
+    <div className="testimonial-block">
+      <blockquote className="testimonial-quote">&ldquo;{block.quote}&rdquo;</blockquote>
+      <div className="testimonial-author">
+        {block.avatarUrl ? (
+          <Image src={block.avatarUrl} alt={block.author} width={40} height={40} className="testimonial-avatar" />
+        ) : (
+          <div className="testimonial-avatar-placeholder" />
+        )}
+        <div>
+          <div className="testimonial-name">{block.author}</div>
+          {block.role && <div className="testimonial-role">{block.role}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
   switch (block.type) {
     case 'content': return <ContentBlockView html={block.text} />;
@@ -486,6 +552,10 @@ function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
     case 'codeTabs': return <CodeTabsBlockView block={block} />;
     case 'columns': return <ColumnsBlockView block={block} />;
     case 'infobox': return <InfoboxBlockView block={block} />;
+    case 'store': return <StoreBlockView block={block} />;
+    case 'footer': return <FooterBlockView block={block} />;
+    case 'stats': return <StatsBlockView block={block} />;
+    case 'testimonial': return <TestimonialBlockView block={block} />;
   }
 }
 

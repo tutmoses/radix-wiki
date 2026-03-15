@@ -174,6 +174,30 @@
   .code-tabs-btn-active { @apply text-accent border-accent; }
   .code-tabs pre { @apply m-0 border-0 rounded-none; }
 
+  /* ===== STORE / PRODUCT BLOCKS ===== */
+  .product-grid { display: grid; gap: 1rem; }
+  .product-card { background: var(--color-surface-1); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--color-border-muted); }
+  .product-card-image { aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; background: var(--color-surface-2); }
+  .product-card-body { padding: 0.75rem; display: flex; flex-direction: column; gap: 0.25rem; }
+  .product-card-title { font-weight: 600; }
+  .product-card-price { color: var(--color-accent); font-weight: 500; }
+
+  /* ===== FOOTER BLOCK ===== */
+  .footer-block { padding: 1.5rem 0; border-top: 1px solid var(--color-border-muted); text-align: center; color: var(--color-text-muted); }
+
+  /* ===== STATS BLOCK ===== */
+  .stats-grid { display: grid; gap: 1rem; }
+  .stat-suffix { font-size: var(--text-small); color: var(--color-text-muted); }
+
+  /* ===== TESTIMONIAL BLOCK ===== */
+  .testimonial-block { padding: 1.5rem; background: var(--color-surface-1); border-radius: var(--radius-lg); border-left: 3px solid var(--color-accent); }
+  .testimonial-quote { font-size: var(--text-h4); font-style: italic; line-height: 1.6; margin-bottom: 1rem; color: var(--color-text); }
+  .testimonial-author { display: flex; align-items: center; gap: 0.75rem; }
+  .testimonial-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+  .testimonial-avatar-placeholder { width: 40px; height: 40px; border-radius: 50%; background: var(--color-surface-2); }
+  .testimonial-name { font-weight: 600; }
+  .testimonial-role { font-size: var(--text-small); color: var(--color-text-muted); }
+
   /* ===== STEP-BY-STEP GUIDES ===== */
   [data-steps] {
     @apply list-none pl-0 mb-4;

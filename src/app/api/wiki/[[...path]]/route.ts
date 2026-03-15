@@ -160,7 +160,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
         }),
       ]);
 
-      revalidateTag('wiki');
+      revalidateTag('wiki', { expire: 0 });
       return json({ success: true, version: formatVersion(newVersion) });
     }
 
@@ -214,7 +214,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
     });
 
     const priorRevisions = await prisma.revision.count({ where: { authorId: auth.session.userId } });
-    revalidateTag('wiki');
+    revalidateTag('wiki', { expire: 0 });
     return json({ ...page, isFirstContribution: priorRevisions === 1 }, 201);
   }, 'Failed to create');
 }
@@ -263,7 +263,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
         return p;
       });
 
-      revalidateTag('wiki');
+      revalidateTag('wiki', { expire: 0 });
       return json(page, 201);
     }
 
@@ -339,7 +339,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
       prisma.notification.create({ data: { userId: existing.authorId, actorId: auth.session.userId, type: 'page_edited', pageId: existing.id } }).catch(() => {});
     }
     const totalRevisions = await prisma.revision.count({ where: { authorId: auth.session.userId } });
-    revalidateTag('wiki');
+    revalidateTag('wiki', { expire: 0 });
     return json({ ...page, isFirstContribution: totalRevisions === 1 });
   }, 'Failed to update');
 }
@@ -359,7 +359,7 @@ export async function DELETE(request: NextRequest, context: RouteContext<PathPar
     if (existing.authorId !== auth.session.userId) return errors.forbidden();
 
     await prisma.page.delete({ where: { id: existing.id } });
-    revalidateTag('wiki');
+    revalidateTag('wiki', { expire: 0 });
     return json({ success: true });
   }, 'Failed to delete');
 }

@@ -1,7 +1,7 @@
 // src/lib/block-utils.ts - Shared block constants and utilities
 
 import type { Block, BlockType, AtomicBlock } from '@/types/blocks';
-import { Clock, FileText, Columns, TrendingUp, Pencil, Info, Rss, Code2, type LucideIcon } from 'lucide-react';
+import { Clock, FileText, Columns, TrendingUp, Pencil, Info, Rss, Code2, ShoppingBag, PanelBottom, BarChart3, MessageSquareQuote, type LucideIcon } from 'lucide-react';
 
 export const CODE_LANGS = ['javascript', 'typescript', 'css', 'json', 'bash', 'python', 'rust', 'sql', 'html', 'xml', 'jsx', 'tsx', 'markdown', 'yaml', 'toml'] as const;
 export const DEFAULT_LANG = 'rust';
@@ -15,6 +15,10 @@ export const BLOCK_META: Record<BlockType, { label: string; icon: LucideIcon }> 
   infobox: { label: 'Infobox', icon: Info },
   rssFeed: { label: 'RSS Feed', icon: Rss },
   codeTabs: { label: 'Code Tabs', icon: Code2 },
+  store: { label: 'Store', icon: ShoppingBag },
+  footer: { label: 'Footer', icon: PanelBottom },
+  stats: { label: 'Stats', icon: BarChart3 },
+  testimonial: { label: 'Testimonial', icon: MessageSquareQuote },
 };
 
 const BLOCK_DEFAULTS: Record<BlockType, () => Omit<Block, 'id'>> = {
@@ -26,10 +30,18 @@ const BLOCK_DEFAULTS: Record<BlockType, () => Omit<Block, 'id'>> = {
   infobox: () => ({ type: 'infobox', blocks: [] }),
   rssFeed: () => ({ type: 'rssFeed', url: 'https://tutmoses.github.io/rss-feed/feeds.json', limit: 15 }),
   codeTabs: () => ({ type: 'codeTabs', tabs: [{ label: 'Rust', language: 'rust', code: '' }, { label: 'TypeScript', language: 'typescript', code: '' }] }),
+  store: () => ({ type: 'store', columns: 3, showPrice: true }),
+  footer: () => ({ type: 'footer', text: '', showLinks: true }),
+  stats: () => ({ type: 'stats', items: [
+    { id: crypto.randomUUID(), value: '100+', label: 'Customers' },
+    { id: crypto.randomUUID(), value: '$1M', label: 'Revenue' },
+    { id: crypto.randomUUID(), value: '99%', label: 'Uptime' },
+  ], columns: 3 }),
+  testimonial: () => ({ type: 'testimonial', quote: 'An amazing product that changed everything.', author: 'Jane Doe', role: 'CEO' }),
 };
 
-export const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'columns', 'recentPages', 'pageList', 'assetPrice', 'rssFeed', 'codeTabs'];
-export const ATOMIC_BLOCK_TYPES: readonly BlockType[] = ['content', 'recentPages', 'pageList', 'assetPrice', 'rssFeed', 'codeTabs'];
+export const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'columns', 'recentPages', 'pageList', 'assetPrice', 'rssFeed', 'codeTabs', 'store', 'footer', 'stats', 'testimonial'];
+export const ATOMIC_BLOCK_TYPES: readonly BlockType[] = ['content', 'recentPages', 'pageList', 'assetPrice', 'rssFeed', 'codeTabs', 'store', 'footer', 'stats', 'testimonial'];
 
 export const createBlock = (type: BlockType): Block => ({ id: crypto.randomUUID(), ...BLOCK_DEFAULTS[type]() } as Block);
 
@@ -69,6 +81,16 @@ function validateAtomicBlock(block: unknown): block is AtomicBlock {
       return b.resourceAddress === undefined || typeof b.resourceAddress === 'string';
     case 'rssFeed':
       return typeof b.url === 'string';
+    case 'codeTabs':
+      return Array.isArray(b.tabs);
+    case 'store':
+      return typeof b.columns === 'number' && typeof b.showPrice === 'boolean';
+    case 'footer':
+      return true;
+    case 'stats':
+      return Array.isArray(b.items);
+    case 'testimonial':
+      return typeof b.quote === 'string' && typeof b.author === 'string';
     default:
       return false;
   }

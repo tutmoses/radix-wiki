@@ -117,6 +117,10 @@ function convertAtomicBlock(block: AtomicBlock): string {
     case 'assetPrice': return convertAssetPriceBlock(block);
     case 'rssFeed': return `<RssFeed url="${block.url}" limit={${block.limit || 20}} />`;
     case 'codeTabs': return block.tabs.map(t => `\`\`\`${t.language}\n${t.code}\n\`\`\``).join('\n\n');
+    case 'store': return `<Store columns={${block.columns}} showPrice={${block.showPrice}} />`;
+    case 'footer': return block.text || 'Site Footer';
+    case 'stats': return block.items.map(i => `**${i.value}** ${i.label}`).join(' · ');
+    case 'testimonial': return `> "${block.quote}"\n> — ${block.author}${block.role ? `, ${block.role}` : ''}`;
   }
 }
 

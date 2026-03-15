@@ -48,7 +48,7 @@ function pageTextContent(content: Block[]): string {
     if (block.type === 'content' && 'text' in block) texts.push(stripHtml(block.text));
     if (block.type === 'infobox' && 'blocks' in block) {
       for (const sub of block.blocks) {
-        if ('text' in sub) texts.push(stripHtml(sub.text));
+        if (sub.type === 'content') texts.push(stripHtml(sub.text));
       }
     }
   }

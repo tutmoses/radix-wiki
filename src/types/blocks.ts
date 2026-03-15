@@ -1,8 +1,37 @@
-// src/types/blocks.ts - Shared block types
+// src/types/blocks.ts - Shared block types (12-type standard)
 
-export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice' | 'infobox' | 'rssFeed' | 'codeTabs';
+export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice' | 'infobox' | 'rssFeed' | 'codeTabs' | 'store' | 'footer' | 'stats' | 'testimonial';
 
-interface BaseBlock { id: string; type: BlockType; }
+export interface GridPosition {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface BlockStyle {
+  backgroundColor?: string;
+  backgroundImage?: string;
+  backgroundSize?: 'cover' | 'contain' | 'auto';
+  backgroundPosition?: 'center' | 'top' | 'bottom' | 'left' | 'right';
+  padding?: string;
+  margin?: string;
+  borderWidth?: number;
+  borderColor?: string;
+  borderStyle?: 'solid' | 'dashed' | 'dotted' | 'none';
+  borderRadius?: string;
+  textColor?: string;
+  textAlign?: 'left' | 'center' | 'right';
+  fontSize?: string;
+  opacity?: number;
+  shadow?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'inner';
+  glass?: boolean;
+  backgroundGradientFrom?: string;
+  backgroundGradientTo?: string;
+  backgroundGradientAngle?: number;
+}
+
+interface BaseBlock { id: string; type: BlockType; grid?: GridPosition; style?: BlockStyle; }
 
 export interface ContentBlock extends BaseBlock { type: 'content'; text: string; }
 export interface RecentPagesBlock extends BaseBlock { type: 'recentPages'; tagPath?: string; limit: number; resolvedPages?: any[]; }
@@ -11,9 +40,14 @@ export interface AssetPriceBlock extends BaseBlock { type: 'assetPrice'; resourc
 export interface RssFeedBlock extends BaseBlock { type: 'rssFeed'; url: string; limit?: number; }
 export interface CodeTab { label: string; language: string; code: string; }
 export interface CodeTabsBlock extends BaseBlock { type: 'codeTabs'; tabs: CodeTab[]; }
+export interface StoreBlock extends BaseBlock { type: 'store'; columns: 2 | 3 | 4; showPrice: boolean; }
+export interface FooterBlock extends BaseBlock { type: 'footer'; text?: string; showLinks?: boolean; }
+export interface StatItem { id: string; value: string; label: string; suffix?: string; }
+export interface StatsBlock extends BaseBlock { type: 'stats'; items: StatItem[]; columns: 2 | 3 | 4; }
+export interface TestimonialBlock extends BaseBlock { type: 'testimonial'; quote: string; author: string; role?: string; avatarUrl?: string; }
 
 // Atomic blocks that can be nested inside containers
-export type AtomicBlock = ContentBlock | RecentPagesBlock | PageListBlock | AssetPriceBlock | RssFeedBlock | CodeTabsBlock;
+export type AtomicBlock = ContentBlock | RecentPagesBlock | PageListBlock | AssetPriceBlock | RssFeedBlock | CodeTabsBlock | StoreBlock | FooterBlock | StatsBlock | TestimonialBlock;
 
 export interface InfoboxBlock extends BaseBlock {
   type: 'infobox';
