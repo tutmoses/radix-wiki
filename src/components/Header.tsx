@@ -88,7 +88,7 @@ export function Header() {
   const connect = useStore(s => s.connect);
   const sidebarOpen = useStore(s => s.sidebarOpen);
   const toggleSidebar = useStore(s => s.toggleSidebar);
-  const _pendingConnect = useStore(s => s._pendingConnect);
+  const isConnecting = useStore(s => s.isConnecting);
   const fetchNotifications = useStore(s => s.fetchNotifications);
   const unreadCount = useStore(s => s.unreadCount);
   const { canEdit, canShowHistory, canExportMdx, editPath, historyPath, mdxPath } = usePageContext();
@@ -176,7 +176,7 @@ export function Header() {
             )}
 
             <div id="radix-connect-btn" className="relative">
-              {isLoading || _pendingConnect ? (
+              {isLoading || isConnecting ? (
                 <div className="user-pill"><Loader2 size={14} className="animate-spin" /><span className="hidden sm:inline">Connecting...</span></div>
               ) : showAsConnected ? (
                 <>

@@ -89,18 +89,22 @@ interface AppStore {
   session: AuthSession | null;
   isLoading: boolean;
   isConnected: boolean;
+  isConnecting: boolean;
+  walletNotFound: boolean;
   rdtReady: boolean;
   walletData: RadixWalletData | null;
   sidebarOpen: boolean;
   _rdtDisconnect: (() => void) | null;
   _rdtConnect: (() => void) | null;
   _pendingConnect: boolean;
+  _connectTimeout: ReturnType<typeof setTimeout> | null;
   _setRdtCallbacks: (connect: (() => void) | null, disconnect: (() => void) | null) => void;
   setRdtReady: (ready: boolean) => void;
   setSession: (session: AuthSession | null) => void;
   setLoading: (isLoading: boolean) => void;
   setConnected: (isConnected: boolean) => void;
   setWalletData: (walletData: RadixWalletData | null) => void;
+  clearConnecting: () => void;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
   connect: () => void;
@@ -118,12 +122,15 @@ export const useStore = create<AppStore>()((set, get) => ({
   session: null,
   isLoading: true,
   isConnected: false,
+  isConnecting: false,
+  walletNotFound: false,
   rdtReady: false,
   walletData: null,
   sidebarOpen: false,
   _rdtDisconnect: null,
   _rdtConnect: null,
   _pendingConnect: false,
+  _connectTimeout: null,
   _setRdtCallbacks: (connect, disconnect) => {
     set({ _rdtConnect: connect, _rdtDisconnect: disconnect });
     // Flush any connect attempt that happened before RDT was ready
@@ -136,15 +143,28 @@ export const useStore = create<AppStore>()((set, get) => ({
   setSession: (session) => set({ session, isLoading: false }),
   setLoading: (isLoading) => set({ isLoading }),
   setConnected: (isConnected) => set({ isConnected }),
-  setWalletData: (walletData) => set({ walletData, isConnected: !!walletData }),
+  setWalletData: (walletData) => {
+    const { _connectTimeout } = get();
+    if (_connectTimeout) clearTimeout(_connectTimeout);
+    set({ walletData, isConnected: !!walletData, isConnecting: false, walletNotFound: false, _connectTimeout: null });
+  },
+  clearConnecting: () => {
+    const { _connectTimeout } = get();
+    if (_connectTimeout) clearTimeout(_connectTimeout);
+    set({ isConnecting: false, walletNotFound: false, _connectTimeout: null });
+  },
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   connect: () => {
-    const { _rdtConnect, rdtReady } = get();
+    const { _rdtConnect, rdtReady, _connectTimeout } = get();
+    if (_connectTimeout) clearTimeout(_connectTimeout);
+    const timeout = setTimeout(() => {
+      set({ isConnecting: false, walletNotFound: true, _connectTimeout: null });
+    }, 60_000);
+    set({ isConnecting: true, walletNotFound: false, _connectTimeout: timeout });
     if (_rdtConnect) {
       _rdtConnect();
     } else if (!rdtReady) {
-      // RDT still initializing — queue the intent so it fires once ready
       set({ _pendingConnect: true });
     }
   },
