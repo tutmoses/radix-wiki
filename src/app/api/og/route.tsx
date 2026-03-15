@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { hashStr, seededRandom } from '@/lib/utils';
 import { CACHE } from '@/lib/api';
+import sharp from 'sharp';
 
 export const runtime = 'nodejs';
 
@@ -29,11 +30,21 @@ export async function GET(req: Request) {
   const banner = searchParams.get('banner');
 
   if (banner) {
+    let bannerSrc = banner;
+    try {
+      const res = await fetch(banner);
+      if (res.ok) {
+        const buf = Buffer.from(await res.arrayBuffer());
+        const png = await sharp(buf).resize(1200, 630, { fit: 'cover' }).png().toBuffer();
+        bannerSrc = `data:image/png;base64,${png.toString('base64')}`;
+      }
+    } catch { /* fall back to original URL */ }
+
     return new ImageResponse(
       (
         <div style={{ display: 'flex', width: '100%', height: '100%', position: 'relative' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={banner} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute' }} />
+          <img src={bannerSrc} alt="" width={1200} height={630} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute' }} />
           <div style={{
             display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
             width: '100%', height: '100%', padding: '48px 56px', position: 'relative',

@@ -112,6 +112,17 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       return res;
     }
 
+    // Agent-friendly text format: ?format=text returns clean markdown
+    if (searchParams.get('format') === 'text') {
+      const md = blocksToMdx(page);
+      return new NextResponse(md, {
+        headers: {
+          'Content-Type': 'text/markdown; charset=utf-8',
+          'Cache-Control': CACHE.medium['Cache-Control'],
+        },
+      });
+    }
+
     return cachedJson(page);
   }, 'Failed to fetch');
 }
