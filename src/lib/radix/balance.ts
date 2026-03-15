@@ -54,6 +54,10 @@ type BalanceResult =
 
 const ACTION_LABELS: Record<BalanceAction['type'], string> = { edit: 'edit pages', create: 'create pages', comment: 'comment' };
 
+const AGENT_WHITELIST = new Set(
+  (process.env.AGENT_WHITELIST ?? '').split(',').map(a => a.trim()).filter(Boolean),
+);
+
 export async function requireBalance(session: AuthSession, action: BalanceAction): Promise<BalanceResult> {
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
@@ -62,6 +66,10 @@ export async function requireBalance(session: AuthSession, action: BalanceAction
 
   if (!user) {
     return { ok: false, response: NextResponse.json({ error: 'User not found' }, { status: 404 }) };
+  }
+
+  if (AGENT_WHITELIST.has(user.radixAddress)) {
+    return { ok: true, user, balance: 0 };
   }
 
   const required = getXrdRequired(action.type, action.tagPath);
