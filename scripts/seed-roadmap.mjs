@@ -59,7 +59,7 @@ const pages = [
     slug: 'radix-accountability-council',
     title: 'Radix Accountability Council',
     excerpt: "Five-member elected council guiding the transition from Foundation-led to community-led governance.",
-    metadata: { status: 'Done', priority: 'High', quarter: 'Q1 2026', category: 'Governance', owner: 'RAC (Peachy, Faraz, Jazzer, Avaunt, projectShift)' },
+    metadata: { status: 'Done', priority: 'High', quarter: 'Q1 2026', category: 'Governance', owner: 'RAC (Peachy, Tadkis, Jazzer, Avaunt, projectShift)' },
     content: [
       { id: uid(), type: 'infobox', blocks: [{ id: uid(), type: 'content', text: '<table><tbody><tr><td><strong>Type</strong></td><td>Governance Body</td></tr><tr><td><strong>Members</strong></td><td>5 (elected Feb 2026)</td></tr><tr><td><strong>Participation</strong></td><td>1.34B XRD / 1,151 accounts</td></tr><tr><td><strong>Role</strong></td><td>Facilitators, not commanders</td></tr></tbody></table>' }] },
       { id: uid(), type: 'content', text: '<h2>Overview</h2><p>The Radix Accountability Council (RAC) was established in February 2026 via <a href="https://www.radixdlt.com/blog/consultation-results-radix-accountability-council" target="_blank" rel="noopener">community consultation</a> to guide the transition from Foundation-led to community-led governance. Over 1.34 billion XRD from 1,151 unique accounts participated in the vote.</p>' },

@@ -50,11 +50,13 @@ export async function POST(request: NextRequest) {
 
     const primaryAccount = accounts[0]!;
 
-    if (signedChallenge) {
-      const verification = await verifySignedChallenge(signedChallenge);
-      if (!verification.isValid) {
-        return json({ error: verification.error || 'Verification failed' }, { status: 401 });
-      }
+    if (!signedChallenge) {
+      return errors.badRequest('Signed challenge is required');
+    }
+
+    const verification = await verifySignedChallenge(signedChallenge);
+    if (!verification.isValid) {
+      return json({ error: verification.error || 'Verification failed' }, { status: 401 });
     }
 
     let user = await prisma.user.findUnique({ where: { radixAddress: primaryAccount.address } });

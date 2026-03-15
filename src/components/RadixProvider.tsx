@@ -6,7 +6,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStore } from '@/hooks';
 import { RADIX_CONFIG } from '@/lib/radix/config';
-import type { RadixWalletData } from '@/types';
+import type { RadixWalletData, SignedChallenge } from '@/types';
 
 type RadixDappToolkitType = Awaited<ReturnType<typeof import('@radixdlt/radix-dapp-toolkit').RadixDappToolkit>>;
 
@@ -14,6 +14,7 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const rdtRef = useRef<RadixDappToolkitType | null>(null);
   const isAuthenticatingRef = useRef(false);
+  const sessionCheckRef = useRef<Promise<boolean>>(Promise.resolve(false));
   const setSession = useStore(s => s.setSession);
   const setLoading = useStore(s => s.setLoading);
   const setConnected = useStore(s => s.setConnected);
@@ -21,7 +22,10 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
   const setRdtReady = useStore(s => s.setRdtReady);
   const _setRdtCallbacks = useStore(s => s._setRdtCallbacks);
 
-  const createSessionFromWallet = useCallback(async (walletData: RadixWalletData) => {
+  const createSessionFromWallet = useCallback(async (
+    walletData: RadixWalletData,
+    signedChallenge?: SignedChallenge,
+  ) => {
     if (isAuthenticatingRef.current) return;
     isAuthenticatingRef.current = true;
 
@@ -30,7 +34,11 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
       const response = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accounts: walletData.accounts, persona: walletData.persona }),
+        body: JSON.stringify({
+          accounts: walletData.accounts,
+          persona: walletData.persona,
+          signedChallenge,
+        }),
       });
 
       if (response.ok) {
@@ -44,8 +52,19 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       isAuthenticatingRef.current = false;
     }
+  }, [setSession, setLoading, router]);
+
+  // Check existing session immediately (fast, no heavy imports).
+  // Stores a promise so the wallet subscription can await it before posting stale proofs.
+  useEffect(() => {
+    sessionCheckRef.current = fetch('/api/auth')
+      .then(r => r.ok ? r.json() : null)
+      .then(session => { if (session) { setSession(session); return true; } return false; })
+      .catch(() => false)
+      .finally(() => setLoading(false));
   }, [setSession, setLoading]);
 
+  // Load Radix DApp Toolkit in parallel (heavy, deferred)
   useEffect(() => {
     if (typeof window === 'undefined' || rdtRef.current) return;
 
@@ -65,9 +84,26 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
         });
 
         rdtRef.current = rdt;
-        rdt.walletApi.setRequestData(DataRequestBuilder.accounts().atLeast(1));
+
+        // Provide ROLA challenge generator — fetches a one-time challenge from the server
+        rdt.walletApi.provideChallengeGenerator(async () => {
+          const res = await fetch('/api/auth/challenge');
+          const { challenge } = await res.json();
+          return challenge;
+        });
+
+        rdt.walletApi.setRequestData(
+          DataRequestBuilder.accounts().atLeast(1).withProof(),
+        );
+
+        // Track first emission — it's always a cached replay from localStorage.
+        // Only attempt auth on subsequent emissions (fresh user connects).
+        let isFirstEmission = true;
 
         subscription = rdt.walletApi.walletData$.subscribe((walletData) => {
+          const isCachedReplay = isFirstEmission;
+          isFirstEmission = false;
+
           if (walletData.accounts.length > 0) {
             const data: RadixWalletData = {
               persona: walletData.persona ? { identityAddress: walletData.persona.identityAddress, label: walletData.persona.label } : undefined,
@@ -75,16 +111,32 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
             };
             setWalletData(data);
             setConnected(true);
-            createSessionFromWallet(data);
+
+            // Extract ROLA proof from the first account's proof of ownership
+            const proof = walletData.proofs?.find(
+              (p: { address: string }) => p.address === walletData.accounts[0]?.address,
+            );
+
+            // Only POST to /api/auth when we have a fresh proof AND no existing session.
+            // On page reload the toolkit replays a saved proof whose challenge was
+            // already consumed — skip that first cached emission entirely.
+            if (proof && !isCachedReplay) {
+              sessionCheckRef.current.then(hasSession => {
+                if (!hasSession) {
+                  createSessionFromWallet(data, {
+                    challenge: proof.challenge,
+                    address: proof.address,
+                    proof: proof.proof,
+                  });
+                }
+              });
+            }
           } else {
             setWalletData(null);
             setConnected(false);
-            setSession(null);
-            setLoading(false);
           }
         });
 
-        // Set callbacks + rdtReady AFTER subscription is wired — flushes any pending connect
         setRdtReady(true);
         _setRdtCallbacks(
           () => rdt.walletApi.sendRequest(),
@@ -92,19 +144,7 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
         );
       } catch (error) {
         console.error('Failed to initialize Radix DApp Toolkit:', error);
-        setRdtReady(true); // Mark ready even on failure so button doesn't spin forever
-      }
-
-      try {
-        const response = await fetch('/api/auth');
-        if (response.ok) {
-          const session = await response.json();
-          if (session) setSession(session);
-        }
-      } catch (error) {
-        console.error('Failed to check session:', error);
-      } finally {
-        setLoading(false);
+        setRdtReady(true);
       }
     })();
 
