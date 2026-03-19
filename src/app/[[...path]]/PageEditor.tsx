@@ -12,7 +12,7 @@ import { Button, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
 import { slugify } from '@/lib/utils';
 import { findInfobox } from '@/components/BlockRenderer';
-import { isAuthorOnlyPath, getMetadataKeys, getXrdRequired, type MetadataKeyDefinition } from '@/lib/tags';
+import { isAuthorOnlyPath, isLockedPage, getMetadataKeys, getXrdRequired, type MetadataKeyDefinition } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
 import { Banner } from './PageContent';
 import type { WikiPage, PageMetadata } from '@/types';
@@ -258,6 +258,10 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   };
 
   if (page && user && isAuthorOnlyPath(page.tagPath) && page.authorId !== user.id) {
+    return <StatusCard status="notAuthorized" backHref={viewPath} />;
+  }
+
+  if (page && isLockedPage(page.tagPath, page.slug)) {
     return <StatusCard status="notAuthorized" backHref={viewPath} />;
   }
 

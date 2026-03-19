@@ -5,7 +5,7 @@ import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
 import { slugify } from '@/lib/utils';
-import { isValidTagPath, isAuthorOnlyPath, getMetadataKeys } from '@/lib/tags';
+import { isValidTagPath, isAuthorOnlyPath, isLockedPage, getMetadataKeys } from '@/lib/tags';
 import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, type BlockChange } from '@/lib/versioning';
 import { parsePath, AUTHOR_SELECT, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
@@ -145,6 +145,10 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
 
       if (isAuthorOnlyPath(page.tagPath) && page.authorId !== auth.session.userId) {
         return errors.forbidden('You can only restore your own pages in this category');
+      }
+
+      if (isLockedPage(page.tagPath, parsed.slug)) {
+        return errors.forbidden('This page is locked and cannot be modified');
       }
 
       const { revisionId } = await request.json();
@@ -290,6 +294,10 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
       return errors.forbidden('You can only edit your own pages in this category');
     }
 
+    if (isLockedPage(existing.tagPath, existing.slug)) {
+      return errors.forbidden('This page is locked and cannot be edited');
+    }
+
     let newVersion = existing.version;
     let changeType: string = 'patch';
     let changes: BlockChange[] = [];
@@ -368,6 +376,7 @@ export async function DELETE(request: NextRequest, context: RouteContext<PathPar
     const existing = await prisma.page.findUnique({ where: { tagPath_slug: { tagPath: parsed.tagPath, slug: parsed.slug } } });
     if (!existing) return errors.notFound('Page not found');
     if (existing.authorId !== auth.session.userId) return errors.forbidden();
+    if (isLockedPage(existing.tagPath, existing.slug)) return errors.forbidden('This page is locked and cannot be deleted');
 
     await prisma.page.delete({ where: { id: existing.id } });
     revalidateTag('wiki', { expire: 0 });

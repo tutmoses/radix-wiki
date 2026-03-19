@@ -96,6 +96,11 @@
     &.ProseMirror-selectednode .iframe-embed { @apply outline-2 outline-accent outline-offset-2 rounded-lg; }
   }
 
+  .prose-content {
+    a[href^="/"] { @apply text-accent font-medium decoration-accent/40 underline underline-offset-2 hover:text-accent-hover hover:decoration-accent-hover/60; }
+    a[href^="http"] { @apply text-text-muted underline underline-offset-2 decoration-text-muted/30 hover:text-text hover:decoration-text/50; &::after { content: '\2009\2197'; font-size: 0.75em; } }
+  }
+
   :is(.tiptap-editor .tiptap, .prose-content) {
     img { @apply max-w-full h-auto rounded-lg my-4; &.ProseMirror-selectednode { @apply outline-2 outline-accent outline-offset-2; } }
     div[data-youtube-video] { @apply relative w-full my-4; &::before { content: ''; @apply block pt-[56.25%]; } iframe { @apply absolute inset-0 w-full! h-full! rounded-lg; } &.ProseMirror-selectednode iframe { @apply outline-2 outline-accent outline-offset-2; } }
