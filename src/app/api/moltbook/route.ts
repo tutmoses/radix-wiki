@@ -48,9 +48,9 @@ export async function GET(request: Request) {
         generateTitle(page),
       ]);
 
-      await moltbook.post(submolt, title, text);
+      const { postId } = await moltbook.post(submolt, title, text);
       await prisma.tweet.create({
-        data: { type: 'moltbook', pageSlug: page.slug, pageTagPath: page.tagPath, text, status: 'sent' },
+        data: { type: 'moltbook', tweetId: postId ?? undefined, pageSlug: page.slug, pageTagPath: page.tagPath, text, status: 'sent' },
       });
       return json({ posted: 1, results: [{ submolt, title, status: 'posted' }] });
     } catch (e) {

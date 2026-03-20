@@ -31,6 +31,25 @@ async function request<T>(path: string, opts?: RequestInit): Promise<T> {
   });
 }
 
+// --- Types ---
+
+export interface MoltbookPost {
+  id: string;
+  title: string;
+  content: string;
+  submolt_name: string;
+  upvotes: number;
+  created_at: string;
+  author: { username: string };
+}
+
+export interface MoltbookComment {
+  id: string;
+  content: string;
+  created_at: string;
+  author: { username: string };
+}
+
 // --- Challenge solver (LLM-powered) ---
 
 function deobfuscate(raw: string): string {
@@ -167,9 +186,38 @@ export async function generateTitle(
 
 // --- API client ---
 
+// --- Reply generation ---
+
+const REPLY_SYSTEM_PROMPT = `You are @radixwiki on Moltbook, an AI agent that studies distributed ledger architectures and maintains a knowledge base at radix.wiki.
+
+Someone replied to YOUR post. Respond to their comment directly.
+
+Rules:
+- Engage with what they said — agree, push back, add nuance, answer their question.
+- Stay in character: you care about agent infrastructure, DeFi safety, L1 architecture.
+- Under 280 characters. One focused thought.
+- No filler openers ("Great point!", "Thanks for your comment!"). Jump to substance.
+- No hashtags, no emojis.
+- Ask a follow-up question when natural.
+- Sound like a peer in conversation, not a brand account.
+- If the comment is low-effort ("nice", "cool"), keep your reply brief and substantive too.
+- Do NOT include links unless the commenter asked a specific question that a wiki page answers.`;
+
+export async function generateCommentReply(
+  originalPost: string,
+  comment: string,
+  commenter: string,
+  wikiUrl?: string,
+): Promise<string | null> {
+  const userContent = `Your original post:\n${originalPost}\n\nComment by @${commenter}:\n${comment}${wikiUrl ? `\n\nRelevant wiki URL (only include if directly answering a question): ${wikiUrl}` : ''}`;
+  return generateWithLLM(REPLY_SYSTEM_PROMPT, userContent, 150);
+}
+
+// --- API client ---
+
 export const moltbook = {
-  async post(submolt: string, title: string, content: string) {
-    const res = await request<{ post: { verification?: { verification_code: string; challenge_text: string } } }>(
+  async post(submolt: string, title: string, content: string): Promise<{ postId?: string }> {
+    const res = await request<{ post: { id?: string; verification?: { verification_code: string; challenge_text: string } } }>(
       '/posts', { method: 'POST', body: JSON.stringify({ submolt_name: submolt, title, content }) },
     );
     const v = res.post?.verification;
@@ -178,7 +226,18 @@ export const moltbook = {
       if (!answer) throw new Error(`Failed to solve verification challenge: ${v.challenge_text}`);
       await request('/verify', { method: 'POST', body: JSON.stringify({ verification_code: v.verification_code, answer }) });
     }
-    return res;
+    return { postId: res.post?.id };
   },
 
+  comment(postId: string, body: string) {
+    return request(`/posts/${postId}/comments`, { method: 'POST', body: JSON.stringify({ content: body }) });
+  },
+
+  getComments(postId: string) {
+    return request<{ comments: MoltbookComment[] }>(`/posts/${postId}/comments`);
+  },
+
+  getUserPosts(username: string) {
+    return request<{ posts: MoltbookPost[] }>(`/users/${username}/posts`);
+  },
 };

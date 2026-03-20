@@ -156,19 +156,13 @@ export const useStore = create<AppStore>()((set, get) => ({
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   connect: () => {
-    const { _rdtConnect, _rdtDisconnect, rdtReady, isConnected, _connectTimeout } = get();
+    const { _rdtConnect, rdtReady, _connectTimeout } = get();
     if (_connectTimeout) clearTimeout(_connectTimeout);
     const timeout = setTimeout(() => {
       set({ isConnecting: false, walletNotFound: true, _connectTimeout: null });
     }, 60_000);
     set({ isConnecting: true, walletNotFound: false, _connectTimeout: timeout });
     if (_rdtConnect) {
-      // If wallet is already connected but session expired, disconnect first
-      // to force a fresh ROLA proof (re-connected wallets may auto-approve
-      // without generating a new proof)
-      if (isConnected && _rdtDisconnect) {
-        _rdtDisconnect();
-      }
       _rdtConnect();
     } else if (!rdtReady) {
       set({ _pendingConnect: true });
