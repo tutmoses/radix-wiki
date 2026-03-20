@@ -117,19 +117,23 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
               (p: { address: string }) => p.address === walletData.accounts[0]?.address,
             );
 
-            // Only POST to /api/auth when we have a fresh proof AND no existing session.
-            // On page reload the toolkit replays a saved proof whose challenge was
-            // already consumed — skip that first cached emission entirely.
-            console.log('[ROLA] walletData emission', { hasProof: !!proof, isCachedReplay, proofKeys: proof ? Object.keys(proof) : null });
             if (proof && !isCachedReplay) {
+              // Fresh wallet connection — create session if none exists
               sessionCheckRef.current.then(hasSession => {
-                console.log('[ROLA] sessionCheck resolved', { hasSession });
                 if (!hasSession) {
                   createSessionFromWallet(data, {
                     challenge: proof.challenge,
                     address: proof.address,
                     proof: proof.proof,
                   });
+                }
+              });
+            } else if (isCachedReplay) {
+              // Cached replay — can't use stale proof. If session is also gone,
+              // silently re-trigger a fresh wallet request to get a new proof.
+              sessionCheckRef.current.then(hasSession => {
+                if (!hasSession) {
+                  rdt.walletApi.sendRequest();
                 }
               });
             }
