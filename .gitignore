@@ -76,3 +76,4 @@ Thumbs.db
 # Keep database seed files and migrations
 !prisma/seed.ts
 !prisma/*.sql
+data/tweet-queue.json

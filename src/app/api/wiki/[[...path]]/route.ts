@@ -5,7 +5,7 @@ import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
 import { slugify } from '@/lib/utils';
-import { isValidTagPath, isAuthorOnlyPath, isLockedPage, getMetadataKeys } from '@/lib/tags';
+import { isValidTagPath, isAuthorOnlyPath, isLockedPage, canEditAuthorOnlyPage, getMetadataKeys } from '@/lib/tags';
 import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, type BlockChange } from '@/lib/versioning';
 import { parsePath, AUTHOR_SELECT, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
@@ -139,11 +139,11 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
 
       const page = await prisma.page.findUnique({
         where: { tagPath_slug: { tagPath: parsed.tagPath, slug: parsed.slug } },
-        select: { id: true, title: true, content: true, bannerImage: true, version: true, authorId: true, tagPath: true },
+        select: { id: true, title: true, content: true, bannerImage: true, version: true, authorId: true, editorIds: true, tagPath: true },
       });
       if (!page) return errors.notFound('Page not found');
 
-      if (isAuthorOnlyPath(page.tagPath) && page.authorId !== auth.session.userId) {
+      if (isAuthorOnlyPath(page.tagPath) && !canEditAuthorOnlyPage(page, auth.session.userId)) {
         return errors.forbidden('You can only restore your own pages in this category');
       }
 
@@ -244,8 +244,8 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     const auth = await requireAuth(request, { type: 'edit', tagPath: parsed.tagPath });
     if ('error' in auth) return auth.error;
 
-    const body: Partial<WikiPageInput> & { revisionMessage?: string; newSlug?: string } = await request.json();
-    const { title, content, excerpt, bannerImage, metadata, revisionMessage, newSlug } = body;
+    const body: Partial<WikiPageInput> & { revisionMessage?: string; newSlug?: string; editorIds?: string[] } = await request.json();
+    const { title, content, excerpt, bannerImage, metadata, revisionMessage, newSlug, editorIds } = body;
 
     if (content !== undefined && !validateBlocks(content)) {
       return errors.badRequest('Invalid block structure');
@@ -290,7 +290,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
       if (conflict) return errors.badRequest('A page with that slug already exists in this category');
     }
 
-    if (parsed.type !== 'homepage' && isAuthorOnlyPath(existing.tagPath) && existing.authorId !== auth.session.userId) {
+    if (parsed.type !== 'homepage' && isAuthorOnlyPath(existing.tagPath) && !canEditAuthorOnlyPage(existing, auth.session.userId)) {
       return errors.forbidden('You can only edit your own pages in this category');
     }
 
@@ -335,6 +335,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
           excerpt: excerpt ?? undefined, bannerImage: bannerImage ?? undefined,
           metadata: metadata !== undefined ? (metadata as unknown as Prisma.InputJsonValue) : undefined,
           version: newVersion,
+          ...(editorIds !== undefined && existing.authorId === auth.session.userId ? { editorIds } : {}),
         },
         include: { author: AUTHOR_SELECT },
       });

@@ -9,7 +9,7 @@
   },
   {
     "id": "cmmt4sxxi000004l2bxszmbsm",
-    "text": "Single seed phrase as your only protection is a known weak point. MFA Security Shields on Radix let you configure multi-factor smart account protection — Phase 2 now live on Stokenet. More at radix.wiki: https://radix.wiki/ideas/mfa-security-shield",
+    "text": "Single seed phrase as your only protection is a known weak point. MFA Security Shields on Radix let you configure multi-factor smart account protection \u2014 Phase 2 now live on Stokenet. More at radix.wiki: https://radix.wiki/ideas/mfa-security-shield",
     "pillar": "ecosystem",
     "slug": "mfa-security-shield",
     "posted": true,
@@ -17,7 +17,7 @@
   },
   {
     "id": "cmmt4u32m000204l2djm11t8e",
-    "text": "The most-used DEX on Radix, Ociswap offers AMM pools, SPLASH liquidity incentives, and veTokenomics governance — all built around the $OCI token. Learn more: https://radix.wiki/ecosystem/ociswap",
+    "text": "The most-used DEX on Radix, Ociswap offers AMM pools, SPLASH liquidity incentives, and veTokenomics governance \u2014 all built around the $OCI token. Learn more: https://radix.wiki/ecosystem/ociswap",
     "pillar": "ecosystem",
     "slug": "ociswap",
     "posted": true,
@@ -25,7 +25,7 @@
   },
   {
     "id": "c7b9b4cd99e7f07b97e41c739",
-    "text": "Most L1s shard by splitting state into isolated chains.\n\nCerberus shards by splitting consensus — substates are processed in parallel but compose atomically.\n\nThe difference matters.\n\nhttps://radix.wiki/contents/tech/core-concepts/sharding",
+    "text": "Most L1s shard by splitting state into isolated chains.\n\nCerberus shards by splitting consensus \u2014 substates are processed in parallel but compose atomically.\n\nThe difference matters.\n\nhttps://radix.wiki/contents/tech/core-concepts/sharding",
     "pillar": "Protocol",
     "slug": "sharding",
     "posted": true,
@@ -36,32 +36,36 @@
     "text": "Did you know? RadUP is a validator node that is part of the Radix network. RadUp.io is a validator service committed to providing high performance validator nodes for the Radix community.\n\nhttps://radix.wiki/ecosystem/radup",
     "pillar": "Ecosystem",
     "slug": "radup",
-    "posted": false
+    "posted": true,
+    "postedAt": "2026-03-19T09:03:23.023Z"
   },
   {
     "id": "cmmthpai5000104ihz7zu5zr1",
     "text": "Gable Finance is a decentralized liquidity market on Radix supporting flash loans and validator LSU deposits. Note: V1 deposits are currently disabled due to a smart contract issue. More details at https://radix.wiki/ecosystem/gable-finance",
     "pillar": "ecosystem",
     "slug": "gable-finance",
-    "posted": false
+    "posted": true,
+    "postedAt": "2026-03-20T09:03:10.201Z"
   },
   {
     "id": "cf2964db5529ed82a4e8cde44",
     "text": "500,000+ sustained TPS on commodity hardware. 800k peak. 128 shards. Real DeFi swaps.\n\nHyperscale proved the theory. Now the community builds Xi'an.\n\nhttps://radix.wiki/contents/tech/research/hyperscale-rs",
     "pillar": "Protocol",
     "slug": "hyperscale-rs",
-    "posted": false
+    "posted": true,
+    "postedAt": "2026-03-20T11:10:11.465Z"
   },
   {
     "id": "c435835650d77b1bc8608c40b",
-    "text": "📚 2. Transaction Lifecycle\n\nUnderstand how transactions are built, signed, notarized, and submitted to the Radix network.\n\nhttps://radix.wiki/developers/transactions/02-transaction-lifecycle",
+    "text": "\ud83d\udcda 2. Transaction Lifecycle\n\nUnderstand how transactions are built, signed, notarized, and submitted to the Radix network.\n\nhttps://radix.wiki/developers/transactions/02-transaction-lifecycle",
     "pillar": "Dev",
     "slug": "02-transaction-lifecycle",
-    "posted": false
+    "posted": true,
+    "postedAt": "2026-03-20T17:09:23.930Z"
   },
   {
     "id": "cfd03ca71ad40f99a1fb192e7",
-    "text": "Xi'an is Radix's endgame: infinite linear scalability.\n\nDouble the shards → double the throughput. No ceiling.\n\nhttps://radix.wiki/contents/tech/releases/radix-mainnet-xian",
+    "text": "Xi'an is Radix's endgame: infinite linear scalability.\n\nDouble the shards \u2192 double the throughput. No ceiling.\n\nhttps://radix.wiki/contents/tech/releases/radix-mainnet-xian",
     "pillar": "Protocol",
     "slug": "radix-mainnet-xian",
     "posted": false
@@ -82,7 +86,7 @@
   },
   {
     "id": "c7c47e356e2d1572c4d044ff3",
-    "text": "On EVM, tokens are entries in a spreadsheet (balances mapping).\n\nOn Radix, tokens are physical objects — you hold them, move them, compose them.\n\nThis isn't a metaphor. It's the architecture.\n\nhttps://radix.wiki/contents/tech/core-concepts/asset-oriented-programming",
+    "text": "On EVM, tokens are entries in a spreadsheet (balances mapping).\n\nOn Radix, tokens are physical objects \u2014 you hold them, move them, compose them.\n\nThis isn't a metaphor. It's the architecture.\n\nhttps://radix.wiki/contents/tech/core-concepts/asset-oriented-programming",
     "pillar": "Protocol",
     "slug": "asset-oriented-programming",
     "posted": false
@@ -96,28 +100,28 @@
   },
   {
     "id": "cfc4a9cf08468e4a52b4cda1c",
-    "text": "Reentrancy attacks have drained billions from EVM contracts.\n\nScrypto makes reentrancy impossible by design — resources physically move between components.\n\nhttps://radix.wiki/contents/tech/core-protocols/scrypto-programming-language",
+    "text": "Reentrancy attacks have drained billions from EVM contracts.\n\nScrypto makes reentrancy impossible by design \u2014 resources physically move between components.\n\nhttps://radix.wiki/contents/tech/core-protocols/scrypto-programming-language",
     "pillar": "Protocol",
     "slug": "scrypto-programming-language",
     "posted": false
   },
   {
     "id": "c3702f9b9e7d10269b5a04f45",
-    "text": "Roadmap: Hyperlane Bridge Route Expansion — In Progress\n\nExpanding cross-chain warp routes to additional networks and assets based on community demand.\n\nhttps://radix.wiki/ideas/hyperlane-bridge-expansion",
+    "text": "Roadmap: Hyperlane Bridge Route Expansion \u2014 In Progress\n\nExpanding cross-chain warp routes to additional networks and assets based on community demand.\n\nhttps://radix.wiki/ideas/hyperlane-bridge-expansion",
     "pillar": "Roadmap",
     "slug": "hyperlane-bridge-expansion",
     "posted": false
   },
   {
     "id": "cdf7aa5e927cf9a325bec4f89",
-    "text": "📚 EasyMoon\n\nEasyMoon is a cryptocurrency project that launched via 42 weekly airdrops to engaged followers. The project is built on the Radix network and has a total supply of 42 billion $EMOON tokens. The tok...\n\nhttps://radix.wiki/ecosystem/easymoon",
+    "text": "\ud83d\udcda EasyMoon\n\nEasyMoon is a cryptocurrency project that launched via 42 weekly airdrops to engaged followers. The project is built on the Radix network and has a total supply of 42 billion $EMOON tokens. The tok...\n\nhttps://radix.wiki/ecosystem/easymoon",
     "pillar": "Ecosystem",
     "slug": "easymoon",
     "posted": false
   },
   {
     "id": "cdcdc243922f370b5af43d015",
-    "text": "Native assets vs token approvals:\n\n• No approve() → no infinite approval exploits\n• No transferFrom() → no phishing drains\n• Assets move directly, like physical objects\n\nhttps://radix.wiki/contents/tech/core-concepts/native-assets-vs-token-approvals",
+    "text": "Native assets vs token approvals:\n\n\u2022 No approve() \u2192 no infinite approval exploits\n\u2022 No transferFrom() \u2192 no phishing drains\n\u2022 Assets move directly, like physical objects\n\nhttps://radix.wiki/contents/tech/core-concepts/native-assets-vs-token-approvals",
     "pillar": "Protocol",
     "slug": "native-assets-vs-token-approvals",
     "posted": false
@@ -159,21 +163,21 @@
   },
   {
     "id": "c0ab091364cc3cdb74dff3e17",
-    "text": "The Radix Engine is a virtual machine built from scratch — not a fork of EVM or WASM.\n\nPurpose-built for DeFi: native assets, atomic composability, and deterministic execution.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-engine",
+    "text": "The Radix Engine is a virtual machine built from scratch \u2014 not a fork of EVM or WASM.\n\nPurpose-built for DeFi: native assets, atomic composability, and deterministic execution.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-engine",
     "pillar": "Protocol",
     "slug": "radix-engine",
     "posted": false
   },
   {
     "id": "c7e6953870cb9304bc9d35122",
-    "text": "Substates: the fundamental data unit in Radix.\n\nWhile Ethereum has accounts and Solana has accounts too, Radix has substates — fine-grained pieces of state that enable parallel processing.\n\nhttps://radix.wiki/contents/tech/core-concepts/substate-model",
+    "text": "Substates: the fundamental data unit in Radix.\n\nWhile Ethereum has accounts and Solana has accounts too, Radix has substates \u2014 fine-grained pieces of state that enable parallel processing.\n\nhttps://radix.wiki/contents/tech/core-concepts/substate-model",
     "pillar": "Protocol",
     "slug": "substate-model",
     "posted": false
   },
   {
     "id": "c4945153bcb3cbbb84715c7a0",
-    "text": "Component royalties let developers earn fees whenever their code is used.\n\nBuild useful DeFi primitives → earn XRD automatically. No middlemen.\n\nhttps://radix.wiki/contents/tech/core-concepts/component-royalties",
+    "text": "Component royalties let developers earn fees whenever their code is used.\n\nBuild useful DeFi primitives \u2192 earn XRD automatically. No middlemen.\n\nhttps://radix.wiki/contents/tech/core-concepts/component-royalties",
     "pillar": "Protocol",
     "slug": "component-royalties",
     "posted": false
@@ -194,7 +198,7 @@
   },
   {
     "id": "c7bde8cc83b13ca8e867c4667",
-    "text": "The Radix Wallet isn't just a key manager — it's a smart account controller.\n\nMulti-factor auth, transaction preview, personas, and deposit rules built in.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-wallet",
+    "text": "The Radix Wallet isn't just a key manager \u2014 it's a smart account controller.\n\nMulti-factor auth, transaction preview, personas, and deposit rules built in.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-wallet",
     "pillar": "Protocol",
     "slug": "radix-wallet",
     "posted": false
@@ -215,14 +219,14 @@
   },
   {
     "id": "cbc57946fac18246d77ac807a",
-    "text": "Smart Accounts on Radix can have complex access rules — multi-sig, time-locks, recovery flows.\n\nNot a wrapper contract. Native to the protocol.\n\nhttps://radix.wiki/contents/tech/core-protocols/smart-accounts",
+    "text": "Smart Accounts on Radix can have complex access rules \u2014 multi-sig, time-locks, recovery flows.\n\nNot a wrapper contract. Native to the protocol.\n\nhttps://radix.wiki/contents/tech/core-protocols/smart-accounts",
     "pillar": "Protocol",
     "slug": "smart-accounts",
     "posted": false
   },
   {
     "id": "c36372564db9848052b3a4f4f",
-    "text": "📚 DeSci Foundation\n\nSwiss non-profit advancing reliable, transparent, and reproducible science through decentralized infrastructure.\n\nhttps://radix.wiki/ecosystem/desci-foundation",
+    "text": "\ud83d\udcda DeSci Foundation\n\nSwiss non-profit advancing reliable, transparent, and reproducible science through decentralized infrastructure.\n\nhttps://radix.wiki/ecosystem/desci-foundation",
     "pillar": "Ecosystem",
     "slug": "desci-foundation",
     "posted": false
@@ -264,14 +268,14 @@
   },
   {
     "id": "c29fe2f230ef1e843a7aa94e5",
-    "text": "This week on Radix:\n\n• MFA Security Shield progress\n• Ecosystem updates\n• Community governance\n\nFull breakdown on the wiki 👇\n\nhttps://radix.wiki/blog",
+    "text": "This week on Radix:\n\n\u2022 MFA Security Shield progress\n\u2022 Ecosystem updates\n\u2022 Community governance\n\nFull breakdown on the wiki \ud83d\udc47\n\nhttps://radix.wiki/blog",
     "pillar": "Week Review",
     "slug": "blog",
     "posted": false
   },
   {
     "id": "c9acf2e1f3820f06ff46d76ea",
-    "text": "📚 Molecule\n\nThe platform that created IP-NFTs, enabling tokenized ownership and trading of biomedical research IP.\n\nhttps://radix.wiki/ecosystem/molecule",
+    "text": "\ud83d\udcda Molecule\n\nThe platform that created IP-NFTs, enabling tokenized ownership and trading of biomedical research IP.\n\nhttps://radix.wiki/ecosystem/molecule",
     "pillar": "Ecosystem",
     "slug": "molecule",
     "posted": false
@@ -313,7 +317,7 @@
   },
   {
     "id": "c4f6d88082101b05e9bbc58a8",
-    "text": "Radix vs Ethereum:\n\n• Native assets vs ERC-20 wrappers\n• Atomic composability vs bridge risk\n• Human-readable manifests vs blind signing\n• Scrypto (asset-oriented) vs Solidity (account-based)\n\nhttps://radix.wiki/contents/tech/comparisons/radix-vs-ethereum",
+    "text": "Radix vs Ethereum:\n\n\u2022 Native assets vs ERC-20 wrappers\n\u2022 Atomic composability vs bridge risk\n\u2022 Human-readable manifests vs blind signing\n\u2022 Scrypto (asset-oriented) vs Solidity (account-based)\n\nhttps://radix.wiki/contents/tech/comparisons/radix-vs-ethereum",
     "pillar": "Protocol",
     "slug": "radix-vs-ethereum",
     "posted": false
@@ -327,7 +331,7 @@
   },
   {
     "id": "c6839544d119bdd3e01fc3335",
-    "text": "📚 1. Transaction Manifest Language\n\nWrite human-readable transaction manifests to move assets, call components, and compose multi-step operations.\n\nhttps://radix.wiki/developers/transactions/01-manifest-language",
+    "text": "\ud83d\udcda 1. Transaction Manifest Language\n\nWrite human-readable transaction manifests to move assets, call components, and compose multi-step operations.\n\nhttps://radix.wiki/developers/transactions/01-manifest-language",
     "pillar": "Dev",
     "slug": "01-manifest-language",
     "posted": false
@@ -341,7 +345,7 @@
   },
   {
     "id": "c0caa0bea86235415a85fe2c9",
-    "text": "Radix vs Cosmos:\n\nCosmos chains are independent — assets bridge between them.\n\nRadix shards share one atomic state space. No bridges needed.\n\nhttps://radix.wiki/contents/tech/comparisons/radix-vs-cosmos",
+    "text": "Radix vs Cosmos:\n\nCosmos chains are independent \u2014 assets bridge between them.\n\nRadix shards share one atomic state space. No bridges needed.\n\nhttps://radix.wiki/contents/tech/comparisons/radix-vs-cosmos",
     "pillar": "Protocol",
     "slug": "radix-vs-cosmos",
     "posted": false
@@ -369,7 +373,7 @@
   },
   {
     "id": "cce64cdc0bf76a7e9961d6e94",
-    "text": "Roadmap: Xi'an Protocol Upgrade — Proposed\n\nFully sharded Cerberus consensus delivering infinite linear scalability and unlimited atomic composability.\n\nhttps://radix.wiki/ideas/xian-protocol-upgrade",
+    "text": "Roadmap: Xi'an Protocol Upgrade \u2014 Proposed\n\nFully sharded Cerberus consensus delivering infinite linear scalability and unlimited atomic composability.\n\nhttps://radix.wiki/ideas/xian-protocol-upgrade",
     "pillar": "Roadmap",
     "slug": "xian-protocol-upgrade",
     "posted": false
@@ -383,21 +387,21 @@
   },
   {
     "id": "c17193a59f8c10ad35e6e2767",
-    "text": "AI agents need to transact autonomously. On EVM, they must blind-sign bytecode they can't verify.\n\nRadix manifests are machine-parseable — agents know exactly what they're signing.\n\nhttps://radix.wiki/contents/tech/core-concepts/radix-for-ai-agents",
+    "text": "AI agents need to transact autonomously. On EVM, they must blind-sign bytecode they can't verify.\n\nRadix manifests are machine-parseable \u2014 agents know exactly what they're signing.\n\nhttps://radix.wiki/contents/tech/core-concepts/radix-for-ai-agents",
     "pillar": "Protocol",
     "slug": "radix-for-ai-agents",
     "posted": false
   },
   {
     "id": "c2ff47b766534ba86a895f165",
-    "text": "📚 Community DAO Formation\n\nEstablishing full on-chain governance via DAO or multi-sig for community-controlled funding allocation.\n\nhttps://radix.wiki/ideas/community-dao-formation",
+    "text": "\ud83d\udcda Community DAO Formation\n\nEstablishing full on-chain governance via DAO or multi-sig for community-controlled funding allocation.\n\nhttps://radix.wiki/ideas/community-dao-formation",
     "pillar": "Roadmap",
     "slug": "community-dao-formation",
     "posted": false
   },
   {
     "id": "c28bfa26db6821b0823428827",
-    "text": "The approval pattern has drained $100M+ through exploits.\n\nAI agents transferring tokens on Radix use native assets — no approve() to hijack.\n\nhttps://radix.wiki/contents/tech/core-concepts/native-assets-vs-token-approvals",
+    "text": "The approval pattern has drained $100M+ through exploits.\n\nAI agents transferring tokens on Radix use native assets \u2014 no approve() to hijack.\n\nhttps://radix.wiki/contents/tech/core-concepts/native-assets-vs-token-approvals",
     "pillar": "Protocol",
     "slug": "native-assets-vs-token-approvals",
     "posted": false
@@ -411,7 +415,7 @@
   },
   {
     "id": "c5c666e12376ffe8bb459adab",
-    "text": "The XRD token has a deflationary mechanism: 50% of transaction fees are burned.\n\nMore usage → more burning → supply reduction.\n\nhttps://radix.wiki/contents/tech/core-protocols/xrd-token",
+    "text": "The XRD token has a deflationary mechanism: 50% of transaction fees are burned.\n\nMore usage \u2192 more burning \u2192 supply reduction.\n\nhttps://radix.wiki/contents/tech/core-protocols/xrd-token",
     "pillar": "Protocol",
     "slug": "xrd-token",
     "posted": false
@@ -439,14 +443,14 @@
   },
   {
     "id": "c170a2640d0656a6e52fec5f8",
-    "text": "📚 Bio Protocol\n\nDeSci's financial layer for launching and funding biotech DAOs, backed by Binance Labs and Pfizer Ventures.\n\nhttps://radix.wiki/ecosystem/bio-xyz",
+    "text": "\ud83d\udcda Bio Protocol\n\nDeSci's financial layer for launching and funding biotech DAOs, backed by Binance Labs and Pfizer Ventures.\n\nhttps://radix.wiki/ecosystem/bio-xyz",
     "pillar": "Ecosystem",
     "slug": "bio-xyz",
     "posted": false
   },
   {
     "id": "c4479cd4847a7d6e5463ffa12",
-    "text": "NFTs on Radix are native resources — not contract-level abstractions.\n\nThe network itself understands what they are. No wrapper contracts needed.\n\nhttps://radix.wiki/contents/tech/core-protocols/nfts-on-radix",
+    "text": "NFTs on Radix are native resources \u2014 not contract-level abstractions.\n\nThe network itself understands what they are. No wrapper contracts needed.\n\nhttps://radix.wiki/contents/tech/core-protocols/nfts-on-radix",
     "pillar": "Protocol",
     "slug": "nfts-on-radix",
     "posted": false
@@ -467,14 +471,14 @@
   },
   {
     "id": "c096d73b6318a433fe0f01c4a",
-    "text": "Did you know? DApp In A Day 5 was the fifth DApp In A Day Scrypto workshop, sponsored by Shardspace. It was held at St Mary’s University’s ESports Arena on the 26th of February, 2025.\n\nShardSpacehttps://sha\n\nhttps://radix.wiki/contents/history/dapp-in-a-day-workshop-5",
+    "text": "Did you know? DApp In A Day 5 was the fifth DApp In A Day Scrypto workshop, sponsored by Shardspace. It was held at St Mary\u2019s University\u2019s ESports Arena on the 26th of February, 2025.\n\nShardSpacehttps://sha\n\nhttps://radix.wiki/contents/history/dapp-in-a-day-workshop-5",
     "pillar": "Community",
     "slug": "dapp-in-a-day-workshop-5",
     "posted": false
   },
   {
     "id": "ca2df88ce45f95603b8a93075",
-    "text": "Buckets, Proofs, and Vaults — the resource containers in Scrypto:\n\n• Vault: permanent storage\n• Bucket: temporary carrier (must be deposited)\n• Proof: evidence of ownership without moving assets\n\nhttps://radix.wiki/contents/tech/core-concepts/buckets-proofs-and-vaults",
+    "text": "Buckets, Proofs, and Vaults \u2014 the resource containers in Scrypto:\n\n\u2022 Vault: permanent storage\n\u2022 Bucket: temporary carrier (must be deposited)\n\u2022 Proof: evidence of ownership without moving assets\n\nhttps://radix.wiki/contents/tech/core-concepts/buckets-proofs-and-vaults",
     "pillar": "Protocol",
     "slug": "buckets-proofs-and-vaults",
     "posted": false
@@ -495,7 +499,7 @@
   },
   {
     "id": "c0392fdf952cfc61ea32cd7dc",
-    "text": "📚 Consultations V2 dApp\n\nOpen-source two-phase governance dApp with temperature checks and formal proposals.\n\nhttps://radix.wiki/ideas/consultations-v2",
+    "text": "\ud83d\udcda Consultations V2 dApp\n\nOpen-source two-phase governance dApp with temperature checks and formal proposals.\n\nhttps://radix.wiki/ideas/consultations-v2",
     "pillar": "Roadmap",
     "slug": "consultations-v2",
     "posted": false
@@ -516,7 +520,7 @@
   },
   {
     "id": "cd5d8a0146ccd396c255df50f",
-    "text": "Radix Connect: the protocol that lets dApps talk to the Radix Wallet.\n\nSecure, decentralized connection — works on desktop and mobile.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-connect",
+    "text": "Radix Connect: the protocol that lets dApps talk to the Radix Wallet.\n\nSecure, decentralized connection \u2014 works on desktop and mobile.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-connect",
     "pillar": "Protocol",
     "slug": "radix-connect",
     "posted": false
@@ -530,7 +534,7 @@
   },
   {
     "id": "c8642fe70e66d8423f2ca1a2f",
-    "text": "From eMunie in 2012 to Cerberus in 2020 — Radix iterated through six consensus designs over a decade.\n\nThat's why the architecture is different.\n\nhttps://radix.wiki/contents/tech/research/consensus-evolution",
+    "text": "From eMunie in 2012 to Cerberus in 2020 \u2014 Radix iterated through six consensus designs over a decade.\n\nThat's why the architecture is different.\n\nhttps://radix.wiki/contents/tech/research/consensus-evolution",
     "pillar": "Protocol",
     "slug": "consensus-evolution",
     "posted": false
@@ -558,14 +562,14 @@
   },
   {
     "id": "c6830710cab97055fbed70f45",
-    "text": "📚 AlphaDEX\n\nAlphaDEX is a decentralized order book exchange being built on Radix. The platform was founded by Fred Liebenberg and was part of the Radix Grants Program Cohort 1. The platform is set to launch on...\n\nhttps://radix.wiki/ecosystem/alphadex",
+    "text": "\ud83d\udcda AlphaDEX\n\nAlphaDEX is a decentralized order book exchange being built on Radix. The platform was founded by Fred Liebenberg and was part of the Radix Grants Program Cohort 1. The platform is set to launch on...\n\nhttps://radix.wiki/ecosystem/alphadex",
     "pillar": "Ecosystem",
     "slug": "alphadex",
     "posted": false
   },
   {
     "id": "c624e647901efdb2992e8d5ce",
-    "text": "Babylon launched September 2023 — the most significant Radix upgrade.\n\nScrypto, Radix Engine v2, Smart Accounts, Personas, Radix Wallet — all went live.\n\nhttps://radix.wiki/contents/tech/releases/radix-mainnet-babylon",
+    "text": "Babylon launched September 2023 \u2014 the most significant Radix upgrade.\n\nScrypto, Radix Engine v2, Smart Accounts, Personas, Radix Wallet \u2014 all went live.\n\nhttps://radix.wiki/contents/tech/releases/radix-mainnet-babylon",
     "pillar": "Protocol",
     "slug": "radix-mainnet-babylon",
     "posted": false
@@ -614,7 +618,7 @@
   },
   {
     "id": "cc32ff95f124a8609b2feab22",
-    "text": "Radix didn't fork Bitcoin or Ethereum. It started from scratch in 2012 with eMunie — a research project to create a stable, scalable digital currency.\n\nhttps://radix.wiki/contents/tech/research/emunie",
+    "text": "Radix didn't fork Bitcoin or Ethereum. It started from scratch in 2012 with eMunie \u2014 a research project to create a stable, scalable digital currency.\n\nhttps://radix.wiki/contents/tech/research/emunie",
     "pillar": "Protocol",
     "slug": "emunie",
     "posted": false
@@ -628,7 +632,7 @@
   },
   {
     "id": "c3bd1f60296a291149c4f84b4",
-    "text": "📚 Decentralized Finance (DeFi)\n\nDecentralized Finance (DeFi)\n\nhttps://radix.wiki/contents/tech/core-concepts/decentralized-finance-defi",
+    "text": "\ud83d\udcda Decentralized Finance (DeFi)\n\nDecentralized Finance (DeFi)\n\nhttps://radix.wiki/contents/tech/core-concepts/decentralized-finance-defi",
     "pillar": "Protocol",
     "slug": "decentralized-finance-defi",
     "posted": false
@@ -684,7 +688,7 @@
   },
   {
     "id": "c2d525baff8a987b6b0f5fcf6",
-    "text": "📚 Blind Signing and Transaction Manifests\n\nHow Radix transaction manifests eliminate blind signing — enabling AI agents and humans to verify exactly what they are authorizing.\n\nhttps://radix.wiki/contents/tech/core-concepts/blind-signing-and-transaction-manifests",
+    "text": "\ud83d\udcda Blind Signing and Transaction Manifests\n\nHow Radix transaction manifests eliminate blind signing \u2014 enabling AI agents and humans to verify exactly what they are authorizing.\n\nhttps://radix.wiki/contents/tech/core-concepts/blind-signing-and-transaction-manifests",
     "pillar": "Protocol",
     "slug": "blind-signing-and-transaction-manifests",
     "posted": false
@@ -747,7 +751,7 @@
   },
   {
     "id": "c48158313846b60f99ff3d4c3",
-    "text": "📚 Fibonacci Finance\n\nFibonacci Finance is a data-driven risk management suite designed to provide visibility on the financial risks associated with digital assets.\n\nhttps://radix.wiki/ecosystem/fibonacci-finance",
+    "text": "\ud83d\udcda Fibonacci Finance\n\nFibonacci Finance is a data-driven risk management suite designed to provide visibility on the financial risks associated with digital assets.\n\nhttps://radix.wiki/ecosystem/fibonacci-finance",
     "pillar": "Ecosystem",
     "slug": "fibonacci-finance",
     "posted": false
@@ -803,7 +807,7 @@
   },
   {
     "id": "ce31282826bee9479f662c6dd",
-    "text": "📚 6. Vault and Resource Patterns\n\nManage on-ledger resources safely using vaults, buckets, and Scrypto resource containers.\n\nhttps://radix.wiki/developers/scrypto/06-vault-patterns",
+    "text": "\ud83d\udcda 6. Vault and Resource Patterns\n\nManage on-ledger resources safely using vaults, buckets, and Scrypto resource containers.\n\nhttps://radix.wiki/developers/scrypto/06-vault-patterns",
     "pillar": "Dev",
     "slug": "06-vault-patterns",
     "posted": false
@@ -831,14 +835,14 @@
   },
   {
     "id": "c8665ca3ce64848469a3bfcb8",
-    "text": "Roadmap: Radix Engine Toolkit Update — In Progress\n\nUpdating the Radix Engine Toolkit to support Scrypto 1.3.1 and modern Rust toolchains.\n\nhttps://radix.wiki/ideas/ret-scrypto-131-update",
+    "text": "Roadmap: Radix Engine Toolkit Update \u2014 In Progress\n\nUpdating the Radix Engine Toolkit to support Scrypto 1.3.1 and modern Rust toolchains.\n\nhttps://radix.wiki/ideas/ret-scrypto-131-update",
     "pillar": "Roadmap",
     "slug": "ret-scrypto-131-update",
     "posted": false
   },
   {
     "id": "cf977c621c960399320749ef6",
-    "text": "📚 Project $Now\n\nProject $NOW is a specialized marketing agency focused on the Radix blockchain ecosystem. The company positions itself as a pioneer in organic content marketing for cryptocurrency projects, particu...\n\nhttps://radix.wiki/ecosystem/project-now",
+    "text": "\ud83d\udcda Project $Now\n\nProject $NOW is a\u00a0specialized marketing agency focused on the Radix blockchain ecosystem. The company positions itself as a pioneer in organic content marketing for cryptocurrency projects, particu...\n\nhttps://radix.wiki/ecosystem/project-now",
     "pillar": "Ecosystem",
     "slug": "project-now",
     "posted": false
@@ -894,7 +898,7 @@
   },
   {
     "id": "ca122feb24f26205432b11557",
-    "text": "📚 GenomesDAO\n\nBiotech DAO enabling private, user-owned genomic data sequencing and monetization via encrypted DNA vaults.\n\nhttps://radix.wiki/ecosystem/genomesdao",
+    "text": "\ud83d\udcda GenomesDAO\n\nBiotech DAO enabling private, user-owned genomic data sequencing and monetization via encrypted DNA vaults.\n\nhttps://radix.wiki/ecosystem/genomesdao",
     "pillar": "Ecosystem",
     "slug": "genomesdao",
     "posted": false
@@ -950,14 +954,14 @@
   },
   {
     "id": "cec1c0edc029bee87fe970620",
-    "text": "📚 Cuttlefish Protocol Upgrade\n\nMainnet protocol upgrade introducing native subintents for composable mini-transactions.\n\nhttps://radix.wiki/ideas/cuttlefish-upgrade",
+    "text": "\ud83d\udcda Cuttlefish Protocol Upgrade\n\nMainnet protocol upgrade introducing native subintents for composable mini-transactions.\n\nhttps://radix.wiki/ideas/cuttlefish-upgrade",
     "pillar": "Roadmap",
     "slug": "cuttlefish-upgrade",
     "posted": false
   },
   {
     "id": "c54b47b7935fca83843c3ec6a",
-    "text": "Proven Network: privacy and identity on Radix.\n\nSelective disclosure — prove what you need to, nothing more.\n\nhttps://radix.wiki/ecosystem/proven-network",
+    "text": "Proven Network: privacy and identity on Radix.\n\nSelective disclosure \u2014 prove what you need to, nothing more.\n\nhttps://radix.wiki/ecosystem/proven-network",
     "pillar": "Ecosystem",
     "slug": "proven-network",
     "posted": false
@@ -992,7 +996,7 @@
   },
   {
     "id": "c6f36e1ad74a68467adfed6b4",
-    "text": "📚 FooHack\n\nFooHack was a hackathon organized by RDX Works in collaboration with the musician RedFoohttps://en.wikipedia.org/wiki/Redfoo on the 14th of June, 2022.\n\n Media\n\nhttps://youtu.be/EtRAt3CHks\n\nhttps://radix.wiki/contents/history/foohack",
+    "text": "\ud83d\udcda FooHack\n\nFooHack was a hackathon organized by RDX Works in collaboration with the musician RedFoohttps://en.wikipedia.org/wiki/Redfoo on the 14th of June, 2022.\n\n Media\n\nhttps://youtu.be/EtRAt3CHks\n\nhttps://radix.wiki/contents/history/foohack",
     "pillar": "Community",
     "slug": "foohack",
     "posted": false
@@ -1048,7 +1052,7 @@
   },
   {
     "id": "c68dce6c980af881899223d15",
-    "text": "📚 Radical Staking\n\nRadical Staking is a validator on the Radical Network. Validators help secure the blockchain network by validating transactions and maintaining the integrity of the network. The Radical Staking val...\n\nhttps://radix.wiki/ecosystem/radical-staking",
+    "text": "\ud83d\udcda Radical Staking\n\nRadical Staking is a validator on the Radical Network. Validators help secure the blockchain network by validating transactions and maintaining the integrity of the network. The Radical Staking val...\n\nhttps://radix.wiki/ecosystem/radical-staking",
     "pillar": "Ecosystem",
     "slug": "radical-staking",
     "posted": false
@@ -1125,7 +1129,7 @@
   },
   {
     "id": "c8d44a8ce96645e44f63ebb59",
-    "text": "📚 1. Scrypto Fundamentals\n\nUnderstand asset-oriented programming, blueprints, components, and packages on Radix.\n\nhttps://radix.wiki/developers/scrypto/01-fundamentals",
+    "text": "\ud83d\udcda 1. Scrypto Fundamentals\n\nUnderstand asset-oriented programming, blueprints, components, and packages on Radix.\n\nhttps://radix.wiki/developers/scrypto/01-fundamentals",
     "pillar": "Dev",
     "slug": "01-fundamentals",
     "posted": false
@@ -1167,14 +1171,14 @@
   },
   {
     "id": "c3d3789dd2a3806901dba9633",
-    "text": "Roadmap: Community Code Governance — Proposed\n\nTransitioning maintenance of core Radix repositories — Node, Scrypto, Wallet — to community-led governance.\n\nhttps://radix.wiki/ideas/core-code-governance",
+    "text": "Roadmap: Community Code Governance \u2014 Proposed\n\nTransitioning maintenance of core Radix repositories \u2014 Node, Scrypto, Wallet \u2014 to community-led governance.\n\nhttps://radix.wiki/ideas/core-code-governance",
     "pillar": "Roadmap",
     "slug": "core-code-governance",
     "posted": false
   },
   {
     "id": "c742048fe76a38eeaa37def2f",
-    "text": "📚 EtherealDAO\n\nEtherealDAO is a Decentralized Autonomous Organization (DAO) that is developing the EtherealUSD stablecoin protocol on Radix. The initiative is inspired by projects like MakerDAO and Liquity on the...\n\nhttps://radix.wiki/ecosystem/etherealdao",
+    "text": "\ud83d\udcda EtherealDAO\n\nEtherealDAO is a Decentralized Autonomous Organization (DAO) that is developing the EtherealUSD stablecoin protocol on Radix. The initiative is inspired by projects like MakerDAO and Liquity on the...\n\nhttps://radix.wiki/ecosystem/etherealdao",
     "pillar": "Ecosystem",
     "slug": "etherealdao",
     "posted": false
@@ -1223,7 +1227,7 @@
   },
   {
     "id": "caa96704ca8f92acea3ed4b49",
-    "text": "📚 1. Radix dApp Toolkit\n\nConnect a web application to the Radix Wallet and interact with on-ledger components using the Radix dApp Toolkit.\n\nhttps://radix.wiki/developers/frontend/01-radix-dapp-toolkit",
+    "text": "\ud83d\udcda 1. Radix dApp Toolkit\n\nConnect a web application to the Radix Wallet and interact with on-ledger components using the Radix dApp Toolkit.\n\nhttps://radix.wiki/developers/frontend/01-radix-dapp-toolkit",
     "pillar": "Dev",
     "slug": "01-radix-dapp-toolkit",
     "posted": false
@@ -1265,14 +1269,14 @@
   },
   {
     "id": "cf764c10f9c9dc030ac7f3c8e",
-    "text": "Roadmap: RFC: Migrate Radix Developer Documentation to RADIX.wiki — In Progress\n\nRFC: Migrate Radix Developer Documentation to RADIX.wiki\n\nhttps://radix.wiki/ideas/rfc-migrate-radix-developer-documentation-to-radixwiki",
+    "text": "Roadmap: RFC: Migrate Radix Developer Documentation to RADIX.wiki \u2014 In Progress\n\nRFC: Migrate Radix Developer Documentation to RADIX.wiki\n\nhttps://radix.wiki/ideas/rfc-migrate-radix-developer-documentation-to-radixwiki",
     "pillar": "Roadmap",
     "slug": "rfc-migrate-radix-developer-documentation-to-radixwiki",
     "posted": false
   },
   {
     "id": "cd69ce65866eeea1061e5703b",
-    "text": "📚 Nerds Republic\n\nNerds Republic is an NFT project launched by the team behind Foton. The collection consists of 10,000 unique characters. Launched as the first NFT initiative on Radix, each Nerd in the collection r...\n\nhttps://radix.wiki/ecosystem/nerds-republic",
+    "text": "\ud83d\udcda Nerds Republic\n\nNerds Republic is an NFT project launched by the team behind Foton. The collection consists of 10,000 unique characters. Launched as the first NFT initiative on Radix, each Nerd in the collection r...\n\nhttps://radix.wiki/ecosystem/nerds-republic",
     "pillar": "Ecosystem",
     "slug": "nerds-republic",
     "posted": false
@@ -1307,7 +1311,7 @@
   },
   {
     "id": "cee9866eba6e29f9e6295fde0",
-    "text": "📚 Abandoned Arena\n\nAbandoned Arena is an upcoming competitive game that will integrate with non-fungible tokens (NFTs) on the Radix DLT[1]. Players will be able to use Abandoned Scorpions NFTs to compete with others,...\n\nhttps://radix.wiki/ecosystem/abandoned-arena",
+    "text": "\ud83d\udcda Abandoned Arena\n\nAbandoned Arena is an upcoming competitive game that will integrate with non-fungible tokens (NFTs) on the Radix DLT[1]. Players will be able to use Abandoned Scorpions NFTs to compete with others,...\n\nhttps://radix.wiki/ecosystem/abandoned-arena",
     "pillar": "Ecosystem",
     "slug": "abandoned-arena",
     "posted": false
@@ -1356,7 +1360,7 @@
   },
   {
     "id": "c611875d46049ccdc8359ceac",
-    "text": "📚 Gateway Service Decentralization\n\nRFP for independent operators to run the Babylon Gateway API that powers wallets and dApps.\n\nhttps://radix.wiki/ideas/gateway-service-rfp",
+    "text": "\ud83d\udcda Gateway Service Decentralization\n\nRFP for independent operators to run the Babylon Gateway API that powers wallets and dApps.\n\nhttps://radix.wiki/ideas/gateway-service-rfp",
     "pillar": "Roadmap",
     "slug": "gateway-service-rfp",
     "posted": false
@@ -1405,7 +1409,7 @@
   },
   {
     "id": "c58d6c8ceb7e0eb26d8718514",
-    "text": "📚 Hyperlane Bridge Launch\n\nPermissionless cross-chain bridge connecting Radix to Ethereum, Arbitrum, Base, and BSC.\n\nhttps://radix.wiki/ideas/hyperlane-bridge-launch",
+    "text": "\ud83d\udcda Hyperlane Bridge Launch\n\nPermissionless cross-chain bridge connecting Radix to Ethereum, Arbitrum, Base, and BSC.\n\nhttps://radix.wiki/ideas/hyperlane-bridge-launch",
     "pillar": "Roadmap",
     "slug": "hyperlane-bridge-launch",
     "posted": false
@@ -1454,7 +1458,7 @@
   },
   {
     "id": "c619bcf9e8d0dcd40f583071e",
-    "text": "📚 Impahla\n\nImpahla is a smart contract-based digital asset platform, renowned for its specialization in both Primary Token Sales (including FT and NFT) via auctions and its secondary marketplace capabilities ...\n\nhttps://radix.wiki/ecosystem/impahla",
+    "text": "\ud83d\udcda Impahla\n\nImpahla is a smart contract-based digital asset platform, renowned for its specialization in both Primary Token Sales (including FT and NFT) via auctions and its secondary marketplace capabilities ...\n\nhttps://radix.wiki/ecosystem/impahla",
     "pillar": "Ecosystem",
     "slug": "impahla",
     "posted": false
@@ -1510,7 +1514,7 @@
   },
   {
     "id": "cdfb331255595f7e41734f872",
-    "text": "📚 Unspent Transaction Output (UTXO) Model\n\nUnspent Transaction Output (UTXO) Model\n\nhttps://radix.wiki/contents/tech/core-concepts/unspent-transaction-output-utxo-model",
+    "text": "\ud83d\udcda Unspent Transaction Output (UTXO) Model\n\nUnspent Transaction Output (UTXO) Model\n\nhttps://radix.wiki/contents/tech/core-concepts/unspent-transaction-output-utxo-model",
     "pillar": "Protocol",
     "slug": "unspent-transaction-output-utxo-model",
     "posted": false
@@ -1559,7 +1563,7 @@
   },
   {
     "id": "ca473c45d7a09346265d734fc",
-    "text": "Authorization in Scrypto: badges, access rules, and proof-based auth.\n\nNo onlyOwner modifiers — the engine enforces it.\n\nhttps://radix.wiki/developers/scrypto/03-authorization-and-badges",
+    "text": "Authorization in Scrypto: badges, access rules, and proof-based auth.\n\nNo onlyOwner modifiers \u2014 the engine enforces it.\n\nhttps://radix.wiki/developers/scrypto/03-authorization-and-badges",
     "pillar": "Dev",
     "slug": "03-authorization-and-badges",
     "posted": false
@@ -1580,7 +1584,7 @@
   },
   {
     "id": "c63b00db1fa16b35ab80c9a67",
-    "text": "👋 Open Positions:: Project Submission (https://www.notion.so/Project-Submission-ef696c2d7ebd4117ba59ddbeb0817bb5?pvs=21)\nStatus: 🟡\n\nhttps://radix.wiki/ecosystem/foton",
+    "text": "\ud83d\udc4b Open Positions:: Project Submission (https://www.notion.so/Project-Submission-ef696c2d7ebd4117ba59ddbeb0817bb5?pvs=21)\nStatus: \ud83d\udfe1\n\nhttps://radix.wiki/ecosystem/foton",
     "pillar": "Ecosystem",
     "slug": "foton",
     "posted": false
@@ -1594,14 +1598,14 @@
   },
   {
     "id": "c766772f13319ee76dbca062d",
-    "text": "Vault and Resource Patterns in Scrypto:\n\nWithdraw pattern, transient badges, actor virtual badges — the design patterns that make Scrypto unique.\n\nhttps://radix.wiki/developers/scrypto/06-vault-patterns",
+    "text": "Vault and Resource Patterns in Scrypto:\n\nWithdraw pattern, transient badges, actor virtual badges \u2014 the design patterns that make Scrypto unique.\n\nhttps://radix.wiki/developers/scrypto/06-vault-patterns",
     "pillar": "Dev",
     "slug": "06-vault-patterns",
     "posted": false
   },
   {
     "id": "ceee9dcfa915396e109867c4b",
-    "text": "📚 XRDegen\n\nXRDegen is an NFT launchpad and marketplace built on Radix. The platform provides a comprehensive suite of tools for creators to launch, manage, and monetize their non-fungible token (NFT) collecti...\n\nhttps://radix.wiki/ecosystem/xrdegen",
+    "text": "\ud83d\udcda XRDegen\n\nXRDegen is an\u00a0NFT launchpad and marketplace\u00a0built on Radix. The platform provides a comprehensive suite of tools for creators to launch, manage, and monetize their non-fungible token (NFT) collecti...\n\nhttps://radix.wiki/ecosystem/xrdegen",
     "pillar": "Ecosystem",
     "slug": "xrdegen",
     "posted": false
@@ -1636,7 +1640,7 @@
   },
   {
     "id": "c23854b313646cc0ded5b1c91",
-    "text": "Transaction Lifecycle on Radix:\n\nConstruction → Preview → Signing → Submission → Commit.\n\nhttps://radix.wiki/developers/transactions/02-transaction-lifecycle",
+    "text": "Transaction Lifecycle on Radix:\n\nConstruction \u2192 Preview \u2192 Signing \u2192 Submission \u2192 Commit.\n\nhttps://radix.wiki/developers/transactions/02-transaction-lifecycle",
     "pillar": "Dev",
     "slug": "02-transaction-lifecycle",
     "posted": false
@@ -1650,7 +1654,7 @@
   },
   {
     "id": "c32ca960be317085321f4c375",
-    "text": "📚 Native Assets vs Token Approvals\n\nRadix's native resource model eliminates the approval pattern that has caused hundreds of millions in DeFi exploits.\n\nhttps://radix.wiki/contents/tech/core-concepts/native-assets-vs-token-approvals",
+    "text": "\ud83d\udcda Native Assets vs Token Approvals\n\nRadix's native resource model eliminates the approval pattern that has caused hundreds of millions in DeFi exploits.\n\nhttps://radix.wiki/contents/tech/core-concepts/native-assets-vs-token-approvals",
     "pillar": "Dev",
     "slug": "native-assets-vs-token-approvals",
     "posted": false
@@ -1678,7 +1682,7 @@
   },
   {
     "id": "ccf14bb72c2f67f4e36e9afc1",
-    "text": "ROLA Authentication: verify wallet ownership server-side.\n\nChallenge → Sign → Verify. Secure and stateless.\n\nhttps://radix.wiki/developers/frontend/03-rola-authentication",
+    "text": "ROLA Authentication: verify wallet ownership server-side.\n\nChallenge \u2192 Sign \u2192 Verify. Secure and stateless.\n\nhttps://radix.wiki/developers/frontend/03-rola-authentication",
     "pillar": "Dev",
     "slug": "03-rola-authentication",
     "posted": false
@@ -1692,7 +1696,7 @@
   },
   {
     "id": "c4b34c0e7c1fa82e4a02b54bb",
-    "text": "Roadmap: Hyperscale Open Source Release — In Progress\n\nOpen-sourcing all Hyperscale code, documentation, and operational material for community reproduction and R&D.\n\nhttps://radix.wiki/ideas/hyperscale-open-source",
+    "text": "Roadmap: Hyperscale Open Source Release \u2014 In Progress\n\nOpen-sourcing all Hyperscale code, documentation, and operational material for community reproduction and R&D.\n\nhttps://radix.wiki/ideas/hyperscale-open-source",
     "pillar": "Roadmap",
     "slug": "hyperscale-open-source",
     "posted": false
@@ -1706,7 +1710,7 @@
   },
   {
     "id": "c586236252c1111cdef1a7063",
-    "text": "📚 Radix Economic Model\n\nThe economic design of the Radix network: XRD emissions, fee burning, DPoS incentive alignment, and stablecoin reserve governance.\n\nhttps://radix.wiki/contents/tech/research/radix-economic-model",
+    "text": "\ud83d\udcda Radix Economic Model\n\nThe economic design of the Radix network: XRD emissions, fee burning, DPoS incentive alignment, and stablecoin reserve governance.\n\nhttps://radix.wiki/contents/tech/research/radix-economic-model",
     "pillar": "Protocol",
     "slug": "radix-economic-model",
     "posted": false
@@ -1762,7 +1766,7 @@
   },
   {
     "id": "cacfa70bd51c2eb1ddc3c7330",
-    "text": "📚 RadKET\n\nRadket is an online marketplace that accepts only cryptocurrencies as payment method. It is the first of its kind and aims to provide a platform for buyers and sellers to trade using cryptocurrenci...\n\nhttps://radix.wiki/ecosystem/radket",
+    "text": "\ud83d\udcda RadKET\n\nRadket is an online marketplace that accepts only cryptocurrencies as payment method. It is the first of its kind and aims to provide a platform for buyers and sellers to trade using cryptocurrenci...\n\nhttps://radix.wiki/ecosystem/radket",
     "pillar": "Ecosystem",
     "slug": "radket",
     "posted": false
@@ -1797,14 +1801,14 @@
   },
   {
     "id": "c8dd34df0e146f06dc9b6b4bb",
-    "text": "https://x.com/felixxrd\n💰 Assets:: https://ociswap.com/resource_rdx1thmvxfv5yngqf29vv58cm222mp9r5fxe5yap6w0dqzudrzz9yjxn86\nStatus: 🟢\n\nhttps://radix.wiki/ecosystem/radix-review",
+    "text": "https://x.com/felixxrd\n\ud83d\udcb0 Assets:: https://ociswap.com/resource_rdx1thmvxfv5yngqf29vv58cm222mp9r5fxe5yap6w0dqzudrzz9yjxn86\nStatus: \ud83d\udfe2\n\nhttps://radix.wiki/ecosystem/radix-review",
     "pillar": "Ecosystem",
     "slug": "radix-review",
     "posted": false
   },
   {
     "id": "c1723c03756b74e543d525736",
-    "text": "Consultations V2: the open-source governance dApp.\n\nTemperature checks → formal proposals → community votes.\n\nhttps://radix.wiki/ideas/consultations-v2",
+    "text": "Consultations V2: the open-source governance dApp.\n\nTemperature checks \u2192 formal proposals \u2192 community votes.\n\nhttps://radix.wiki/ideas/consultations-v2",
     "pillar": "Roadmap",
     "slug": "consultations-v2",
     "posted": false
@@ -1818,7 +1822,7 @@
   },
   {
     "id": "c76dac11c5fcfd8566cddbd2f",
-    "text": "📚 Radix Rewards S1 Distribution\n\n114.3M XRD distributed across Season 0 and Season 1 participants on February 3, 2026, with 20% instant and 80% vesting over 7 days.\n\nhttps://radix.wiki/ideas/radix-rewards-s1-distribution",
+    "text": "\ud83d\udcda Radix Rewards S1 Distribution\n\n114.3M XRD distributed across Season 0 and Season 1 participants on February 3, 2026, with 20% instant and 80% vesting over 7 days.\n\nhttps://radix.wiki/ideas/radix-rewards-s1-distribution",
     "pillar": "Roadmap",
     "slug": "radix-rewards-s1-distribution",
     "posted": false
@@ -1846,7 +1850,7 @@
   },
   {
     "id": "c1cb10074ec3989b077848cb9",
-    "text": "📚 Radix Foundation\n\nThe Radix Foundation is a not-for-profit organization focused on the development, promotion, and governance of the Radix public network, a decentralized ledger technology. Established in the United...\n\nhttps://radix.wiki/ecosystem/radix-foundation",
+    "text": "\ud83d\udcda Radix Foundation\n\nThe Radix Foundation is a not-for-profit organization focused on the development, promotion, and governance of the Radix public network, a decentralized ledger technology. Established in the United...\n\nhttps://radix.wiki/ecosystem/radix-foundation",
     "pillar": "Ecosystem",
     "slug": "radix-foundation",
     "posted": false
@@ -1867,7 +1871,7 @@
   },
   {
     "id": "c9ea2125dcdc3516f88acbd80",
-    "text": "Radland\n\nAncient\nChiggimps (VikingLand)\nTrond (VikingLand)\nBCD (Scrypto)\nhttps://www.notion.so/60fb6af894c543f1bb26a34a0b2a5d31?pvs=21 (front-end)\nStatus: 💀\n\nhttps://radix.wiki/ecosystem/radland",
+    "text": "Radland\n\nAncient\nChiggimps (VikingLand)\nTrond (VikingLand)\nBCD (Scrypto)\nhttps://www.notion.so/60fb6af894c543f1bb26a34a0b2a5d31?pvs=21 (front-end)\nStatus: \ud83d\udc80\n\nhttps://radix.wiki/ecosystem/radland",
     "pillar": "Ecosystem",
     "slug": "radland",
     "posted": false
@@ -1888,7 +1892,7 @@
   },
   {
     "id": "c05805c220e73d69b61844e5e",
-    "text": "How Radix transaction manifests eliminate blind signing — enabling AI agents and humans to verify exactly what they are authorizing.\n\nhttps://radix.wiki/contents/tech/core-concepts/blind-signing-and-transaction-manifests",
+    "text": "How Radix transaction manifests eliminate blind signing \u2014 enabling AI agents and humans to verify exactly what they are authorizing.\n\nhttps://radix.wiki/contents/tech/core-concepts/blind-signing-and-transaction-manifests",
     "pillar": "Dev",
     "slug": "blind-signing-and-transaction-manifests",
     "posted": false
@@ -1909,7 +1913,7 @@
   },
   {
     "id": "cc6b5eb6d12fdd4ab35e147c9",
-    "text": "📚 DogeCubeX\n\nDogeCubeX is a centralized decentralized exchange (cDEX) operating on the Radix Network. It provides users with a platform to buy and sell various listed tokens directly from their Radix wallets. D...\n\nhttps://radix.wiki/ecosystem/dogecubex",
+    "text": "\ud83d\udcda DogeCubeX\n\nDogeCubeX is a centralized decentralized exchange (cDEX) operating on the Radix Network. It provides users with a platform to buy and sell various listed tokens directly from their Radix wallets. D...\n\nhttps://radix.wiki/ecosystem/dogecubex",
     "pillar": "Ecosystem",
     "slug": "dogecubex",
     "posted": false
@@ -1965,7 +1969,7 @@
   },
   {
     "id": "c54c068e1d03d8b7a2318dd81",
-    "text": "📚 Byzantine Fault Tolerance\n\nThe ability of a distributed system to reach consensus correctly even when up to one-third of participants are faulty or malicious, as implemented through Cerberus on Radix.\n\nhttps://radix.wiki/contents/tech/core-concepts/byzantine-fault-tolerance",
+    "text": "\ud83d\udcda Byzantine Fault Tolerance\n\nThe ability of a distributed system to reach consensus correctly even when up to one-third of participants are faulty or malicious, as implemented through Cerberus on Radix.\n\nhttps://radix.wiki/contents/tech/core-concepts/byzantine-fault-tolerance",
     "pillar": "Protocol",
     "slug": "byzantine-fault-tolerance",
     "posted": false
@@ -2014,7 +2018,7 @@
   },
   {
     "id": "c17ed2ed452cd35ac52c63f76",
-    "text": "📚 Radix Wiki Hackathon #1\n\nThe Radix Wiki Hackathon 1 was held at the ArtSect Galleryhttps://maps.app.goo.gl/webQjmqK4RfKtv1dA in London on the 20-21st April, 2024.\n\nTELEGRAM → https://t.me/RadixHackathonhttps:/\n\nhttps://radix.wiki/contents/history/radix-wiki-hackathon-1",
+    "text": "\ud83d\udcda Radix Wiki Hackathon #1\n\nThe Radix Wiki Hackathon 1 was held at the ArtSect Galleryhttps://maps.app.goo.gl/webQjmqK4RfKtv1dA in London on the 20-21st April, 2024.\n\nTELEGRAM \u2192 https://t.me/RadixHackathonhttps:/\n\nhttps://radix.wiki/contents/history/radix-wiki-hackathon-1",
     "pillar": "Community",
     "slug": "radix-wiki-hackathon-1",
     "posted": false
@@ -2070,7 +2074,7 @@
   },
   {
     "id": "c24f27582485d857fb740d7fe",
-    "text": "📚 RadixStake\n\nRadixStake is a platform that allows users to earn rewards in the form of Radix XRD tokens.\n\nhttps://radix.wiki/ecosystem/radixstake",
+    "text": "\ud83d\udcda RadixStake\n\nRadixStake is a platform that allows users to earn rewards in the form of Radix XRD tokens.\n\nhttps://radix.wiki/ecosystem/radixstake",
     "pillar": "Ecosystem",
     "slug": "radixstake",
     "posted": false
@@ -2119,7 +2123,7 @@
   },
   {
     "id": "c9822f8b3f88dabd357544882",
-    "text": "📚 Liquid Stake Units (LSUs)\n\nFungible tokens representing staked XRD positions that can be freely traded or used as DeFi collateral while the underlying XRD continues earning staking rewards.\n\nhttps://radix.wiki/contents/tech/core-concepts/liquid-stake-units",
+    "text": "\ud83d\udcda Liquid Stake Units (LSUs)\n\nFungible tokens representing staked XRD positions that can be freely traded or used as DeFi collateral while the underlying XRD continues earning staking rewards.\n\nhttps://radix.wiki/contents/tech/core-concepts/liquid-stake-units",
     "pillar": "Dev",
     "slug": "liquid-stake-units",
     "posted": false
@@ -2133,7 +2137,7 @@
   },
   {
     "id": "c30072152dcdc32236c58eba0",
-    "text": "$EARLY\n\n$EARLY is a cryptocurrency token operating on the Radix distributed ledger technology (DLT). It is primarily designed for use within the Radix ecosystem, with a focus on providing utility for early...\n\nhttps://radix.wiki/ecosystem/early",
+    "text": "$EARLY\n\n$EARLY is a cryptocurrency token operating on the\u00a0Radix distributed ledger technology (DLT). It is primarily designed for use within the Radix ecosystem, with a focus on providing utility for early...\n\nhttps://radix.wiki/ecosystem/early",
     "pillar": "Ecosystem",
     "slug": "early",
     "posted": false
@@ -2168,7 +2172,7 @@
   },
   {
     "id": "c76fb1c3d56be425e9d6cf553",
-    "text": "Roadmap: Hyperscale 500k TPS Public Test — Done\n\nPublic network test sustaining 500,000+ TPS with 590+ nodes on commodity hardware across 128 shards.\n\nhttps://radix.wiki/ideas/hyperscale-500k-test",
+    "text": "Roadmap: Hyperscale 500k TPS Public Test \u2014 Done\n\nPublic network test sustaining 500,000+ TPS with 590+ nodes on commodity hardware across 128 shards.\n\nhttps://radix.wiki/ideas/hyperscale-500k-test",
     "pillar": "Roadmap",
     "slug": "hyperscale-500k-test",
     "posted": false
@@ -2203,21 +2207,21 @@
   },
   {
     "id": "c1eafaf160e21c5f2492837a2",
-    "text": "Want to learn Scrypto? Start here:\n\n1. Install → https://radix.wiki/developers/getting-started/01-install-scrypto\n2. First Blueprint → /02-first-blueprint\n3. Deploy → /03-deploying\n\nThe developer section has everything you need.",
+    "text": "Want to learn Scrypto? Start here:\n\n1. Install \u2192 https://radix.wiki/developers/getting-started/01-install-scrypto\n2. First Blueprint \u2192 /02-first-blueprint\n3. Deploy \u2192 /03-deploying\n\nThe developer section has everything you need.",
     "pillar": "Dev",
     "slug": "",
     "posted": false
   },
   {
     "id": "cd9022fb85449ca52afc7b199",
-    "text": "Radix in numbers:\n\n• 500k+ TPS proven\n• 128 shards tested\n• 590+ nodes in public test\n• 100+ ecosystem projects\n• Peer-reviewed consensus paper\n\nhttps://radix.wiki",
+    "text": "Radix in numbers:\n\n\u2022 500k+ TPS proven\n\u2022 128 shards tested\n\u2022 590+ nodes in public test\n\u2022 100+ ecosystem projects\n\u2022 Peer-reviewed consensus paper\n\nhttps://radix.wiki",
     "pillar": "Protocol",
     "slug": "",
     "posted": false
   },
   {
     "id": "c125e08cd0c4b22af84f3d3bb",
-    "text": "Roadmap: Proof of Personhood (idOS) — Done\n\nOn-chain identity verification badges via idOS integration for Sybil resistance and governance.\n\nhttps://radix.wiki/ideas/proof-of-personhood",
+    "text": "Roadmap: Proof of Personhood (idOS) \u2014 Done\n\nOn-chain identity verification badges via idOS integration for Sybil resistance and governance.\n\nhttps://radix.wiki/ideas/proof-of-personhood",
     "pillar": "Roadmap",
     "slug": "proof-of-personhood",
     "posted": false
@@ -2231,14 +2235,14 @@
   },
   {
     "id": "c63ead1c816e1d478e24b2a94",
-    "text": "📚 Ideosphere\n\nIdeosphere is a crowdfunding platform specifically designed to support scientific research and open source projects. The platform operates on a monthly membership model, similar to services like Pa...\n\nhttps://radix.wiki/ecosystem/ideosphere",
+    "text": "\ud83d\udcda Ideosphere\n\nIdeosphere is a crowdfunding platform specifically designed to support scientific research and open source projects. The platform operates on a monthly membership model, similar to services like Pa...\n\nhttps://radix.wiki/ecosystem/ideosphere",
     "pillar": "Ecosystem",
     "slug": "ideosphere",
     "posted": false
   },
   {
     "id": "c34ae11997ed62849aec55805",
-    "text": "The Radix roadmap:\n\nOlympia ✅ (2021)\nAlexandria ✅ (2022)\nBabylon ✅ (2023)\nXi'an 🔜 (community-built)\n\nhttps://radix.wiki/contents/tech/releases/radix-mainnet-xian",
+    "text": "The Radix roadmap:\n\nOlympia \u2705 (2021)\nAlexandria \u2705 (2022)\nBabylon \u2705 (2023)\nXi'an \ud83d\udd1c (community-built)\n\nhttps://radix.wiki/contents/tech/releases/radix-mainnet-xian",
     "pillar": "Roadmap",
     "slug": "radix-mainnet-xian",
     "posted": false
@@ -2266,21 +2270,21 @@
   },
   {
     "id": "cf32d4d78cfbba0672ed3f6e7",
-    "text": "📚 RFC: Mini Season 2 of Radix Rewards during Foundation Handover\n\nRFC: Mini Season 2 of Radix Rewards during Foundation Handover\n\nhttps://radix.wiki/ideas/rfc-mini-season-2-of-radix-rewards-during-foundation-handover",
+    "text": "\ud83d\udcda RFC: Mini Season 2 of Radix Rewards during Foundation Handover\n\nRFC: Mini Season 2 of Radix Rewards during Foundation Handover\n\nhttps://radix.wiki/ideas/rfc-mini-season-2-of-radix-rewards-during-foundation-handover",
     "pillar": "Roadmap",
     "slug": "rfc-mini-season-2-of-radix-rewards-during-foundation-handover",
     "posted": false
   },
   {
     "id": "ce6a00b005f9f4abc356f1c48",
-    "text": "Staking on Radix:\n\n• Delegate XRD to validators\n• Earn LSUs (liquid receipts)\n• Use LSUs in DeFi\n• Compound your rewards\n\nhttps://radix.wiki/contents/tech/core-concepts/staking",
+    "text": "Staking on Radix:\n\n\u2022 Delegate XRD to validators\n\u2022 Earn LSUs (liquid receipts)\n\u2022 Use LSUs in DeFi\n\u2022 Compound your rewards\n\nhttps://radix.wiki/contents/tech/core-concepts/staking",
     "pillar": "Protocol",
     "slug": "staking",
     "posted": false
   },
   {
     "id": "cf68d514a104d527877034f28",
-    "text": "Composability on Radix: chain together any number of operations in a single atomic transaction.\n\nSwap → lend → stake → all in one manifest.\n\nhttps://radix.wiki/contents/tech/core-concepts/composability",
+    "text": "Composability on Radix: chain together any number of operations in a single atomic transaction.\n\nSwap \u2192 lend \u2192 stake \u2192 all in one manifest.\n\nhttps://radix.wiki/contents/tech/core-concepts/composability",
     "pillar": "Protocol",
     "slug": "composability",
     "posted": false
@@ -2308,7 +2312,7 @@
   },
   {
     "id": "cfcc55ed9cf1214c45e42a8ad",
-    "text": "2026 is the year Radix transitions from Foundation-led to community-led.\n\nThe RAC, validator subsidy sunset, gateway decentralization — it's all happening now.\n\nhttps://radix.wiki/ideas",
+    "text": "2026 is the year Radix transitions from Foundation-led to community-led.\n\nThe RAC, validator subsidy sunset, gateway decentralization \u2014 it's all happening now.\n\nhttps://radix.wiki/ideas",
     "pillar": "Roadmap",
     "slug": "",
     "posted": false
@@ -2329,7 +2333,7 @@
   },
   {
     "id": "c69acb18985e49232f5e05fe1",
-    "text": "📚 RadixCharts\n\nRadixCharts is an analytics platform that provides real-time insights into the Radix ecosystem. Founded in 2022, it offers various statistics and data visualizations to help users understand the pe...\n\nhttps://radix.wiki/ecosystem/radixcharts",
+    "text": "\ud83d\udcda RadixCharts\n\nRadixCharts is an analytics platform that provides real-time insights into the Radix ecosystem. Founded in 2022, it offers various statistics and data visualizations to help users understand the pe...\n\nhttps://radix.wiki/ecosystem/radixcharts",
     "pillar": "Ecosystem",
     "slug": "radixcharts",
     "posted": false
@@ -2371,7 +2375,7 @@
   },
   {
     "id": "c888a9e3f26813dbc16ff0945",
-    "text": "📚 The Hard Money Project\n\nThe Hard Money Project (THMP) is a research and educational initiative that focuses on analyzing monetary systems and Bitcoin's role in a potential new financial paradigm. Founded by Lluis Aragones...\n\nhttps://radix.wiki/ecosystem/the-hard-money-project",
+    "text": "\ud83d\udcda The Hard Money Project\n\nThe Hard Money Project (THMP) is a research and educational initiative that focuses on analyzing monetary systems and Bitcoin's role in a potential new financial paradigm. Founded by Lluis Aragones...\n\nhttps://radix.wiki/ecosystem/the-hard-money-project",
     "pillar": "Ecosystem",
     "slug": "the-hard-money-project",
     "posted": false
@@ -2427,7 +2431,7 @@
   },
   {
     "id": "cb914feb9941bfb99170a0d5d",
-    "text": "📚 Radix Core API\n\nLow-level API exposed directly by Radix full nodes for raw ledger access, transaction construction, and node management — primarily used by infrastructure operators.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-core-api",
+    "text": "\ud83d\udcda Radix Core API\n\nLow-level API exposed directly by Radix full nodes for raw ledger access, transaction construction, and node management \u2014 primarily used by infrastructure operators.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-core-api",
     "pillar": "Protocol",
     "slug": "radix-core-api",
     "posted": false
@@ -2448,14 +2452,14 @@
   },
   {
     "id": "c7f02650f427f74d50d04cdf0",
-    "text": "📚 Hyperlane Bridge Route Expansion\n\nExpanding cross-chain warp routes to additional networks and assets based on community demand.\n\nhttps://radix.wiki/ideas/hyperlane-bridge-expansion",
+    "text": "\ud83d\udcda Hyperlane Bridge Route Expansion\n\nExpanding cross-chain warp routes to additional networks and assets based on community demand.\n\nhttps://radix.wiki/ideas/hyperlane-bridge-expansion",
     "pillar": "Roadmap",
     "slug": "hyperlane-bridge-expansion",
     "posted": false
   },
   {
     "id": "c91550028e5e761f67f6fb4fd",
-    "text": "Caper\n\nCaper is a Web3 bourse and launchpad platform designed to accelerate the development of Decentralized Autonomous Organizations (DAOs) from creation and funding through to governance, exit, and acqu...\n\nhttps://radix.wiki/ecosystem/caper",
+    "text": "Caper\n\nCaper\u00a0is a Web3 bourse and launchpad platform designed to accelerate the development of\u00a0Decentralized Autonomous Organizations\u00a0(DAOs) from creation and funding through to governance, exit, and acqu...\n\nhttps://radix.wiki/ecosystem/caper",
     "pillar": "Ecosystem",
     "slug": "caper",
     "posted": false
@@ -2469,7 +2473,7 @@
   },
   {
     "id": "c17bb3a5b85f865675076389e",
-    "text": "📚 Arcane Labyrinth\n\nArcane Labyrinth is an adventure game that offers players the experience of navigating through a labyrinth consisting of 101 different floors. The game is set in a fantasy world and features an att...\n\nhttps://radix.wiki/ecosystem/arcane-labyrinth",
+    "text": "\ud83d\udcda Arcane Labyrinth\n\nArcane Labyrinth is an adventure game that offers players the experience of navigating through a labyrinth consisting of 101 different floors. The game is set in a fantasy world and features an att...\n\nhttps://radix.wiki/ecosystem/arcane-labyrinth",
     "pillar": "Ecosystem",
     "slug": "arcane-labyrinth",
     "posted": false
@@ -2490,14 +2494,14 @@
   },
   {
     "id": "cec561a40a9f0fb2691ad1cb9",
-    "text": "📚 Delegated Proof of Stake (DPoS)\n\nDelegated Proof of Stake (DPoS)\n\nhttps://radix.wiki/contents/tech/core-concepts/delegated-proof-of-stake-dpos",
+    "text": "\ud83d\udcda Delegated Proof of Stake (DPoS)\n\nDelegated Proof of Stake (DPoS)\n\nhttps://radix.wiki/contents/tech/core-concepts/delegated-proof-of-stake-dpos",
     "pillar": "Dev",
     "slug": "delegated-proof-of-stake-dpos",
     "posted": false
   },
   {
     "id": "c98ec081f21cedf978e203736",
-    "text": "bondefi\n\nBonDeFi is a decentralized crowdfunding platform and token launchpad built on Radix DLT, a distributed ledger technology designed for decentralized finance applications. The platform positions itse...\n\nhttps://radix.wiki/ecosystem/bondefi",
+    "text": "bondefi\n\nBonDeFi is a decentralized crowdfunding platform and token launchpad built on\u00a0Radix DLT, a distributed ledger technology designed for decentralized finance applications. The platform positions itse...\n\nhttps://radix.wiki/ecosystem/bondefi",
     "pillar": "Ecosystem",
     "slug": "bondefi",
     "posted": false
@@ -2511,7 +2515,7 @@
   },
   {
     "id": "c38db7e1b244ce07d76ced305",
-    "text": "Roadmap: Radix Rewards Season 2 — Proposed\n\nCommunity-proposed continuation of the Radix incentive program to drive on-chain activity.\n\nhttps://radix.wiki/ideas/radix-rewards-season-2",
+    "text": "Roadmap: Radix Rewards Season 2 \u2014 Proposed\n\nCommunity-proposed continuation of the Radix incentive program to drive on-chain activity.\n\nhttps://radix.wiki/ideas/radix-rewards-season-2",
     "pillar": "Roadmap",
     "slug": "radix-rewards-season-2",
     "posted": false
@@ -2539,7 +2543,7 @@
   },
   {
     "id": "c8e477fd557bd3ff7d2ab2697",
-    "text": "📚 RadixScan\n\nRadixScan is a web service that provides detailed and comprehensive information about the Radix network. The service offers an array of features that includes an archive node, partnerships, and dat...\n\nhttps://radix.wiki/ecosystem/radixscan",
+    "text": "\ud83d\udcda RadixScan\n\nRadixScan is a web service that provides detailed and comprehensive information about the Radix network. The service offers an array of features that includes an archive node, partnerships, and dat...\n\nhttps://radix.wiki/ecosystem/radixscan",
     "pillar": "Ecosystem",
     "slug": "radixscan",
     "posted": false
@@ -2567,7 +2571,7 @@
   },
   {
     "id": "c5fd51d0f715fef68a5844fec",
-    "text": "📚 Xi'an Protocol Upgrade\n\nFully sharded Cerberus consensus delivering infinite linear scalability and unlimited atomic composability.\n\nhttps://radix.wiki/ideas/xian-protocol-upgrade",
+    "text": "\ud83d\udcda Xi'an Protocol Upgrade\n\nFully sharded Cerberus consensus delivering infinite linear scalability and unlimited atomic composability.\n\nhttps://radix.wiki/ideas/xian-protocol-upgrade",
     "pillar": "Roadmap",
     "slug": "xian-protocol-upgrade",
     "posted": false
@@ -2595,7 +2599,7 @@
   },
   {
     "id": "cf36ca4a9740e6834893ff7ab",
-    "text": "📚 Consensus Evolution at Radix\n\nHow Radix iterated through six consensus designs — from eMunie to Cerberus — over a decade of distributed ledger research.\n\nhttps://radix.wiki/contents/tech/research/consensus-evolution",
+    "text": "\ud83d\udcda Consensus Evolution at Radix\n\nHow Radix iterated through six consensus designs \u2014 from eMunie to Cerberus \u2014 over a decade of distributed ledger research.\n\nhttps://radix.wiki/contents/tech/research/consensus-evolution",
     "pillar": "Protocol",
     "slug": "consensus-evolution",
     "posted": false
@@ -2623,7 +2627,7 @@
   },
   {
     "id": "ce01cf90f9f3bed0d3e68f4a1",
-    "text": "📚 Maya Protocol\n\nMaya Protocol is a decentralized cryptocurrency exchange ecosystem that enables cross-chain asset trading without relying on wrapped tokens or traditional bridge infrastructure. Launched in 2024, t...\n\nhttps://radix.wiki/ecosystem/maya-protocol",
+    "text": "\ud83d\udcda Maya Protocol\n\nMaya Protocol is a decentralized cryptocurrency exchange ecosystem that enables cross-chain asset trading without relying on wrapped tokens or traditional bridge infrastructure. Launched in 2024, t...\n\nhttps://radix.wiki/ecosystem/maya-protocol",
     "pillar": "Ecosystem",
     "slug": "maya-protocol",
     "posted": false
@@ -2658,7 +2662,7 @@
   },
   {
     "id": "cde253633f2bd89c9e1edca11",
-    "text": "📚 XRD Domains\n\nXRD Domains is the primary developer of the Radix Name Service (RNS) and serves as a platform for domain registration and management.\n\nhttps://radix.wiki/ecosystem/xrd-domains",
+    "text": "\ud83d\udcda XRD Domains\n\nXRD Domains is the primary developer of the Radix Name Service (RNS) and serves as a platform for domain registration and management.\n\nhttps://radix.wiki/ecosystem/xrd-domains",
     "pillar": "Ecosystem",
     "slug": "xrd-domains",
     "posted": false
@@ -2679,7 +2683,7 @@
   },
   {
     "id": "c4ef64e6b5bb5746a46cae713",
-    "text": "📚 Stream Wallet\n\nRadix Stream is a self-custodian mobile wallet designed for use with Radix. It is touted as the most used self-custodian mobile wallet for Radix DLT.\n\nhttps://radix.wiki/ecosystem/stream-wallet",
+    "text": "\ud83d\udcda Stream Wallet\n\nRadix Stream is a self-custodian mobile wallet designed for use with Radix. It is touted as the most used self-custodian mobile wallet for Radix DLT.\n\nhttps://radix.wiki/ecosystem/stream-wallet",
     "pillar": "Ecosystem",
     "slug": "stream-wallet",
     "posted": false
@@ -2721,7 +2725,7 @@
   },
   {
     "id": "c36d0a3986349aea2bd394755",
-    "text": "Roadmap: Multi-Factor Security Shield — Testing\n\nOn-chain multi-factor authentication with phone, hardware, and social recovery factors for Radix accounts.\n\nhttps://radix.wiki/ideas/mfa-security-shield",
+    "text": "Roadmap: Multi-Factor Security Shield \u2014 Testing\n\nOn-chain multi-factor authentication with phone, hardware, and social recovery factors for Radix accounts.\n\nhttps://radix.wiki/ideas/mfa-security-shield",
     "pillar": "Roadmap",
     "slug": "mfa-security-shield",
     "posted": false
@@ -2749,7 +2753,7 @@
   },
   {
     "id": "cd6bd75393b1cdf8dfd81d8d9",
-    "text": "📚 Radix Engine Toolkit Update\n\nUpdating the Radix Engine Toolkit to support Scrypto 1.3.1 and modern Rust toolchains.\n\nhttps://radix.wiki/ideas/ret-scrypto-131-update",
+    "text": "\ud83d\udcda Radix Engine Toolkit Update\n\nUpdating the Radix Engine Toolkit to support Scrypto 1.3.1 and modern Rust toolchains.\n\nhttps://radix.wiki/ideas/ret-scrypto-131-update",
     "pillar": "Roadmap",
     "slug": "ret-scrypto-131-update",
     "posted": false
@@ -2777,7 +2781,7 @@
   },
   {
     "id": "c3dd3e8410fba43bb256ca856",
-    "text": "📚 Scrypto (Programming Language)\n\nScrypto (Programming Language)\n\nhttps://radix.wiki/contents/tech/core-protocols/scrypto-programming-language",
+    "text": "\ud83d\udcda Scrypto (Programming Language)\n\nScrypto (Programming Language)\n\nhttps://radix.wiki/contents/tech/core-protocols/scrypto-programming-language",
     "pillar": "Dev",
     "slug": "scrypto-programming-language",
     "posted": false
@@ -2791,7 +2795,7 @@
   },
   {
     "id": "c5646858b9807be43ce03916b",
-    "text": "Roadmap: Wallet Raw TxManifest Support — In Progress\n\nIn-wallet pasting of raw transaction manifests for direct component interaction without Radix Connect.\n\nhttps://radix.wiki/ideas/wallet-txmanifest-support",
+    "text": "Roadmap: Wallet Raw TxManifest Support \u2014 In Progress\n\nIn-wallet pasting of raw transaction manifests for direct component interaction without Radix Connect.\n\nhttps://radix.wiki/ideas/wallet-txmanifest-support",
     "pillar": "Roadmap",
     "slug": "wallet-txmanifest-support",
     "posted": false
@@ -2833,14 +2837,14 @@
   },
   {
     "id": "c7a502ea9982630da016bea75",
-    "text": "Low-level API exposed directly by Radix full nodes for raw ledger access, transaction construction, and node management — primarily used by infrastructure operators.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-core-api",
+    "text": "Low-level API exposed directly by Radix full nodes for raw ledger access, transaction construction, and node management \u2014 primarily used by infrastructure operators.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-core-api",
     "pillar": "Dev",
     "slug": "radix-core-api",
     "posted": false
   },
   {
     "id": "c0540c9b68086e85fb4658cca",
-    "text": "📚 Infinite Labs\n\nInfinite Labs is building an infrastructure service that empowers communities, to provide them the tools and services to bring their projects into a multiplayer online environment.\n\nhttps://radix.wiki/ecosystem/infinite-labs",
+    "text": "\ud83d\udcda Infinite Labs\n\nInfinite Labs is building an infrastructure service that empowers communities, to provide them the tools and services to bring their projects into a multiplayer online environment.\n\nhttps://radix.wiki/ecosystem/infinite-labs",
     "pillar": "Ecosystem",
     "slug": "infinite-labs",
     "posted": false
@@ -2875,7 +2879,7 @@
   },
   {
     "id": "cb491e09582bcb5c321e10824",
-    "text": "Developers: if you're building DeFi on EVM, you're shipping approval exploits by default.\n\nOn Radix, assets are native primitives — not entries in a mapping. There's no approve() to exploit because the pattern doesn't exist.\n\nhttps://radix.wiki/contents/tech/core-concepts/asset-oriented-programming",
+    "text": "Developers: if you're building DeFi on EVM, you're shipping approval exploits by default.\n\nOn Radix, assets are native primitives \u2014 not entries in a mapping. There's no approve() to exploit because the pattern doesn't exist.\n\nhttps://radix.wiki/contents/tech/core-concepts/asset-oriented-programming",
     "pillar": "Dev",
     "slug": "asset-oriented-programming",
     "posted": false
@@ -2896,14 +2900,14 @@
   },
   {
     "id": "ca79959ed7d60509740dd4885",
-    "text": "CaviarNine processes millions in trades on Radix.\n\nZero approval exploits. Zero infinite approvals. Zero token drains.\n\nNot because of better auditing — because the attack vector doesn't exist on Radix.\n\nhttps://radix.wiki/ecosystem/caviarnine",
+    "text": "CaviarNine processes millions in trades on Radix.\n\nZero approval exploits. Zero infinite approvals. Zero token drains.\n\nNot because of better auditing \u2014 because the attack vector doesn't exist on Radix.\n\nhttps://radix.wiki/ecosystem/caviarnine",
     "pillar": "Ecosystem",
     "slug": "caviarnine",
     "posted": false
   },
   {
     "id": "c24b2f869fd7915c0346fcfe5",
-    "text": "The blockchain trilemma says you can only have 2 of 3: security, decentralization, scalability.\n\nCerberus breaks this by braiding consensus across shards — each transaction only touches the shards it needs.\n\nResult: linear scalability without sacrificing security or decentralization.\n\nhttps://radix.wiki/contents/tech/core-protocols/cerberus-consensus-protocol",
+    "text": "The blockchain trilemma says you can only have 2 of 3: security, decentralization, scalability.\n\nCerberus breaks this by braiding consensus across shards \u2014 each transaction only touches the shards it needs.\n\nResult: linear scalability without sacrificing security or decentralization.\n\nhttps://radix.wiki/contents/tech/core-protocols/cerberus-consensus-protocol",
     "pillar": "Protocol",
     "slug": "cerberus-consensus-protocol",
     "posted": false
@@ -2924,21 +2928,21 @@
   },
   {
     "id": "cc359ec605242385532f28e3a",
-    "text": "Hyperscale test results:\n\n• 500,000+ TPS sustained\n• 590+ validator nodes\n• Commodity hardware only\n• 128 shards\n• Atomic composability preserved\n\nThis isn't a testnet number. It's a public test anyone can reproduce.\n\nhttps://radix.wiki/ideas/hyperscale-500k-test",
+    "text": "Hyperscale test results:\n\n\u2022 500,000+ TPS sustained\n\u2022 590+ validator nodes\n\u2022 Commodity hardware only\n\u2022 128 shards\n\u2022 Atomic composability preserved\n\nThis isn't a testnet number. It's a public test anyone can reproduce.\n\nhttps://radix.wiki/ideas/hyperscale-500k-test",
     "pillar": "Protocol",
     "slug": "hyperscale-500k-test",
     "posted": false
   },
   {
     "id": "cb8b349941af3ffe67b4556df",
-    "text": "AI agents can't safely sign EVM transactions.\n\nWhy? Blind signing. The agent literally can't read what it's approving — just hex data.\n\nRadix transaction manifests are human AND machine readable. An agent can verify exactly what it's signing before execution.\n\nhttps://radix.wiki/contents/tech/core-concepts/blind-signing-and-transaction-manifests",
+    "text": "AI agents can't safely sign EVM transactions.\n\nWhy? Blind signing. The agent literally can't read what it's approving \u2014 just hex data.\n\nRadix transaction manifests are human AND machine readable. An agent can verify exactly what it's signing before execution.\n\nhttps://radix.wiki/contents/tech/core-concepts/blind-signing-and-transaction-manifests",
     "pillar": "Protocol",
     "slug": "blind-signing-and-transaction-manifests",
     "posted": false
   },
   {
     "id": "cb4399bed92fb27750598c852",
-    "text": "For AI agents to manage DeFi autonomously, they need:\n\n✓ Readable transactions (not blind signing)\n✓ No approval exploits (native assets)\n✓ Atomic composability (no partial failures)\n✓ Linear scalability (no gas wars)\n\nRadix is the only L1 that checks all four.\n\nhttps://radix.wiki/contents/tech/core-concepts/radix-for-ai-agents",
+    "text": "For AI agents to manage DeFi autonomously, they need:\n\n\u2713 Readable transactions (not blind signing)\n\u2713 No approval exploits (native assets)\n\u2713 Atomic composability (no partial failures)\n\u2713 Linear scalability (no gas wars)\n\nRadix is the only L1 that checks all four.\n\nhttps://radix.wiki/contents/tech/core-concepts/radix-for-ai-agents",
     "pillar": "Protocol",
     "slug": "radix-for-ai-agents",
     "posted": false
@@ -2952,28 +2956,28 @@
   },
   {
     "id": "cb4ebe89cd463b690bcfbd886",
-    "text": "The future of finance is millions of AI agents transacting 24/7.\n\nGas auctions don't scale for this. Single-threaded blockchains don't scale for this.\n\nXi'an delivers linear throughput: more nodes → more TPS. Built for autonomous agents.\n\nhttps://radix.wiki/ideas/xian-protocol-upgrade",
+    "text": "The future of finance is millions of AI agents transacting 24/7.\n\nGas auctions don't scale for this. Single-threaded blockchains don't scale for this.\n\nXi'an delivers linear throughput: more nodes \u2192 more TPS. Built for autonomous agents.\n\nhttps://radix.wiki/ideas/xian-protocol-upgrade",
     "pillar": "Protocol",
     "slug": "xian-protocol-upgrade",
     "posted": false
   },
   {
     "id": "c7752cecc3c72e54890e436e9",
-    "text": "radix-context: 19 curated files that teach AI coding agents to build on Radix.\n\nScrypto, Gateway API, transaction manifests, wallet integration — all structured for LLM consumption.\n\nYour AI can learn Scrypto today.\n\nhttps://radix.wiki/developers/infrastructure/radix-context",
+    "text": "radix-context: 19 curated files that teach AI coding agents to build on Radix.\n\nScrypto, Gateway API, transaction manifests, wallet integration \u2014 all structured for LLM consumption.\n\nYour AI can learn Scrypto today.\n\nhttps://radix.wiki/developers/infrastructure/radix-context",
     "pillar": "Dev",
     "slug": "radix-context",
     "posted": false
   },
   {
     "id": "ca14bbe07d048a7462cbfd93b",
-    "text": "Radix's founder Dan Hughes envisioned a platform that would outlive any individual.\n\nSince his passing in July 2025, the community has:\n• Elected a 5-member accountability council\n• Formed governance structures\n• Continued Xi'an development\n• Grown the DeFi ecosystem\n\nThe protocol is stronger than any one person.\n\nhttps://radix.wiki/contents/history/history-of-radix",
+    "text": "Radix's founder Dan Hughes envisioned a platform that would outlive any individual.\n\nSince his passing in July 2025, the community has:\n\u2022 Elected a 5-member accountability council\n\u2022 Formed governance structures\n\u2022 Continued Xi'an development\n\u2022 Grown the DeFi ecosystem\n\nThe protocol is stronger than any one person.\n\nhttps://radix.wiki/contents/history/history-of-radix",
     "pillar": "Community",
     "slug": "history-of-radix",
     "posted": false
   },
   {
     "id": "ce552c54dad4ecb978171e0c2",
-    "text": "Most L1 projects would collapse without their founder.\n\nRadix lost Dan Hughes — and the community stepped up with elected governance, independent development, and a roadmap that's accelerating.\n\nThat's what decentralization actually looks like.",
+    "text": "Most L1 projects would collapse without their founder.\n\nRadix lost Dan Hughes \u2014 and the community stepped up with elected governance, independent development, and a roadmap that's accelerating.\n\nThat's what decentralization actually looks like.",
     "pillar": "Community",
     "slug": "",
     "posted": false
@@ -3015,49 +3019,49 @@
   },
   {
     "id": "c2cf6352d2dbf9641c1a485ee",
-    "text": "Scrypto doesn't have reentrancy attacks.\n\nNot because of guards or modifiers. Because the execution model makes reentrancy structurally impossible.\n\nAssets are in buckets — you physically can't access them from another call frame.\n\nhttps://radix.wiki/contents/tech/core-concepts/buckets-proofs-and-vaults",
+    "text": "Scrypto doesn't have reentrancy attacks.\n\nNot because of guards or modifiers. Because the execution model makes reentrancy structurally impossible.\n\nAssets are in buckets \u2014 you physically can't access them from another call frame.\n\nhttps://radix.wiki/contents/tech/core-concepts/buckets-proofs-and-vaults",
     "pillar": "Dev",
     "slug": "buckets-proofs-and-vaults",
     "posted": false
   },
   {
     "id": "cf635d113d4935fd271e53c9e",
-    "text": "Weft Finance represents your lending position as an NFT.\n\nNot a reference to a position. Not a receipt. The actual position — collateral, debt, and all.\n\nOn Radix, your financial position IS the asset. Try that on EVM.\n\nhttps://radix.wiki/ecosystem/weft-finance",
+    "text": "Weft Finance represents your lending position as an NFT.\n\nNot a reference to a position. Not a receipt. The actual position \u2014 collateral, debt, and all.\n\nOn Radix, your financial position IS the asset. Try that on EVM.\n\nhttps://radix.wiki/ecosystem/weft-finance",
     "pillar": "Ecosystem",
     "slug": "weft-finance",
     "posted": false
   },
   {
     "id": "c0762d2a3df64531524959eae",
-    "text": "Ociswap LP positions are native NFTs on Radix.\n\nEach one tracks its own fee accrual, price range, and liquidity. You can transfer, compose, or collateralize them — because they're real assets, not smart contract entries.\n\nhttps://radix.wiki/ecosystem/ociswap",
+    "text": "Ociswap LP positions are native NFTs on Radix.\n\nEach one tracks its own fee accrual, price range, and liquidity. You can transfer, compose, or collateralize them \u2014 because they're real assets, not smart contract entries.\n\nhttps://radix.wiki/ecosystem/ociswap",
     "pillar": "Ecosystem",
     "slug": "ociswap",
     "posted": false
   },
   {
     "id": "c18fa90610b1c0052fddcfe53",
-    "text": "Surge: the first perpetual futures DEX on Radix.\n\nCo-developed by CaviarNine, KeyRock, and Supra — combining DeFi infrastructure, institutional market making, and oracle feeds.\n\nLeveraged trading with on-chain settlement. No blind signing.\n\nhttps://radix.wiki/ecosystem/surge",
+    "text": "Surge: the first perpetual futures DEX on Radix.\n\nCo-developed by CaviarNine, KeyRock, and Supra \u2014 combining DeFi infrastructure, institutional market making, and oracle feeds.\n\nLeveraged trading with on-chain settlement. No blind signing.\n\nhttps://radix.wiki/ecosystem/surge",
     "pillar": "Ecosystem",
     "slug": "surge",
     "posted": false
   },
   {
     "id": "c5ad79bf396b66261d15b0a86",
-    "text": "STAB is a USD-pegged stablecoin on Radix.\n\nLike DAI, but with native assets — collateral vaults are actual resources, not mappings in a contract.\n\nLiquidation is atomic. No oracle front-running. No sandwich attacks.\n\nhttps://radix.wiki/ecosystem/stabilis",
+    "text": "STAB is a USD-pegged stablecoin on Radix.\n\nLike DAI, but with native assets \u2014 collateral vaults are actual resources, not mappings in a contract.\n\nLiquidation is atomic. No oracle front-running. No sandwich attacks.\n\nhttps://radix.wiki/ecosystem/stabilis",
     "pillar": "Ecosystem",
     "slug": "stabilis",
     "posted": false
   },
   {
     "id": "c4505b1ed37f86fb0b1f32dab",
-    "text": "Maya Protocol brought cross-chain swaps to Radix.\n\nSwap BTC → XRD natively. No wrapping. No bridges holding your funds. Threshold signatures across validator nodes.\n\nRadix was the first non-EVM, non-UTXO chain on a THORChain fork.\n\nhttps://radix.wiki/ecosystem/maya-protocol",
+    "text": "Maya Protocol brought cross-chain swaps to Radix.\n\nSwap BTC \u2192 XRD natively. No wrapping. No bridges holding your funds. Threshold signatures across validator nodes.\n\nRadix was the first non-EVM, non-UTXO chain on a THORChain fork.\n\nhttps://radix.wiki/ecosystem/maya-protocol",
     "pillar": "Ecosystem",
     "slug": "maya-protocol",
     "posted": false
   },
   {
     "id": "c7500a8bbeb109cf0d31efec4",
-    "text": "Gable Finance pioneered flash loans on Radix.\n\nBorrow → execute → repay, all in one atomic transaction manifest. If repayment fails, everything reverts.\n\nRadix makes this trivial. The manifest either succeeds completely or fails completely.\n\nhttps://radix.wiki/ecosystem/gable-finance",
+    "text": "Gable Finance pioneered flash loans on Radix.\n\nBorrow \u2192 execute \u2192 repay, all in one atomic transaction manifest. If repayment fails, everything reverts.\n\nRadix makes this trivial. The manifest either succeeds completely or fails completely.\n\nhttps://radix.wiki/ecosystem/gable-finance",
     "pillar": "Ecosystem",
     "slug": "gable-finance",
     "posted": false
@@ -3071,7 +3075,7 @@
   },
   {
     "id": "cb3e27caa1a90a1d8bacc43f4",
-    "text": "Root Finance automates yield strategies across Radix DeFi.\n\nDeposit one asset → the vault handles staking, lending, and LP management.\n\nAll composed atomically via transaction manifests. No partial failures. No stuck funds.\n\nhttps://radix.wiki/ecosystem/root-finance",
+    "text": "Root Finance automates yield strategies across Radix DeFi.\n\nDeposit one asset \u2192 the vault handles staking, lending, and LP management.\n\nAll composed atomically via transaction manifests. No partial failures. No stuck funds.\n\nhttps://radix.wiki/ecosystem/root-finance",
     "pillar": "Ecosystem",
     "slug": "root-finance",
     "posted": false
@@ -3085,7 +3089,7 @@
   },
   {
     "id": "c8a62b07cbd3cb07762ac8e85",
-    "text": "Xi'an development update:\n\nThe next major Radix upgrade brings full Cerberus sharding to mainnet.\n\n• Alpha: Early 2027\n• Beta: Mid-2027\n• Mainnet: H2 2027\n\nLinear scalability. Unlimited atomic composability. The endgame.\n\nhttps://radix.wiki/ideas/xian-protocol-upgrade",
+    "text": "Xi'an development update:\n\nThe next major Radix upgrade brings full Cerberus sharding to mainnet.\n\n\u2022 Alpha: Early 2027\n\u2022 Beta: Mid-2027\n\u2022 Mainnet: H2 2027\n\nLinear scalability. Unlimited atomic composability. The endgame.\n\nhttps://radix.wiki/ideas/xian-protocol-upgrade",
     "pillar": "Roadmap",
     "slug": "xian-protocol-upgrade",
     "posted": false
@@ -3113,7 +3117,7 @@
   },
   {
     "id": "c3d6b6f7af8ff6666ecedfbaa",
-    "text": "The Radix Accountability Council: community governance in action.\n\n5 elected members overseeing the Foundation → Community transition.\n\nTransparency reports. Treasury oversight. Real decentralization — not just validator count.\n\nhttps://radix.wiki/ideas/radix-accountability-council",
+    "text": "The Radix Accountability Council: community governance in action.\n\n5 elected members overseeing the Foundation \u2192 Community transition.\n\nTransparency reports. Treasury oversight. Real decentralization \u2014 not just validator count.\n\nhttps://radix.wiki/ideas/radix-accountability-council",
     "pillar": "Community",
     "slug": "radix-accountability-council",
     "posted": false
@@ -3148,42 +3152,42 @@
   },
   {
     "id": "cde0738010097282ca519676f",
-    "text": "Scrypto blueprints are like classes that compile to WASM.\n\nDeploy a blueprint → instantiate components from it.\n\nEach component has its own state, access rules, and royalty config. All native. All on-ledger.\n\nhttps://radix.wiki/contents/tech/core-concepts/blueprints-and-packages",
+    "text": "Scrypto blueprints are like classes that compile to WASM.\n\nDeploy a blueprint \u2192 instantiate components from it.\n\nEach component has its own state, access rules, and royalty config. All native. All on-ledger.\n\nhttps://radix.wiki/contents/tech/core-concepts/blueprints-and-packages",
     "pillar": "Dev",
     "slug": "blueprints-and-packages",
     "posted": false
   },
   {
     "id": "cff89ad59bd35ad3b54267ccb",
-    "text": "Radix transaction manifests are like scripts that compose DeFi atomically:\n\n• Withdraw from Account A\n• Swap on DEX\n• Provide LP\n• Deposit to Account B\n\nAll or nothing. You see every step before signing.\n\nhttps://radix.wiki/developers/transactions/01-manifest-language",
+    "text": "Radix transaction manifests are like scripts that compose DeFi atomically:\n\n\u2022 Withdraw from Account A\n\u2022 Swap on DEX\n\u2022 Provide LP\n\u2022 Deposit to Account B\n\nAll or nothing. You see every step before signing.\n\nhttps://radix.wiki/developers/transactions/01-manifest-language",
     "pillar": "Dev",
     "slug": "01-manifest-language",
     "posted": false
   },
   {
     "id": "c9aa64c6c1ffba3d7af8f7a55",
-    "text": "LSU loop strategy on Radix:\n\n1. Stake XRD → get LSU\n2. Deposit LSU to Weft as collateral\n3. Borrow XRD\n4. Restake\n\nAll composable in a single transaction manifest. Capital efficiency without the smart contract risk of recursive EVM strategies.\n\nhttps://radix.wiki/ecosystem/weft-finance",
+    "text": "LSU loop strategy on Radix:\n\n1. Stake XRD \u2192 get LSU\n2. Deposit LSU to Weft as collateral\n3. Borrow XRD\n4. Restake\n\nAll composable in a single transaction manifest. Capital efficiency without the smart contract risk of recursive EVM strategies.\n\nhttps://radix.wiki/ecosystem/weft-finance",
     "pillar": "Dev",
     "slug": "weft-finance",
     "posted": false
   },
   {
     "id": "c4fa701f9c4584d748d9bc4d0",
-    "text": "Cerberus consensus explained simply:\n\nEach transaction forms a \"braid\" across only the shards it touches.\n\n3-phase commit: pre-prepare → prepare → commit.\n\nUnrelated transactions on different shards run in parallel. Linear scaling.\n\nhttps://radix.wiki/contents/tech/core-protocols/cerberus-consensus-protocol",
+    "text": "Cerberus consensus explained simply:\n\nEach transaction forms a \"braid\" across only the shards it touches.\n\n3-phase commit: pre-prepare \u2192 prepare \u2192 commit.\n\nUnrelated transactions on different shards run in parallel. Linear scaling.\n\nhttps://radix.wiki/contents/tech/core-protocols/cerberus-consensus-protocol",
     "pillar": "Protocol",
     "slug": "cerberus-consensus-protocol",
     "posted": false
   },
   {
     "id": "c4e3c9325073856606b500b15",
-    "text": "The Substate Model: Radix's secret weapon.\n\nInstead of global state (Ethereum) or UTXOs (Bitcoin), Radix uses substates — fine-grained pieces of state that can be locked independently.\n\nThis is what enables unlimited parallelism.\n\nhttps://radix.wiki/contents/tech/core-concepts/substate-model",
+    "text": "The Substate Model: Radix's secret weapon.\n\nInstead of global state (Ethereum) or UTXOs (Bitcoin), Radix uses substates \u2014 fine-grained pieces of state that can be locked independently.\n\nThis is what enables unlimited parallelism.\n\nhttps://radix.wiki/contents/tech/core-concepts/substate-model",
     "pillar": "Protocol",
     "slug": "substate-model",
     "posted": false
   },
   {
     "id": "cecc5fa8e0337fe8164973581",
-    "text": "On Radix, your account is a component.\n\nIt has access rules, deposit preferences, and recovery options — all on-ledger.\n\nSmart accounts aren't an add-on. They're the default. Every Radix account is programmable.\n\nhttps://radix.wiki/contents/tech/core-protocols/smart-accounts",
+    "text": "On Radix, your account is a component.\n\nIt has access rules, deposit preferences, and recovery options \u2014 all on-ledger.\n\nSmart accounts aren't an add-on. They're the default. Every Radix account is programmable.\n\nhttps://radix.wiki/contents/tech/core-protocols/smart-accounts",
     "pillar": "Protocol",
     "slug": "smart-accounts",
     "posted": false
@@ -3197,28 +3201,28 @@
   },
   {
     "id": "c5b0e6b44374a5a1913128466",
-    "text": "Radix ecosystem this week:\n\n• CaviarNine aggregator routing across 3+ DEXes\n• Weft lending positions as transferable NFTs\n• Stabilis STAB stablecoin maintaining peg\n• Surge perpetuals live with KeyRock liquidity\n\nAll built on native assets. All atomically composable.\n\nhttps://radix.wiki",
+    "text": "Radix ecosystem this week:\n\n\u2022 CaviarNine aggregator routing across 3+ DEXes\n\u2022 Weft lending positions as transferable NFTs\n\u2022 Stabilis STAB stablecoin maintaining peg\n\u2022 Surge perpetuals live with KeyRock liquidity\n\nAll built on native assets. All atomically composable.\n\nhttps://radix.wiki",
     "pillar": "Week Review",
     "slug": "",
     "posted": false
   },
   {
     "id": "c0609dbd8f088551b1239a9e3",
-    "text": "Why learn about Radix this week:\n\n1. Xi'an sharding → unlimited scalability\n2. Native assets → no approval exploits\n3. Transaction manifests → AI agent compatible\n4. Growing DeFi ecosystem\n5. XRD at ATL while tech accelerates\n\nStart here: https://radix.wiki",
+    "text": "Why learn about Radix this week:\n\n1. Xi'an sharding \u2192 unlimited scalability\n2. Native assets \u2192 no approval exploits\n3. Transaction manifests \u2192 AI agent compatible\n4. Growing DeFi ecosystem\n5. XRD at ATL while tech accelerates\n\nStart here: https://radix.wiki",
     "pillar": "Week Review",
     "slug": "",
     "posted": false
   },
   {
     "id": "cfc6daed7d07850c6016d191b",
-    "text": "ShardSpace lets you manage your entire Radix portfolio from one dashboard — trade, stake, lend, send NFTs.\n\nNo token approvals needed. Every action uses transaction manifests you can read before signing.\n\nhttps://radix.wiki/ecosystem/shardspace",
+    "text": "ShardSpace lets you manage your entire Radix portfolio from one dashboard \u2014 trade, stake, lend, send NFTs.\n\nNo token approvals needed. Every action uses transaction manifests you can read before signing.\n\nhttps://radix.wiki/ecosystem/shardspace",
     "pillar": "protocol-deep-dive",
     "slug": null,
     "posted": false
   },
   {
     "id": "c4f988601104a6b3313e5351c",
-    "text": "Scrypto dev tip: Buckets must be emptied by the end of every transaction.\n\nThis means tokens can never get \"stuck\" in contract state — a class of bug that's cost EVM protocols millions.\n\nhttps://radix.wiki/contents/tech/core-concepts/buckets-proofs-and-vaults",
+    "text": "Scrypto dev tip: Buckets must be emptied by the end of every transaction.\n\nThis means tokens can never get \"stuck\" in contract state \u2014 a class of bug that's cost EVM protocols millions.\n\nhttps://radix.wiki/contents/tech/core-concepts/buckets-proofs-and-vaults",
     "pillar": "dev-tip",
     "slug": null,
     "posted": false
@@ -3253,7 +3257,7 @@
   },
   {
     "id": "c396d8d46d6e273e7552fa91e",
-    "text": "Proven Network runs WASM VMs inside Trusted Execution Environments — giving Radix access to off-ledger verifiable compute.\n\nAI inference, private data processing, complex calculations — all cryptographically verified on-chain.\n\nhttps://radix.wiki/ecosystem/proven-network",
+    "text": "Proven Network runs WASM VMs inside Trusted Execution Environments \u2014 giving Radix access to off-ledger verifiable compute.\n\nAI inference, private data processing, complex calculations \u2014 all cryptographically verified on-chain.\n\nhttps://radix.wiki/ecosystem/proven-network",
     "pillar": "ecosystem-spotlight",
     "slug": null,
     "posted": false
@@ -3267,7 +3271,7 @@
   },
   {
     "id": "c11c0b27639ced32952d9167d",
-    "text": "Building AI agents for DeFi? Radix's access rules are enforced at the engine level.\n\nBadge-gated, multi-sig, role-based — all declared, not coded. No authorization bugs possible.\n\nhttps://radix.wiki/contents/tech/core-concepts/access-rules-and-auth-zones",
+    "text": "Building AI agents for DeFi? Radix's access rules are enforced at the engine level.\n\nBadge-gated, multi-sig, role-based \u2014 all declared, not coded. No authorization bugs possible.\n\nhttps://radix.wiki/contents/tech/core-concepts/access-rules-and-auth-zones",
     "pillar": "dev-tip",
     "slug": null,
     "posted": false
@@ -3281,21 +3285,21 @@
   },
   {
     "id": "caabb60c7bf853df00a1cf60d",
-    "text": "Validator Subsidy phase-out schedule:\n\n• Feb 2026: 400k XRD or $350 cap\n• Mar 2026: 400k XRD or $200 cap\n• Apr-May: $100 via community entity\n• June 2026: Ends\n\nApproved by 71.6% vote, 1B+ XRD.\n\nhttps://radix.wiki/ideas/validator-subsidy-sunset",
+    "text": "Validator Subsidy phase-out schedule:\n\n\u2022 Feb 2026: 400k XRD or $350 cap\n\u2022 Mar 2026: 400k XRD or $200 cap\n\u2022 Apr-May: $100 via community entity\n\u2022 June 2026: Ends\n\nApproved by 71.6% vote, 1B+ XRD.\n\nhttps://radix.wiki/ideas/validator-subsidy-sunset",
     "pillar": "roadmap-update",
     "slug": null,
     "posted": false
   },
   {
     "id": "c83e5195d465f5b3585f13501",
-    "text": "Backeum is Patreon for Radix — 60+ creators, $15k Babylon Booster Grant.\n\nCreators share exclusive content and reward backers with time-sensitive NFT collections.\n\nhttps://radix.wiki/ecosystem/backeum",
+    "text": "Backeum is Patreon for Radix \u2014 60+ creators, $15k Babylon Booster Grant.\n\nCreators share exclusive content and reward backers with time-sensitive NFT collections.\n\nhttps://radix.wiki/ecosystem/backeum",
     "pillar": "ecosystem-spotlight",
     "slug": null,
     "posted": false
   },
   {
     "id": "cb9bc48ce2a3df8fb605d015f",
-    "text": "The Cerberus whitepaper predicted linear scaling.\n\nThe 500k TPS test proved it: 64 shards → 128 shards = doubled throughput.\n\nPeer-reviewed in the Journal of Systems Research (JSys), validated in production.\n\nhttps://radix.wiki/contents/tech/research/cerberus-whitepaper",
+    "text": "The Cerberus whitepaper predicted linear scaling.\n\nThe 500k TPS test proved it: 64 shards \u2192 128 shards = doubled throughput.\n\nPeer-reviewed in the Journal of Systems Research (JSys), validated in production.\n\nhttps://radix.wiki/contents/tech/research/cerberus-whitepaper",
     "pillar": "protocol-deep-dive",
     "slug": null,
     "posted": false
@@ -3316,14 +3320,14 @@
   },
   {
     "id": "c7ba4838eb04e6b3aaa261500",
-    "text": "$EARLY: 2,984 swaps, $300k+ volume, 1,238 accounts — all via a Telegram bot.\n\nNo wallet app needed. This is how you bootstrap DeFi adoption.\n\nhttps://radix.wiki/ecosystem/early",
+    "text": "$EARLY: 2,984 swaps, $300k+ volume, 1,238 accounts \u2014 all via a Telegram bot.\n\nNo wallet app needed. This is how you bootstrap DeFi adoption.\n\nhttps://radix.wiki/ecosystem/early",
     "pillar": "ecosystem-spotlight",
     "slug": null,
     "posted": false
   },
   {
     "id": "c3160328f3cac95e69ce52e76",
-    "text": "Fidenaro: copy-trading on Radix.\n\nFollow top performers, allocate capital, replicate trades automatically — all executed atomically in single transactions.\n\nhttps://radix.wiki/ecosystem/fidenaro",
+    "text": "Fidenaro: copy-trading on Radix.\n\nFollow top performers, allocate capital, replicate trades automatically \u2014 all executed atomically in single transactions.\n\nhttps://radix.wiki/ecosystem/fidenaro",
     "pillar": "ecosystem-spotlight",
     "slug": null,
     "posted": false
@@ -3337,14 +3341,14 @@
   },
   {
     "id": "c570c2f56469514191dbedac7",
-    "text": "Scrypto blueprints → packages → components\n\n• Blueprint: template (like a Rust struct + impl)\n• Package: deployed bundle (like a crate)\n• Component: runtime instance with its own state\n\nhttps://radix.wiki/contents/tech/core-concepts/blueprints-and-packages",
+    "text": "Scrypto blueprints \u2192 packages \u2192 components\n\n\u2022 Blueprint: template (like a Rust struct + impl)\n\u2022 Package: deployed bundle (like a crate)\n\u2022 Component: runtime instance with its own state\n\nhttps://radix.wiki/contents/tech/core-concepts/blueprints-and-packages",
     "pillar": "dev-tip",
     "slug": null,
     "posted": false
   },
   {
     "id": "ce8e5d5fa58890a68e2be0874",
-    "text": "LSUs on Radix are native resources, not smart contract wrappers.\n\nStake XRD → get LSU → use as collateral on Weft, LP on Ociswap, manage via ShardSpace.\n\nAll while staking rewards compound automatically.\n\nhttps://radix.wiki/contents/tech/core-concepts/liquid-stake-units",
+    "text": "LSUs on Radix are native resources, not smart contract wrappers.\n\nStake XRD \u2192 get LSU \u2192 use as collateral on Weft, LP on Ociswap, manage via ShardSpace.\n\nAll while staking rewards compound automatically.\n\nhttps://radix.wiki/contents/tech/core-concepts/liquid-stake-units",
     "pillar": "protocol-deep-dive",
     "slug": null,
     "posted": false
@@ -3372,21 +3376,21 @@
   },
   {
     "id": "ca11228566f4d8dd5bd047e45",
-    "text": "RadixCharts: the analytics backbone of the ecosystem.\n\nReal-time token prices, TVL, validator performance, staking stats — all in one dashboard.\n\nhttps://radix.wiki/ecosystem/radixcharts",
+    "text": "RadixCharts: the analytics backbone of the ecosystem.\n\nReal-time token prices, TVL, validator performance, staking stats \u2014 all in one dashboard.\n\nhttps://radix.wiki/ecosystem/radixcharts",
     "pillar": "ecosystem-spotlight",
     "slug": null,
     "posted": false
   },
   {
     "id": "c2b00b40e2204406af455a8f7",
-    "text": "DELPHIBETS: the first prediction market on Radix.\n\nAMM, parimutuel, and P2P betting — three mechanisms in one protocol.\n\nhttps://radix.wiki/ecosystem/delphibets",
+    "text": "DELPHIBETS: the first prediction market on Radix.\n\nAMM, parimutuel, and P2P betting \u2014 three mechanisms in one protocol.\n\nhttps://radix.wiki/ecosystem/delphibets",
     "pillar": "ecosystem-spotlight",
     "slug": null,
     "posted": false
   },
   {
     "id": "cc29cbff0af997b1546b71c66",
-    "text": "Mox Studio ships mobile games on App Store and Google Play — powered by Radix.\n\nPlay-to-earn with the $MOX token. Gaming meets DeFi.\n\nhttps://radix.wiki/ecosystem/mox-studio",
+    "text": "Mox Studio ships mobile games on App Store and Google Play \u2014 powered by Radix.\n\nPlay-to-earn with the $MOX token. Gaming meets DeFi.\n\nhttps://radix.wiki/ecosystem/mox-studio",
     "pillar": "ecosystem-spotlight",
     "slug": null,
     "posted": false
@@ -3421,7 +3425,7 @@
   },
   {
     "id": "c485545ed947a8ca5f1a0fe8c",
-    "text": "The \"DApp In a Day\" workshop series is bringing Scrypto to UK universities.\n\nWestminster, St Mary's, Roehampton, Brunel — students building real dApps in a single day.\n\nhttps://radix.wiki/contents/history/dapp-in-a-day-workshop-1",
+    "text": "The \"DApp In a Day\" workshop series is bringing Scrypto to UK universities.\n\nWestminster, St Mary's, Roehampton, Brunel \u2014 students building real dApps in a single day.\n\nhttps://radix.wiki/contents/history/dapp-in-a-day-workshop-1",
     "pillar": "community",
     "slug": null,
     "posted": false
@@ -3435,21 +3439,21 @@
   },
   {
     "id": "cea1ca989579b0c8ee6a8916f",
-    "text": "Community DAO formation is underway.\n\nWho manages ecosystem funds after the Foundation steps back? Treasury custody, code governance, service contracts — all being designed.\n\nhttps://radix.wiki/ideas/community-dao-formation",
+    "text": "Community DAO formation is underway.\n\nWho manages ecosystem funds after the Foundation steps back? Treasury custody, code governance, service contracts \u2014 all being designed.\n\nhttps://radix.wiki/ideas/community-dao-formation",
     "pillar": "roadmap-update",
     "slug": null,
     "posted": false
   },
   {
     "id": "cfe7b8bc788c712af9c2fa340",
-    "text": "Hyperlane is permissionless — anyone can deploy new bridge routes.\n\nCurrent: ETH, Arbitrum, Base. Next: Solana, Polygon, Optimism.\n\nhttps://radix.wiki/ideas/hyperlane-bridge-expansion",
+    "text": "Hyperlane is permissionless \u2014 anyone can deploy new bridge routes.\n\nCurrent: ETH, Arbitrum, Base. Next: Solana, Polygon, Optimism.\n\nhttps://radix.wiki/ideas/hyperlane-bridge-expansion",
     "pillar": "roadmap-update",
     "slug": null,
     "posted": false
   },
   {
     "id": "c0adc70a248d5a62c3df80ef8",
-    "text": "The Radix economic flywheel:\n\n• 300M XRD/year emissions → validator security\n• Transaction fees → partially burned\n• Component royalties → developer incentives\n\nhttps://radix.wiki/contents/tech/research/radix-economic-model",
+    "text": "The Radix economic flywheel:\n\n\u2022 300M XRD/year emissions \u2192 validator security\n\u2022 Transaction fees \u2192 partially burned\n\u2022 Component royalties \u2192 developer incentives\n\nhttps://radix.wiki/contents/tech/research/radix-economic-model",
     "pillar": "protocol-deep-dive",
     "slug": null,
     "posted": false
@@ -3505,21 +3509,21 @@
   },
   {
     "id": "ca1ba663010f4757229079363",
-    "text": "Nest Finance: yield optimization across the entire Radix DeFi ecosystem.\n\nAtomic multi-step strategies — rebalance Ociswap, CaviarNine, and Weft positions in one transaction.\n\nhttps://radix.wiki/ecosystem/nest-finance",
+    "text": "Nest Finance: yield optimization across the entire Radix DeFi ecosystem.\n\nAtomic multi-step strategies \u2014 rebalance Ociswap, CaviarNine, and Weft positions in one transaction.\n\nhttps://radix.wiki/ecosystem/nest-finance",
     "pillar": "ecosystem-spotlight",
     "slug": null,
     "posted": false
   },
   {
     "id": "c716dffabc8465451bd827b37",
-    "text": "Proof of Personhood is live on Radix mainnet.\n\nVerify once via idOS facial recognition → get a soulbound badge → unlock governance, DeFi, anti-Sybil features.\n\nhttps://radix.wiki/ideas/proof-of-personhood",
+    "text": "Proof of Personhood is live on Radix mainnet.\n\nVerify once via idOS facial recognition \u2192 get a soulbound badge \u2192 unlock governance, DeFi, anti-Sybil features.\n\nhttps://radix.wiki/ideas/proof-of-personhood",
     "pillar": "ecosystem-spotlight",
     "slug": null,
     "posted": false
   },
   {
     "id": "c5eab43ca3702317c4c174051",
-    "text": "RNS Foundation runs the Radix Name Service — human-readable names for Radix addresses.\n\nBond-based domain claiming with xUSDC/sUSD. SDK and docs actively maintained.\n\nhttps://radix.wiki/ecosystem/radix-namespace",
+    "text": "RNS Foundation runs the Radix Name Service \u2014 human-readable names for Radix addresses.\n\nBond-based domain claiming with xUSDC/sUSD. SDK and docs actively maintained.\n\nhttps://radix.wiki/ecosystem/radix-namespace",
     "pillar": "ecosystem-spotlight",
     "slug": null,
     "posted": false
@@ -3533,7 +3537,7 @@
   },
   {
     "id": "cf124405378c1668a3f0ab070",
-    "text": "BFT consensus requires tolerating ⅓ faulty nodes.\n\nCerberus achieves this across *arbitrary shard combinations* — not just within one validator set.\n\nThat's the breakthrough.\n\nhttps://radix.wiki/contents/tech/core-concepts/byzantine-fault-tolerance",
+    "text": "BFT consensus requires tolerating \u2153 faulty nodes.\n\nCerberus achieves this across *arbitrary shard combinations* \u2014 not just within one validator set.\n\nThat's the breakthrough.\n\nhttps://radix.wiki/contents/tech/core-concepts/byzantine-fault-tolerance",
     "pillar": "protocol-deep-dive",
     "slug": null,
     "posted": false
@@ -3547,14 +3551,14 @@
   },
   {
     "id": "c45a4dc1f603800cb712732ea",
-    "text": "Transaction manifests are Radix's secret weapon.\n\nMulti-step DeFi operations — swap, add liquidity, lend — execute as a single atomic unit.\n\nIf any step fails, everything reverts. No stuck funds.\n\nhttps://radix.wiki/contents/tech/core-protocols/transaction-manifests",
+    "text": "Transaction manifests are Radix's secret weapon.\n\nMulti-step DeFi operations \u2014 swap, add liquidity, lend \u2014 execute as a single atomic unit.\n\nIf any step fails, everything reverts. No stuck funds.\n\nhttps://radix.wiki/contents/tech/core-protocols/transaction-manifests",
     "pillar": "dev-tip",
     "slug": null,
     "posted": false
   },
   {
     "id": "cc8751f90b78868690182484d",
-    "text": "Weft Finance: lending and borrowing with native Radix resources.\n\nDeposit, borrow, and manage positions — all visible directly in your wallet.\n\nhttps://radix.wiki/ecosystem/weft-finance",
+    "text": "Weft Finance: lending and borrowing with native Radix resources.\n\nDeposit, borrow, and manage positions \u2014 all visible directly in your wallet.\n\nhttps://radix.wiki/ecosystem/weft-finance",
     "pillar": "ecosystem-spotlight",
     "slug": null,
     "posted": false
@@ -3575,7 +3579,7 @@
   },
   {
     "id": "ce634c2d1ba71dff53b66ee95",
-    "text": "The substate model: Radix doesn't store state in accounts or contracts.\n\nState is organized into substates — fine-grained, independently addressable units.\n\nThis enables parallel processing without conflicts.\n\nhttps://radix.wiki/contents/tech/core-concepts/substate-model",
+    "text": "The substate model: Radix doesn't store state in accounts or contracts.\n\nState is organized into substates \u2014 fine-grained, independently addressable units.\n\nThis enables parallel processing without conflicts.\n\nhttps://radix.wiki/contents/tech/core-concepts/substate-model",
     "pillar": "dev-tip",
     "slug": null,
     "posted": false
@@ -3589,7 +3593,7 @@
   },
   {
     "id": "c7228fc1fac321262d7ac663f",
-    "text": "AlphaDEX: limit orders, stop-loss, take-profit, trailing orders — on-chain.\n\nCEX-style trading without custodial risk.\n\nhttps://radix.wiki/ecosystem/alphadex",
+    "text": "AlphaDEX: limit orders, stop-loss, take-profit, trailing orders \u2014 on-chain.\n\nCEX-style trading without custodial risk.\n\nhttps://radix.wiki/ecosystem/alphadex",
     "pillar": "ecosystem-spotlight",
     "slug": null,
     "posted": false
@@ -3603,7 +3607,7 @@
   },
   {
     "id": "cf2f2949b60093e4bcb9e493b",
-    "text": "The Foundation is mapping every service it operates and deciding what to hand over, commercialize, or wind down.\n\nThis is how real decentralization works — not just lip service.\n\nhttps://radix.wiki/ecosystem/radix-foundation",
+    "text": "The Foundation is mapping every service it operates and deciding what to hand over, commercialize, or wind down.\n\nThis is how real decentralization works \u2014 not just lip service.\n\nhttps://radix.wiki/ecosystem/radix-foundation",
     "pillar": "roadmap-update",
     "slug": null,
     "posted": false
@@ -3617,7 +3621,7 @@
   },
   {
     "id": "c3261e1b9d1aaedf38a18dbb6",
-    "text": "RadixTalk: where governance proposals get submitted, discussed, and decided.\n\nFrom validator subsidy votes to gateway RFPs — this is Radix's town hall.\n\nhttps://radix.wiki/ecosystem/radixtalk",
+    "text": "RadixTalk: where governance proposals get submitted, discussed, and decided.\n\nFrom validator subsidy votes to gateway RFPs \u2014 this is Radix's town hall.\n\nhttps://radix.wiki/ecosystem/radixtalk",
     "pillar": "community",
     "slug": null,
     "posted": false
@@ -3631,14 +3635,14 @@
   },
   {
     "id": "c7d15e594f1f641df700569a6",
-    "text": "Gable Finance: flash loans on Radix — the first protocol to offer them.\n\nBorrow and repay in a single atomic transaction.\n\nhttps://radix.wiki/ecosystem/gable-finance",
+    "text": "Gable Finance: flash loans on Radix \u2014 the first protocol to offer them.\n\nBorrow and repay in a single atomic transaction.\n\nhttps://radix.wiki/ecosystem/gable-finance",
     "pillar": "ecosystem-spotlight",
     "slug": null,
     "posted": false
   },
   {
     "id": "cff3d31a5e79a7785560a6063",
-    "text": "Surge: perpetual DEX on Radix.\n\nLeveraged trading with the safety of transaction manifests — you see exactly what you're trading before signing.\n\nhttps://radix.wiki/ecosystem/surge",
+    "text": "Surge: perpetual DEX on Radix.\n\nLeveraged trading with the safety of transaction manifests \u2014 you see exactly what you're trading before signing.\n\nhttps://radix.wiki/ecosystem/surge",
     "pillar": "ecosystem-spotlight",
     "slug": null,
     "posted": false
@@ -3687,14 +3691,14 @@
   },
   {
     "id": "c90be76eefa4fc590862e0636",
-    "text": "Scrypto is Rust-based with DeFi primitives built in.\n\nResources, vaults, buckets, proofs — the language prevents reentrancy by design.\n\nhttps://radix.wiki/contents/tech/core-protocols/scrypto-programming-language",
+    "text": "Scrypto is Rust-based with DeFi primitives built in.\n\nResources, vaults, buckets, proofs \u2014 the language prevents reentrancy by design.\n\nhttps://radix.wiki/contents/tech/core-protocols/scrypto-programming-language",
     "pillar": "dev-tip",
     "slug": null,
     "posted": false
   },
   {
     "id": "cf2227248ce8629797b7134a5",
-    "text": "Smart Accounts on Radix: your account is a first-class component with its own access rules.\n\nSet spending limits, require multi-sig, configure recovery — at the engine level.\n\nhttps://radix.wiki/contents/tech/core-protocols/smart-accounts",
+    "text": "Smart Accounts on Radix: your account is a first-class component with its own access rules.\n\nSet spending limits, require multi-sig, configure recovery \u2014 at the engine level.\n\nhttps://radix.wiki/contents/tech/core-protocols/smart-accounts",
     "pillar": "dev-tip",
     "slug": null,
     "posted": false
@@ -3708,21 +3712,21 @@
   },
   {
     "id": "c49291a8b9e9816613239a07f",
-    "text": "Radix vs Ethereum:\n\n• Ethereum: single-threaded EVM, approval exploits, blind signing\n• Radix: parallel execution, native assets, readable manifests\n\nSame goals. Different architecture.\n\nhttps://radix.wiki/contents/tech/comparisons/radix-vs-ethereum",
+    "text": "Radix vs Ethereum:\n\n\u2022 Ethereum: single-threaded EVM, approval exploits, blind signing\n\u2022 Radix: parallel execution, native assets, readable manifests\n\nSame goals. Different architecture.\n\nhttps://radix.wiki/contents/tech/comparisons/radix-vs-ethereum",
     "pillar": "protocol-deep-dive",
     "slug": null,
     "posted": false
   },
   {
     "id": "cc56a6aaa57bf4ad99887b489",
-    "text": "Radix vs Solana:\n\n• Solana: fast single chain, but hardware requirements scale vertically\n• Radix: sharded, scales horizontally by adding nodes\n\nLinear scaling vs hardware ceiling.\n\nhttps://radix.wiki/contents/tech/comparisons/radix-vs-solana",
+    "text": "Radix vs Solana:\n\n\u2022 Solana: fast single chain, but hardware requirements scale vertically\n\u2022 Radix: sharded, scales horizontally by adding nodes\n\nLinear scaling vs hardware ceiling.\n\nhttps://radix.wiki/contents/tech/comparisons/radix-vs-solana",
     "pillar": "protocol-deep-dive",
     "slug": null,
     "posted": false
   },
   {
     "id": "cb1ab6d923c6dde7f0a43bcda",
-    "text": "Every other L1 was designed as a \"better Ethereum.\"\n\nRadix was designed from scratch for DeFi — assets are primitives, not afterthoughts.\n\nhttps://radix.wiki/contents/tech/core-concepts/asset-oriented-programming",
+    "text": "Every other L1 was designed as a \"better Ethereum.\"\n\nRadix was designed from scratch for DeFi \u2014 assets are primitives, not afterthoughts.\n\nhttps://radix.wiki/contents/tech/core-concepts/asset-oriented-programming",
     "pillar": "protocol-deep-dive",
     "slug": null,
     "posted": false
@@ -3743,14 +3747,14 @@
   },
   {
     "id": "cd00b9092280e2070dc60fd8a",
-    "text": "3Syde: trading tools for Radix DeFi traders.\n\nCharts, analytics, execution tools — the Radix trading stack.\n\nhttps://radix.wiki/ecosystem/3syde",
+    "text": "3Syde: trading tools for Radix DeFi traders.\n\nCharts, analytics, execution tools \u2014 the Radix trading stack.\n\nhttps://radix.wiki/ecosystem/3syde",
     "pillar": "ecosystem-spotlight",
     "slug": null,
     "posted": false
   },
   {
     "id": "cd738694d773ea190e322e6db",
-    "text": "P3 services being handed to community:\n\n• RadQuest (gamified onboarding)\n• Gumball Club (educational dApp)\n• Educational content\n\nNot critical infrastructure, but valuable. Community can adopt or let sunset.\n\nhttps://radix.wiki/ideas/p3-services-handover",
+    "text": "P3 services being handed to community:\n\n\u2022 RadQuest (gamified onboarding)\n\u2022 Gumball Club (educational dApp)\n\u2022 Educational content\n\nNot critical infrastructure, but valuable. Community can adopt or let sunset.\n\nhttps://radix.wiki/ideas/p3-services-handover",
     "pillar": "roadmap-update",
     "slug": null,
     "posted": false
@@ -3827,14 +3831,14 @@
   },
   {
     "id": "caba287cdca67f1bd651f03b2",
-    "text": "EtherealDAO attempted to build MakerDAO-style CDPs on Radix.\n\nThe project stalled, but the concept — CDP stablecoins with native Radix assets — remains compelling for future builders.\n\nhttps://radix.wiki/ecosystem/etherealdao",
+    "text": "EtherealDAO attempted to build MakerDAO-style CDPs on Radix.\n\nThe project stalled, but the concept \u2014 CDP stablecoins with native Radix assets \u2014 remains compelling for future builders.\n\nhttps://radix.wiki/ecosystem/etherealdao",
     "pillar": "ecosystem-spotlight",
     "slug": null,
     "posted": false
   },
   {
     "id": "c3ac5632f45a077713adea76b",
-    "text": "Hermes Protocol: automated notifications for Radix dApps.\n\nTransaction confirmations, governance votes, position changes — all pushed to users.\n\nhttps://radix.wiki/ecosystem/hermes-protocol",
+    "text": "Hermes Protocol: automated notifications for Radix dApps.\n\nTransaction confirmations, governance votes, position changes \u2014 all pushed to users.\n\nhttps://radix.wiki/ecosystem/hermes-protocol",
     "pillar": "ecosystem-spotlight",
     "slug": null,
     "posted": false
@@ -3844,6 +3848,440 @@
     "text": "The Cuttlefish upgrade added subintents to Radix.\n\nSubintents = modular transaction components that can be composed dynamically.\n\nhttps://radix.wiki/ideas/cuttlefish-upgrade",
     "pillar": "dev-tip",
     "slug": null,
+    "posted": false
+  },
+  {
+    "id": "dcf2494693d169fcefe94dc93",
+    "text": "Solana devs must pre-declare every account a transaction will touch \u2014 including size, mutability, and signer status.\n\nGet one wrong? Silent failure or runtime crash.\n\nOn Radix, components own their own state. No account declarations. No PDAs. Just call the method.\n\nhttps://radix.wiki/contents/tech/core-concepts/asset-oriented-programming",
+    "pillar": "dev-tip",
+    "slug": "asset-oriented-programming",
+    "posted": false
+  },
+  {
+    "id": "1f70b2a0c172689448cb1cc01",
+    "text": "Solana's CPI (Cross-Program Invocation) has a hard depth limit of 4.\n\nToken-2022 transfer hooks consume one level. Chain a few composable calls and you hit CallDepthExceeded.\n\nRadix has no CPI depth limit. Components call components freely \u2014 atomic composability without artificial ceilings.\n\nhttps://radix.wiki/contents/tech/core-concepts/transaction-manifests",
+    "pillar": "dev-tip",
+    "slug": "transaction-manifests",
+    "posted": false
+  },
+  {
+    "id": "3a6327f6b1e56faab466500f9",
+    "text": "On Solana, you must estimate compute units before submitting a transaction.\n\nUnderestimate \u2192 transaction fails.\nOverestimate \u2192 you overpay.\n\nThere's no simulation that's 100% reliable.\n\nRadix transactions specify intent, not execution details. The engine handles the rest.\n\nhttps://radix.wiki/contents/tech/core-concepts/transaction-manifests",
+    "pillar": "dev-tip",
+    "slug": "transaction-manifests",
+    "posted": false
+  },
+  {
+    "id": "6feca72b7e3e8d3924794bc4b",
+    "text": "Solana transaction size limit: 1,232 bytes.\n\nThat's not a lot. Complex DeFi operations require splitting into multiple transactions \u2014 breaking atomicity.\n\nRadix transaction manifests have no practical size limit and execute atomically. Multi-step DeFi in one transaction.\n\nhttps://radix.wiki/contents/tech/core-concepts/transaction-manifests",
+    "pillar": "dev-tip",
+    "slug": "transaction-manifests",
+    "posted": false
+  },
+  {
+    "id": "407c7fb60c427962afdfd08f1",
+    "text": "Solana PDAs (Program Derived Addresses) explained:\n\n1. Derive address from seeds + bump\n2. Pray you picked the right seeds\n3. Pay rent for storage\n4. Manually serialize/deserialize\n5. Handle account reallocation when data grows\n\nScrypto: define a struct. Done.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "cc85bfecef7e13546711fac96",
+    "text": "In early 2024, Solana's transaction failure rate hit 80%.\n\nDevs had to implement priority fees, Jito tips, and retry loops \u2014 none of which guaranteed landing.\n\nRadix: deterministic transaction execution. If it's valid, it executes. No bidding wars.\n\nhttps://radix.wiki/contents/tech/core-protocols/cerberus-consensus-protocol",
+    "pillar": "Protocol",
+    "slug": "cerberus-consensus-protocol",
+    "posted": false
+  },
+  {
+    "id": "1e148f227c18616f430215124",
+    "text": "Solana's local fee market means your transaction competes with everyone touching the same hot account.\n\nMeme coin launches \u2192 your unrelated DeFi tx gets stuck.\n\nRadix shards by substate, not by account. Your transaction doesn't compete with unrelated workloads.\n\nhttps://radix.wiki/contents/tech/core-concepts/sharding",
+    "pillar": "Protocol",
+    "slug": "sharding",
+    "posted": false
+  },
+  {
+    "id": "4870817ddfa9a77076229cf46",
+    "text": "Closing accounts on Solana is a security minefield.\n\nIf you zero lamports but don't clear data, an attacker can revive the account in the same transaction slot with stale data.\n\n\"Revival attacks\" \u2014 a whole vulnerability class that doesn't exist on Radix.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "175f0fde99255a506bcbdcdaf",
+    "text": "Solana devs: \"The documentation uses words like Programs, TPU, TVU, PDA, CPI, BPF \u2014 just rewrite it using normal words.\"\n\n(actual developer feedback)\n\nScrypto uses: Components, Blueprints, Resources, Vaults, Buckets.\n\nTerms that map to what they actually do.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "73524caa3d66de0b8a7eeead5",
+    "text": "Solana requires Linux for most CLI tooling. Windows devs? Good luck.\n\nScrypto runs on macOS, Linux, and Windows. Install rustup, install the Scrypto CLI, and you're building.\n\nhttps://radix.wiki/developers/getting-started",
+    "pillar": "dev-tip",
+    "slug": null,
+    "posted": false
+  },
+  {
+    "id": "7ddbc31f153b95eaf19650d8e",
+    "text": "EVM proxy upgrade patterns:\n\n1. Deploy implementation contract\n2. Deploy proxy contract\n3. Link via delegatecall\n4. Pray storage layouts stay compatible\n5. Storage collision? Funds gone.\n\nScrypto blueprints are versioned natively. No proxy juggling. No storage slot roulette.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "9fda01efbf65f3f6a56f90c3a",
+    "text": "Solidity devs spend more time on gas optimization than on business logic.\n\npacking structs into single storage slots\nusing assembly for basic operations\ncaching storage reads in memory\n\nScrypto devs write business logic. The engine handles efficiency.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-engine",
+    "pillar": "dev-tip",
+    "slug": "radix-engine",
+    "posted": false
+  },
+  {
+    "id": "6fd3ddc67096160fa7667f60c",
+    "text": "The EVM debugging experience:\n\n\"Transaction reverted: 0x\"\n\nThat's it. That's the error message. No stack trace. No variable state. Just a hex string and good luck.\n\nRadix Engine errors tell you exactly what failed and why.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-engine",
+    "pillar": "dev-tip",
+    "slug": "radix-engine",
+    "posted": false
+  },
+  {
+    "id": "29c3c4da6a136a4dbf2a8270e",
+    "text": "Front-running on EVM:\n\n1. You submit a DEX trade\n2. A bot sees it in the mempool\n3. Bot buys before you, sells after\n4. You get worse execution\n5. This is called \"MEV\" and it's a $600M+ annual industry\n\nRadix eliminates front-running by design.\n\nhttps://radix.wiki/contents/tech/core-protocols/cerberus-consensus-protocol",
+    "pillar": "Protocol",
+    "slug": "cerberus-consensus-protocol",
+    "posted": false
+  },
+  {
+    "id": "5377f1ac02b151b56512677ca",
+    "text": "ERC-20, ERC-721, ERC-1155, ERC-4626, ERC-2612...\n\nEvery token standard is a new contract interface. Every interface is a new attack surface. Every attack surface has been exploited.\n\nRadix has one native resource system. Fungible or non-fungible. Built into the engine.\n\nhttps://radix.wiki/contents/tech/core-concepts/native-assets-and-resources",
+    "pillar": "Protocol",
+    "slug": "native-assets-and-resources",
+    "posted": false
+  },
+  {
+    "id": "eda3aa4183229268324fe28a0",
+    "text": "Solidity integer overflow caused the BeautyChain hack ($900M stolen in 2018).\n\nSolidity didn't add overflow protection by default until v0.8.0 \u2014 six years after launch.\n\nScrypto uses Rust's type system. Overflow is a compile-time error, not a $900M exploit.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "e648402c57f2c98c4ba13a537",
+    "text": "On EVM, composing DeFi protocols means:\n\n1. Approve token A to contract X\n2. Call contract X\n3. Hope contract X doesn't drain your remaining allowance\n4. Repeat for contract Y, Z...\n\nOn Radix, one manifest moves assets through multiple components atomically. No approvals.\n\nhttps://radix.wiki/contents/tech/core-concepts/transaction-manifests",
+    "pillar": "dev-tip",
+    "slug": "transaction-manifests",
+    "posted": false
+  },
+  {
+    "id": "7262b26575b1f68dd11f205c4",
+    "text": "EVM storage costs: 20,000 gas to write a single 256-bit word.\n\nAt $3,000 ETH and 30 gwei, that's ~$1.80 per storage write.\n\nDevs contort their code to minimize writes \u2014 packing booleans into bitmasks, using events as cheap storage.\n\nThis isn't engineering. It's survival.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-engine",
+    "pillar": "dev-tip",
+    "slug": "radix-engine",
+    "posted": false
+  },
+  {
+    "id": "09dadd1319dc2cea346bd49bf",
+    "text": "Solidity access control patterns:\n\nonlyOwner, onlyRole, whenNotPaused, nonReentrant...\n\nAll manually coded. All audited separately. All have been exploited.\n\nRadix access rules are declared once, enforced by the engine. Not your code \u2014 the platform's job.\n\nhttps://radix.wiki/contents/tech/core-concepts/access-control",
+    "pillar": "dev-tip",
+    "slug": null,
+    "posted": false
+  },
+  {
+    "id": "be0960906cb7b1142fdd33573",
+    "text": "The DAO hack. Parity wallet freeze. Wormhole exploit. Ronin bridge.\n\nAll caused by reentrancy or unchecked external calls \u2014 fundamental EVM design flaws.\n\nScrypto's execution model makes reentrancy architecturally impossible. Not mitigated. Eliminated.\n\nhttps://radix.wiki/contents/tech/core-concepts/asset-oriented-programming",
+    "pillar": "Protocol",
+    "slug": "asset-oriented-programming",
+    "posted": false
+  },
+  {
+    "id": "b640ced6e477d7ce96433b38c",
+    "text": "The blockchain dev experience today:\n\nSolana: fight account models, CPI limits, compute units\nEVM: fight gas costs, proxy patterns, reentrancy guards\n\nScrypto: write business logic. The engine handles assets, auth, and composability.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "25a5d98811622c56d3351370d",
+    "text": "Both Solana and Ethereum scale vertically.\n\nSolana: faster hardware \u2192 more TPS\nEthereum: more L2s \u2192 more complexity\n\nRadix scales horizontally. More shards \u2192 more throughput. Linear. No hardware arms race. No L2 fragmentation.\n\nhttps://radix.wiki/contents/tech/core-concepts/sharding",
+    "pillar": "Protocol",
+    "slug": "sharding",
+    "posted": false
+  },
+  {
+    "id": "27edf686faa151796e42a5ce5",
+    "text": "Building a DEX on Solana: ~2,000 lines of Rust + account boilerplate\nBuilding a DEX on EVM: ~800 lines of Solidity + security audit budget\nBuilding a DEX on Radix: ~200 lines of Scrypto\n\nAsset-oriented programming isn't just safer. It's dramatically simpler.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "6c64db3e8210201b458ec2e60",
+    "text": "On Solana, your token is an SPL token account \u2014 a separate account per user per token.\n\nOn EVM, your token is a mapping entry in a contract.\n\nOn Radix, your token is an actual resource in your vault. You hold it. You move it. Physics, not accounting.\n\nhttps://radix.wiki/contents/tech/core-concepts/native-assets-and-resources",
+    "pillar": "Protocol",
+    "slug": "native-assets-and-resources",
+    "posted": false
+  },
+  {
+    "id": "32b36370b5a355ec4b0ccdaab",
+    "text": "Solana's validator hardware requirements: 256GB RAM, 12-core CPU, 10 Gbps network.\n\nCost: $3,000+/month.\n\nRadix validators run on commodity hardware. Scalability comes from sharding the consensus, not from buying bigger machines.\n\nhttps://radix.wiki/contents/tech/core-protocols/cerberus-consensus-protocol",
+    "pillar": "Protocol",
+    "slug": "cerberus-consensus-protocol",
+    "posted": false
+  },
+  {
+    "id": "cdc801ed38258157063111bfa",
+    "text": "On EVM, reading another contract's state requires a public getter or an event log.\n\nNo getter? You parse raw storage slots. Slot numbers that change if the contract upgrades.\n\nScrypto components expose typed interfaces. Read state like calling an API.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-engine",
+    "pillar": "dev-tip",
+    "slug": "radix-engine",
+    "posted": false
+  },
+  {
+    "id": "0d8568bdf53e951972016cfdf",
+    "text": "Solana's web3.js SDK was rewritten from scratch (now Solana Kit).\n\nBreaking changes everywhere. Most tutorials and Stack Overflow answers reference the old SDK.\n\nScrypto has had a stable, well-documented SDK since Babylon launch. Build, don't migrate.\n\nhttps://radix.wiki/developers/getting-started",
+    "pillar": "dev-tip",
+    "slug": null,
+    "posted": false
+  },
+  {
+    "id": "75cce6d68fb614ad0515d26cf",
+    "text": "EVM devs: \"We need a reentrancy guard.\"\nSolana devs: \"We need to check the account discriminator.\"\nScrypto devs: \"We need to accept a Bucket and return a Bucket.\"\n\nOne of these is writing DeFi. The others are writing infrastructure.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "67bf5c3fb8bc985b436255f9f",
+    "text": "The Solana account model forces you to think about:\n\n\u2022 Account ownership\n\u2022 Rent exemption\n\u2022 Data serialization format\n\u2022 Account size (fixed at creation)\n\u2022 PDA derivation seeds\n\n...before writing a single line of business logic.\n\nScrypto: define your blueprint. Ship.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "f6825e26687c8c9bcc94476c4",
+    "text": "Ethereum's global state trie is 1.2TB+ and growing.\n\nEvery full node stores everything. State bloat slows sync, raises hardware requirements, centralizes the network.\n\nRadix partitions state into substates across shards. No single node needs the full picture.\n\nhttps://radix.wiki/contents/tech/core-concepts/sharding",
+    "pillar": "Protocol",
+    "slug": "sharding",
+    "posted": false
+  },
+  {
+    "id": "7738474e2c648788c5d0dbda6",
+    "text": "In Solidity, sending ETH to a contract can trigger arbitrary code execution (via receive/fallback).\n\nThis is how reentrancy works. Sending money runs someone else's code.\n\nIn Scrypto, depositing a resource into a vault is just... depositing a resource into a vault.\n\nhttps://radix.wiki/contents/tech/core-concepts/asset-oriented-programming",
+    "pillar": "dev-tip",
+    "slug": "asset-oriented-programming",
+    "posted": false
+  },
+  {
+    "id": "5acba863c315125212281555f",
+    "text": "Solana congestion \u2192 priority fee bidding \u2192 MEV bots outbid you \u2192 your swap fails \u2192 retry with higher fee \u2192 you're now paying 10x base fee for a simple trade.\n\nThis feedback loop doesn't exist on Radix. Deterministic execution. No fee auctions.\n\nhttps://radix.wiki/contents/tech/core-protocols/cerberus-consensus-protocol",
+    "pillar": "Protocol",
+    "slug": "cerberus-consensus-protocol",
+    "posted": false
+  },
+  {
+    "id": "34ae447fbcf7f1daf4a073dae",
+    "text": "Auditing a Solidity contract means checking for:\n\n\u2022 Reentrancy\n\u2022 Integer overflow\n\u2022 Access control bugs\n\u2022 Storage collisions\n\u2022 Front-running\n\u2022 Flash loan attacks\n\u2022 Proxy upgrade bugs\n\nRadix Engine eliminates the first 5 at the platform level.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-engine",
+    "pillar": "dev-tip",
+    "slug": "radix-engine",
+    "posted": false
+  },
+  {
+    "id": "ee7f5add91994597f0701833e",
+    "text": "Solana Anchor framework: ~50% of your code is account validation macros.\n\n#[account(mut, seeds = [...], bump, constraint = ...)]\n\nThis isn't smart contract development. It's account management with extra steps.\n\nScrypto lets you focus on what your protocol actually does.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "f30daa868cbec8f648c4ae2f1",
+    "text": "The EVM has been live since 2015. In that time:\n\n\u2022 $3.8B+ lost to smart contract exploits\n\u2022 700+ security incidents\n\u2022 Entire vulnerability classes (reentrancy, approval exploits) still unresolved\n\nRadix designed these problems out at the architecture level.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-engine",
+    "pillar": "Protocol",
+    "slug": "radix-engine",
+    "posted": false
+  },
+  {
+    "id": "85afab8a8702ee61e3893cd80",
+    "text": "Royalties for developers:\n\nEVM: none (you deploy for free and pray for a governance token)\nSolana: none (you deploy for rent and pray for a governance token)\nRadix: native royalty system \u2014 charge a fee every time your component is called\n\nhttps://radix.wiki/contents/tech/core-concepts/developer-royalties",
+    "pillar": "dev-tip",
+    "slug": null,
+    "posted": false
+  },
+  {
+    "id": "a1756e406e7851a4eab85ccaa",
+    "text": "Radix's state locking makes reentrancy architecturally impossible.\n\nNot via guards. Not via patterns. The engine locks object state before read/write \u2014 if a callback tries to re-enter, it throws automatically.\n\nThe DAO hack ($60M), Cream Finance ($130M) \u2014 impossible on Radix.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-engine",
+    "pillar": "Protocol",
+    "slug": "radix-engine",
+    "posted": false
+  },
+  {
+    "id": "adcbfd78ee92bb0be2b8fb9dd",
+    "text": "An AMM in Scrypto: ~150 lines.\nAn AMM in Solidity: ~800 lines.\n\nThe difference isn't cleverness \u2014 it's that Scrypto doesn't need code for asset safety, reentrancy guards, access control checks, or approval plumbing.\n\nThe engine handles all of it.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "702edbaf84410adde193ee910",
+    "text": "Sui's MoveVM vs Radix Engine:\n\nMove is low-level and generic \u2014 no dynamic dispatch, cumbersome shared state.\n\nRadix Engine provides high-level, asset-oriented abstractions purpose-built for DeFi.\n\nGeneric VMs force you to build DeFi primitives. Radix ships them.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-engine",
+    "pillar": "Protocol",
+    "slug": "radix-engine",
+    "posted": false
+  },
+  {
+    "id": "889bf88556c6de9f9b154f122",
+    "text": "Scrypto Buckets must be emptied by transaction end. Vaults persist on-ledger.\n\nThis isn't a convention \u2014 it's enforced by the engine.\n\nTokens can never get \"stuck\" in limbo. They're always in exactly one container. Like physical objects.\n\nhttps://radix.wiki/contents/tech/core-concepts/native-assets-and-resources",
+    "pillar": "dev-tip",
+    "slug": "native-assets-and-resources",
+    "posted": false
+  },
+  {
+    "id": "0ef60e322f949a6cc08508c59",
+    "text": "Authorization on Radix:\n\nInstead of checking msg.sender (who sent the tx), you check proofs (what badges they hold).\n\n\"Requires admin badge OR 3 approver badges\" \u2014 declared once, enforced by the engine.\n\nNo onlyOwner modifiers. No hand-rolled RBAC.\n\nhttps://radix.wiki/contents/tech/core-concepts/asset-oriented-programming",
+    "pillar": "dev-tip",
+    "slug": "asset-oriented-programming",
+    "posted": false
+  },
+  {
+    "id": "ff93508e008d1dd4c0d7f15f5",
+    "text": "Cross-shard composability on other chains:\n\nEthereum 2.0: async messaging between shards\nPolkadot: XCM relay with latency\nNear: async receipts across shards\n\nRadix Cerberus: braids shard consensus on-the-fly. Cross-shard = same atomicity as single-shard.\n\nhttps://radix.wiki/contents/tech/core-concepts/sharding",
+    "pillar": "Protocol",
+    "slug": "sharding",
+    "posted": false
+  },
+  {
+    "id": "1ee268fc849254f8af035b310",
+    "text": "A developer new to Radix: \"The asset-oriented paradigm is everything I've ever wanted as a normie trying to prototype DeFi ideas.\"\n\nAnother: \"Scrypto cuts our R&D in half.\"\n\nAnother built a hackathon-winning dApp in 5 days from zero Scrypto experience.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "9c0c6129dc6c2bf7d1500b962",
+    "text": "On Ethereum, adding metadata to an ERC-20 requires deploying a new contract.\n\nOn Radix, metadata is a universal platform feature. Token name, description, icon, custom fields \u2014 all built in. Access rules control who can modify them.\n\nNo new standard needed.\n\nhttps://radix.wiki/contents/tech/core-concepts/native-assets-and-resources",
+    "pillar": "dev-tip",
+    "slug": "native-assets-and-resources",
+    "posted": false
+  },
+  {
+    "id": "be7df6f7b8a4b6c3850cce747",
+    "text": "Solidity's #1 developer complaint (2024 survey): \"Stack Too Deep.\"\n\nToo many local variables? Won't compile. Restructure into structs, split functions, fight the compiler.\n\nScrypto uses Rust. No stack depth limits on variables. Write logic, not workarounds.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "c3614f45fa5cdd3c7fb872b23",
+    "text": "EVM contracts are capped at 24KB bytecode (EIP-170).\n\nComplex DeFi protocols hit this constantly. The fix? Split logic across multiple contracts, add proxy layers, increase attack surface.\n\nScrypto packages have no bytecode size limit. Deploy your full protocol in one package.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "b334072eae0e2c86ff13128e9",
+    "text": "Solidity has no floating point numbers.\n\nDeFi developers implement fixed-point math manually. Precision errors have caused millions in losses.\n\nScrypto has Decimal \u2014 a native 192-bit fixed-point type with 18 decimal places. Built for finance.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "e42ddb346263ed56c50de2e84",
+    "text": "EVM sandwich attacks: $289M in 2024. Over 4,400 attacks per day.\n\nA bot front-runs your swap, worsens your price, then back-runs for profit.\n\nThis is what happens when every pending transaction is visible in a public mempool.\n\nhttps://radix.wiki/contents/tech/core-protocols/cerberus-consensus-protocol",
+    "pillar": "Protocol",
+    "slug": "cerberus-consensus-protocol",
+    "posted": false
+  },
+  {
+    "id": "c3660a4a428e19752f46a9640",
+    "text": "Solidity try/catch only works on external calls.\n\nInternal function reverts? Entire transaction fails. No recovery. No graceful degradation.\n\nScrypto's transaction manifests define clear success/failure boundaries. Partial rollback is part of the model.\n\nhttps://radix.wiki/contents/tech/core-concepts/transaction-manifests",
+    "pillar": "dev-tip",
+    "slug": "transaction-manifests",
+    "posted": false
+  },
+  {
+    "id": "8781a6adda42524352ba79125",
+    "text": "ERC-20's approve() has a known front-running race condition since 2017.\n\nChange allowance from 100 to 50? Attacker spends 100 before the change, then 50 after. Total drained: 150.\n\nThe \"fix\"? approve-to-zero-first. A workaround, not a solution.\n\nRadix has no approvals.\n\nhttps://radix.wiki/contents/tech/core-concepts/native-assets-and-resources",
+    "pillar": "Protocol",
+    "slug": "native-assets-and-resources",
+    "posted": false
+  },
+  {
+    "id": "71e2d76ab545cf4da744e2fb9",
+    "text": "USDT doesn't return a boolean from transfer().\n\nThis single deviation from ERC-20 has broken countless DeFi integrations.\n\nOpenZeppelin's SafeERC20 exists solely to handle tokens that don't follow their own standard.\n\nNative resources don't have implementation quirks.\n\nhttps://radix.wiki/contents/tech/core-concepts/native-assets-and-resources",
+    "pillar": "dev-tip",
+    "slug": "native-assets-and-resources",
+    "posted": false
+  },
+  {
+    "id": "37111228fb35ca0b50b4576e6",
+    "text": "EVM dev tooling history:\n\n2018: Truffle\n2020: Hardhat\n2022: Foundry\n\nEach incompatible. Each with different test frameworks, dependency managers, and config formats.\n\n8 years in and the ecosystem still can't agree on how to build.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "8fa7629fdf38e9e164c8b316c",
+    "text": "To debug a failed EVM transaction:\n\n1. Get an archive node (multiple TB storage)\n2. Replay the transaction\n3. Step through raw opcodes\n4. Or pay Tenderly $$$\n\nTo debug a failed Scrypto transaction:\n\nRun it in the local simulator. Read the error message.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "08d3a3fcc9a29f82aca65eb6d",
+    "text": "ERC-777 was supposed to be a better ERC-20.\n\nIt introduced transfer hooks. Those hooks enabled reentrancy on every protocol that assumed ERC-20 behavior.\n\nimBTC on Uniswap: drained via ERC-777 reentrancy.\n\nOn Radix, there's one resource system. No hook surprises.\n\nhttps://radix.wiki/contents/tech/core-concepts/native-assets-and-resources",
+    "pillar": "Protocol",
+    "slug": "native-assets-and-resources",
+    "posted": false
+  },
+  {
+    "id": "2c1f645a7e3dd9f8941a89200",
+    "text": "Smart contract audit costs: $15,000\u2013$150,000.\n\nAnd auditors can only catch technical bugs \u2014 not business logic errors, which cause the majority of real-world exploits.\n\nScrypto eliminates entire vulnerability classes at the engine level. Smaller attack surface = cheaper audits.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-engine",
+    "pillar": "dev-tip",
+    "slug": "radix-engine",
+    "posted": false
+  },
+  {
+    "id": "cfead91d13c2dcf7750f7ca82",
+    "text": "delegatecall: run another contract's code using YOUR storage.\n\nIf storage layouts don't match exactly, it silently corrupts your data.\n\nThis is how proxy upgrades work on EVM. Silent data corruption is a feature.\n\nScrypto components have clean boundaries. No shared storage hacks.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-engine",
+    "pillar": "dev-tip",
+    "slug": "radix-engine",
+    "posted": false
+  },
+  {
+    "id": "d1dab10a0fa9a534cfcea1bcd",
+    "text": "Rust disables integer overflow checks in release mode.\n\nSolana compiles programs in release mode by default.\n\nArithmetic silently wraps around. Attackers manipulate token balances.\n\nScrypto uses Rust with safe math and native Decimal types. No silent wrapping.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "ee977d5f03587b248fc6690f6",
+    "text": "Solana's \"account confusion\" bug class: $52M+ in exploits.\n\nPrograms see accounts as raw bytes. Forget to verify owner, discriminator, or mint? Attacker substitutes a fake account.\n\nThe Cashio hack. The Solend exploit. All from missing manual checks.\n\nScrypto components are typed.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-engine",
+    "pillar": "dev-tip",
+    "slug": "radix-engine",
+    "posted": false
+  },
+  {
+    "id": "2c60875c09e6e03cd0cdfceb0",
+    "text": "Solana's SPL Token Lending had a rounding bug that could have drained $2.6 billion.\n\nLend tiny amounts. Withdraw rounded-up larger amounts. Repeat.\n\nScrypto's native Decimal type has 18 decimal places of precision. Rounding exploits are engineered out.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "728518488005d1e1fae98fa0a",
+    "text": "Deploying a Solana program during network congestion:\n\n\"17 blockhash-expire retries, 50% uploaded, lost SOL, program still not deployed.\"\n\n(actual GitHub issue)\n\nA hello-world costs ~2.47 SOL to deploy.\n\nScrypto packages deploy in a single transaction to local simulator or testnet.\n\nhttps://radix.wiki/contents/tech/scrypto-language",
+    "pillar": "dev-tip",
+    "slug": "scrypto-language",
+    "posted": false
+  },
+  {
+    "id": "7ddea73237cfe77bd425ffced",
+    "text": "Solana error messages:\n\n{ InstructionError: (0, { Custom: 1 }) }\n\nThat's it. A raw numeric code with no context. Each program defines its own codes. No unified decoder.\n\nDevelopers at Solana Hacker Houses assumed there was simply no way to find the actual error.\n\nhttps://radix.wiki/contents/tech/core-protocols/radix-engine",
+    "pillar": "dev-tip",
+    "slug": "radix-engine",
+    "posted": false
+  },
+  {
+    "id": "2af2a78ec2268b464c5af8456",
+    "text": "On Solana, querying all accounts owned by your program (getProgramAccounts) takes 10+ seconds.\n\nIt's so expensive that RPC providers rate-limit or block it.\n\nWorkaround: build an entire separate indexing infrastructure.\n\nRadix substates are efficiently queryable by design.\n\nhttps://radix.wiki/contents/tech/core-concepts/sharding",
+    "pillar": "dev-tip",
+    "slug": "sharding",
     "posted": false
   }
 ]

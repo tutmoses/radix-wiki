@@ -120,7 +120,9 @@ async function validateChallenge(challenge: string): Promise<boolean> {
 }
 
 const rola = Rola({
-  expectedOrigin: RADIX_CONFIG.applicationUrl,
+  expectedOrigin: process.env.NODE_ENV === 'production'
+    ? RADIX_CONFIG.applicationUrl
+    : 'http://localhost:3000',
   dAppDefinitionAddress: RADIX_CONFIG.dAppDefinitionAddress,
   networkId: RADIX_CONFIG.networkId,
   applicationName: RADIX_CONFIG.applicationName,
@@ -131,6 +133,7 @@ export async function verifySignedChallenge(
 ): Promise<{ isValid: boolean; error?: string }> {
   try {
     if (!(await validateChallenge(signedChallenge.challenge))) {
+      console.error('ROLA: challenge validation failed', signedChallenge.challenge.slice(0, 16) + '...');
       return { isValid: false, error: 'Invalid or expired challenge' };
     }
 
@@ -140,6 +143,7 @@ export async function verifySignedChallenge(
     });
 
     if (result.isErr()) {
+      console.error('ROLA: verification failed', result.error.reason, result.error);
       return { isValid: false, error: result.error.reason };
     }
 

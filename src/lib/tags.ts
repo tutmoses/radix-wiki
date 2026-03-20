@@ -244,6 +244,8 @@ function resolveTagPath(pathSegments: string[], hierarchy: TagNode[] = TAG_HIERA
 export const findTagByPath = (pathSegments: string[]): TagNode | null => resolveTagPath(pathSegments).node;
 export const isValidTagPath = (pathSegments: string[]): boolean => resolveTagPath(pathSegments).isValid;
 export const isAuthorOnlyPath = (tagPath: string): boolean => resolveTagPath(tagPath.split('/')).isAuthorOnly;
+export const canEditAuthorOnlyPage = (page: { authorId: string; editorIds?: string[] }, userId: string): boolean =>
+  page.authorId === userId || (page.editorIds ?? []).includes(userId);
 const XRD_DEFAULTS = { create: 10_000, edit: 20_000, comment: 10_000 } as const;
 
 export function getXrdRequired(action: 'create' | 'edit' | 'comment', tagPath: string): number {

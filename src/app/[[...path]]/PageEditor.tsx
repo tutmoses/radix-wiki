@@ -6,13 +6,13 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, Save, Trash2, Link2 } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Link2, X } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Button, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
 import { slugify } from '@/lib/utils';
 import { findInfobox } from '@/components/BlockRenderer';
-import { isAuthorOnlyPath, isLockedPage, getMetadataKeys, getXrdRequired, type MetadataKeyDefinition } from '@/lib/tags';
+import { isAuthorOnlyPath, isLockedPage, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, type MetadataKeyDefinition } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
 import { Banner } from './PageContent';
 import type { WikiPage, PageMetadata } from '@/types';
@@ -191,6 +191,69 @@ function MetadataFields({ metadataKeys, metadata, onChange }: { metadataKeys: Me
   );
 }
 
+// ========== EDITOR WHITELIST ==========
+function EditorWhitelist({ editors, onAdd, onRemove }: {
+  editors: { id: string; displayName: string | null; radixAddress: string }[];
+  onAdd: (user: { id: string; displayName: string | null; radixAddress: string }) => void;
+  onRemove: (id: string) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<{ id: string; displayName: string | null; radixAddress: string }[]>([]);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (query.length < 2) { setResults([]); return; }
+    const controller = new AbortController();
+    fetch(`/api/users/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
+      .then(r => r.json())
+      .then((users: { id: string; displayName: string | null; radixAddress: string }[]) =>
+        setResults(users.filter(u => !editors.some(e => e.id === u.id))))
+      .catch(() => {});
+    return () => controller.abort();
+  }, [query, editors]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div className="metadata-panel">
+      <h4 className="text-small font-medium text-text-muted m-0!">Allowed Editors</h4>
+      {editors.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {editors.map(u => (
+            <span key={u.id} className="badge row gap-1">
+              {u.displayName || u.radixAddress.slice(0, 12) + '...'}
+              <button onClick={() => onRemove(u.id)} className="icon-btn" style={{ padding: 0, width: 16, height: 16 }}><X size={12} /></button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div ref={ref} className="relative">
+        <Input
+          value={query}
+          onChange={e => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search users to add..."
+        />
+        {open && results.length > 0 && (
+          <div className="user-picker-dropdown">
+            {results.map(u => (
+              <button key={u.id} className="user-picker-option" onClick={() => { onAdd(u); setQuery(''); setOpen(false); }}>
+                <span className="font-medium">{u.displayName || 'Anonymous'}</span>
+                <span className="text-text-muted text-xs">{u.radixAddress.slice(0, 12)}...</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ========== PAGE EDITOR ==========
 export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string; slug: string }) {
   const router = useRouter();
@@ -202,6 +265,8 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const [bannerImage, setBannerImage] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<PageMetadata>({});
   const [editSlug, setEditSlug] = useState(slug);
+  const [editorIds, setEditorIds] = useState<string[]>([]);
+  const [editors, setEditors] = useState<{ id: string; displayName: string | null; radixAddress: string }[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const isAuthor = user && page?.authorId === user.id;
@@ -214,11 +279,21 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
       setBannerImage(page.bannerImage || null);
       setMetadata((page.metadata as PageMetadata) || {});
       setEditSlug(page.slug);
+      const ids = (page as WikiPage & { editorIds?: string[] }).editorIds ?? [];
+      setEditorIds(ids);
+      if (ids.length > 0) {
+        fetch(`/api/users/search?ids=${ids.join(',')}`)
+          .then(r => r.json()).then(setEditors).catch(() => {});
+      } else {
+        setEditors([]);
+      }
     } else {
       setTitle('');
       setContent([createBlock('content')]);
       setBannerImage(null);
       setMetadata({});
+      setEditorIds([]);
+      setEditors([]);
     }
   }, [page, tagPath, slug]);
 
@@ -236,7 +311,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
       const method = exists ? 'PUT' : 'POST';
       const endpoint = exists ? `/api/wiki/${tagPath}/${slug}` : '/api/wiki';
       const newSlug = slugify(editSlug);
-      const body = exists ? { title, content, bannerImage, metadata, newSlug } : { title, content, bannerImage, metadata, tagPath, slug: newSlug || slug };
+      const body = exists ? { title, content, bannerImage, metadata, newSlug, editorIds } : { title, content, bannerImage, metadata, tagPath, slug: newSlug || slug };
       const res = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
       if (res.ok) {
@@ -257,7 +332,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
     finally { setIsDeleting(false); }
   };
 
-  if (page && user && isAuthorOnlyPath(page.tagPath) && page.authorId !== user.id) {
+  if (page && user && isAuthorOnlyPath(page.tagPath) && !canEditAuthorOnlyPage(page, user.id)) {
     return <StatusCard status="notAuthorized" backHref={viewPath} />;
   }
 
@@ -292,6 +367,13 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
       </header>
       <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
       <MetadataFields metadataKeys={metadataKeys} metadata={metadata} onChange={setMetadata} />
+      {isAuthor && isAuthorOnlyPath(tagPath) && !isCreating && (
+        <EditorWhitelist
+          editors={editors}
+          onAdd={u => { setEditorIds([...editorIds, u.id]); setEditors([...editors, u]); }}
+          onRemove={id => { setEditorIds(editorIds.filter(i => i !== id)); setEditors(editors.filter(e => e.id !== id)); }}
+        />
+      )}
       <div className="page-with-infobox">
         <div className="page-main-content">
           <BlockEditor content={mainBlocks} onChange={updateMainBlocks} />

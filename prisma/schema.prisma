@@ -38,6 +38,7 @@ model Page {
   version     String    @default("1.0.0")
   authorId    String    @map("author_id")
   author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  editorIds   String[]  @default([]) @map("editor_ids")
   revisions     Revision[]
   comments      Comment[]
   notifications Notification[]
