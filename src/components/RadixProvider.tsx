@@ -128,14 +128,6 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
                   });
                 }
               });
-            } else if (isCachedReplay) {
-              // Cached replay — can't use stale proof. If session is also gone,
-              // silently re-trigger a fresh wallet request to get a new proof.
-              sessionCheckRef.current.then(hasSession => {
-                if (!hasSession) {
-                  rdt.walletApi.sendRequest();
-                }
-              });
             }
           } else {
             setWalletData(null);

@@ -106,7 +106,7 @@ export function Header() {
     (walletData?.accounts?.[0]?.address ? shortenAddress(walletData.accounts[0].address) : null) ||
     (user?.radixAddress ? shortenAddress(user.radixAddress) : 'Connected');
 
-  const showAsConnected = isAuthenticated || (isConnected && walletData?.accounts?.length);
+  const showAsConnected = isAuthenticated;
   const userProfilePath = user ? `/community/${userProfileSlug(user.displayName, user.radixAddress)}` : null;
 
   useEffect(() => {
