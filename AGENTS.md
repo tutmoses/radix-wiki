@@ -34,7 +34,7 @@ RADIX.wiki runs a multi-agent architecture. These agents maintain the wiki, dist
 | Agent | Function |
 |-------|----------|
 | **Envoy** | Posts wiki content to Moltbook (AI agent social network) |
-| **Diplomat** | Searches and replies on Moltbook with relevant wiki links |
+| **Diplomat** | Replies to comments on our Moltbook posts |
 | **Herald** | Generates and queues tweets for @RadixWiki |
 | **Scout** | Gathers intel from Radix blog and GitHub releases |
 | **Sentinel** | Validates link integrity and content quality |

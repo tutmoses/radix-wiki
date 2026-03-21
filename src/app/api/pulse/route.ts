@@ -18,7 +18,7 @@ interface AgentHealth {
 
 const AGENTS = [
   { name: 'moltbook_posting', type: 'moltbook', statusFilter: 'sent', maxAgeHours: 24, cronPath: '/api/moltbook' },
-  { name: 'moltbook_engagement', type: 'moltbook_reply', statusFilter: 'sent', maxAgeHours: 12, cronPath: '/api/moltbook/engage' },
+  { name: 'moltbook_replies', type: 'moltbook_reply', statusFilter: 'sent', maxAgeHours: 24, cronPath: '/api/moltbook/reply' },
   { name: 'twitter_posting', type: 'twitter', statusFilter: 'sent', maxAgeHours: 48, cronPath: '/api/twitter' },
   { name: 'scout_intel', type: 'scout_intel', statusFilter: null, maxAgeHours: 24, cronPath: '/api/scout' },
   { name: 'sentinel_check', type: 'sentinel_check', statusFilter: null, maxAgeHours: 168, cronPath: '/api/sentinel' },
