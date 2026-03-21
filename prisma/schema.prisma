@@ -21,7 +21,7 @@ model User {
   revisions       Revision[]
   comments        Comment[]
   webhooks        Webhook[]
-  telegramLink    TelegramLink?
+  telegramLinks   TelegramLink[]
   notifications       Notification[] @relation("notifications")
   actedNotifications  Notification[] @relation("actedNotifications")
 
@@ -173,16 +173,19 @@ model Webhook {
 }
 
 model TelegramLink {
-  id            String   @id @default(cuid())
-  userId        String   @unique @map("user_id")
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  chatId        String   @map("chat_id")
-  events        String[] @default(["page.created", "page.updated"])
-  tagPathFilter String?  @map("tag_path_filter")
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatId    String   @map("chat_id")
+  events    String[] @default(["page.updated", "comment.created"])
+  tagPath   String   @default("") @map("tag_path")
+  pageSlug  String   @default("") @map("page_slug")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
+  @@unique([userId, tagPath, pageSlug])
+  @@index([active])
   @@map("telegram_links")
 }
 

@@ -3,10 +3,12 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Trash2, Copy, Check, Loader2, ExternalLink } from 'lucide-react';
+import { Plus, Trash2, Copy, Check, Loader2, ExternalLink, Bell, BellOff } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useStore } from '@/hooks';
+import { findTagByPath, isValidTagPath } from '@/lib/tags';
 
 interface Webhook {
   id: string;
@@ -17,12 +19,19 @@ interface Webhook {
   active: boolean;
 }
 
-interface TelegramLink {
+interface TelegramSub {
   id: string;
   chatId: string;
   events: string[];
-  tagPathFilter: string | null;
+  tagPath: string;
+  pageSlug: string;
   active: boolean;
+}
+
+interface TelegramState {
+  connected: boolean;
+  chatId: string | null;
+  subscriptions: TelegramSub[];
 }
 
 const EVENT_OPTIONS = [
@@ -32,36 +41,65 @@ const EVENT_OPTIONS = [
   { value: 'comment.created', label: 'Comment created' },
 ] as const;
 
+/** Parse the current pathname into tagPath + slug context */
+function parseCurrentContext(pathname: string): { tagPath: string; slug: string | null; label: string } | null {
+  const segments = pathname.split('/').filter(Boolean);
+  if (segments.length === 0) return null;
+
+  // Skip static pages
+  const staticPages = new Set(['leaderboard', 'welcome', 'rewards']);
+  if (segments.length === 1 && staticPages.has(segments[0]!)) return null;
+
+  // Strip suffix (edit, history)
+  const suffixes = new Set(['edit', 'history', 'mdx']);
+  const clean = suffixes.has(segments.at(-1)!) ? segments.slice(0, -1) : segments;
+  if (clean.length === 0) return null;
+
+  // Check if it's a category (all segments form a valid tag path)
+  if (isValidTagPath(clean)) {
+    const tag = findTagByPath(clean);
+    const name = tag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || clean.at(-1)!.replace(/-/g, ' ');
+    return { tagPath: clean.join('/'), slug: null, label: name };
+  }
+
+  // Page: last segment is slug, rest is tagPath
+  if (clean.length >= 2) {
+    const slug = clean.at(-1)!;
+    const tagPath = clean.slice(0, -1).join('/');
+    const label = slug.replace(/-/g, ' ');
+    return { tagPath, slug, label };
+  }
+
+  return null;
+}
+
 // ===== Telegram Section =====
 
 function TelegramSection() {
-  const [link, setLink] = useState<TelegramLink | null>(null);
+  const pathname = usePathname();
+  const [state, setState] = useState<TelegramState | null>(null);
   const [loading, setLoading] = useState(true);
   const [deepLink, setDeepLink] = useState<string | null>(null);
-  const [events, setEvents] = useState<string[]>(['page.created', 'page.updated']);
-  const [tagFilter, setTagFilter] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const showToast = useStore(s => s.showToast);
 
-  const fetchLink = useCallback(async () => {
+  const context = parseCurrentContext(pathname);
+
+  const fetchState = useCallback(async () => {
     const res = await fetch('/api/telegram');
     if (res.ok) {
-      const data = await res.json();
-      if (data?.id) {
-        setLink(data);
-        setEvents(data.events);
-        setTagFilter(data.tagPathFilter || '');
-        return true;
-      }
+      const data: TelegramState = await res.json();
+      setState(data);
+      return data.connected;
     }
     return false;
   }, []);
 
   useEffect(() => {
-    fetchLink().then(() => setLoading(false));
+    fetchState().then(() => setLoading(false));
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [fetchLink]);
+  }, [fetchState]);
 
   const handleConnect = async () => {
     const res = await fetch('/api/telegram', {
@@ -73,57 +111,68 @@ function TelegramSection() {
       const data = await res.json();
       if (data.deepLink) {
         setDeepLink(data.deepLink);
-        // Poll for completion
         pollRef.current = setInterval(async () => {
-          const linked = await fetchLink();
-          if (linked) {
+          const connected = await fetchState();
+          if (connected) {
             setDeepLink(null);
             if (pollRef.current) clearInterval(pollRef.current);
             showToast('Telegram connected!');
           }
         }, 3000);
-      } else if (data.id) {
-        setLink(data);
       }
     }
   };
 
-  const handleSaveEvents = async () => {
-    setSaving(true);
+  const handleSubscribe = async () => {
+    if (!context) return;
+    setSubscribing(true);
     const res = await fetch('/api/telegram', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ events, tagPathFilter: tagFilter || undefined }),
+      body: JSON.stringify({
+        tagPath: context.tagPath,
+        ...(context.slug && { pageSlug: context.slug }),
+        events: ['page.updated', 'comment.created'],
+      }),
     });
     if (res.ok) {
-      const data = await res.json();
-      setLink(data);
-      showToast('Settings saved');
+      await fetchState();
+      showToast(`Subscribed to ${context.label}`);
     }
-    setSaving(false);
+    setSubscribing(false);
+  };
+
+  const handleUnsubscribe = async (id: string) => {
+    const res = await fetch(`/api/telegram?id=${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      await fetchState();
+      showToast('Unsubscribed');
+    }
   };
 
   const handleDisconnect = async () => {
     const res = await fetch('/api/telegram', { method: 'DELETE' });
     if (res.ok) {
-      setLink(null);
-      setEvents(['page.created', 'page.updated']);
-      setTagFilter('');
+      setState({ connected: false, chatId: null, subscriptions: [] });
       showToast('Telegram disconnected');
     }
   };
 
-  const toggleEvent = (event: string) => {
-    setEvents(prev => prev.includes(event) ? prev.filter(e => e !== event) : [...prev, event]);
-  };
-
   if (loading) return null;
+
+  // Active subscriptions (exclude connection-only records with no scope)
+  const subs = state?.subscriptions.filter(s => s.tagPath !== '') ?? [];
+
+  // Check if current context is already subscribed
+  const isCurrentSubscribed = context && subs.some(s =>
+    s.tagPath === context.tagPath && s.pageSlug === (context.slug ?? ''),
+  );
 
   return (
     <div className="telegram-section">
       <div className="spread px-3 py-2">
         <span className="text-small font-medium">Telegram</span>
-        {link && (
+        {state?.connected && (
           <button onClick={handleDisconnect} className="text-xs text-text-muted hover:text-error cursor-pointer">
             Disconnect
           </button>
@@ -140,29 +189,51 @@ function TelegramSection() {
             <Loader2 size={12} className="animate-spin" />Waiting for connection...
           </div>
         </div>
-      ) : link ? (
-        <div className="webhook-form">
-          <div className="row gap-2">
-            <span className="badge badge-success">Connected</span>
-          </div>
-          <div className="stack-xs">
-            <label className="text-small font-medium">Events</label>
-            <div className="webhook-event-grid">
-              {EVENT_OPTIONS.map(opt => (
-                <label key={opt.value} className={cn('webhook-event-option', events.includes(opt.value) && 'webhook-event-active')}>
-                  <input type="checkbox" checked={events.includes(opt.value)} onChange={() => toggleEvent(opt.value)} className="sr-only" />
-                  <span className="text-small">{opt.label}</span>
-                </label>
+      ) : state?.connected ? (
+        <div className="telegram-subs">
+          {/* Subscribe to current context */}
+          {context && !isCurrentSubscribed && (
+            <button onClick={handleSubscribe} disabled={subscribing} className="telegram-subscribe-btn">
+              <Bell size={14} />
+              <span>{context.slug ? `Subscribe to "${context.label}"` : `Subscribe to ${context.label}`}</span>
+              {subscribing && <Loader2 size={12} className="animate-spin" />}
+            </button>
+          )}
+          {context && isCurrentSubscribed && (
+            <div className="telegram-subscribed">
+              <BellOff size={14} />
+              <span className="text-small text-text-muted">Subscribed to this {context.slug ? 'page' : 'section'}</span>
+            </div>
+          )}
+
+          {/* Existing subscriptions */}
+          {subs.length > 0 && (
+            <div className="telegram-sub-list">
+              {subs.map(sub => (
+                <div key={sub.id} className="telegram-sub-item">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-small truncate">
+                      {sub.pageSlug
+                        ? `/${sub.tagPath}/${sub.pageSlug}`
+                        : `/${sub.tagPath}/*`}
+                    </div>
+                    <div className="row flex-wrap gap-1 mt-0.5">
+                      {sub.events.map(e => <span key={e} className="badge">{e.replace('.', ' ')}</span>)}
+                    </div>
+                  </div>
+                  <button onClick={() => handleUnsubscribe(sub.id)} className="icon-btn text-text-muted hover:text-error" aria-label="Unsubscribe">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               ))}
             </div>
-          </div>
-          <div className="stack-xs">
-            <label className="text-small font-medium">Tag filter <span className="text-text-muted font-normal">(optional)</span></label>
-            <input value={tagFilter} onChange={e => setTagFilter(e.target.value)} className="input text-small" placeholder="e.g. contents/tech" />
-          </div>
-          <div className="row justify-end">
-            <Button size="sm" onClick={handleSaveEvents} isLoading={saving}>Save</Button>
-          </div>
+          )}
+
+          {subs.length === 0 && !context && (
+            <div className="telegram-empty">
+              <p className="text-small text-text-muted">Navigate to a page or section to subscribe.</p>
+            </div>
+          )}
         </div>
       ) : (
         <div className="telegram-connect">

@@ -18,7 +18,6 @@ export async function POST(request: Request) {
       const token = text.slice(7).trim();
       if (!token) return json({ ok: true });
 
-      // Token format: tg_<userId>_<random>
       const challenge = await prisma.challenge.findUnique({ where: { challenge: token } });
       if (!challenge || challenge.expiresAt < new Date()) {
         await sendMessage(chatId, 'This link has expired. Please generate a new one from the wiki.');
@@ -26,7 +25,6 @@ export async function POST(request: Request) {
         return json({ ok: true });
       }
 
-      // Extract userId from token
       const parts = token.split('_');
       if (parts.length < 3 || parts[0] !== 'tg') {
         await sendMessage(chatId, 'Invalid link. Please try again from the wiki.');
@@ -34,25 +32,32 @@ export async function POST(request: Request) {
       }
       const userId = parts[1];
 
-      // Verify user exists
       const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, displayName: true } });
       if (!user) {
         await sendMessage(chatId, 'User not found. Please try again from the wiki.');
         return json({ ok: true });
       }
 
-      // Upsert TelegramLink
-      await prisma.telegramLink.upsert({
-        where: { userId },
-        create: { userId, chatId, events: ['page.created', 'page.updated'] },
-        update: { chatId, active: true },
-      });
+      // Check if user already has any TelegramLink — update chatId on all if so
+      const existingLinks = await prisma.telegramLink.findMany({ where: { userId } });
 
-      // Clean up the challenge
+      if (existingLinks.length > 0) {
+        // Update chatId on all existing subscriptions
+        await prisma.telegramLink.updateMany({
+          where: { userId },
+          data: { chatId, active: true },
+        });
+      } else {
+        // First connection: create a connection-only record (no scope = no notifications yet)
+        await prisma.telegramLink.create({
+          data: { userId, chatId, events: [], tagPath: '', pageSlug: '' },
+        });
+      }
+
       await prisma.challenge.delete({ where: { id: challenge.id } }).catch(() => {});
 
       const name = user.displayName || 'there';
-      await sendMessage(chatId, `✅ Connected! Hi ${name}, you'll now receive wiki notifications here.\n\nSend /stop to unsubscribe.`);
+      await sendMessage(chatId, `✅ Connected! Hi ${name}, you can now subscribe to pages and sections on the wiki.\n\nSend /stop to pause all notifications.`);
       return json({ ok: true });
     }
 
@@ -64,12 +69,14 @@ export async function POST(request: Request) {
 
     // Handle /stop
     if (text === '/stop') {
-      const link = await prisma.telegramLink.findFirst({ where: { chatId } });
-      if (link) {
-        await prisma.telegramLink.update({ where: { id: link.id }, data: { active: false } });
-        await sendMessage(chatId, '🔕 Notifications disabled. You can re-enable from the wiki.');
+      const updated = await prisma.telegramLink.updateMany({
+        where: { chatId },
+        data: { active: false },
+      });
+      if (updated.count > 0) {
+        await sendMessage(chatId, '🔕 All notifications paused. Re-subscribe from any wiki page to resume.');
       } else {
-        await sendMessage(chatId, 'No active subscription found.');
+        await sendMessage(chatId, 'No active subscriptions found.');
       }
       return json({ ok: true });
     }

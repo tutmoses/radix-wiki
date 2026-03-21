@@ -605,6 +605,18 @@
     @apply flex items-center gap-1.5 px-4 py-2 rounded-md bg-[#2AABEE] text-white font-medium text-small transition-opacity;
     @apply hover:opacity-90;
   }
+  .telegram-subs { @apply flex flex-col gap-1 px-3 pb-3; }
+  .telegram-subscribe-btn {
+    @apply flex items-center gap-1.5 px-3 py-2 rounded-md text-small font-medium cursor-pointer transition-colors;
+    background: color-mix(in oklch, #2AABEE 12%, transparent);
+    color: #2AABEE;
+    &:hover { background: color-mix(in oklch, #2AABEE 22%, transparent); }
+    &:disabled { @apply opacity-60 cursor-default; }
+  }
+  .telegram-subscribed { @apply flex items-center gap-1.5 px-3 py-2 text-small; }
+  .telegram-sub-list { @apply flex flex-col gap-1 mt-1; }
+  .telegram-sub-item { @apply flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface-1/50; }
+  .telegram-empty { @apply px-3 py-4 text-center; }
 }
 
 radix-connect-button {

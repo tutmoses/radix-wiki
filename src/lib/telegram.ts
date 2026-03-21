@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/prisma/client';
 import type { WebhookEvent } from '@/lib/webhooks';
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const BOT_TOKEN = process.env.TELEGRAM_SUB_BOT_TOKEN;
 
 async function telegramApi(method: string, body: Record<string, unknown>): Promise<boolean> {
   if (!BOT_TOKEN) return false;
@@ -73,6 +73,21 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/** Check if a subscription matches the given page */
+function matchesSubscription(
+  sub: { tagPath: string; pageSlug: string },
+  page: { tagPath: string; slug: string },
+): boolean {
+  // Connection-only record (empty tagPath) — don't match any pages
+  if (!sub.tagPath) return false;
+  // Page-specific subscription: match exact tagPath + slug
+  if (sub.pageSlug) {
+    return sub.tagPath === page.tagPath && sub.pageSlug === page.slug;
+  }
+  // Section subscription: match tagPath prefix (includes exact match)
+  return page.tagPath === sub.tagPath || page.tagPath.startsWith(sub.tagPath + '/');
+}
+
 export function deliverTelegram(
   event: WebhookEvent,
   page: { slug: string; title: string; tagPath: string; version: string; excerpt?: string | null },
@@ -97,16 +112,17 @@ async function _deliverTelegram(
     where: { active: true, events: { has: event } },
   });
 
-  const matching = links.filter(
-    (l) => !l.tagPathFilter || page.tagPath.startsWith(l.tagPathFilter),
-  );
+  const matching = links.filter((l) => matchesSubscription(l, page));
 
   if (matching.length === 0) return;
+
+  // Deduplicate by chatId — a user may have multiple matching subs (page + section)
+  const uniqueChats = [...new Set(matching.map((l) => l.chatId))];
 
   const actorForFormat = actor ? { displayName: actor.displayName, address: actor.radixAddress } : null;
   const text = formatMessage(event, page, revision, actorForFormat, comment);
 
   await Promise.allSettled(
-    matching.map((link) => sendMessage(link.chatId, text)),
+    uniqueChats.map((chatId) => sendMessage(chatId, text)),
   );
 }
