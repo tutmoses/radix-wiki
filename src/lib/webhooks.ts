@@ -2,6 +2,7 @@
 
 import { createHmac, randomBytes } from 'crypto';
 import { prisma } from '@/lib/prisma/client';
+import { deliverTelegram } from '@/lib/telegram';
 
 export type WebhookEvent = 'page.created' | 'page.updated' | 'page.deleted' | 'comment.created';
 
@@ -42,6 +43,7 @@ export function deliverWebhooks(
   _deliver(event, page, revision, actor, comment).catch((err) => {
     console.error('Webhook delivery error:', err);
   });
+  deliverTelegram(event, page, revision, actor, comment);
 }
 
 async function _deliver(

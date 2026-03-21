@@ -595,6 +595,16 @@
   .webhook-event-active { @apply border-accent bg-accent-muted text-accent; }
   .webhook-secret { @apply flex flex-col gap-1 px-3 py-2.5 bg-accent-muted border-b border-border-muted; }
   .webhook-secret-value { @apply text-xs bg-surface-0 px-2 py-1 rounded font-mono flex-1 overflow-x-auto; }
+  .webhook-divider { @apply border-t border-border-muted; }
+
+  /* ===== TELEGRAM ===== */
+  .telegram-section { @apply flex flex-col; }
+  .telegram-connect { @apply flex justify-center py-4; }
+  .telegram-pending { @apply flex flex-col items-center gap-3 px-3 py-4; }
+  .telegram-deep-link {
+    @apply flex items-center gap-1.5 px-4 py-2 rounded-md bg-[#2AABEE] text-white font-medium text-small transition-opacity;
+    @apply hover:opacity-90;
+  }
 }
 
 radix-connect-button {
