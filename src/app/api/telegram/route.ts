@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma/client';
 import { json, errors, handleRoute, requireAuth } from '@/lib/api';
 import { VALID_EVENTS, type WebhookEvent } from '@/lib/webhooks';
 
-const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'RadixWikiBot';
+const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME;
 
 export async function GET(request: NextRequest) {
   return handleRoute(async () => {

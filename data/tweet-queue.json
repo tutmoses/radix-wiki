@@ -92,7 +92,8 @@
     "text": "On EVM, tokens are entries in a spreadsheet (balances mapping).\n\nOn Radix, tokens are physical objects — you hold them, move them, compose them.\n\nThis isn't a metaphor. It's the architecture.\n\nhttps://radix.wiki/contents/tech/core-concepts/asset-oriented-programming",
     "pillar": "Protocol",
     "slug": "asset-oriented-programming",
-    "posted": false
+    "posted": true,
+    "postedAt": "2026-03-21T19:08:32.584Z"
   },
   {
     "id": "c019a17b7e6b2f78c48dd458b",
