@@ -32,7 +32,7 @@ async function verifyToken(token: string): Promise<AuthSession | null> {
     const { payload } = await jwtVerify<SessionPayload>(token, JWT_SECRET);
     const session = await prisma.session.findUnique({ where: { token } });
     if (!session || session.expiresAt < new Date()) {
-      if (session) prisma.session.delete({ where: { id: session.id } }).catch(() => {});
+      if (session) await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
       return null;
     }
     return {
@@ -119,51 +119,35 @@ async function validateChallenge(challenge: string): Promise<boolean> {
   return true;
 }
 
-const rolaConfig = {
-  expectedOrigin: process.env.NODE_ENV === 'production'
-    ? RADIX_CONFIG.applicationUrl
-    : 'http://localhost:3000',
+const rola = Rola({
+  expectedOrigin: RADIX_CONFIG.applicationUrl,
   dAppDefinitionAddress: RADIX_CONFIG.dAppDefinitionAddress,
   networkId: RADIX_CONFIG.networkId,
   applicationName: RADIX_CONFIG.applicationName,
-};
-console.log('[ROLA] Init config:', { ...rolaConfig, env: process.env.NODE_ENV });
-const rola = Rola(rolaConfig);
+});
 
 export async function verifySignedChallenge(
   signedChallenge: SignedChallenge,
 ): Promise<{ isValid: boolean; error?: string }> {
   try {
-    console.log('[ROLA] Verifying signed challenge:', {
-      challenge: signedChallenge.challenge?.slice(0, 16) + '...',
-      address: signedChallenge.address?.slice(0, 20) + '...',
-      curve: signedChallenge.proof?.curve,
-      hasPublicKey: !!signedChallenge.proof?.publicKey,
-      hasSignature: !!signedChallenge.proof?.signature,
-      publicKeyLength: signedChallenge.proof?.publicKey?.length,
-      signatureLength: signedChallenge.proof?.signature?.length,
-    });
-
     if (!(await validateChallenge(signedChallenge.challenge))) {
-      console.error('[ROLA] Challenge validation failed — not found or expired:', signedChallenge.challenge.slice(0, 16) + '...');
+      console.error('ROLA: challenge validation failed', signedChallenge.challenge.slice(0, 16) + '...');
       return { isValid: false, error: 'Invalid or expired challenge' };
     }
-    console.log('[ROLA] Challenge validated OK');
 
-    const rolaInput = { ...signedChallenge, type: 'account' as const };
-    console.log('[ROLA] Calling rola.verifySignedChallenge with expectedOrigin:', rolaConfig.expectedOrigin);
-
-    const result = await rola.verifySignedChallenge(rolaInput);
+    const result = await rola.verifySignedChallenge({
+      ...signedChallenge,
+      type: 'account',
+    });
 
     if (result.isErr()) {
-      console.error('[ROLA] Verification failed:', result.error.reason, result.error.jsError?.message);
+      console.error('ROLA: verification failed', result.error.reason, result.error);
       return { isValid: false, error: result.error.reason };
     }
 
-    console.log('[ROLA] Verification passed');
     return { isValid: true };
   } catch (error) {
-    console.error('[ROLA] Verification exception:', error);
+    console.error('ROLA verification error:', error);
     return { isValid: false, error: 'Verification failed' };
   }
 }
