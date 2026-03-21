@@ -20,6 +20,7 @@ model User {
   pages           Page[]
   revisions       Revision[]
   comments        Comment[]
+  webhooks        Webhook[]
   notifications       Notification[] @relation("notifications")
   actedNotifications  Notification[] @relation("actedNotifications")
 
@@ -152,6 +153,22 @@ model Tweet {
   @@index([type, createdAt])
   @@index([inReplyTo])
   @@map("tweets")
+}
+
+model Webhook {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url           String
+  secret        String
+  events        String[]
+  tagPathFilter String?  @map("tag_path_filter")
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([active])
+  @@map("webhooks")
 }
 
 model Airdrop {

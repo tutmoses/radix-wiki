@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma/client';
 import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, CACHE, type RouteContext } from '@/lib/api';
 import { AUTHOR_SELECT } from '@/lib/wiki';
 import type { CommentInput } from '@/types';
+import { deliverWebhooks } from '@/lib/webhooks';
 
 type PathParams = { path?: string[] };
 
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
     if (!content?.trim()) return errors.badRequest('Content is required');
     if (content.length > 5000) return errors.badRequest('Comment too long (max 5000 chars)');
 
-    const page = await prisma.page.findUnique({ where: { id: pageId }, select: { id: true, tagPath: true, authorId: true } });
+    const page = await prisma.page.findUnique({ where: { id: pageId }, select: { id: true, slug: true, title: true, tagPath: true, version: true, excerpt: true, authorId: true } });
     if (!page) return errors.notFound('Page not found');
 
     const auth = await requireAuth(request, { type: 'comment', tagPath: page.tagPath });
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
       prisma.notification.create({ data: { userId: parentComment.authorId, actorId: auth.session.userId, type: 'comment_reply', pageId, commentId: comment.id } }).catch(() => {});
     }
 
+    deliverWebhooks('comment.created', page, null, { displayName: auth.session.displayName ?? null, radixAddress: auth.session.radixAddress }, { id: comment.id, content: comment.content, parentId: parentId || null });
     return json(comment, 201);
   }, 'Failed to create comment');
 }

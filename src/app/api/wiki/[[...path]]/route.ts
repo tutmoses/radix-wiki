@@ -13,6 +13,7 @@ import { validateBlocks } from '@/lib/block-utils';
 import { blocksToMdx } from '@/lib/mdx';
 import type { WikiPageInput } from '@/types';
 import type { Block } from '@/types/blocks';
+import { deliverWebhooks } from '@/lib/webhooks';
 
 type PathParams = { path?: string[] };
 
@@ -230,6 +231,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
 
     const priorRevisions = await prisma.revision.count({ where: { authorId: auth.session.userId } });
     revalidateTag('wiki', { expire: 0 });
+    deliverWebhooks('page.created', page, { changeType: 'major', message: 'Initial version', version: initialVersion }, { displayName: page.author?.displayName ?? null, radixAddress: auth.session.radixAddress });
     return json({ ...page, isFirstContribution: priorRevisions === 1 }, 201);
   }, 'Failed to create');
 }
@@ -360,6 +362,9 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     }
     const totalRevisions = await prisma.revision.count({ where: { authorId: auth.session.userId } });
     revalidateTag('wiki', { expire: 0 });
+    if (content || title) {
+      deliverWebhooks('page.updated', page, { changeType, message: revisionMessage ?? null, version: newVersion }, { displayName: page.author?.displayName ?? null, radixAddress: auth.session.radixAddress });
+    }
     return json({ ...page, isFirstContribution: totalRevisions === 1 });
   }, 'Failed to update');
 }
@@ -381,6 +386,7 @@ export async function DELETE(request: NextRequest, context: RouteContext<PathPar
 
     await prisma.page.delete({ where: { id: existing.id } });
     revalidateTag('wiki', { expire: 0 });
+    deliverWebhooks('page.deleted', existing, null, { displayName: null, radixAddress: auth.session.radixAddress });
     return json({ success: true });
   }, 'Failed to delete');
 }
