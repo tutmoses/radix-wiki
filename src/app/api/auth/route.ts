@@ -44,20 +44,33 @@ export async function POST(request: NextRequest) {
       signedChallenge?: SignedChallenge;
     };
 
+    console.log('[AUTH POST] Request received:', {
+      accountCount: accounts?.length ?? 0,
+      hasPersona: !!persona,
+      hasSignedChallenge: !!signedChallenge,
+      challengePreview: signedChallenge?.challenge?.slice(0, 16),
+      proofType: typeof signedChallenge?.proof,
+      proofKeys: signedChallenge?.proof ? Object.keys(signedChallenge.proof) : [],
+    });
+
     if (!accounts || accounts.length === 0) {
+      console.error('[AUTH POST] No accounts provided');
       return errors.badRequest('No accounts provided');
     }
 
     const primaryAccount = accounts[0]!;
 
     if (!signedChallenge) {
+      console.error('[AUTH POST] No signed challenge');
       return errors.badRequest('Signed challenge is required');
     }
 
     const verification = await verifySignedChallenge(signedChallenge);
     if (!verification.isValid) {
+      console.error('[AUTH POST] Verification failed:', verification.error);
       return json({ error: verification.error || 'Verification failed' }, { status: 401 });
     }
+    console.log('[AUTH POST] Verification passed, creating/finding user');
 
     let user = await prisma.user.findUnique({ where: { radixAddress: primaryAccount.address } });
     let isNewUser = false;

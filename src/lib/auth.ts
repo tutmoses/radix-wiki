@@ -119,37 +119,51 @@ async function validateChallenge(challenge: string): Promise<boolean> {
   return true;
 }
 
-const rola = Rola({
+const rolaConfig = {
   expectedOrigin: process.env.NODE_ENV === 'production'
     ? RADIX_CONFIG.applicationUrl
     : 'http://localhost:3000',
   dAppDefinitionAddress: RADIX_CONFIG.dAppDefinitionAddress,
   networkId: RADIX_CONFIG.networkId,
   applicationName: RADIX_CONFIG.applicationName,
-});
+};
+console.log('[ROLA] Init config:', { ...rolaConfig, env: process.env.NODE_ENV });
+const rola = Rola(rolaConfig);
 
 export async function verifySignedChallenge(
   signedChallenge: SignedChallenge,
 ): Promise<{ isValid: boolean; error?: string }> {
   try {
-    if (!(await validateChallenge(signedChallenge.challenge))) {
-      console.error('ROLA: challenge validation failed', signedChallenge.challenge.slice(0, 16) + '...');
-      return { isValid: false, error: 'Invalid or expired challenge' };
-    }
-
-    const result = await rola.verifySignedChallenge({
-      ...signedChallenge,
-      type: 'account',
+    console.log('[ROLA] Verifying signed challenge:', {
+      challenge: signedChallenge.challenge?.slice(0, 16) + '...',
+      address: signedChallenge.address?.slice(0, 20) + '...',
+      curve: signedChallenge.proof?.curve,
+      hasPublicKey: !!signedChallenge.proof?.publicKey,
+      hasSignature: !!signedChallenge.proof?.signature,
+      publicKeyLength: signedChallenge.proof?.publicKey?.length,
+      signatureLength: signedChallenge.proof?.signature?.length,
     });
 
+    if (!(await validateChallenge(signedChallenge.challenge))) {
+      console.error('[ROLA] Challenge validation failed — not found or expired:', signedChallenge.challenge.slice(0, 16) + '...');
+      return { isValid: false, error: 'Invalid or expired challenge' };
+    }
+    console.log('[ROLA] Challenge validated OK');
+
+    const rolaInput = { ...signedChallenge, type: 'account' as const };
+    console.log('[ROLA] Calling rola.verifySignedChallenge with expectedOrigin:', rolaConfig.expectedOrigin);
+
+    const result = await rola.verifySignedChallenge(rolaInput);
+
     if (result.isErr()) {
-      console.error('ROLA: verification failed', result.error.reason, result.error);
+      console.error('[ROLA] Verification failed:', result.error.reason, result.error.jsError?.message);
       return { isValid: false, error: result.error.reason };
     }
 
+    console.log('[ROLA] Verification passed');
     return { isValid: true };
   } catch (error) {
-    console.error('ROLA verification error:', error);
+    console.error('[ROLA] Verification exception:', error);
     return { isValid: false, error: 'Verification failed' };
   }
 }

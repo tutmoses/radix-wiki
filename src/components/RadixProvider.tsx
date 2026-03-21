@@ -79,9 +79,24 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
         rdtRef.current = rdt;
 
         rdt.walletApi.provideChallengeGenerator(async () => {
-          const res = await fetch('/api/auth/challenge');
-          const { challenge } = await res.json();
-          return challenge;
+          try {
+            const res = await fetch('/api/auth/challenge');
+            if (!res.ok) {
+              const text = await res.text().catch(() => '');
+              console.error('[ROLA] Challenge fetch failed:', res.status, text);
+              throw new Error(`Challenge endpoint returned ${res.status}`);
+            }
+            const data = await res.json();
+            if (!data.challenge || typeof data.challenge !== 'string') {
+              console.error('[ROLA] Invalid challenge response:', data);
+              throw new Error('No valid challenge returned');
+            }
+            console.log('[ROLA] Challenge obtained:', data.challenge.slice(0, 8) + '...');
+            return data.challenge;
+          } catch (error) {
+            console.error('[ROLA] Challenge generator failed:', error);
+            throw error;
+          }
         });
 
         rdt.walletApi.setRequestData(
@@ -89,33 +104,60 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
         );
 
         // dataRequestControl intercepts wallet responses BEFORE RDT processes them.
-        // This is where ROLA auth happens — it fires on sendRequest() responses,
-        // NOT on cached replays. Throwing prevents RDT from entering logged-in state.
+        // Auth happens here — fires on sendRequest() responses, NOT cached replays.
+        // We never throw: if auth fails, RDT still proceeds so walletData$ emits
+        // and clears isConnecting. isAuthenticated stays false (no session).
         rdt.walletApi.dataRequestControl(async (walletResponse) => {
-          const account = walletResponse.accounts?.[0];
-          const proof = walletResponse.proofs?.find(
-            (p: { address: string }) => p.address === account?.address,
-          );
+          try {
+            console.log('[ROLA] dataRequestControl fired:', {
+              accountCount: walletResponse.accounts?.length ?? 0,
+              proofCount: walletResponse.proofs?.length ?? 0,
+              hasPersona: !!walletResponse.persona,
+              proofAddresses: walletResponse.proofs?.map((p: { address: string }) => p.address.slice(0, 20) + '...'),
+            });
 
-          if (!account || !proof) {
-            throw new Error('No account or proof in wallet response');
+            const account = walletResponse.accounts?.[0];
+            const proof = walletResponse.proofs?.find(
+              (p: { address: string }) => p.address === account?.address,
+            );
+
+            if (!account) {
+              console.error('[ROLA] No account in wallet response');
+              return;
+            }
+            if (!proof) {
+              console.error('[ROLA] No matching proof for account:', account.address.slice(0, 20) + '...',
+                'Available proof addresses:', walletResponse.proofs?.map((p: { address: string }) => p.address.slice(0, 20) + '...'));
+              return;
+            }
+
+            console.log('[ROLA] Proof found:', {
+              challenge: proof.challenge?.slice(0, 8) + '...',
+              address: proof.address.slice(0, 20) + '...',
+              curve: proof.proof?.curve,
+              hasPublicKey: !!proof.proof?.publicKey,
+              hasSignature: !!proof.proof?.signature,
+            });
+
+            const data: RadixWalletData = {
+              persona: walletResponse.persona ? {
+                identityAddress: walletResponse.persona.identityAddress,
+                label: walletResponse.persona.label,
+              } : undefined,
+              accounts: walletResponse.accounts.map((a) => ({
+                address: a.address, label: a.label, appearanceId: a.appearanceId,
+              })),
+            };
+
+            await createSession(data, {
+              challenge: proof.challenge,
+              address: proof.address,
+              proof: proof.proof,
+            });
+            console.log('[ROLA] Session created successfully');
+          } catch (error) {
+            console.error('[ROLA] Auth failed:', error);
           }
-
-          const data: RadixWalletData = {
-            persona: walletResponse.persona ? {
-              identityAddress: walletResponse.persona.identityAddress,
-              label: walletResponse.persona.label,
-            } : undefined,
-            accounts: walletResponse.accounts.map((a) => ({
-              address: a.address, label: a.label, appearanceId: a.appearanceId,
-            })),
-          };
-
-          await createSession(data, {
-            challenge: proof.challenge,
-            address: proof.address,
-            proof: proof.proof,
-          });
         });
 
         // walletData$ only tracks connection state — auth is handled above
