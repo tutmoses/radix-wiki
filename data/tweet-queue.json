@@ -84,7 +84,8 @@
     "text": "DeXter\n\nCommunity-driven order-book DEX on Radix built on the AlphaDEX Scrypto package, proposed for retirement in February 2026.\n\nhttps://radix.wiki/ecosystem/dexter",
     "pillar": "Ecosystem",
     "slug": "dexter",
-    "posted": false
+    "posted": true,
+    "postedAt": "2026-03-21T14:05:39.844Z"
   },
   {
     "id": "c7c47e356e2d1572c4d044ff3",

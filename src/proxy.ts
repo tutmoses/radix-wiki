@@ -18,7 +18,7 @@ const PLAUSIBLE_DOMAIN = (() => {
   catch { return 'radix.wiki'; }
 })();
 
-export function middleware(request: NextRequest, event: NextFetchEvent) {
+export function proxy(request: NextRequest, event: NextFetchEvent) {
   const ua = request.headers.get('user-agent') || '';
   const bot = Object.entries(AI_BOTS).find(([pattern]) => ua.includes(pattern));
   if (!bot) return NextResponse.next();

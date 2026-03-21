@@ -5,13 +5,14 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
-import { Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, FileCode, Bell } from 'lucide-react';
+import { Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, FileCode, Bell, Webhook } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth, useClickOutside, usePagePath } from '@/hooks';
 import { cn, shortenAddress, formatRelativeTime, userProfileSlug } from '@/lib/utils';
 import { Button, Dropdown } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiPage, WikiNotification } from '@/types';
+import { WebhookSettings } from '@/components/WebhookSettings';
 
 function usePageContext() {
   const { isHomepage, isPage, isEdit, isHistory, viewPath, tagPath, slug } = usePagePath();
@@ -40,29 +41,48 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
   const notifications = useStore(s => s.notifications);
   const markNotificationsRead = useStore(s => s.markNotificationsRead);
   const unreadCount = useStore(s => s.unreadCount);
+  const [tab, setTab] = useState<'notifications' | 'webhooks'>('notifications');
 
   return (
     <Dropdown onClose={onClose} className="notification-dropdown">
-      <div className="notification-header">
-        <span className="font-medium">Notifications</span>
-        {unreadCount > 0 && <button onClick={() => markNotificationsRead()} className="notification-mark-read">Mark all read</button>}
+      <div className="notification-tabs">
+        <button onClick={() => setTab('notifications')} className={cn('notification-tab', tab === 'notifications' && 'notification-tab-active')}>
+          <Bell size={14} />Notifications
+          {unreadCount > 0 && <span className="notification-badge-inline">{unreadCount}</span>}
+        </button>
+        <button onClick={() => setTab('webhooks')} className={cn('notification-tab', tab === 'webhooks' && 'notification-tab-active')}>
+          <Webhook size={14} />Webhooks
+        </button>
       </div>
-      {notifications.length === 0 ? (
-        <div className="notification-empty">No notifications yet</div>
+
+      {tab === 'notifications' ? (
+        <>
+          {unreadCount > 0 && (
+            <div className="notification-header">
+              <span />
+              <button onClick={() => markNotificationsRead()} className="notification-mark-read">Mark all read</button>
+            </div>
+          )}
+          {notifications.length === 0 ? (
+            <div className="notification-empty">No notifications yet</div>
+          ) : (
+            <div className="notification-list">
+              {notifications.map(n => (
+                <button key={n.id} className={cn('notification-item', !n.read && 'notification-unread')}
+                  onClick={() => { markNotificationsRead([n.id]); router.push(`/${n.page.tagPath}/${n.page.slug}`); onClose(); }}>
+                  <UserAvatar radixAddress={n.actor.radixAddress} avatarUrl={n.actor.avatarUrl} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-small truncate">{notificationText(n)}</div>
+                    <div className="text-xs text-text-muted">{formatRelativeTime(n.createdAt)}</div>
+                  </div>
+                  {!n.read && <span className="notification-dot" />}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       ) : (
-        <div className="notification-list">
-          {notifications.map(n => (
-            <button key={n.id} className={cn('notification-item', !n.read && 'notification-unread')}
-              onClick={() => { markNotificationsRead([n.id]); router.push(`/${n.page.tagPath}/${n.page.slug}`); onClose(); }}>
-              <UserAvatar radixAddress={n.actor.radixAddress} avatarUrl={n.actor.avatarUrl} size="sm" />
-              <div className="min-w-0 flex-1">
-                <div className="text-small truncate">{notificationText(n)}</div>
-                <div className="text-xs text-text-muted">{formatRelativeTime(n.createdAt)}</div>
-              </div>
-              {!n.read && <span className="notification-dot" />}
-            </button>
-          ))}
-        </div>
+        <WebhookSettings />
       )}
     </Dropdown>
   );
