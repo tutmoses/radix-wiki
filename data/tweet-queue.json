@@ -100,7 +100,8 @@
     "text": "Did you know? Bring off-chain data on-ledger for Scrypto components using push and pull oracle patterns.\n\nhttps://radix.wiki/developers/infrastructure/03-oracle-integration",
     "pillar": "Dev",
     "slug": "03-oracle-integration",
-    "posted": false
+    "posted": true,
+    "postedAt": "2026-03-23T14:05:24.334Z"
   },
   {
     "id": "cfc4a9cf08468e4a52b4cda1c",
