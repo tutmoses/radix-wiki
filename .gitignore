@@ -77,3 +77,4 @@ Thumbs.db
 !prisma/seed.ts
 !prisma/*.sql
 data/tweet-queue.json
+.claude/worktrees/trusting-newton/
