@@ -2,36 +2,7 @@
 
 export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice' | 'infobox' | 'rssFeed' | 'codeTabs' | 'store' | 'footer' | 'stats' | 'testimonial';
 
-export interface GridPosition {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-export interface BlockStyle {
-  backgroundColor?: string;
-  backgroundImage?: string;
-  backgroundSize?: 'cover' | 'contain' | 'auto';
-  backgroundPosition?: 'center' | 'top' | 'bottom' | 'left' | 'right';
-  padding?: string;
-  margin?: string;
-  borderWidth?: number;
-  borderColor?: string;
-  borderStyle?: 'solid' | 'dashed' | 'dotted' | 'none';
-  borderRadius?: string;
-  textColor?: string;
-  textAlign?: 'left' | 'center' | 'right';
-  fontSize?: string;
-  opacity?: number;
-  shadow?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'inner';
-  glass?: boolean;
-  backgroundGradientFrom?: string;
-  backgroundGradientTo?: string;
-  backgroundGradientAngle?: number;
-}
-
-interface BaseBlock { id: string; type: BlockType; grid?: GridPosition; style?: BlockStyle; }
+interface BaseBlock { id: string; type: BlockType; }
 
 export interface ContentBlock extends BaseBlock { type: 'content'; text: string; }
 export interface RecentPagesBlock extends BaseBlock { type: 'recentPages'; tagPath?: string; limit: number; resolvedPages?: any[]; }
