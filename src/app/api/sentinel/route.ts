@@ -4,7 +4,7 @@
 // Checks a batch per run (round-robin through all pages over time).
 
 import { prisma } from '@/lib/prisma/client';
-import { json, handleRoute, requireCron } from '@/lib/api';
+import { json, cronRoute } from '@/lib/api';
 
 export const maxDuration = 120;
 
@@ -40,11 +40,7 @@ async function checkLink(url: string): Promise<boolean> {
   return false;
 }
 
-export async function GET(request: Request) {
-  return handleRoute(async () => {
-    const cronErr = requireCron(request);
-    if (cronErr) return cronErr;
-
+export const GET = cronRoute(async () => {
     // Round-robin: skip pages checked in the last 7 days
     const recentChecks = await prisma.tweet.findMany({
       where: { type: 'sentinel_check', createdAt: { gte: new Date(Date.now() - 7 * 86_400_000) } },
@@ -82,16 +78,20 @@ export async function GET(request: Request) {
         pageIssues.push('missing_infobox');
       }
 
-      // External link checks
+      // External link checks (batched for speed)
       const links = extractExternalLinks(page.content);
+      linksChecked += links.length;
       let brokenCount = 0;
-      for (const link of links) {
-        linksChecked++;
-        const ok = await checkLink(link);
-        if (!ok) {
-          brokenCount++;
-          issues.push({ page: pageKey, type: 'broken_link', detail: link });
-          pageIssues.push(`broken:${link}`);
+      const CONCURRENCY = 10;
+      for (let i = 0; i < links.length; i += CONCURRENCY) {
+        const batch = links.slice(i, i + CONCURRENCY);
+        const results = await Promise.all(batch.map(async (link) => ({ link, ok: await checkLink(link) })));
+        for (const { link, ok } of results) {
+          if (!ok) {
+            brokenCount++;
+            issues.push({ page: pageKey, type: 'broken_link', detail: link });
+            pageIssues.push(`broken:${link}`);
+          }
         }
       }
 
@@ -115,5 +115,4 @@ export async function GET(request: Request) {
       issueCount: issues.length,
       issues,
     });
-  }, 'Sentinel: check failed');
-}
+}, 'Sentinel: check failed');

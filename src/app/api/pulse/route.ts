@@ -4,7 +4,7 @@
 // re-triggers them. Logs health status for trend analysis.
 
 import { prisma } from '@/lib/prisma/client';
-import { json, handleRoute, requireCron } from '@/lib/api';
+import { json, cronRoute } from '@/lib/api';
 
 export const maxDuration = 60;
 
@@ -25,11 +25,7 @@ const AGENTS = [
   { name: 'mend', type: 'mend', statusFilter: 'sent', maxAgeHours: 48, cronPath: '/api/mend' },
 ] as const;
 
-export async function GET(request: Request) {
-  return handleRoute(async () => {
-    const cronErr = requireCron(request);
-    if (cronErr) return cronErr;
-
+export const GET = cronRoute(async () => {
     const now = Date.now();
     const checks: AgentHealth[] = [];
     const healed: string[] = [];
@@ -102,5 +98,4 @@ export async function GET(request: Request) {
     }).catch(() => {});
 
     return json({ status: overall, checks, healed, pendingIntel, timestamp: new Date().toISOString() });
-  }, 'Pulse: health check failed');
-}
+}, 'Pulse: health check failed');

@@ -6,7 +6,7 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { generateWithLLM, formatPageContext } from '@/lib/moltbook';
-import { json, handleRoute, requireCron } from '@/lib/api';
+import { json, cronRoute } from '@/lib/api';
 import { getRecentPostSlugs } from '@/lib/scoring';
 import { BASE_URL } from '@/lib/utils';
 
@@ -26,11 +26,7 @@ const PILLARS = ['review', 'ecosystem', 'dev', 'roadmap', 'protocol', 'community
 
 export const maxDuration = 60;
 
-export async function GET(request: Request) {
-  return handleRoute(async () => {
-    const cronErr = requireCron(request);
-    if (cronErr) return cronErr;
-
+export const GET = cronRoute(async () => {
     // Back-pressure: don't queue if posting hasn't kept up
     const queueDepth = await prisma.tweet.count({ where: { type: 'twitter', status: 'queued' } });
     if (queueDepth >= MAX_QUEUED) return json({ status: 'skipped', reason: `queue full (${queueDepth} pending)` });
@@ -60,5 +56,4 @@ export async function GET(request: Request) {
     });
 
     return json({ status: 'queued', pillar, title: page.title, text, queueDepth: queueDepth + 1 });
-  }, 'Herald: failed to generate tweet');
-}
+}, 'Herald: failed to generate tweet');

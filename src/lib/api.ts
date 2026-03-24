@@ -65,3 +65,11 @@ export async function handleRoute(fn: () => Promise<NextResponse>, errorMsg = 'I
     return errors.internal(errorMsg);
   }
 }
+
+export function cronRoute(fn: (request: Request) => Promise<NextResponse>, errorMsg = 'Cron failed') {
+  return (request: Request) => handleRoute(async () => {
+    const cronErr = requireCron(request);
+    if (cronErr) return cronErr;
+    return fn(request);
+  }, errorMsg);
+}

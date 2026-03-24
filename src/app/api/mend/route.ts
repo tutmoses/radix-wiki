@@ -5,7 +5,7 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
-import { json, handleRoute, requireCron } from '@/lib/api';
+import { json, cronRoute } from '@/lib/api';
 import { generateWithLLM } from '@/lib/moltbook';
 import { parseVersion, incrementVersion, formatVersion } from '@/lib/versioning';
 import { randomUUID } from 'crypto';
@@ -55,11 +55,7 @@ function pageTextContent(content: Block[]): string {
   return texts.join('\n\n').slice(0, 3000);
 }
 
-export async function GET(request: Request) {
-  return handleRoute(async () => {
-    const cronErr = requireCron(request);
-    if (cronErr) return cronErr;
-
+export const GET = cronRoute(async () => {
     // Find sentinel issues not yet mended
     const recentMends = await prisma.tweet.findMany({
       where: { type: 'mend', createdAt: { gte: new Date(Date.now() - 14 * 86_400_000) } },
@@ -202,5 +198,4 @@ export async function GET(request: Request) {
       failed: results.filter(r => r.status === 'failed').length,
       results,
     });
-  }, 'Mender: fix failed');
-}
+}, 'Mender: fix failed');

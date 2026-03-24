@@ -2,17 +2,14 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { moltbook, generatePost, generateTitle, pickSubmolt } from '@/lib/moltbook';
-import { json, errors, handleRoute, requireCron } from '@/lib/api';
+import { json, errors, cronRoute } from '@/lib/api';
 import { getRecentPostSlugs } from '@/lib/scoring';
 import { BASE_URL } from '@/lib/utils';
 const STALENESS_DAYS = 90;
 
 export const maxDuration = 60;
 
-export async function GET(request: Request) {
-  return handleRoute(async () => {
-    const cronErr = requireCron(request);
-    if (cronErr) return cronErr;
+export const GET = cronRoute(async () => {
     if (!process.env.MOLTBOOK_API_KEY) return errors.badRequest('MOLTBOOK_API_KEY not configured');
 
     const freshCutoff = new Date(Date.now() - STALENESS_DAYS * 86_400_000);
@@ -60,5 +57,4 @@ export async function GET(request: Request) {
       }).catch(() => {});
       return json({ posted: 0, results: [{ submolt, title: page.title, status: 'failed', error: errorMsg }] });
     }
-  }, 'Failed to post to Moltbook');
-}
+}, 'Failed to post to Moltbook');

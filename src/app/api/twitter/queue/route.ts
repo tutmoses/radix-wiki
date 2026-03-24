@@ -6,16 +6,12 @@
 // Called from Claude Code sessions during the morning routine.
 
 import { prisma } from '@/lib/prisma/client';
-import { json, handleRoute, requireCron } from '@/lib/api';
+import { json, cronRoute } from '@/lib/api';
 
 const MIN_GAP_MS = 2 * 3_600_000;   // 2 hours between posts
 const EXPIRY_MS  = 48 * 3_600_000;      // Tweets older than 48h get expired
 
-export async function GET(request: Request) {
-  return handleRoute(async () => {
-    const cronErr = requireCron(request);
-    if (cronErr) return cronErr;
-
+export const GET = cronRoute(async () => {
     const now = Date.now();
 
     // 1. Expire stale queued tweets (>48h old)
@@ -65,14 +61,9 @@ export async function GET(request: Request) {
       tweet: { id: next.id, text: next.text, pageSlug: next.pageSlug, pageTagPath: next.pageTagPath },
       queueDepth,
     });
-  }, 'Queue: failed to read');
-}
+}, 'Queue: failed to read');
 
-export async function POST(request: Request) {
-  return handleRoute(async () => {
-    const cronErr = requireCron(request);
-    if (cronErr) return cronErr;
-
+export const POST = cronRoute(async (request) => {
     const { id, action } = await request.json() as { id: string; action: 'sent' | 'skip' };
 
     if (!id || !['sent', 'skip'].includes(action)) {
@@ -83,5 +74,4 @@ export async function POST(request: Request) {
     await prisma.tweet.update({ where: { id }, data: { status } });
 
     return json({ ok: true, id, status });
-  }, 'Queue: failed to update');
-}
+}, 'Queue: failed to update');

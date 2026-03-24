@@ -3,7 +3,7 @@
 // Monitors Radix blog, GitHub releases, and the Radix learn site.
 // Stores intel records and flags topics that lack wiki coverage.
 
-import { json, handleRoute, requireCron } from '@/lib/api';
+import { json, cronRoute } from '@/lib/api';
 import { triageIntel, type IntelItem } from '@/lib/scout';
 
 export const maxDuration = 120;
@@ -95,11 +95,7 @@ async function fetchRadixLearn(): Promise<IntelItem[]> {
 
 // --- Route ---
 
-export async function GET(request: Request) {
-  return handleRoute(async () => {
-    const cronErr = requireCron(request);
-    if (cronErr) return cronErr;
-
+export const GET = cronRoute(async () => {
     // Gather intel from all sources
     const [github, blog, learn] = await Promise.all([
       fetchGitHubReleases(),
@@ -120,5 +116,4 @@ export async function GET(request: Request) {
       flagged: flagged.length,
       items: flagged,
     });
-  }, 'Scout: intel sweep failed');
-}
+}, 'Scout: intel sweep failed');

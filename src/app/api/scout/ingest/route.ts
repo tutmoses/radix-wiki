@@ -3,16 +3,12 @@
 // POST: Accepts IntelItem[] array, deduplicates, stores, and triages via LLM.
 // Called from scripts/scout-telegram.mjs during Claude Code sessions.
 
-import { json, handleRoute, requireCron } from '@/lib/api';
+import { json, cronRoute } from '@/lib/api';
 import { triageIntel, type IntelItem } from '@/lib/scout';
 
 export const maxDuration = 120;
 
-export async function POST(request: Request) {
-  return handleRoute(async () => {
-    const cronErr = requireCron(request);
-    if (cronErr) return cronErr;
-
+export const POST = cronRoute(async (request) => {
     const body = await request.json() as IntelItem[];
     if (!Array.isArray(body) || body.length === 0) {
       return json({ status: 'empty', items: 0 });
@@ -27,5 +23,4 @@ export async function POST(request: Request) {
       flagged: flagged.length,
       items: flagged,
     });
-  }, 'Scout ingest: failed');
-}
+}, 'Scout ingest: failed');

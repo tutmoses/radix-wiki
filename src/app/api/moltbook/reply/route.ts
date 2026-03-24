@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { moltbook, generateCommentReply, type MoltbookComment } from '@/lib/moltbook';
-import { json, errors, handleRoute, requireCron } from '@/lib/api';
+import { json, errors, cronRoute } from '@/lib/api';
 import { BASE_URL } from '@/lib/utils';
 
 const MAX_REPLIES_PER_RUN = 5;
@@ -10,10 +10,7 @@ const POST_LOOKBACK_DAYS = 14;
 
 export const maxDuration = 120;
 
-export async function GET(request: Request) {
-  return handleRoute(async () => {
-    const cronErr = requireCron(request);
-    if (cronErr) return cronErr;
+export const GET = cronRoute(async () => {
     if (!process.env.MOLTBOOK_API_KEY) return errors.badRequest('MOLTBOOK_API_KEY not configured');
 
     // 1. Fetch our recent Moltbook posts that have stored post IDs
@@ -105,5 +102,4 @@ export async function GET(request: Request) {
     }
 
     return json({ replied, postsChecked: recentPosts.length, results });
-  }, 'Failed to reply on Moltbook');
-}
+}, 'Failed to reply on Moltbook');
