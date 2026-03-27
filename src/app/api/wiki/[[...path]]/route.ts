@@ -113,8 +113,9 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       return res;
     }
 
-    // Agent-friendly text format: ?format=text returns clean markdown
-    if (searchParams.get('format') === 'text') {
+    // Agent-friendly text format: Accept: text/markdown or ?format=text
+    const accept = request.headers.get('accept') || '';
+    if (accept.includes('text/markdown') || accept.includes('text/plain') || searchParams.get('format') === 'text') {
       const md = blocksToMdx(page);
       return new NextResponse(md, {
         headers: {

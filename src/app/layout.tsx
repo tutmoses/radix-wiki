@@ -67,6 +67,15 @@ const SITE_JSON_LD = JSON.stringify([
     url: BASE_URL,
     potentialAction: { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: `${BASE_URL}/?search={search_term_string}` }, 'query-input': 'required name=search_term_string' },
   },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebAPI',
+    name: 'RADIX Wiki API',
+    description: 'REST API and MCP server for reading and writing Radix ecosystem wiki content',
+    url: `${BASE_URL}/api/wiki`,
+    documentation: `${BASE_URL}/llms.txt`,
+    provider: { '@type': 'Organization', name: 'RADIX Wiki', url: BASE_URL },
+  },
 ]);
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -75,6 +84,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="help" type="text/plain" href="/llms.txt" />
         <link rel="alternate" type="text/plain" href="/llms-full.txt" title="Full LLM content" />
+        <link rel="service-desc" type="application/openapi+json" href="/.well-known/openapi.json" />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: SITE_JSON_LD }} />

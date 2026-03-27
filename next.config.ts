@@ -67,6 +67,7 @@ const nextConfig: NextConfig = {
     return {
       beforeFiles: [
         { source: '/og', destination: '/api/og' },
+        { source: '/:path*.md', destination: '/api/wiki/:path*?format=text' },
       ],
       afterFiles: [
         { source: '/js/script.js', destination: 'https://plausible.io/js/pa-5NRG8r4xW19fPk-6FUmFm.js' },

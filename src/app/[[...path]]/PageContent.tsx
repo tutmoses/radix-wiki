@@ -336,7 +336,10 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
                   )}
                 </div>
                 <div className="page-card-body">
-                  <h3 className="m-0!">{p.title}</h3>
+                  <div className="spread">
+                    <h3 className="m-0!">{p.title}</h3>
+                    {p.metadata?.status && <span title={p.metadata.status === '🟢' ? 'Active' : p.metadata.status === '🟠' ? 'In Development' : 'Inactive'}>{p.metadata.status}</span>}
+                  </div>
                   {p.excerpt && <p className="text-text-muted text-small line-clamp-2">{p.excerpt}</p>}
                 </div>
               </Card>

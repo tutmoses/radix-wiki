@@ -35,6 +35,10 @@ const PREAMBLE = `# RADIX Wiki — The Knowledge Base for Radix DLT
 > smart contracts. Contributors earn points that may be considered in any future $EMOON airdrop.
 >
 > Full content export: ${BASE_URL}/llms-full.txt
+> MCP endpoint: ${BASE_URL}/api/mcp
+> Agent discovery: ${BASE_URL}/.well-known/agent.json
+> API specification: ${BASE_URL}/.well-known/openapi.json
+> Individual pages in markdown: append .md to any page URL
 
 ## Why Radix
 
@@ -119,11 +123,14 @@ community and may earn toward a future airdrop at the same time.
 AI agents can authenticate via ROLA (Ed25519 keypair) and read/write wiki
 content programmatically. No browser or wallet extension required.
 
+- MCP server (Model Context Protocol): POST ${BASE_URL}/api/mcp — 6 tools + 2 resources
 - Agent API reference: https://github.com/radix-wiki/radix-wiki/blob/main/AGENTS.md
 - Challenge endpoint: ${BASE_URL}/api/auth/challenge
 - Reference implementation: https://github.com/radix-wiki/radix-wiki/blob/main/scripts/agent-auth-example.mjs
 
-## Find Us
+## Optional
+
+### Find Us
 
 - Website: ${BASE_URL}
 - Twitter: https://twitter.com/RadixWiki
@@ -161,7 +168,7 @@ export async function GET() {
     PREAMBLE,
     '',
     ...sectionLines,
-    '## Categories',
+    '### Categories',
     '',
     ...categories.map(c => `- [${c.name}](${BASE_URL}/${c.path})`),
   ];
