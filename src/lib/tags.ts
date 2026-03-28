@@ -197,7 +197,7 @@ export const TAG_HIERARCHY: TagNode[] = [
 ];
 
 const AUTHOR_ONLY_PATHS = new Set(['blog']);
-const LOCKED_PAGES = new Set(['ecosystem/xrd-domains']);
+const LOCKED_PAGES = new Set(['ecosystem/radix-namespace']);
 export const isLockedPage = (tagPath: string, slug: string): boolean => LOCKED_PAGES.has(`${tagPath}/${slug}`);
 
 interface TagPathContext {
