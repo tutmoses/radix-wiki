@@ -8,7 +8,7 @@ import { prisma } from '@/lib/prisma/client';
 import { generateWithLLM, formatPageContext } from '@/lib/moltbook';
 import { json, cronRoute } from '@/lib/api';
 import { getRecentPostSlugs } from '@/lib/scoring';
-import { BASE_URL } from '@/lib/utils';
+import { BASE_URL, getContentSnippet } from '@/lib/utils';
 
 const TWEET_SYSTEM_PROMPT = `You are @RadixWiki, a knowledgeable Twitter account for the Radix DLT ecosystem wiki. Write a tweet about the wiki page below.
 
@@ -32,23 +32,24 @@ export const GET = cronRoute(async () => {
     if (queueDepth >= MAX_QUEUED) return json({ status: 'skipped', reason: `queue full (${queueDepth} pending)` });
 
     const pages = await prisma.page.findMany({
-      where: { excerpt: { not: null }, tagPath: { not: '' } },
-      select: { title: true, tagPath: true, slug: true, excerpt: true },
+      where: { tagPath: { not: '' } },
+      select: { title: true, tagPath: true, slug: true, content: true },
       orderBy: { updatedAt: 'desc' },
       take: 20,
     });
 
     const alreadyTweeted = await getRecentPostSlugs(['twitter', 'moltbook'], 7);
     const eligible = pages.filter(p =>
-      p.tagPath && p.slug && p.excerpt && !alreadyTweeted.has(`${p.tagPath}/${p.slug}`),
+      p.tagPath && p.slug && !alreadyTweeted.has(`${p.tagPath}/${p.slug}`),
     );
 
     if (eligible.length === 0) return json({ status: 'skipped', reason: 'no fresh pages' });
 
     const page = eligible[Math.floor(Math.random() * Math.min(eligible.length, 10))]!;
     const url = `${BASE_URL}/${page.tagPath}/${page.slug}`;
-    const text = await generateWithLLM(TWEET_SYSTEM_PROMPT, formatPageContext(page, url), 100, url)
-      ?? `${page.title}: ${page.excerpt || 'Read more on the Radix wiki.'} ${url}`;
+    const snippet = getContentSnippet(page.content);
+    const text = await generateWithLLM(TWEET_SYSTEM_PROMPT, formatPageContext({ ...page, excerpt: snippet }, url), 100, url)
+      ?? `${page.title}: ${snippet || 'Read more on the Radix wiki.'} ${url}`;
     const pillar = PILLARS[new Date().getUTCDay()]!;
 
     await prisma.tweet.create({

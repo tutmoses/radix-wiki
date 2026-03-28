@@ -14,7 +14,7 @@ const IdeasView = dynamic(() => import('./IdeasView'), { loading: () => <PageSke
 const LeaderboardView = dynamic(() => import('@/components/LeaderboardView'), { loading: () => <PageSkeleton /> });
 const WelcomeView = dynamic(() => import('@/components/WelcomeView'), { loading: () => <PageSkeleton /> });
 const RewardsView = dynamic(() => import('@/components/RewardsView'), { loading: () => <PageSkeleton /> });
-import { BASE_URL } from '@/lib/utils';
+import { BASE_URL, getContentSnippet } from '@/lib/utils';
 import type { Block } from '@/types/blocks';
 import type { WikiPage } from '@/types';
 
@@ -84,7 +84,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   else if (parsed.type === 'page' || parsed.type === 'edit') page = await getPage(parsed.tagPath, parsed.slug);
 
   const title = page?.title || 'RADIX Wiki';
-  const description = page?.excerpt || `${title} — community-maintained article on RADIX Wiki.`;
+  const description = getContentSnippet(page?.content) || `${title} — community-maintained article on RADIX Wiki.`;
   const segments = path?.length ? path.join('/') : '';
   const canonical = segments ? `${BASE_URL}/${segments}` : BASE_URL;
   const ogParams = new URLSearchParams({ title, excerpt: description, tagPath: page?.tagPath || '' });
@@ -137,7 +137,7 @@ function ArticleJsonLd({ page, url }: { page: WikiPage; url: string }) {
     '@type': 'Article',
     mainEntityOfPage: { '@type': 'WebPage', '@id': url },
     headline: page.title,
-    description: page.excerpt || '',
+    description: getContentSnippet(page.content) || '',
     url,
     datePublished: page.createdAt,
     dateModified: page.updatedAt,

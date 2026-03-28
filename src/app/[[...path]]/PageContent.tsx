@@ -14,7 +14,7 @@ import { Footer } from '@/components/Footer';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Badge, Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
-import { cn, slugify, generateBannerSvg, formatRelativeTime, formatDate } from '@/lib/utils';
+import { cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet } from '@/lib/utils';
 import { findTagByPath, getXrdRequired, type SortOrder, type TagNode } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
 import type { WikiPage, AdjacentPages } from '@/types';
@@ -340,7 +340,7 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
                     <h3 className="m-0!">{p.title}</h3>
                     {p.metadata?.status && <span title={p.metadata.status === '🟢' ? 'Active' : p.metadata.status === '🟠' ? 'In Development' : 'Inactive'}>{p.metadata.status}</span>}
                   </div>
-                  {p.excerpt && <p className="text-text-muted text-small line-clamp-2">{p.excerpt}</p>}
+                  {(() => { const snippet = getContentSnippet(p.content); return snippet && <p className="text-text-muted text-small line-clamp-2">{snippet}</p>; })()}
                 </div>
               </Card>
             </Link>

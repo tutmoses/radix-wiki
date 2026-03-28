@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { TAG_HIERARCHY, type TagNode } from '@/lib/tags';
-import { BASE_URL } from '@/lib/utils';
+import { BASE_URL, getContentSnippet } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -139,14 +139,14 @@ content programmatically. No browser or wallet extension required.
 
 export async function GET() {
   const pages = await prisma.page.findMany({
-    select: { title: true, tagPath: true, slug: true, excerpt: true },
+    select: { title: true, tagPath: true, slug: true, content: true },
     orderBy: { updatedAt: 'desc' },
   });
 
   const categories = collectCategories(TAG_HIERARCHY);
   const validPages = pages.filter(p => p.tagPath && p.slug);
   const fmt = (p: typeof validPages[number]) => {
-    const e = p.excerpt ? cleanExcerpt(p.excerpt) : '';
+    const e = cleanExcerpt(getContentSnippet(p.content));
     return `- [${p.title}](${BASE_URL}/${p.tagPath}/${p.slug})${e ? `: ${e}` : ''}`;
   };
 

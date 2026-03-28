@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { BASE_URL } from '@/lib/utils';
+import { BASE_URL, getContentSnippet } from '@/lib/utils';
 import { extractText } from '@/lib/content';
 import { TAG_HIERARCHY, type TagNode } from '@/lib/tags';
 import type { Block } from '@/types/blocks';
@@ -97,20 +97,20 @@ const RESOURCES = [
 
 // ========== DB SELECT SHAPES ==========
 
-const SUMMARY_SELECT = { title: true, tagPath: true, slug: true, excerpt: true, updatedAt: true } as const;
-const FULL_SELECT = { ...SUMMARY_SELECT, content: true, version: true } as const;
+const SUMMARY_SELECT = { title: true, tagPath: true, slug: true, content: true, updatedAt: true } as const;
+const FULL_SELECT = { ...SUMMARY_SELECT, version: true } as const;
 
 function pageUrl(tagPath: string, slug: string) {
   return `${BASE_URL}/${tagPath}/${slug}`;
 }
 
-function summarizePage(p: { title: string; tagPath: string; slug: string; excerpt: string | null; updatedAt: Date }) {
+function summarizePage(p: { title: string; tagPath: string; slug: string; content: unknown; updatedAt: Date }) {
   return {
     title: p.title,
     url: pageUrl(p.tagPath, p.slug),
     tagPath: p.tagPath,
     slug: p.slug,
-    excerpt: p.excerpt,
+    excerpt: getContentSnippet(p.content),
     updatedAt: p.updatedAt.toISOString().split('T')[0],
   };
 }
@@ -146,7 +146,7 @@ async function search_wiki(args: { query: string; tagPath?: string; page?: numbe
   const where = {
     OR: [
       { title: { contains: query, mode: 'insensitive' as const } },
-      { excerpt: { contains: query, mode: 'insensitive' as const } },
+      { content: { string_contains: query } },
     ],
     ...(tagPath ? { tagPath } : {}),
   };
@@ -211,7 +211,8 @@ async function get_full_corpus() {
   });
   const sections = pages.map(p => {
     const body = extractText((p.content as unknown as Block[]) || []);
-    return `## ${p.title}\n\nURL: ${pageUrl(p.tagPath, p.slug)}\nUpdated: ${p.updatedAt.toISOString().split('T')[0]}\n${p.excerpt ? `Summary: ${p.excerpt}\n` : ''}\n${body}`;
+    const snippet = getContentSnippet(p.content);
+    return `## ${p.title}\n\nURL: ${pageUrl(p.tagPath, p.slug)}\nUpdated: ${p.updatedAt.toISOString().split('T')[0]}\n${snippet ? `Summary: ${snippet}\n` : ''}\n${body}`;
   });
   return [`# Radix Wiki — Full Content\n\n> ${pages.length} pages, generated ${new Date().toISOString().split('T')[0]}`, ...sections].join('\n\n');
 }

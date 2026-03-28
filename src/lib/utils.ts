@@ -44,6 +44,20 @@ export function userProfileSlug(displayName: string | null | undefined, radixAdd
     : radixAddress.slice(-16).toLowerCase();
 }
 
+// ========== CONTENT SNIPPET ==========
+/** Extract plain text snippet from page content blocks (skips infobox, strips HTML, truncates) */
+export function getContentSnippet(content: unknown, maxLen = 150): string {
+  if (!Array.isArray(content)) return '';
+  for (const block of content) {
+    if (block?.type === 'content' && typeof block.text === 'string') {
+      const text = block.text.replace(/<h[1-6][^>]*>.*?<\/h[1-6]>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (!text) continue;
+      return text.length > maxLen ? text.slice(0, maxLen).trimEnd() + '…' : text;
+    }
+  }
+  return '';
+}
+
 // ========== GENERATIVE BANNER ==========
 // [dark base, mid accent, bright accent]
 const CATEGORY_PALETTES: Record<string, [string, string, string]> = {

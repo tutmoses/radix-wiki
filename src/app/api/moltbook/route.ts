@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma/client';
 import { moltbook, generatePost, generateTitle, pickSubmolt } from '@/lib/moltbook';
 import { json, errors, cronRoute } from '@/lib/api';
 import { getRecentPostSlugs } from '@/lib/scoring';
-import { BASE_URL } from '@/lib/utils';
+import { BASE_URL, getContentSnippet } from '@/lib/utils';
 const STALENESS_DAYS = 90;
 
 export const maxDuration = 60;
@@ -17,14 +17,13 @@ export const GET = cronRoute(async () => {
     // Fetch pool of fresh pages (revised or created within 90 days)
     const pages = await prisma.page.findMany({
       where: {
-        excerpt: { not: null },
         tagPath: { not: '' },
         OR: [
           { revisions: { some: { createdAt: { gte: freshCutoff } } } },
           { createdAt: { gte: freshCutoff } },
         ],
       },
-      select: { title: true, tagPath: true, slug: true, excerpt: true },
+      select: { title: true, tagPath: true, slug: true, content: true },
       orderBy: { updatedAt: 'desc' },
       take: 100,
     });
@@ -38,11 +37,12 @@ export const GET = cronRoute(async () => {
     const page = eligible[Math.floor(Math.random() * Math.min(eligible.length, 10))]!;
     const url = `${BASE_URL}/${page.tagPath}/${page.slug}`;
     const submolt = pickSubmolt();
+    const pageWithExcerpt = { ...page, excerpt: getContentSnippet(page.content) };
 
     try {
       const [text, title] = await Promise.all([
-        generatePost(page, url),
-        generateTitle(page),
+        generatePost(pageWithExcerpt, url),
+        generateTitle(pageWithExcerpt),
       ]);
 
       const { postId } = await moltbook.post(submolt, title, text);

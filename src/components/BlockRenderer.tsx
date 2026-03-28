@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, memo, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, FileText, User } from 'lucide-react';
-import { cn, formatRelativeTime, formatDate, slugify, generateBannerSvg } from '@/lib/utils';
+import { cn, formatRelativeTime, formatDate, slugify, generateBannerSvg, getContentSnippet } from '@/lib/utils';
 import { findTagByPath } from '@/lib/tags';
 import { usePages, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
@@ -92,7 +92,7 @@ const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; com
         </div>
         <div className="page-card-body">
           <span className="page-card-title">{page.title}</span>
-          {page.excerpt && <p className="page-card-excerpt">{page.excerpt}</p>}
+          {(() => { const snippet = getContentSnippet(page.content); return snippet && <p className="page-card-excerpt">{snippet}</p>; })()}
           <div className="page-card-meta">
             <small className="row text-text-muted"><Clock size={12} />{formatRelativeTime(page.updatedAt)}</small>
             {leafTag && <Badge variant="secondary" className="truncate max-w-full">{leafTag.name}</Badge>}

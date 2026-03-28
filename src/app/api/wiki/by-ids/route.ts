@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const pages = await prisma.page.findMany({
       where: { id: { in: ids } },
       select: {
-        id: true, slug: true, title: true, excerpt: true, bannerImage: true,
+        id: true, slug: true, title: true, content: true, bannerImage: true,
         tagPath: true, metadata: true, version: true, createdAt: true, updatedAt: true,
         author: AUTHOR_SELECT,
       },

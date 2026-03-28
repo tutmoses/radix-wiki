@@ -12,7 +12,7 @@ const BATCH_SIZE = 10;
 
 interface Issue {
   page: string;
-  type: 'broken_link' | 'missing_excerpt' | 'excerpt_too_long' | 'missing_infobox';
+  type: 'broken_link' | 'missing_infobox';
   detail: string;
 }
 
@@ -49,7 +49,7 @@ export const GET = cronRoute(async () => {
     const checkedSet = new Set(recentChecks.map(r => `${r.pageTagPath}/${r.pageSlug}`));
 
     const allPages = await prisma.page.findMany({
-      select: { slug: true, tagPath: true, title: true, content: true, excerpt: true },
+      select: { slug: true, tagPath: true, title: true, content: true },
       orderBy: { updatedAt: 'desc' },
     });
 
@@ -64,14 +64,6 @@ export const GET = cronRoute(async () => {
       const pageIssues: string[] = [];
 
       // Content quality checks
-      if (!page.excerpt) {
-        issues.push({ page: pageKey, type: 'missing_excerpt', detail: page.title });
-        pageIssues.push('missing_excerpt');
-      } else if (page.excerpt.length > 160) {
-        issues.push({ page: pageKey, type: 'excerpt_too_long', detail: `${page.excerpt.length} chars` });
-        pageIssues.push('excerpt_too_long');
-      }
-
       const contentStr = JSON.stringify(page.content);
       if (!contentStr.includes('"type":"infobox"')) {
         issues.push({ page: pageKey, type: 'missing_infobox', detail: page.title });

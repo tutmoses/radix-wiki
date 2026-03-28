@@ -1,7 +1,7 @@
 // src/app/api/mend/route.ts — Mender agent (regeneration): auto-fixes content quality issues
 //
-// Reads Sentinel findings and auto-generates missing excerpts, condenses long excerpts,
-// creates infobox blocks for pages that lack them, and strips broken external links.
+// Reads Sentinel findings, creates infobox blocks for pages that lack them,
+// and strips broken external links.
 
 import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
@@ -15,14 +15,6 @@ export const maxDuration = 120;
 
 const BATCH_SIZE = 5;
 const HYDRATE_ID = 'cmk5t48vx0000005zc5se4dqz';
-
-const EXCERPT_PROMPT = `Write a single-sentence excerpt for this wiki page. Requirements:
-- Maximum 160 characters
-- Direct and factual — no hype, no markdown, no quotes
-- Answers the question "what is this page about?" for an AI agent or search engine
-- Do NOT start with "This page..." or "This article..."
-
-Respond with ONLY the excerpt text. Nothing else.`;
 
 const INFOBOX_PROMPT = `Generate an HTML table for a wiki infobox summarizing this page's key metadata. Requirements:
 - Use a <table> element with <tr> rows, each containing a <th> label and <td> value
@@ -78,7 +70,7 @@ export const GET = cronRoute(async () => {
       try {
         const parsed = JSON.parse(issue.text);
         const fixable = (parsed.contentIssues as string[])?.filter(
-          (i: string) => i === 'missing_excerpt' || i === 'excerpt_too_long' || i === 'missing_infobox' || i.startsWith('broken:')
+          (i: string) => i === 'missing_infobox' || i.startsWith('broken:')
         );
         if (fixable?.length) issuesByRecord.set(key, { slug: issue.pageSlug, tagPath: issue.pageTagPath, issues: fixable });
       } catch { /* skip malformed */ }
@@ -106,18 +98,6 @@ export const GET = cronRoute(async () => {
       const context = `Title: ${page.title}\nTag path: ${page.tagPath}\n\nContent:\n${plainText}`;
       const updates: Prisma.PageUpdateInput = {};
       const fixes: string[] = [];
-
-      // Fix missing or long excerpt
-      if (issues.includes('missing_excerpt') || issues.includes('excerpt_too_long')) {
-        const excerpt = await generateWithLLM(EXCERPT_PROMPT, context, 100);
-        if (excerpt && excerpt.length <= 160) {
-          updates.excerpt = excerpt;
-          fixes.push(issues.includes('missing_excerpt') ? 'generated excerpt' : 'condensed excerpt');
-        } else if (excerpt) {
-          updates.excerpt = excerpt.slice(0, 157) + '...';
-          fixes.push('generated excerpt (truncated)');
-        }
-      }
 
       // Fix missing infobox
       if (issues.includes('missing_infobox')) {

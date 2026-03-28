@@ -11,7 +11,7 @@ import type { Block, RecentPagesBlock, PageListBlock, ColumnsBlock } from '@/typ
 export const AUTHOR_SELECT = { select: { id: true, displayName: true, radixAddress: true, avatarUrl: true } } as const;
 export const PAGE_INCLUDE = { author: AUTHOR_SELECT, _count: { select: { revisions: true } } } as const;
 export const CATEGORY_SELECT = {
-  id: true, slug: true, title: true, excerpt: true, bannerImage: true,
+  id: true, slug: true, title: true, content: true, bannerImage: true,
   tagPath: true, metadata: true, version: true, createdAt: true, updatedAt: true,
   authorId: true, author: AUTHOR_SELECT,
 } as const;

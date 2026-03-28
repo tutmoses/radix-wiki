@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { BASE_URL } from '@/lib/utils';
+import { BASE_URL, getContentSnippet } from '@/lib/utils';
 import { extractText } from '@/lib/content';
 import type { Block } from '@/types/blocks';
 
@@ -18,7 +18,7 @@ function cleanExcerpt(s: string): string {
 
 export async function GET() {
   const pages = await prisma.page.findMany({
-    select: { title: true, tagPath: true, slug: true, excerpt: true, content: true, updatedAt: true },
+    select: { title: true, tagPath: true, slug: true, content: true, updatedAt: true },
     orderBy: { updatedAt: 'desc' },
   });
 
@@ -27,7 +27,8 @@ export async function GET() {
     .map(p => {
       const url = `${BASE_URL}/${p.tagPath}/${p.slug}`;
       const body = extractText((p.content as unknown as Block[]) || []);
-      return `## ${p.title}\n\nURL: ${url}\nUpdated: ${p.updatedAt.toISOString().split('T')[0]}\n${p.excerpt ? `Summary: ${cleanExcerpt(p.excerpt)}\n` : ''}\n${body}`;
+      const snippet = getContentSnippet(p.content);
+      return `## ${p.title}\n\nURL: ${url}\nUpdated: ${p.updatedAt.toISOString().split('T')[0]}\n${snippet ? `Summary: ${cleanExcerpt(snippet)}\n` : ''}\n${body}`;
     });
 
   const text = [
