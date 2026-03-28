@@ -165,7 +165,7 @@ export const TAG_HIERARCHY: TagNode[] = [
     sort: 'recent',
     metadataKeys: [
       { key: 'assets', label: 'Asset:', type: 'resource_address' },
-      { key: 'status', label: 'Status:', type: 'select', options: ['🟢','🟠','🔴'], required: true },
+      { key: 'status', label: 'Status:', type: 'select', options: ['🟢 Active','🟡 Testnet','🟠 Dormant','🔴 Closed'], required: true },
       { key: 'category', label: 'Category:', type: 'select', options: ['Finance', 'Studio', 'Launchpad', 'DAO Platform', 'Media', 'Education', 'Infrastructure', 'Oracle', 'Healthcare', 'NFT Platform', 'LoFi', 'Gaming', 'Stablecoin', 'Token', 'Open Source', 'DeSci'], required: true },
       { key: 'founded', label: 'Founded:', type: 'date' },
       { key: 'website', label: 'Website:', type: 'url' },
