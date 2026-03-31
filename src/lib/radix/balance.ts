@@ -1,51 +1,23 @@
 // src/lib/radix/balance.ts
 
 import { NextResponse } from 'next/server';
-import { getGatewayUrl, RADIX_CONFIG, RadixNetworkId } from './config';
+import { RADIX_CONFIG, XRD_RESOURCE } from './config';
+import { paginatedGatewayFetch } from './gateway';
 import { prisma } from '@/lib/prisma/client';
 import { getXrdRequired } from '@/lib/tags';
 import type { AuthSession } from '@/types';
 
-const XRD_RESOURCE: Record<number, string> = {
-  [RadixNetworkId.Mainnet]: 'resource_rdx1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxradxrd',
-  [RadixNetworkId.Stokenet]: 'resource_tdx_2_1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxtfd2jc',
-};
-
 export type BalanceAction = { type: 'create' | 'edit' | 'comment'; tagPath: string };
 
 async function getXrdBalance(address: string): Promise<number> {
-  const url = `${getGatewayUrl(RADIX_CONFIG.networkId)}/state/entity/page/fungible-vaults/`;
   const resource_address = XRD_RESOURCE[RADIX_CONFIG.networkId];
-  let total = 0;
-  let cursor: string | undefined;
-
-  try {
-    do {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, resource_address, ...(cursor && { cursor }) }),
-        cache: 'no-store',
-      });
-
-      if (!response.ok) {
-        console.error(`[balance] Gateway ${response.status} for ${address.slice(0, 20)}…: ${await response.text().catch(() => '')}`);
-        return total;
-      }
-
-      const data = await response.json() as {
-        items?: { amount: string }[];
-        next_cursor?: string | null;
-      };
-
-      total += data.items?.reduce((sum, v) => sum + parseFloat(v.amount || '0'), 0) ?? 0;
-      cursor = data.next_cursor ?? undefined;
-    } while (cursor);
-  } catch (err) {
-    console.error(`[balance] Gateway error for ${address.slice(0, 20)}…:`, err);
-  }
-
-  return total;
+  const amounts = await paginatedGatewayFetch<number>(
+    '/state/entity/page/fungible-vaults/',
+    { address, resource_address },
+    (data) => (data as { items?: { amount: string }[] }).items?.map(v => parseFloat(v.amount || '0')) ?? [],
+    'balance',
+  );
+  return amounts.reduce((sum, n) => sum + n, 0);
 }
 
 type BalanceResult =

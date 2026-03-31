@@ -9,6 +9,7 @@ import { json, cronRoute } from '@/lib/api';
 import { generateWithLLM } from '@/lib/moltbook';
 import { parseVersion, incrementVersion, formatVersion } from '@/lib/versioning';
 import { randomUUID } from 'crypto';
+import { stripHtml } from '@/lib/content';
 import type { Block } from '@/types/blocks';
 
 export const maxDuration = 120;
@@ -29,10 +30,6 @@ const INFOBOX_PROMPT = `Generate an HTML table for a wiki infobox summarizing th
 Respond with ONLY the <table>...</table> HTML. Nothing else.`;
 
 type FixResult = { page: string; fix: string; status: 'fixed' | 'failed'; detail?: string };
-
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-}
 
 function pageTextContent(content: Block[]): string {
   const texts: string[] = [];

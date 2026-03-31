@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, Fragment, type ReactElement } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, RotateCcw, Plus, Minus, Pencil, Move, ChevronDown } from 'lucide-react';
@@ -11,6 +11,7 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { useAuth } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
 import { formatDate, cn, userProfileSlug } from '@/lib/utils';
+import { stripHtml } from '@/lib/content';
 import type { BlockChange } from '@/lib/versioning';
 
 interface RevisionData {
@@ -32,18 +33,22 @@ const TYPE_BADGE: Record<string, { label: string; variant: 'danger' | 'warning' 
   patch: { label: 'Patch', variant: 'secondary' },
 };
 
-function ChangeSummary({ changes }: { changes: BlockChange[] }) {
+function changeSummaryText(changes: BlockChange[]): string {
+  if (changes.length === 0) return '';
   const counts = changes.reduce((acc, c) => { acc[c.action] = (acc[c.action] || 0) + 1; return acc; }, {} as Record<string, number>);
-  const parts: ReactElement[] = [];
-  if (counts.added) parts.push(<span key="a" className="text-success">+{counts.added}</span>);
-  if (counts.removed) parts.push(<span key="r" className="text-error">-{counts.removed}</span>);
-  if (counts.modified) parts.push(<span key="m" className="text-warning">~{counts.modified}</span>);
-  if (counts.moved) parts.push(<span key="v" className="text-info">↔{counts.moved}</span>);
-  return <span className="row gap-1.5 text-xs font-mono">{parts.length ? parts : '—'}</span>;
+  const parts: string[] = [];
+  if (counts.added) parts.push(`${counts.added} block${counts.added > 1 ? 's' : ''} added`);
+  if (counts.removed) parts.push(`${counts.removed} block${counts.removed > 1 ? 's' : ''} removed`);
+  if (counts.modified) parts.push(`${counts.modified} block${counts.modified > 1 ? 's' : ''} modified`);
+  if (counts.moved) parts.push(`${counts.moved} block${counts.moved > 1 ? 's' : ''} reordered`);
+  return parts.join(', ');
 }
 
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
+function ChangeSummary({ changes, changeType }: { changes: BlockChange[]; changeType: string }) {
+  const summary = changeSummaryText(changes);
+  if (summary) return <span className="text-xs text-text-secondary">{summary}</span>;
+  const fallback = changeType === 'major' ? 'Structural changes' : changeType === 'minor' ? 'Content updated' : changeType === 'patch' ? 'Metadata updated' : 'No changes';
+  return <span className="text-xs text-text-muted">{fallback}</span>;
 }
 
 function ContentDiff({ from, to }: { from: string; to: string }) {
@@ -185,8 +190,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                       <td className="py-2 px-3"><Badge variant={type.variant}>{type.label}</Badge></td>
                       <td className="py-2 px-3">
                         <div className="row gap-3">
-                          <ChangeSummary changes={changes} />
-                          {rev.message && <span className="text-text-muted truncate max-w-48">{rev.message}</span>}
+                          <ChangeSummary changes={changes} changeType={rev.changeType} />
                           {changes.length > 0 && (
                             <button onClick={() => setExpandedId(isExpanded ? null : rev.id)} className="text-accent hover:text-accent-hover">
                               <ChevronDown size={14} className={cn('transition-transform', isExpanded && 'rotate-180')} />

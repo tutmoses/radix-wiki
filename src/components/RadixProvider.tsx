@@ -139,7 +139,12 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
         setRdtReady(true);
         _setRdtCallbacks(
           () => rdt.walletApi.sendRequest(),
-          () => rdt.disconnect()
+          () => rdt.disconnect(),
+          async (manifest: string) => {
+            const r = await rdt.walletApi.sendTransaction({ transactionManifest: manifest });
+            if (r.isErr()) throw new Error(r.error.message ?? 'Transaction failed');
+            return { transactionIntentHash: r.value.transactionIntentHash };
+          },
         );
       } catch (error) {
         console.error('Failed to initialize Radix DApp Toolkit:', error);
@@ -149,7 +154,7 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       subscription?.unsubscribe();
-      _setRdtCallbacks(null, null);
+      _setRdtCallbacks(null, null, null);
     };
   }, [setWalletData, setConnected, setSession, setLoading, setRdtReady, createSession, _setRdtCallbacks]);
 

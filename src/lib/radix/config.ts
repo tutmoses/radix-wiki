@@ -22,3 +22,8 @@ const GATEWAY_URLS: Record<number, string> = {
 export function getGatewayUrl(networkId = RADIX_CONFIG.networkId): string {
   return GATEWAY_URLS[networkId] ?? GATEWAY_URLS[RadixNetworkId.Mainnet]!;
 }
+
+export const XRD_RESOURCE: Record<number, string> = {
+  [RadixNetworkId.Mainnet]: 'resource_rdx1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxradxrd',
+  [RadixNetworkId.Stokenet]: 'resource_tdx_2_1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxtfd2jc',
+};

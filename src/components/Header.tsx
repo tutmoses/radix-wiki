@@ -5,7 +5,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
-import { Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, FileCode, Bell, Webhook } from 'lucide-react';
+import { Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, FileCode, Bell, Webhook, Database } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth, useClickOutside, usePagePath } from '@/hooks';
 import { cn, shortenAddress, formatRelativeTime, userProfileSlug } from '@/lib/utils';
@@ -13,6 +13,7 @@ import { Button, Dropdown } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiPage, WikiNotification } from '@/types';
 import { WebhookSettings } from '@/components/WebhookSettings';
+import { LedgerDropdown } from '@/components/LedgerBackupView';
 
 function usePageContext() {
   const { isHomepage, isPage, isEdit, isHistory, viewPath, tagPath, slug } = usePagePath();
@@ -115,6 +116,7 @@ export function Header() {
   const [showSearch, setShowSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showLedger, setShowLedger] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<WikiPage[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -184,6 +186,15 @@ export function Header() {
             {canEdit && <Link href={editPath} className="icon-btn" aria-label="Edit page"><Edit size={20} /></Link>}
             {canShowHistory && historyPath && <Link href={historyPath} className="icon-btn" aria-label="Page history"><History size={20} /></Link>}
             {isAuthenticated && userProfilePath && <Link href={userProfilePath} className="icon-btn" aria-label="Your profile"><User size={20} /></Link>}
+
+            {isAuthenticated && (
+              <div className="relative">
+                <button onClick={() => setShowLedger(!showLedger)} className="icon-btn" aria-label="Ledger backup" aria-expanded={showLedger}>
+                  <Database size={20} />
+                </button>
+                {showLedger && <LedgerDropdown onClose={() => setShowLedger(false)} />}
+              </div>
+            )}
 
             {isAuthenticated && (
               <div className="relative">

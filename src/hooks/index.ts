@@ -96,9 +96,11 @@ interface AppStore {
   sidebarOpen: boolean;
   _rdtDisconnect: (() => void) | null;
   _rdtConnect: (() => void) | null;
+  _rdtSendTransaction: ((manifest: string) => Promise<{ transactionIntentHash: string }>) | null;
   _pendingConnect: boolean;
   _connectTimeout: ReturnType<typeof setTimeout> | null;
-  _setRdtCallbacks: (connect: (() => void) | null, disconnect: (() => void) | null) => void;
+  _setRdtCallbacks: (connect: (() => void) | null, disconnect: (() => void) | null, sendTx?: ((manifest: string) => Promise<{ transactionIntentHash: string }>) | null) => void;
+  sendTransaction: (manifest: string) => Promise<{ transactionIntentHash: string }>;
   setRdtReady: (ready: boolean) => void;
   setSession: (session: AuthSession | null) => void;
   setLoading: (isLoading: boolean) => void;
@@ -129,15 +131,21 @@ export const useStore = create<AppStore>()((set, get) => ({
   sidebarOpen: false,
   _rdtDisconnect: null,
   _rdtConnect: null,
+  _rdtSendTransaction: null,
   _pendingConnect: false,
   _connectTimeout: null,
-  _setRdtCallbacks: (connect, disconnect) => {
-    set({ _rdtConnect: connect, _rdtDisconnect: disconnect });
+  _setRdtCallbacks: (connect, disconnect, sendTx) => {
+    set({ _rdtConnect: connect, _rdtDisconnect: disconnect, _rdtSendTransaction: sendTx ?? null });
     // Flush any connect attempt that happened before RDT was ready
     if (connect && get()._pendingConnect) {
       set({ _pendingConnect: false });
       connect();
     }
+  },
+  sendTransaction: async (manifest) => {
+    const { _rdtSendTransaction } = get();
+    if (!_rdtSendTransaction) throw new Error('Wallet not connected');
+    return _rdtSendTransaction(manifest);
   },
   setRdtReady: (rdtReady) => set({ rdtReady }),
   setSession: (session) => set({ session, isLoading: false }),

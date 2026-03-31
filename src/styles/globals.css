@@ -98,7 +98,7 @@
 
   .prose-content {
     a[href^="/"] { @apply text-accent font-medium decoration-accent/40 underline underline-offset-2 hover:text-accent-hover hover:decoration-accent-hover/60; }
-    a[href^="http"] { @apply text-text-muted underline underline-offset-2 decoration-text-muted/30 hover:text-text hover:decoration-text/50; &::after { content: '\2009\2197'; font-size: 0.75em; } }
+    a[href^="http"] { @apply text-text underline underline-offset-2 decoration-text/30 hover:text-accent-hover hover:decoration-accent-hover/50; &::after { content: '\2009\2197'; font-size: 0.75em; } }
   }
 
   :is(.tiptap-editor .tiptap, .prose-content) {
@@ -617,6 +617,19 @@
   .telegram-sub-list { @apply flex flex-col gap-1 mt-1; }
   .telegram-sub-item { @apply flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface-1/50; }
   .telegram-empty { @apply px-3 py-4 text-center; }
+
+  /* ===== LEDGER BACKUP ===== */
+  .ledger-dropdown { @apply w-80; }
+  .ledger-panel { @apply flex flex-col gap-2 p-3; }
+  .ledger-status-row { @apply flex items-center gap-2; }
+  .ledger-action-btn {
+    @apply flex items-center gap-2 w-full px-3 py-2 rounded-md text-small font-medium cursor-pointer transition-colors;
+    @apply bg-surface-2 hover:bg-surface-1;
+    &:disabled { @apply opacity-50 cursor-default; }
+  }
+  .ledger-tx-link { @apply flex items-center gap-1 text-xs text-accent hover:underline; }
+  .ledger-recovered-list { @apply flex flex-col gap-1 max-h-48 overflow-y-auto; }
+  .ledger-recovered-item { @apply flex items-center justify-between gap-2 px-2 py-1 rounded bg-surface-1/50; }
 }
 
 radix-connect-button {

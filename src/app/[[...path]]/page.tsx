@@ -129,11 +129,15 @@ function countWords(blocks: unknown): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
-function ArticleJsonLd({ page, url }: { page: WikiPage; url: string }) {
+function JsonLd({ data }: { data: Record<string, unknown> | null }) {
+  if (!data) return null;
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context': 'https://schema.org', ...data }) }} />;
+}
+
+function articleLd(page: WikiPage, url: string) {
   const tagSegments = page.tagPath?.split('/').filter(Boolean) || [];
   const section = tagSegments.length ? (findTagByPath(tagSegments.slice(0, 1))?.name ?? tagSegments[0] ?? '').replace(/^\p{Emoji_Presentation}\s*/u, '') : undefined;
-  const ld = {
-    '@context': 'https://schema.org',
+  return {
     '@type': 'Article',
     mainEntityOfPage: { '@type': 'WebPage', '@id': url },
     headline: page.title,
@@ -149,45 +153,30 @@ function ArticleJsonLd({ page, url }: { page: WikiPage; url: string }) {
     isPartOf: { '@type': 'WebSite', name: 'RADIX Wiki', url: BASE_URL },
     inLanguage: 'en',
   };
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />;
 }
 
-function CollectionJsonLd({ name, description, url, pages }: { name: string; description?: string; url: string; pages: { title: string; tagPath: string; slug: string }[] }) {
-  const ld = {
-    '@context': 'https://schema.org',
+function collectionLd(name: string, url: string, pages: { title: string; tagPath: string; slug: string }[], description?: string) {
+  return {
     '@type': 'CollectionPage',
-    name,
-    url,
+    name, url,
     ...(description && { description }),
     isPartOf: { '@type': 'WebSite', name: 'RADIX Wiki', url: BASE_URL },
     mainEntity: {
       '@type': 'ItemList',
       numberOfItems: pages.length,
-      itemListElement: pages.slice(0, 50).map((p, i) => ({
-        '@type': 'ListItem',
-        position: i + 1,
-        url: `${BASE_URL}/${p.tagPath}/${p.slug}`,
-        name: p.title,
-      })),
+      itemListElement: pages.slice(0, 50).map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: `${BASE_URL}/${p.tagPath}/${p.slug}`, name: p.title })),
     },
   };
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />;
 }
 
-function BreadcrumbJsonLd({ path }: { path: string[] }) {
+function breadcrumbLd(path: string[]) {
   const items = [{ '@type': 'ListItem' as const, position: 1, name: 'Home', item: BASE_URL }];
   for (let i = 0; i < path.length; i++) {
     const segments = path.slice(0, i + 1);
     const tag = findTagByPath(segments);
-    items.push({
-      '@type': 'ListItem',
-      position: i + 2,
-      name: tag?.name || segments[i]!.replace(/-/g, ' '),
-      item: `${BASE_URL}/${segments.join('/')}`,
-    });
+    items.push({ '@type': 'ListItem', position: i + 2, name: tag?.name || segments[i]!.replace(/-/g, ' '), item: `${BASE_URL}/${segments.join('/')}` });
   }
-  const ld = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: items };
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />;
+  return { '@type': 'BreadcrumbList', itemListElement: items };
 }
 
 const FAQ_SKIP = new Set(['external links', 'references', 'see also', 'further reading']);
@@ -210,18 +199,12 @@ function extractFaqPairs(blocks: unknown) {
   return pairs.slice(0, 10);
 }
 
-function FAQPageJsonLd({ pairs }: { pairs: { question: string; answer: string }[] }) {
+function faqLd(pairs: { question: string; answer: string }[]) {
   if (pairs.length < 2) return null;
-  const ld = {
-    '@context': 'https://schema.org',
+  return {
     '@type': 'FAQPage',
-    mainEntity: pairs.map(p => ({
-      '@type': 'Question',
-      name: p.question,
-      acceptedAnswer: { '@type': 'Answer', text: p.answer },
-    })),
+    mainEntity: pairs.map(p => ({ '@type': 'Question', name: p.question, acceptedAnswer: { '@type': 'Answer', text: p.answer } })),
   };
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />;
 }
 
 const VALID_SORTS = new Set<string>(['title', 'newest', 'oldest', 'recent']);
@@ -264,8 +247,8 @@ export default async function DynamicPage({ params, searchParams }: Props) {
       const pages = await getIdeasPages(parsed.tagPath);
       return (
         <>
-          <CollectionJsonLd name={categoryName} description={tag?.description} url={categoryUrl} pages={pages} />
-          <BreadcrumbJsonLd path={tagSegments} />
+          <JsonLd data={collectionLd(categoryName, categoryUrl, pages, tag?.description)} />
+          <JsonLd data={breadcrumbLd(tagSegments)} />
           <Suspense fallback={<PageSkeleton />}><IdeasView tagPath={tagSegments} pages={pages} sort={ideasSort} /></Suspense>
         </>
       );
@@ -275,8 +258,8 @@ export default async function DynamicPage({ params, searchParams }: Props) {
     const pages = await getCategoryPages(parsed.tagPath, sort);
     return (
       <>
-        <CollectionJsonLd name={categoryName} description={tag?.description} url={categoryUrl} pages={pages} />
-        <BreadcrumbJsonLd path={tagSegments} />
+        <JsonLd data={collectionLd(categoryName, categoryUrl, pages, tag?.description)} />
+        <JsonLd data={breadcrumbLd(tagSegments)} />
         <Suspense fallback={<PageSkeleton />}><CategoryView tagPath={tagSegments} pages={pages} sort={sort} /></Suspense>
       </>
     );
@@ -295,9 +278,9 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   const pageUrl = `${BASE_URL}/${pathSegments.join('/')}`;
   return (
     <>
-      {page && <ArticleJsonLd page={page} url={pageUrl} />}
-      <FAQPageJsonLd pairs={faqPairs} />
-      <BreadcrumbJsonLd path={pathSegments} />
+      {page && <JsonLd data={articleLd(page, pageUrl)} />}
+      <JsonLd data={faqLd(faqPairs)} />
+      <JsonLd data={breadcrumbLd(pathSegments)} />
       <Suspense fallback={<PageSkeleton />}><PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} adjacent={adjacent} /></Suspense>
     </>
   );
