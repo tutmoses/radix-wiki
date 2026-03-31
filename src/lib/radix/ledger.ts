@@ -27,16 +27,18 @@ export interface LedgerAnchor {
 
 const PAGE_PREFIX = 'wiki_page:';
 const ANCHOR_KEY = 'wiki_anchor';
-const CHUNK_MAX = 3800; // safe limit under Radix's 4096-byte metadata cap (JSON escaping overhead)
+const CHUNK_MAX = 3800; // safe limit under Radix's 4096-byte metadata cap
 
 // ========== SERIALIZATION ==========
+// Base64-encoded JSON: avoids " and \ characters that break manifest string literals,
+// while remaining easily decodable to human-readable JSON.
 
 export function serializePage(page: PageSnapshot): string {
-  return JSON.stringify(page);
+  return Buffer.from(JSON.stringify(page)).toString('base64');
 }
 
-export function deserializePage(json: string): PageSnapshot {
-  return JSON.parse(json) as PageSnapshot;
+export function deserializePage(b64: string): PageSnapshot {
+  return JSON.parse(Buffer.from(b64, 'base64').toString('utf-8')) as PageSnapshot;
 }
 
 // ========== MANIFEST BUILDER ==========
@@ -117,13 +119,13 @@ export async function readAllPagesFromLedger(accountAddress: string): Promise<Pa
 
     try {
       const baseKey = `${PAGE_PREFIX}${baseSlug}`;
-      let json = '';
+      let b64 = '';
       for (let i = 0; ; i++) {
         const chunk = metadata.get(`${baseKey}:${i}`);
         if (!chunk) break;
-        json += chunk;
+        b64 += chunk;
       }
-      if (json) pages.push(deserializePage(json));
+      if (b64) pages.push(deserializePage(b64));
     } catch (err) {
       console.error(`[ledger] Failed to parse ${key}:`, err);
     }

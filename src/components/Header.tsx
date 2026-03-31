@@ -7,11 +7,12 @@ import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, FileCode, Bell, Webhook, Database } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useStore, useAuth, useClickOutside, usePagePath } from '@/hooks';
+import { useStore, useAuth, useClickOutside, usePagePath, useFetch } from '@/hooks';
 import { cn, shortenAddress, formatRelativeTime, userProfileSlug } from '@/lib/utils';
 import { Button, Dropdown } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiPage, WikiNotification } from '@/types';
+import type { LedgerAnchor } from '@/lib/radix/ledger';
 import { WebhookSettings } from '@/components/WebhookSettings';
 import { LedgerDropdown } from '@/components/LedgerBackupView';
 
@@ -119,6 +120,21 @@ export function Header() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLedger, setShowLedger] = useState(false);
+
+  // Ledger backup status for icon color
+  const accountAddress = user?.radixAddress ?? null;
+  const ledgerStatusUrl = accountAddress && tagPath && slug
+    ? `/api/ledger/status?address=${accountAddress}&tagPath=${encodeURIComponent(tagPath)}&slug=${encodeURIComponent(slug)}`
+    : accountAddress ? `/api/ledger/status?address=${accountAddress}` : null;
+  const { data: ledgerStatus } = useFetch<{ anchor: LedgerAnchor | null; currentPageVersion: string | null }>(ledgerStatusUrl);
+
+  const ledgerIconColor = (() => {
+    if (!ledgerStatus?.anchor) return 'text-error';
+    if (ledgerStatus.anchor.slug === slug && ledgerStatus.anchor.pageVersion === ledgerStatus.currentPageVersion) return 'text-success';
+    if (ledgerStatus.anchor.slug === slug) return 'text-warning';
+    return 'text-error';
+  })();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<WikiPage[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -191,7 +207,7 @@ export function Header() {
 
             {isAuthenticated && (
               <div className="relative">
-                <button onClick={() => setShowLedger(!showLedger)} className="icon-btn" aria-label="Ledger backup" aria-expanded={showLedger}>
+                <button onClick={() => setShowLedger(!showLedger)} className={cn('icon-btn', ledgerIconColor)} aria-label="Ledger backup" aria-expanded={showLedger}>
                   <Database size={20} />
                 </button>
                 {showLedger && <LedgerDropdown onClose={() => setShowLedger(false)} tagPath={tagPath ?? null} slug={slug ?? null} />}
