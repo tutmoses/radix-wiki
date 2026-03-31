@@ -121,7 +121,7 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
                 <CheckCircle size={14} className="text-success shrink-0" />
                 <span className="text-small">
                   Last backup: {status.anchor.slug}
-                  {status.anchor.pageVersion && <span className="text-text-muted"> v{status.anchor.pageVersion}</span>}
+                  <span className="text-text-muted"> v{status.anchor.pageVersion}</span>
                 </span>
                 <span className="text-xs text-text-muted">
                   {status.hoursSinceAnchor !== null && `${status.hoursSinceAnchor}h ago`}

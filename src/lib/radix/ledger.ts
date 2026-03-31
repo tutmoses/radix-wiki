@@ -20,13 +20,15 @@ export interface LedgerAnchor {
   timestamp: string;
   slug: string;
   version: number;
-  pageVersion?: string;
+  pageVersion: string;
+  chunks: number;
 }
 
 // ========== CONFIG ==========
 
 const PAGE_PREFIX = 'wiki_page:';
 const ANCHOR_KEY = 'wiki_anchor';
+const CHUNK_MAX = 3800; // safe limit under Radix's 4096-byte metadata cap (hex + escaping overhead)
 
 // ========== COMPRESSION ==========
 
@@ -50,20 +52,29 @@ function metadataInstruction(address: string, key: string, value: string): strin
 }
 
 export function buildPageBackupManifest(accountAddress: string, page: PageSnapshot): string {
+  const compressed = compressPage(page);
+  const chunks: string[] = [];
+  for (let i = 0; i < compressed.length; i += CHUNK_MAX) {
+    chunks.push(compressed.slice(i, i + CHUNK_MAX));
+  }
+
   const anchor: LedgerAnchor = {
     timestamp: new Date().toISOString(),
     slug: page.slug,
     version: 1,
     pageVersion: page.version,
+    chunks: chunks.length,
   };
 
-  const key = `${PAGE_PREFIX}${page.slug}`;
-  const compressed = compressPage(page);
-
-  return [
+  const baseKey = `${PAGE_PREFIX}${page.slug}`;
+  const instructions = [
     metadataInstruction(accountAddress, ANCHOR_KEY, JSON.stringify(anchor)),
-    metadataInstruction(accountAddress, key, compressed),
-  ].join('\n');
+    ...chunks.map((chunk, i) =>
+      metadataInstruction(accountAddress, `${baseKey}:${i}`, chunk),
+    ),
+  ];
+
+  return instructions.join('\n');
 }
 
 // ========== GATEWAY API READER ==========
@@ -99,11 +110,25 @@ export async function readAnchorFromLedger(accountAddress: string): Promise<Ledg
 export async function readAllPagesFromLedger(accountAddress: string): Promise<PageSnapshot[]> {
   const metadata = await fetchAllMetadata(accountAddress);
   const pages: PageSnapshot[] = [];
+  const seen = new Set<string>();
 
-  for (const [key, value] of metadata) {
+  for (const [key] of metadata) {
     if (!key.startsWith(PAGE_PREFIX)) continue;
+    // Extract base slug: "wiki_page:foo:0" → "wiki_page:foo", "wiki_page:foo" → "wiki_page:foo"
+    const withoutPrefix = key.slice(PAGE_PREFIX.length);
+    const baseSlug = withoutPrefix.replace(/:\d+$/, '');
+    if (seen.has(baseSlug)) continue;
+    seen.add(baseSlug);
+
     try {
-      pages.push(decompressPage(value));
+      const baseKey = `${PAGE_PREFIX}${baseSlug}`;
+      let hex = '';
+      for (let i = 0; ; i++) {
+        const chunk = metadata.get(`${baseKey}:${i}`);
+        if (!chunk) break;
+        hex += chunk;
+      }
+      if (hex) pages.push(decompressPage(hex));
     } catch (err) {
       console.error(`[ledger] Failed to decompress ${key}:`, err);
     }
