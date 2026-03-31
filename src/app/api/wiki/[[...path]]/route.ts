@@ -91,13 +91,31 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
         where: { pageId: page.id },
         select: {
           id: true, title: true, version: true, changeType: true,
-          changes: true, message: true, createdAt: true,
+          changes: true, content: true, message: true, createdAt: true,
           author: AUTHOR_SELECT,
         },
         orderBy: { createdAt: 'desc' },
       });
 
-      return cachedJson({ currentVersion: page.version, revisions });
+      // Backfill changes for revisions that don't have them (e.g. seeded pages)
+      const backfilled = revisions.map((rev, i) => {
+        if (rev.changes && (rev.changes as unknown as BlockChange[]).length > 0) {
+          const { content: _, ...rest } = rev;
+          return rest;
+        }
+        const next = revisions[i + 1]; // older revision (list is newest-first)
+        const newContent = (rev.content as unknown as Block[]) || [];
+        const oldContent = next ? (next.content as unknown as Block[]) || [] : [];
+        const diff = computeRevisionDiff(
+          next?.version ?? null, oldContent, newContent,
+          next?.title ?? '', rev.title,
+          null, null,
+        );
+        const { content: _, ...rest } = rev;
+        return { ...rest, changes: diff.changes, changeType: diff.changeType || rev.changeType };
+      });
+
+      return cachedJson({ currentVersion: page.version, revisions: backfilled });
     }
 
     // Homepage or specific page

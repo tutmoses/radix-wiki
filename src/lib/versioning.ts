@@ -87,6 +87,8 @@ function extractBlocks(blocks: Block[], basePath = 'root'): BlockWithPath[] {
       block.columns.forEach((col, ci) => {
         result.push(...extractBlocks(col.blocks, `${path}.columns.${ci}.blocks`));
       });
+    } else if (block.type === 'infobox') {
+      result.push(...extractBlocks(block.blocks, `${path}.blocks`));
     }
   });
   return result;

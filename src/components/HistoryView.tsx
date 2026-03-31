@@ -33,9 +33,12 @@ const TYPE_BADGE: Record<string, { label: string; variant: 'danger' | 'warning' 
   patch: { label: 'Patch', variant: 'secondary' },
 };
 
+const CONTAINER_TYPES = new Set(['infobox', 'columns']);
+
 function changeSummaryText(changes: BlockChange[]): string {
-  if (changes.length === 0) return '';
-  const counts = changes.reduce((acc, c) => { acc[c.action] = (acc[c.action] || 0) + 1; return acc; }, {} as Record<string, number>);
+  const visible = changes.filter(c => !CONTAINER_TYPES.has(c.type));
+  if (visible.length === 0) return '';
+  const counts = visible.reduce((acc, c) => { acc[c.action] = (acc[c.action] || 0) + 1; return acc; }, {} as Record<string, number>);
   const parts: string[] = [];
   if (counts.added) parts.push(`${counts.added} block${counts.added > 1 ? 's' : ''} added`);
   if (counts.removed) parts.push(`${counts.removed} block${counts.removed > 1 ? 's' : ''} removed`);
@@ -98,16 +101,17 @@ function formatBlockPath(path: string, type: string): string {
 }
 
 function ExpandedChanges({ changes }: { changes: BlockChange[] }) {
+  const visible = changes.filter(c => !CONTAINER_TYPES.has(c.type));
   return (
     <tr><td colSpan={6} className="p-0!">
       <div className="bg-surface-0 p-3 border-t border-border-muted stack-sm">
-        {changes.map((c, i) => {
+        {visible.map((c, i) => {
           const icons = { added: <Plus size={12} className="text-success" />, removed: <Minus size={12} className="text-error" />, modified: <Pencil size={12} className="text-warning" />, moved: <Move size={12} className="text-info" /> };
           const colors = { added: 'text-success', removed: 'text-error', modified: 'text-warning', moved: 'text-info' };
           const textAttr = c.attributes?.text as { from: string; to: string } | undefined;
           const fromText = c.contentDiff?.from ?? textAttr?.from ?? '';
           const toText = c.contentDiff?.to ?? textAttr?.to ?? '';
-          const hasTextChange = c.type === 'content' && (fromText || toText);
+          const hasTextChange = fromText || toText;
           return (
             <div key={i} className="text-xs">
               <div className="row gap-2">
@@ -129,7 +133,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [restoringId, setRestoringId] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
 
   const apiBase = isHomepage ? '/api/wiki' : `/api/wiki/${tagPath}/${slug}`;
   const viewPath = isHomepage ? '/' : `/${tagPath}/${slug}`;
@@ -179,7 +183,12 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                 const isCurrent = i === 0;
                 const type = TYPE_BADGE[rev.changeType] ?? TYPE_BADGE.patch!;
                 const changes = rev.changes || [];
-                const isExpanded = expandedId === rev.id;
+                const isCollapsed = collapsedIds.has(rev.id);
+                const toggleCollapse = () => setCollapsedIds(prev => {
+                  const next = new Set(prev);
+                  next.has(rev.id) ? next.delete(rev.id) : next.add(rev.id);
+                  return next;
+                });
                 return (
                   <Fragment key={rev.id}>
                     <tr className={cn('border-t border-border-muted hover:bg-surface-1/50', isCurrent && 'bg-accent/5', i === 0 && '[&>td]:rounded-none')}>
@@ -192,8 +201,8 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                         <div className="row gap-3">
                           <ChangeSummary changes={changes} changeType={rev.changeType} />
                           {changes.length > 0 && (
-                            <button onClick={() => setExpandedId(isExpanded ? null : rev.id)} className="text-accent hover:text-accent-hover">
-                              <ChevronDown size={14} className={cn('transition-transform', isExpanded && 'rotate-180')} />
+                            <button onClick={toggleCollapse} className="text-accent hover:text-accent-hover">
+                              <ChevronDown size={14} className={cn('transition-transform', !isCollapsed && 'rotate-180')} />
                             </button>
                           )}
                         </div>
@@ -215,7 +224,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                         )}
                       </td>
                     </tr>
-                    {isExpanded && changes.length > 0 && <ExpandedChanges changes={changes} />}
+                    {!isCollapsed && changes.length > 0 && <ExpandedChanges changes={changes} />}
                   </Fragment>
                 );
               })}

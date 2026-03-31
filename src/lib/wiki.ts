@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma/client';
 import { isValidTagPath, getSortOrder, getMetadataKeys, type SortOrder } from '@/lib/tags';
 import type { WikiPage, IdeasPage } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, ColumnsBlock } from '@/types/blocks';
+import { computeRevisionDiff } from '@/lib/versioning';
 
 // ========== PRISMA QUERY FRAGMENTS ==========
 export const AUTHOR_SELECT = { select: { id: true, displayName: true, radixAddress: true, avatarUrl: true } } as const;
@@ -170,13 +171,30 @@ export const getPageHistory = cached('getPageHistory',
       where: { pageId: page.id },
       select: {
         id: true, title: true, version: true, changeType: true,
-        changes: true, message: true, createdAt: true,
+        changes: true, content: true, message: true, createdAt: true,
         author: AUTHOR_SELECT,
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    return { currentVersion: page.version, revisions };
+    // Backfill changes for revisions that don't have stored diffs
+    const backfilled = revisions.map((rev, i) => {
+      if (rev.changes && Array.isArray(rev.changes) && (rev.changes as unknown[]).length > 0) {
+        const { content: _, ...rest } = rev;
+        return rest;
+      }
+      const next = revisions[i + 1];
+      const newContent = (rev.content as unknown as Block[]) || [];
+      const oldContent = next ? (next.content as unknown as Block[]) || [] : [];
+      const diff = computeRevisionDiff(
+        next?.version ?? null, oldContent, newContent,
+        next?.title ?? '', rev.title, null, null,
+      );
+      const { content: _, ...rest } = rev;
+      return { ...rest, changes: diff.changes, changeType: diff.changeType || rev.changeType };
+    });
+
+    return { currentVersion: page.version, revisions: backfilled };
   },
 );
 
