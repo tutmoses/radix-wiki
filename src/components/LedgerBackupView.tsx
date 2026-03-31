@@ -16,7 +16,7 @@ interface LedgerStatus {
 interface PrepareResult {
   manifest: string;
   title: string;
-  compressedSizeKB: number;
+  sizeKB: number;
   timestamp: string;
 }
 

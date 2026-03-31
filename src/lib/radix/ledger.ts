@@ -1,6 +1,5 @@
 // src/lib/radix/ledger.ts — On-chain wiki backup via account metadata
 
-import pako from 'pako';
 import { paginatedGatewayFetch } from './gateway';
 
 // ========== TYPES ==========
@@ -28,20 +27,16 @@ export interface LedgerAnchor {
 
 const PAGE_PREFIX = 'wiki_page:';
 const ANCHOR_KEY = 'wiki_anchor';
-const CHUNK_MAX = 3800; // safe limit under Radix's 4096-byte metadata cap (hex + escaping overhead)
+const CHUNK_MAX = 3800; // safe limit under Radix's 4096-byte metadata cap (JSON escaping overhead)
 
-// ========== COMPRESSION ==========
+// ========== SERIALIZATION ==========
 
-export function compressPage(page: PageSnapshot): string {
-  const json = JSON.stringify(page);
-  const compressed = pako.gzip(new TextEncoder().encode(json));
-  return Buffer.from(compressed).toString('hex');
+export function serializePage(page: PageSnapshot): string {
+  return JSON.stringify(page);
 }
 
-export function decompressPage(hex: string): PageSnapshot {
-  const bytes = Buffer.from(hex, 'hex');
-  const decompressed = pako.ungzip(bytes);
-  return JSON.parse(new TextDecoder().decode(decompressed));
+export function deserializePage(json: string): PageSnapshot {
+  return JSON.parse(json) as PageSnapshot;
 }
 
 // ========== MANIFEST BUILDER ==========
@@ -52,10 +47,10 @@ function metadataInstruction(address: string, key: string, value: string): strin
 }
 
 export function buildPageBackupManifest(accountAddress: string, page: PageSnapshot): string {
-  const compressed = compressPage(page);
+  const serialized = serializePage(page);
   const chunks: string[] = [];
-  for (let i = 0; i < compressed.length; i += CHUNK_MAX) {
-    chunks.push(compressed.slice(i, i + CHUNK_MAX));
+  for (let i = 0; i < serialized.length; i += CHUNK_MAX) {
+    chunks.push(serialized.slice(i, i + CHUNK_MAX));
   }
 
   const anchor: LedgerAnchor = {
@@ -122,15 +117,15 @@ export async function readAllPagesFromLedger(accountAddress: string): Promise<Pa
 
     try {
       const baseKey = `${PAGE_PREFIX}${baseSlug}`;
-      let hex = '';
+      let json = '';
       for (let i = 0; ; i++) {
         const chunk = metadata.get(`${baseKey}:${i}`);
         if (!chunk) break;
-        hex += chunk;
+        json += chunk;
       }
-      if (hex) pages.push(decompressPage(hex));
+      if (json) pages.push(deserializePage(json));
     } catch (err) {
-      console.error(`[ledger] Failed to decompress ${key}:`, err);
+      console.error(`[ledger] Failed to parse ${key}:`, err);
     }
   }
 

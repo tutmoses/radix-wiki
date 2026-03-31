@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { requireAuth, handleRoute, json, errors } from '@/lib/api';
-import { buildPageBackupManifest, compressPage, type PageSnapshot } from '@/lib/radix/ledger';
+import { buildPageBackupManifest, serializePage, type PageSnapshot } from '@/lib/radix/ledger';
 import type { NextRequest } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -31,12 +31,12 @@ export async function POST(request: NextRequest) {
     };
 
     const manifest = buildPageBackupManifest(auth.session.radixAddress, snapshot);
-    const compressedSizeKB = Math.round(compressPage(snapshot).length / 2 / 1024);
+    const sizeKB = Math.round(serializePage(snapshot).length / 1024);
 
     return json({
       manifest,
       title: page.title,
-      compressedSizeKB,
+      sizeKB,
       timestamp: new Date().toISOString(),
     });
   }, 'Failed to prepare ledger backup');
