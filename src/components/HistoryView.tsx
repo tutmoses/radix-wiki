@@ -133,7 +133,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [restoringId, setRestoringId] = useState<string | null>(null);
-  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const apiBase = isHomepage ? '/api/wiki' : `/api/wiki/${tagPath}/${slug}`;
   const viewPath = isHomepage ? '/' : `/${tagPath}/${slug}`;
@@ -183,12 +183,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                 const isCurrent = i === 0;
                 const type = TYPE_BADGE[rev.changeType] ?? TYPE_BADGE.patch!;
                 const changes = rev.changes || [];
-                const isCollapsed = collapsedIds.has(rev.id);
-                const toggleCollapse = () => setCollapsedIds(prev => {
-                  const next = new Set(prev);
-                  next.has(rev.id) ? next.delete(rev.id) : next.add(rev.id);
-                  return next;
-                });
+                const isExpanded = expandedId === rev.id;
                 return (
                   <Fragment key={rev.id}>
                     <tr className={cn('border-t border-border-muted hover:bg-surface-1/50', isCurrent && 'bg-accent/5', i === 0 && '[&>td]:rounded-none')}>
@@ -201,8 +196,8 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                         <div className="row gap-3">
                           <ChangeSummary changes={changes} changeType={rev.changeType} />
                           {changes.length > 0 && (
-                            <button onClick={toggleCollapse} className="text-accent hover:text-accent-hover">
-                              <ChevronDown size={14} className={cn('transition-transform', !isCollapsed && 'rotate-180')} />
+                            <button onClick={() => setExpandedId(isExpanded ? null : rev.id)} className="text-accent hover:text-accent-hover">
+                              <ChevronDown size={14} className={cn('transition-transform', isExpanded && 'rotate-180')} />
                             </button>
                           )}
                         </div>
@@ -224,7 +219,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                         )}
                       </td>
                     </tr>
-                    {!isCollapsed && changes.length > 0 && <ExpandedChanges changes={changes} />}
+                    {isExpanded && changes.length > 0 && <ExpandedChanges changes={changes} />}
                   </Fragment>
                 );
               })}
