@@ -18,7 +18,7 @@ export interface PageSnapshot {
 
 export interface LedgerAnchor {
   timestamp: string;
-  pageCount: number;
+  slug: string;
   version: number;
 }
 
@@ -44,26 +44,24 @@ export function decompressPage(hex: string): PageSnapshot {
 // ========== MANIFEST BUILDER ==========
 
 function metadataInstruction(address: string, key: string, value: string): string {
-  return `SET_METADATA\n  Address("${address}")\n  "${key}"\n  Enum<Metadata::String>("${value}")\n;\n`;
+  const escaped = value.replace(/"/g, '\\"');
+  return `SET_METADATA\n  Address("${address}")\n  "${key}"\n  Enum<Metadata::String>("${escaped}")\n;\n`;
 }
 
-export function buildBackupManifest(accountAddress: string, pages: PageSnapshot[]): string {
-  const lines: string[] = [];
-
+export function buildPageBackupManifest(accountAddress: string, page: PageSnapshot): string {
   const anchor: LedgerAnchor = {
     timestamp: new Date().toISOString(),
-    pageCount: pages.length,
+    slug: page.slug,
     version: 1,
   };
-  lines.push(metadataInstruction(accountAddress, ANCHOR_KEY, JSON.stringify(anchor)));
 
-  for (const page of pages) {
-    const key = `${PAGE_PREFIX}${page.slug}`;
-    const compressed = compressPage(page);
-    lines.push(metadataInstruction(accountAddress, key, compressed));
-  }
+  const key = `${PAGE_PREFIX}${page.slug}`;
+  const compressed = compressPage(page);
 
-  return lines.join('\n');
+  return [
+    metadataInstruction(accountAddress, ANCHOR_KEY, JSON.stringify(anchor)),
+    metadataInstruction(accountAddress, key, compressed),
+  ].join('\n');
 }
 
 // ========== GATEWAY API READER ==========

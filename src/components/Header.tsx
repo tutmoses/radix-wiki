@@ -27,6 +27,8 @@ function usePageContext() {
     editPath: isHomepage ? '/edit' : `${viewPath}/edit`,
     historyPath: (isHomepage || isPage) ? (isHomepage ? '/history' : `${viewPath}/history`) : null,
     mdxPath,
+    tagPath,
+    slug,
   };
 }
 
@@ -112,7 +114,7 @@ export function Header() {
   const isConnecting = useStore(s => s.isConnecting);
   const fetchNotifications = useStore(s => s.fetchNotifications);
   const unreadCount = useStore(s => s.unreadCount);
-  const { canEdit, canShowHistory, canExportMdx, editPath, historyPath, mdxPath } = usePageContext();
+  const { canEdit, canShowHistory, canExportMdx, editPath, historyPath, mdxPath, tagPath, slug } = usePageContext();
   const [showSearch, setShowSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -192,7 +194,7 @@ export function Header() {
                 <button onClick={() => setShowLedger(!showLedger)} className="icon-btn" aria-label="Ledger backup" aria-expanded={showLedger}>
                   <Database size={20} />
                 </button>
-                {showLedger && <LedgerDropdown onClose={() => setShowLedger(false)} />}
+                {showLedger && <LedgerDropdown onClose={() => setShowLedger(false)} tagPath={tagPath ?? null} slug={slug ?? null} />}
               </div>
             )}
 

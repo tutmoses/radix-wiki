@@ -3,20 +3,19 @@
 'use client';
 
 import { useState } from 'react';
-import { Upload, Download, Clock, CheckCircle, AlertCircle, ExternalLink, Loader2 } from 'lucide-react';
+import { Upload, Download, CheckCircle, AlertCircle, ExternalLink, Loader2 } from 'lucide-react';
 import { useFetch, useAuth, useStore } from '@/hooks';
 import { Dropdown } from '@/components/ui';
 import type { PageSnapshot, LedgerAnchor } from '@/lib/radix/ledger';
 
 interface LedgerStatus {
   anchor: LedgerAnchor | null;
-  db: { pageCount: number; latestUpdate: string | null };
   hoursSinceAnchor: number | null;
 }
 
 interface PrepareResult {
   manifest: string;
-  pageCount: number;
+  title: string;
   compressedSizeKB: number;
   timestamp: string;
 }
@@ -27,7 +26,13 @@ interface RecoverResult {
   recoveredCount: number;
 }
 
-export function LedgerDropdown({ onClose }: { onClose: () => void }) {
+interface LedgerDropdownProps {
+  onClose: () => void;
+  tagPath: string | null;
+  slug: string | null;
+}
+
+export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) {
   const { user } = useAuth();
   const sendTransaction = useStore(s => s.sendTransaction);
   const accountAddress = user?.radixAddress ?? null;
@@ -44,12 +49,20 @@ export function LedgerDropdown({ onClose }: { onClose: () => void }) {
   const [recoveredPages, setRecoveredPages] = useState<PageSnapshot[] | null>(null);
   const [recovering, setRecovering] = useState(false);
 
+  const canBackup = !!tagPath && !!slug;
+  const lastBackupIsThisPage = status?.anchor?.slug === slug;
+
   async function handleBackup() {
+    if (!canBackup) return;
     setStage('preparing');
     setBackupError(null);
     setTxHash(null);
     try {
-      const res = await fetch('/api/ledger/prepare', { method: 'POST' });
+      const res = await fetch('/api/ledger/prepare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tagPath, slug }),
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `Failed (${res.status})`);
@@ -106,7 +119,9 @@ export function LedgerDropdown({ onClose }: { onClose: () => void }) {
             ) : status?.anchor ? (
               <>
                 <CheckCircle size={14} className="text-success shrink-0" />
-                <span className="text-small">{status.anchor.pageCount} pages backed up</span>
+                <span className="text-small">
+                  Last backup: {status.anchor.slug}
+                </span>
                 <span className="text-xs text-text-muted">
                   {status.hoursSinceAnchor !== null && `${status.hoursSinceAnchor}h ago`}
                 </span>
@@ -119,19 +134,21 @@ export function LedgerDropdown({ onClose }: { onClose: () => void }) {
             )}
           </div>
 
-          {status && !isLoading && (
-            <div className="text-xs text-text-muted">
-              Database: {status.db.pageCount} pages
-            </div>
+          {lastBackupIsThisPage && status?.anchor && (
+            <div className="text-xs text-success">This page is already backed up</div>
           )}
 
           {/* Action */}
-          <button className="ledger-action-btn" onClick={handleBackup} disabled={busy}>
-            {busy ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-            {stage === 'preparing' ? 'Preparing…' :
-             stage === 'signing' ? 'Sign in wallet…' :
-             stage === 'done' ? 'Done!' : 'Backup all pages to ledger'}
-          </button>
+          {canBackup ? (
+            <button className="ledger-action-btn" onClick={handleBackup} disabled={busy}>
+              {busy ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+              {stage === 'preparing' ? 'Preparing…' :
+               stage === 'signing' ? 'Sign in wallet…' :
+               stage === 'done' ? 'Done!' : `Backup "${slug}" to ledger`}
+            </button>
+          ) : (
+            <div className="text-xs text-text-muted">Navigate to a wiki page to back it up.</div>
+          )}
 
           {stage === 'done' && txHash && (
             <a href={`${explorerBase}${txHash}`} target="_blank" rel="noopener" className="ledger-tx-link">
@@ -144,7 +161,7 @@ export function LedgerDropdown({ onClose }: { onClose: () => void }) {
           )}
 
           <div className="text-xs text-text-muted">
-            Compresses all pages and stores them as metadata on your Radix account.
+            Compresses this page and stores it as metadata on your Radix account.
           </div>
         </div>
       ) : (
