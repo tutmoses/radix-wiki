@@ -121,10 +121,16 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
                 <CheckCircle size={14} className="text-success shrink-0" />
                 <span className="text-small">
                   Last backup: {status.anchor.slug}
+                  {status.anchor.pageVersion && <span className="text-text-muted"> v{status.anchor.pageVersion}</span>}
                 </span>
                 <span className="text-xs text-text-muted">
                   {status.hoursSinceAnchor !== null && `${status.hoursSinceAnchor}h ago`}
                 </span>
+                {accountAddress && (
+                  <a href={`https://dashboard.radixdlt.com/account/${accountAddress}`} target="_blank" rel="noopener" className="text-text-muted hover:text-accent shrink-0">
+                    <ExternalLink size={12} />
+                  </a>
+                )}
               </>
             ) : (
               <>
@@ -190,7 +196,7 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
                 {recoveredPages.map(p => (
                   <div key={p.id} className="ledger-recovered-item">
                     <span className="text-small font-medium truncate">{p.title}</span>
-                    <span className="text-xs text-text-muted">{p.tagPath}</span>
+                    <span className="text-xs text-text-muted">{p.tagPath} {p.version && `v${p.version}`}</span>
                   </div>
                 ))}
               </div>

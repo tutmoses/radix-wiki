@@ -20,6 +20,7 @@ export interface LedgerAnchor {
   timestamp: string;
   slug: string;
   version: number;
+  pageVersion?: string;
 }
 
 // ========== CONFIG ==========
@@ -53,6 +54,7 @@ export function buildPageBackupManifest(accountAddress: string, page: PageSnapsh
     timestamp: new Date().toISOString(),
     slug: page.slug,
     version: 1,
+    pageVersion: page.version,
   };
 
   const key = `${PAGE_PREFIX}${page.slug}`;

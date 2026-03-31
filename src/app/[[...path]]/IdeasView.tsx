@@ -11,7 +11,7 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { Badge, Button, Input } from '@/components/ui';
 import { useAuth } from '@/hooks';
 import { cn, slugify, formatRelativeTime } from '@/lib/utils';
-import { findTagByPath, type SortOrder } from '@/lib/tags';
+import { findTagByPath, getMetadataKeys, type SortOrder } from '@/lib/tags';
 import { SortToggle } from './PageContent';
 import type { WikiPage, PageMetadata, IdeasPage } from '@/types';
 
@@ -31,40 +31,62 @@ function AssigneeChip({ raw }: { raw?: string }) {
   );
 }
 
-const IDEAS_STATUS_COLUMNS = ['Discussion', 'Proposed', 'Approved', 'In Progress', 'Testing', 'Done'] as const;
-const PRIORITY_VARIANT: Record<string, 'danger' | 'warning' | 'success'> = { High: 'danger', Medium: 'warning', Low: 'success' };
-const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'info' | 'success' | 'warning' | 'danger'> = {
-  Discussion: 'default', Proposed: 'danger', Approved: 'warning', 'In Progress': 'info', Testing: 'secondary', Done: 'success',
-};
-const STATUS_TAB_COLOR: Record<string, string> = {
-  Discussion: 'border-accent text-accent', Proposed: 'border-danger text-danger',
-  Approved: 'border-warning text-warning', 'In Progress': 'border-info text-info',
-  Testing: 'border-purple text-purple', Done: 'border-success text-success',
-};
-const STATUS_DOT: Record<string, string> = {
-  Discussion: 'bg-accent', Proposed: 'bg-danger', Approved: 'bg-warning',
-  'In Progress': 'bg-info', Testing: 'bg-purple', Done: 'bg-success',
+/** Strip leading emoji/symbol prefix from metadata values (e.g. "🔵 In Progress" → "In Progress") */
+function normalizeField(raw?: string): string {
+  if (!raw) return '';
+  return raw.replace(/^[^\p{Lu}\p{Ll}\p{Nd}]+/u, '');
+}
+
+/** Derive a semantic color token from the emoji prefix in a tags.ts option string */
+const EMOJI_COLOR: Record<string, string> = {
+  '\u{1F534}': 'accent',   // 🔴
+  '\u{1F7E0}': 'danger',   // 🟠
+  '\u{1F7E1}': 'warning',  // 🟡
+  '\u{1F535}': 'info',     // 🔵
+  '\u{1F7E3}': 'purple',   // 🟣
+  '\u{1F7E2}': 'success',  // 🟢
 };
 
-function BoardCard({ page }: { page: WikiPage }) {
+function emojiColor(raw: string): string {
+  const cp = String.fromCodePoint(raw.codePointAt(0)!);
+  return EMOJI_COLOR[cp] ?? 'default';
+}
+
+type ColorToken = string;
+interface StatusOption { raw: string; label: string; color: ColorToken }
+
+function parseSelectOptions(options: string[]): StatusOption[] {
+  return options.map(raw => ({ raw, label: normalizeField(raw), color: emojiColor(raw) }));
+}
+
+const BADGE_VARIANT: Record<string, string> = {
+  accent: 'default', danger: 'danger', warning: 'warning',
+  info: 'info', purple: 'secondary', success: 'success', default: 'default',
+};
+
+function BoardCard({ page, priorityOptions }: { page: WikiPage; priorityOptions: StatusOption[] }) {
   const meta = (page.metadata as PageMetadata) || {};
+  const prio = priorityOptions.find(o => o.label === normalizeField(meta.priority));
   return (
     <Link href={`/${page.tagPath}/${page.slug}`} className="board-card">
       <span className="board-card-title">{page.title}</span>
       <div className="board-card-meta">
-        {meta.priority && <Badge variant={PRIORITY_VARIANT[meta.priority] || 'default'}>{meta.priority}</Badge>}
-        {meta.category && <Badge variant="secondary">{meta.category}</Badge>}
+        {meta.priority && <Badge variant={(BADGE_VARIANT[prio?.color ?? 'default'] ?? 'default') as 'default'}>{normalizeField(meta.priority)}</Badge>}
+        {meta.category && <Badge variant="secondary">{normalizeField(meta.category)}</Badge>}
         <AssigneeChip raw={meta.assignee} />
       </div>
     </Link>
   );
 }
 
-function IdeasListView({ pages, categoryFilter, statusFilter }: { pages: IdeasPage[]; categoryFilter: string; statusFilter: string }) {
+function IdeasListView({ pages, categoryFilter, statusFilter, statusOptions, priorityOptions }: {
+  pages: IdeasPage[]; categoryFilter: string; statusFilter: string;
+  statusOptions: StatusOption[]; priorityOptions: StatusOption[];
+}) {
   const filtered = useMemo(() => {
     let result = pages;
-    if (categoryFilter) result = result.filter(p => (p.metadata as PageMetadata)?.category === categoryFilter);
-    if (statusFilter) result = result.filter(p => (p.metadata as PageMetadata)?.status === statusFilter);
+    if (categoryFilter) result = result.filter(p => normalizeField((p.metadata as PageMetadata)?.category) === categoryFilter);
+    if (statusFilter) result = result.filter(p => normalizeField((p.metadata as PageMetadata)?.status) === statusFilter);
     return result;
   }, [pages, categoryFilter, statusFilter]);
 
@@ -74,14 +96,16 @@ function IdeasListView({ pages, categoryFilter, statusFilter }: { pages: IdeasPa
     <div className="ideas-list">
       {filtered.map(p => {
         const meta = (p.metadata as PageMetadata) || {};
+        const st = statusOptions.find(o => o.label === normalizeField(meta.status));
+        const pr = priorityOptions.find(o => o.label === normalizeField(meta.priority));
         return (
           <Link key={p.id} href={`/${p.tagPath}/${p.slug}`} className="ideas-row">
             <div className="ideas-row-main">
               <span className="ideas-row-title">{p.title}</span>
               <div className="ideas-row-badges">
-                {meta.status && <Badge variant={STATUS_VARIANT[meta.status] || 'default'}>{meta.status}</Badge>}
-                {meta.category && <Badge variant="secondary">{meta.category}</Badge>}
-                {meta.priority && <Badge variant={PRIORITY_VARIANT[meta.priority] || 'default'}>{meta.priority}</Badge>}
+                {meta.status && <Badge variant={(BADGE_VARIANT[st?.color ?? 'default'] ?? 'default') as 'default'}>{normalizeField(meta.status)}</Badge>}
+                {meta.category && <Badge variant="secondary">{normalizeField(meta.category)}</Badge>}
+                {meta.priority && <Badge variant={(BADGE_VARIANT[pr?.color ?? 'default'] ?? 'default') as 'default'}>{normalizeField(meta.priority)}</Badge>}
               </div>
             </div>
             <div className="ideas-row-meta">
@@ -115,20 +139,26 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
   const [newSlug, setNewSlug] = useState('');
   const [showCreate, setShowCreate] = useState(false);
 
+  const metaKeys = useMemo(() => getMetadataKeys(tagPath), [tagPath]);
+  const statusOptions = useMemo(() => parseSelectOptions(metaKeys.find(k => k.key === 'status')?.options ?? []), [metaKeys]);
+  const priorityOptions = useMemo(() => parseSelectOptions(metaKeys.find(k => k.key === 'priority')?.options ?? []), [metaKeys]);
+
   const sorted = useMemo(() => sortPages(pages, sort), [pages, sort]);
 
   const columns = useMemo(() => {
-    const filtered = categoryFilter ? sorted.filter(p => (p.metadata as PageMetadata)?.category === categoryFilter) : sorted;
-    return IDEAS_STATUS_COLUMNS.map(status => ({
-      status,
-      items: filtered.filter(p => (p.metadata as PageMetadata)?.status === status),
+    const filtered = categoryFilter
+      ? sorted.filter(p => normalizeField((p.metadata as PageMetadata)?.category) === categoryFilter)
+      : sorted;
+    return statusOptions.map(opt => ({
+      ...opt,
+      items: filtered.filter(p => normalizeField((p.metadata as PageMetadata)?.status) === opt.label),
     }));
-  }, [sorted, categoryFilter]);
+  }, [sorted, categoryFilter, statusOptions]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
     for (const p of pages) {
-      const c = (p.metadata as PageMetadata)?.category;
+      const c = normalizeField((p.metadata as PageMetadata)?.category);
       if (c) set.add(c);
     }
     return [...set].sort();
@@ -158,8 +188,8 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
         <div className="ideas-panel">
           <div className="status-tabs">
             <button className={cn('status-tab', statusFilter === '' && 'border-accent text-accent')} onClick={() => setStatusFilter('')}>All</button>
-            {IDEAS_STATUS_COLUMNS.map(s => (
-              <button key={s} className={cn('status-tab', statusFilter === s && STATUS_TAB_COLOR[s])} onClick={() => setStatusFilter(s)}>{s}</button>
+            {statusOptions.map(o => (
+              <button key={o.label} className={cn('status-tab', statusFilter === o.label && `border-${o.color} text-${o.color}`)} onClick={() => setStatusFilter(o.label)}>{o.label}</button>
             ))}
           </div>
           {categories.length > 0 && (
@@ -170,7 +200,7 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
               ))}
             </div>
           )}
-          <IdeasListView pages={sorted} categoryFilter={categoryFilter} statusFilter={statusFilter} />
+          <IdeasListView pages={sorted} categoryFilter={categoryFilter} statusFilter={statusFilter} statusOptions={statusOptions} priorityOptions={priorityOptions} />
         </div>
       ) : (
         <div className="ideas-panel">
@@ -183,14 +213,14 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
             </div>
           )}
           <div className="board-columns">
-          {columns.map(({ status, items }) => (
-            <div key={status} className="board-column">
+          {columns.map(({ label, color, items }) => (
+            <div key={label} className="board-column">
               <div className="board-column-head">
-                <span className="flex items-center gap-2"><span className={cn('size-2 rounded-full', STATUS_DOT[status])} />{status}</span>
+                <span className="flex items-center gap-2"><span className={cn('size-2 rounded-full', `bg-${color}`)} />{label}</span>
                 <Badge>{items.length}</Badge>
               </div>
               <div className="board-column-body">
-                {items.length > 0 ? items.map(p => <BoardCard key={p.id} page={p} />) : <div className="board-empty">No items</div>}
+                {items.length > 0 ? items.map(p => <BoardCard key={p.id} page={p} priorityOptions={priorityOptions} />) : <div className="board-empty">No items</div>}
               </div>
             </div>
           ))}
