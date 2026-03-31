@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Upload, Download, CheckCircle, AlertCircle, ExternalLink, Loader2 } from 'lucide-react';
 import { useFetch, useAuth, useStore } from '@/hooks';
 import { Dropdown } from '@/components/ui';
-import type { PageSnapshot, LedgerAnchor } from '@/lib/radix/ledger';
+import type { RestoredPage, LedgerAnchor } from '@/lib/radix/ledger';
 
 interface LedgerStatus {
   anchor: LedgerAnchor | null;
@@ -22,7 +22,7 @@ interface PrepareResult {
 
 interface RecoverResult {
   anchor: LedgerAnchor | null;
-  pages: PageSnapshot[];
+  pages: RestoredPage[];
   recoveredCount: number;
 }
 
@@ -46,7 +46,7 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
 
   const [tab, setTab] = useState<'backup' | 'recover'>('backup');
   const [recoverAddress, setRecoverAddress] = useState('');
-  const [recoveredPages, setRecoveredPages] = useState<PageSnapshot[] | null>(null);
+  const [recoveredPages, setRecoveredPages] = useState<RestoredPage[] | null>(null);
   const [recovering, setRecovering] = useState(false);
 
   const canBackup = !!tagPath && !!slug;
@@ -194,9 +194,9 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
             recoveredPages.length > 0 ? (
               <div className="ledger-recovered-list">
                 {recoveredPages.map(p => (
-                  <div key={p.id} className="ledger-recovered-item">
+                  <div key={p.slug} className="ledger-recovered-item">
                     <span className="text-small font-medium truncate">{p.title}</span>
-                    <span className="text-xs text-text-muted">{p.tagPath} {p.version && `v${p.version}`}</span>
+                    <span className="text-xs text-text-muted">{p.tagPath} v{p.version}</span>
                   </div>
                 ))}
               </div>

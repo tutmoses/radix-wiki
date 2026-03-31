@@ -4,17 +4,6 @@ import { paginatedGatewayFetch } from './gateway';
 
 // ========== TYPES ==========
 
-export interface PageSnapshot {
-  id: string;
-  slug: string;
-  tagPath: string;
-  title: string;
-  content: unknown;
-  excerpt: string | null;
-  version: string;
-  updatedAt: string;
-}
-
 export interface LedgerAnchor {
   timestamp: string;
   slug: string;
@@ -23,47 +12,46 @@ export interface LedgerAnchor {
   chunks: number;
 }
 
+export interface RestoredPage {
+  slug: string;
+  tagPath: string;
+  title: string;
+  version: string;
+  mdx: string;
+}
+
 // ========== CONFIG ==========
 
 const PAGE_PREFIX = 'wiki_page:';
 const ANCHOR_KEY = 'wiki_anchor';
 const CHUNK_MAX = 3800; // safe limit under Radix's 4096-byte metadata cap
 
-// ========== SERIALIZATION ==========
-// Base64-encoded JSON: avoids " and \ characters that break manifest string literals,
-// while remaining easily decodable to human-readable JSON.
-
-export function serializePage(page: PageSnapshot): string {
-  return Buffer.from(JSON.stringify(page)).toString('base64');
-}
-
-export function deserializePage(b64: string): PageSnapshot {
-  return JSON.parse(Buffer.from(b64, 'base64').toString('utf-8')) as PageSnapshot;
-}
-
 // ========== MANIFEST BUILDER ==========
 
 function metadataInstruction(address: string, key: string, value: string): string {
-  const escaped = value.replace(/"/g, '\\"');
+  const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   return `SET_METADATA\n  Address("${address}")\n  "${key}"\n  Enum<Metadata::String>("${escaped}")\n;\n`;
 }
 
-export function buildPageBackupManifest(accountAddress: string, page: PageSnapshot): string {
-  const serialized = serializePage(page);
+export function buildPageBackupManifest(
+  accountAddress: string,
+  meta: { slug: string; pageVersion: string },
+  mdx: string,
+): string {
   const chunks: string[] = [];
-  for (let i = 0; i < serialized.length; i += CHUNK_MAX) {
-    chunks.push(serialized.slice(i, i + CHUNK_MAX));
+  for (let i = 0; i < mdx.length; i += CHUNK_MAX) {
+    chunks.push(mdx.slice(i, i + CHUNK_MAX));
   }
 
   const anchor: LedgerAnchor = {
     timestamp: new Date().toISOString(),
-    slug: page.slug,
+    slug: meta.slug,
     version: 1,
-    pageVersion: page.version,
+    pageVersion: meta.pageVersion,
     chunks: chunks.length,
   };
 
-  const baseKey = `${PAGE_PREFIX}${page.slug}`;
+  const baseKey = `${PAGE_PREFIX}${meta.slug}`;
   const instructions = [
     metadataInstruction(accountAddress, ANCHOR_KEY, JSON.stringify(anchor)),
     ...chunks.map((chunk, i) =>
@@ -104,14 +92,25 @@ export async function readAnchorFromLedger(accountAddress: string): Promise<Ledg
   }
 }
 
-export async function readAllPagesFromLedger(accountAddress: string): Promise<PageSnapshot[]> {
+function parseMdxFrontmatter(mdx: string): { title: string; tagPath: string; slug: string; version: string } | null {
+  const match = mdx.match(/^---\n([\s\S]*?)\n---/);
+  if (!match) return null;
+  const fm = match[1]!;
+  const get = (key: string) => fm.match(new RegExp(`^${key}: "(.+)"`, 'm'))?.[1] ?? '';
+  const path = get('path'); // e.g. /contents/tech/foo
+  const parts = path.replace(/^\//, '').split('/');
+  const slug = parts.pop() ?? '';
+  const tagPath = parts.join('/');
+  return { title: get('title'), tagPath, slug, version: get('version') };
+}
+
+export async function readAllPagesFromLedger(accountAddress: string): Promise<RestoredPage[]> {
   const metadata = await fetchAllMetadata(accountAddress);
-  const pages: PageSnapshot[] = [];
+  const pages: RestoredPage[] = [];
   const seen = new Set<string>();
 
   for (const [key] of metadata) {
     if (!key.startsWith(PAGE_PREFIX)) continue;
-    // Extract base slug: "wiki_page:foo:0" → "wiki_page:foo", "wiki_page:foo" → "wiki_page:foo"
     const withoutPrefix = key.slice(PAGE_PREFIX.length);
     const baseSlug = withoutPrefix.replace(/:\d+$/, '');
     if (seen.has(baseSlug)) continue;
@@ -119,13 +118,15 @@ export async function readAllPagesFromLedger(accountAddress: string): Promise<Pa
 
     try {
       const baseKey = `${PAGE_PREFIX}${baseSlug}`;
-      let b64 = '';
+      let mdx = '';
       for (let i = 0; ; i++) {
         const chunk = metadata.get(`${baseKey}:${i}`);
         if (!chunk) break;
-        b64 += chunk;
+        mdx += chunk;
       }
-      if (b64) pages.push(deserializePage(b64));
+      if (!mdx) continue;
+      const parsed = parseMdxFrontmatter(mdx);
+      if (parsed) pages.push({ ...parsed, mdx });
     } catch (err) {
       console.error(`[ledger] Failed to parse ${key}:`, err);
     }

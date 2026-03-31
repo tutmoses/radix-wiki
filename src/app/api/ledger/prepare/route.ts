@@ -2,7 +2,8 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { requireAuth, handleRoute, json, errors } from '@/lib/api';
-import { buildPageBackupManifest, serializePage, type PageSnapshot } from '@/lib/radix/ledger';
+import { buildPageBackupManifest } from '@/lib/radix/ledger';
+import { blocksToMdx } from '@/lib/mdx';
 import type { NextRequest } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -15,23 +16,22 @@ export async function POST(request: NextRequest) {
 
     const page = await prisma.page.findFirst({
       where: { tagPath, slug },
-      select: { id: true, slug: true, tagPath: true, title: true, content: true, excerpt: true, version: true, updatedAt: true },
+      select: {
+        slug: true, tagPath: true, title: true, content: true,
+        excerpt: true, version: true, updatedAt: true, createdAt: true,
+        bannerImage: true,
+        author: { select: { displayName: true, radixAddress: true } },
+      },
     });
     if (!page) return errors.notFound('Page not found');
 
-    const snapshot: PageSnapshot = {
-      id: page.id,
-      slug: page.slug,
-      tagPath: page.tagPath,
-      title: page.title,
-      content: page.content,
-      excerpt: page.excerpt,
-      version: page.version,
-      updatedAt: page.updatedAt.toISOString(),
-    };
-
-    const manifest = buildPageBackupManifest(auth.session.radixAddress, snapshot);
-    const sizeKB = Math.round(serializePage(snapshot).length / 1024);
+    const mdx = blocksToMdx(page);
+    const manifest = buildPageBackupManifest(
+      auth.session.radixAddress,
+      { slug: page.slug, pageVersion: page.version },
+      mdx,
+    );
+    const sizeKB = Math.round(mdx.length / 1024);
 
     return json({
       manifest,
