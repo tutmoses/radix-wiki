@@ -11,6 +11,7 @@ import type { RestoredPage, LedgerAnchor } from '@/lib/radix/ledger';
 interface LedgerStatus {
   anchor: LedgerAnchor | null;
   hoursSinceAnchor: number | null;
+  backupTxHash: string | null;
 }
 
 interface PrepareResult {
@@ -40,12 +41,8 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
   const statusUrl = accountAddress ? `/api/ledger/status?address=${accountAddress}` : null;
   const { data: status, isLoading } = useFetch<LedgerStatus>(statusUrl);
 
-  const storageKey = accountAddress ? `ledger_tx:${accountAddress}` : null;
   const [stage, setStage] = useState<'idle' | 'preparing' | 'signing' | 'done' | 'error'>('idle');
-  const [txHash, setTxHash] = useState<string | null>(() => {
-    if (!storageKey) return null;
-    try { return localStorage.getItem(storageKey); } catch { return null; }
-  });
+  const [txHash, setTxHash] = useState<string | null>(null);
   const [backupError, setBackupError] = useState<string | null>(null);
 
   const [tab, setTab] = useState<'backup' | 'recover'>('backup');
@@ -76,8 +73,13 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
       const result = await sendTransaction(manifest);
       const hash = result.transactionIntentHash;
       setTxHash(hash);
-      if (storageKey) try { localStorage.setItem(storageKey, hash); } catch {}
       setStage('done');
+      // Persist tx hash to database (fire-and-forget)
+      fetch('/api/ledger/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tagPath, slug, txHash: hash }),
+      }).catch(() => {});
     } catch (err) {
       setBackupError(err instanceof Error ? err.message : 'Backup failed');
       setStage('error');
@@ -132,8 +134,8 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
                 <span className="text-xs text-text-muted">
                   {status.hoursSinceAnchor !== null && `${status.hoursSinceAnchor}h ago`}
                 </span>
-                {txHash && (
-                  <a href={`${explorerBase}${txHash}`} target="_blank" rel="noopener" className="text-text-muted hover:text-accent shrink-0">
+                {(txHash || status.backupTxHash) && (
+                  <a href={`${explorerBase}${txHash || status.backupTxHash}`} target="_blank" rel="noopener" className="text-text-muted hover:text-accent shrink-0">
                     <ExternalLink size={12} />
                   </a>
                 )}

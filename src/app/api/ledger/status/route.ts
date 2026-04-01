@@ -18,20 +18,23 @@ export async function GET(request: NextRequest) {
       ? (Date.now() - new Date(anchor.timestamp).getTime()) / 3_600_000
       : null;
 
-    // Look up current page version if a page is specified
+    // Look up current page version + backup tx hash if a page is specified
     let currentPageVersion: string | null = null;
+    let backupTxHash: string | null = null;
     if (tagPath && slug) {
       const page = await prisma.page.findUnique({
         where: { tagPath_slug: { tagPath, slug } },
-        select: { version: true },
+        select: { version: true, backupTxHash: true },
       });
       currentPageVersion = page?.version ?? null;
+      backupTxHash = page?.backupTxHash ?? null;
     }
 
     return cachedJson({
       anchor,
       hoursSinceAnchor: hoursSinceAnchor ? Math.round(hoursSinceAnchor * 10) / 10 : null,
       currentPageVersion,
+      backupTxHash,
     }, CACHE.short);
   }, 'Failed to read ledger status');
 }

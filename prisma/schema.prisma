@@ -38,6 +38,7 @@ model Page {
   tagPath     String    @map("tag_path")
   metadata    Json?     @default("{}")
   version     String    @default("1.0.0")
+  backupTxHash String?  @map("backup_tx_hash")
   authorId    String    @map("author_id")
   author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
   editorIds   String[]  @default([]) @map("editor_ids")
