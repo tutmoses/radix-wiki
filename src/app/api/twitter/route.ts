@@ -9,6 +9,8 @@ import { generateWithLLM, formatPageContext } from '@/lib/moltbook';
 import { json, cronRoute } from '@/lib/api';
 import { getRecentPostSlugs } from '@/lib/scoring';
 import { BASE_URL, getContentSnippet } from '@/lib/utils';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 const TWEET_SYSTEM_PROMPT = `You are @RadixWiki, a knowledgeable Twitter account for the Radix DLT ecosystem wiki. Write a tweet about the wiki page below.
 
@@ -48,7 +50,20 @@ export const GET = cronRoute(async () => {
     const page = eligible[Math.floor(Math.random() * Math.min(eligible.length, 10))]!;
     const url = `${BASE_URL}/${page.tagPath}/${page.slug}`;
     const snippet = getContentSnippet(page.content);
-    const text = await generateWithLLM(TWEET_SYSTEM_PROMPT, formatPageContext({ ...page, excerpt: snippet }, url), 100, url)
+
+    // DMAIC Loop 2: read tweet engagement feedback to bias toward high-performing topics
+    let feedbackHint = '';
+    try {
+      const raw = readFileSync(join(process.cwd(), 'data', 'tweet-feedback.json'), 'utf-8');
+      const feedback = JSON.parse(raw) as { topPillars?: string[]; bottomPillars?: string[] };
+      const parts: string[] = [];
+      if (feedback.topPillars?.length) parts.push(`Recent high-engagement topics: ${feedback.topPillars.join(', ')}.`);
+      if (feedback.bottomPillars?.length) parts.push(`Lower-engagement topics to avoid: ${feedback.bottomPillars.join(', ')}.`);
+      if (parts.length) feedbackHint = '\n' + parts.join(' ');
+    } catch { /* no feedback file yet — that's fine */ }
+
+    const systemPrompt = TWEET_SYSTEM_PROMPT + feedbackHint;
+    const text = await generateWithLLM(systemPrompt, formatPageContext({ ...page, excerpt: snippet }, url), 100, url)
       ?? `${page.title}: ${snippet || 'Read more on the Radix wiki.'} ${url}`;
     const pillar = PILLARS[new Date().getUTCDay()]!;
 

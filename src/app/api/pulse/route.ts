@@ -25,7 +25,9 @@ const AGENTS = [
   { name: 'mend', type: 'mend', statusFilter: 'sent', maxAgeHours: 48, cronPath: '/api/mend' },
 ] as const;
 
-export const GET = cronRoute(async () => {
+export const GET = cronRoute(async (request: Request) => {
+    const url = new URL(request.url);
+    const deep = url.searchParams.get('deep') === 'true';
     const now = Date.now();
     const checks: AgentHealth[] = [];
     const healed: string[] = [];
@@ -88,14 +90,35 @@ export const GET = cronRoute(async () => {
     // Count pending scout intel for awareness
     const pendingIntel = await prisma.tweet.count({ where: { type: 'scout_intel', status: 'flagged' } });
 
+    // Deep mode: per-agent error breakdown + metrics cron health
+    let deepDiag: Record<string, unknown> | undefined;
+    if (deep) {
+      const dayAgoDate = new Date(now - 24 * 3_600_000);
+      const failedByType = await prisma.tweet.groupBy({
+        by: ['type'],
+        where: { status: 'failed', createdAt: { gte: dayAgoDate } },
+        _count: true,
+      });
+      const lastSnapshot = await prisma.tweet.findFirst({
+        where: { type: 'metrics_snapshot' },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      });
+      deepDiag = {
+        errors_by_agent: Object.fromEntries(failedByType.map(r => [r.type, r._count])),
+        last_metrics_snapshot: lastSnapshot?.createdAt.toISOString() ?? null,
+        metrics_snapshot_age_hours: lastSnapshot ? Math.round((now - lastSnapshot.createdAt.getTime()) / 3_600_000) : null,
+      };
+    }
+
     // Log pulse result for trend tracking
     await prisma.tweet.create({
       data: {
         type: 'pulse',
-        text: JSON.stringify({ overall, checks, healed, pendingIntel }),
+        text: JSON.stringify({ overall, checks, healed, pendingIntel, ...(deepDiag ? { deep: deepDiag } : {}) }),
         status: overall,
       },
     }).catch(() => {});
 
-    return json({ status: overall, checks, healed, pendingIntel, timestamp: new Date().toISOString() });
+    return json({ status: overall, checks, healed, pendingIntel, ...(deepDiag ? { deep: deepDiag } : {}), timestamp: new Date().toISOString() });
 }, 'Pulse: health check failed');

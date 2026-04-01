@@ -37,6 +37,7 @@ export const TAG_HIERARCHY: TagNode[] = [
           { name: 'DeSci', slug: 'desci' },
           { name: 'Releases', slug: 'releases' },
           { name: 'Research', slug: 'research' },
+          { name: 'Operations', slug: 'operations', hidden: true },
         ],
       },
       {
