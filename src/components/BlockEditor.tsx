@@ -180,7 +180,7 @@ function PageListBlockEdit({ block, onUpdate }: BlockProps<PageListBlock>) {
   const addPage = () => { if (newPageId.trim()) { onUpdate?.({ ...block, pageIds: [...block.pageIds, newPageId.trim()] }); setNewPageId(''); } };
   return (
     <EditWrapper icon={FileText} label="Curated Page List">
-      {block.pageIds.length > 0 && <div className="stack-sm">{block.pageIds.map((id, i) => <div key={i} className="row"><span className="flex-1 text-small truncate">{id}</span><button onClick={() => onUpdate?.({ ...block, pageIds: block.pageIds.filter((_, j) => j !== i) })} className="icon-btn text-text-muted hover:text-error"><Trash2 size={14} /></button></div>)}</div>}
+      {block.pageIds.length > 0 && <div className="stack-sm">{block.pageIds.map((id, i) => <div key={i} className="row"><span className="flex-1 text-small truncate">{id}</span><button onClick={() => onUpdate?.({ ...block, pageIds: block.pageIds.filter((_, j) => j !== i) })} className="icon-btn text-text-muted hover:text-error" title="Remove page" aria-label="Remove page"><Trash2 size={14} /></button></div>)}</div>}
       <div className="row"><input type="text" value={newPageId} onChange={e => setNewPageId(e.target.value)} placeholder="Page ID..." className="flex-1 input" /><Button size="sm" onClick={addPage} disabled={!newPageId.trim()}>Add</Button></div>
       <small>Add page IDs to create a curated list</small>
     </EditWrapper>
@@ -259,7 +259,7 @@ function ColumnsBlockEdit({ block, onUpdate }: BlockProps<ColumnsBlock>) {
       <div className="spread">
         <div className="row text-text-muted"><Columns size={18} /><span className="font-medium">{block.columns.length} Column Layout</span></div>
         <div className="row">
-          <button onClick={() => setShowSettings(!showSettings)} className={cn('icon-btn p-1', showSettings && 'bg-surface-2')}><Settings size={14} /></button>
+          <button onClick={() => setShowSettings(!showSettings)} className={cn('icon-btn p-1', showSettings && 'bg-surface-2')} title="Column settings" aria-label="Column settings"><Settings size={14} /></button>
           {block.columns.length < 4 && <button onClick={addColumn} className="text-accent text-small hover:text-accent-hover">+ Add Column</button>}
         </div>
       </div>
@@ -299,7 +299,7 @@ function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Colum
 
   return (
     <div className="column-editor">
-      <div className="spread"><span className="column-header">Column</span>{canDelete && <button onClick={onDelete} className="icon-btn p-1 text-text-muted hover:text-error"><Trash2 size={14} /></button>}</div>
+      <div className="spread"><span className="column-header">Column</span>{canDelete && <button onClick={onDelete} className="icon-btn p-1 text-text-muted hover:text-error" title="Delete column" aria-label="Delete column"><Trash2 size={14} /></button>}</div>
       {(column.blocks?.length ?? 0) === 0 ? (
         <div className="py-6 text-center"><p className="text-text-muted text-small mb-2">Empty column</p><InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
       ) : (
@@ -356,7 +356,7 @@ const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelecte
 
   if (!meta) return (
     <div className={cn('block-unknown', compact ? 'p-3' : 'p-4 rounded-lg')}>
-      <div className="spread mb-2"><span className={cn('text-warning', compact ? 'text-small' : 'font-medium')}>Unknown block: {block.type}</span><button onClick={e => { e.stopPropagation(); handleDelete(); }} className="icon-btn p-1 text-text-muted hover:text-error"><Trash2 size={iconSize} /></button></div>
+      <div className="spread mb-2"><span className={cn('text-warning', compact ? 'text-small' : 'font-medium')}>Unknown block: {block.type}</span><button onClick={e => { e.stopPropagation(); handleDelete(); }} className="icon-btn p-1 text-text-muted hover:text-error" title="Delete block" aria-label="Delete block"><Trash2 size={iconSize} /></button></div>
     </div>
   );
   const Icon = meta.icon;
@@ -371,8 +371,8 @@ const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelecte
       <div className={cn('spread', compact ? 'mb-2' : 'mb-3')}>
         <div className="row">{!(compact || isContainer) && <div className="block-label"><Icon size={18} /><span className="block-label-text">{meta.label}</span></div>}</div>
         <div className="block-actions">
-          <button onClick={e => { e.stopPropagation(); handleMoveUp(); }} disabled={index === 0} className="icon-btn p-1 text-text-muted disabled:opacity-30"><ChevronUp size={iconSize} /></button>
-          <button onClick={e => { e.stopPropagation(); handleMoveDown(); }} disabled={index === total - 1} className="icon-btn p-1 text-text-muted disabled:opacity-30"><ChevronDown size={iconSize} /></button>
+          <button onClick={e => { e.stopPropagation(); handleMoveUp(); }} disabled={index === 0} className="icon-btn p-1 text-text-muted disabled:opacity-30" title="Move up" aria-label="Move up"><ChevronUp size={iconSize} /></button>
+          <button onClick={e => { e.stopPropagation(); handleMoveDown(); }} disabled={index === total - 1} className="icon-btn p-1 text-text-muted disabled:opacity-30" title="Move down" aria-label="Move down"><ChevronDown size={iconSize} /></button>
           {!compact && <button onClick={e => { e.stopPropagation(); handleDuplicate(); }} className="icon-btn p-1 text-text-muted" title="Duplicate"><Copy size={iconSize} /></button>}
           <button onClick={e => { e.stopPropagation(); handleDelete(); }} className="icon-btn p-1 text-text-muted hover:text-error" title="Delete"><Trash2 size={iconSize} /></button>
         </div>

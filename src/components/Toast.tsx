@@ -14,7 +14,7 @@ export function Toast() {
   return (
     <div className="toast" role="alert">
       <span>{toast.message}</span>
-      <button onClick={dismissToast} className="toast-close" aria-label="Dismiss">
+      <button onClick={dismissToast} className="toast-close" title="Dismiss" aria-label="Dismiss">
         <X size={16} />
       </button>
     </div>

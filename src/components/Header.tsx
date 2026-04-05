@@ -188,7 +188,7 @@ export function Header() {
     <header className="header">
       <div className="header-inner">
         <div className="header-bar">
-          <button onClick={toggleSidebar} className="icon-btn" aria-label="Toggle menu" aria-expanded={sidebarOpen}>
+          <button onClick={toggleSidebar} className="icon-btn" title={sidebarOpen ? 'Close menu' : 'Open menu'} aria-label="Toggle menu" aria-expanded={sidebarOpen}>
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
@@ -198,16 +198,16 @@ export function Header() {
           </Link>
 
           <div className="header-actions">
-            <button onClick={() => setShowSearch(!showSearch)} className="icon-btn" aria-label="Search" aria-expanded={showSearch}><Search size={20} /></button>
+            <button onClick={() => setShowSearch(!showSearch)} className="icon-btn" title="Search" aria-label="Search" aria-expanded={showSearch}><Search size={20} /></button>
 
-            {canExportMdx && mdxPath && <a href={mdxPath} className="icon-btn" aria-label="Download MDX" download><FileCode size={20} /></a>}
-            {canEdit && <Link href={editPath} className="icon-btn" aria-label="Edit page"><Edit size={20} /></Link>}
-            {canShowHistory && historyPath && <Link href={historyPath} className="icon-btn" aria-label="Page history"><History size={20} /></Link>}
-            {isAuthenticated && userProfilePath && <Link href={userProfilePath} className="icon-btn" aria-label="Your profile"><User size={20} /></Link>}
+            {canExportMdx && mdxPath && <a href={mdxPath} className="icon-btn" title="Download MDX" aria-label="Download MDX" download><FileCode size={20} /></a>}
+            {canEdit && <Link href={editPath} className="icon-btn" title="Edit page" aria-label="Edit page"><Edit size={20} /></Link>}
+            {canShowHistory && historyPath && <Link href={historyPath} className="icon-btn" title="Page history" aria-label="Page history"><History size={20} /></Link>}
+            {isAuthenticated && userProfilePath && <Link href={userProfilePath} className="icon-btn" title="Your profile" aria-label="Your profile"><User size={20} /></Link>}
 
             {isAuthenticated && (
               <div className="relative">
-                <button onClick={() => setShowLedger(!showLedger)} className={cn('icon-btn', ledgerIconColor)} aria-label="Ledger backup" aria-expanded={showLedger}>
+                <button onClick={() => setShowLedger(!showLedger)} className={cn('icon-btn', ledgerIconColor)} title="Ledger backup" aria-label="Ledger backup" aria-expanded={showLedger}>
                   <Database size={20} />
                 </button>
                 {showLedger && <LedgerDropdown onClose={() => setShowLedger(false)} tagPath={tagPath ?? null} slug={slug ?? null} />}
@@ -216,7 +216,7 @@ export function Header() {
 
             {isAuthenticated && (
               <div className="relative">
-                <button onClick={() => setShowNotifications(!showNotifications)} className="icon-btn" aria-label="Notifications" aria-expanded={showNotifications}>
+                <button onClick={() => setShowNotifications(!showNotifications)} className="icon-btn" title="Notifications" aria-label="Notifications" aria-expanded={showNotifications}>
                   <Bell size={20} />
                   {unreadCount > 0 && <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                 </button>

@@ -72,17 +72,26 @@ async function solveChallenge(text: string): Promise<string | null> {
     const cleaned = deobfuscate(text);
     const anthropic = new Anthropic();
     const msg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 20,
-      system: `Solve the lobster math challenge. The text may still have minor noise — ignore anything that isn't part of the math problem.
+      model: 'claude-opus-4-6',
+      max_tokens: 50,
+      system: `You are solving a lobster-themed math challenge. The text is obfuscated but contains a simple arithmetic problem (addition, subtraction, multiplication, or division).
 
-Operations: "total force" / "push together" / "multiplied" = MULTIPLY. "accelerates by" / "adds" / "new speed" = ADD.
+Read the problem carefully. Identify the numbers and the operation being asked for. Common phrasings:
+- "total force", "push together", "combined" = ADD the values
+- "accelerates by", "adds", "new speed", "gains" = ADD
+- "multiplied", "product", "times" = MULTIPLY
+- "what remains", "left over", "difference", "loses" = SUBTRACT
+- "split", "divided", "per lobster", "shared equally" = DIVIDE
 
-Respond with ONLY the numeric answer to 2 decimal places (e.g. "150.00"). Nothing else.`,
-      messages: [{ role: 'user', content: `Original: ${text}\n\nCleaned: ${cleaned}` }],
+Solve the arithmetic. Respond with ONLY the numeric answer to 2 decimal places (e.g. "47.00"). Nothing else — no words, no units, no explanation.`,
+      messages: [{ role: 'user', content: `Original challenge: ${text}\n\nDeobfuscated: ${cleaned}` }],
     });
-    const answer = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : null;
-    if (!answer || !/^\d+(\.\d+)?$/.test(answer)) return null;
+    const raw = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : null;
+    if (!raw) return null;
+    // Extract first number from response (handles minor preamble)
+    const match = raw.match(/(\d+(?:\.\d+)?)/);
+    if (!match) return null;
+    const answer = match[1]!;
     return answer.includes('.') ? answer : `${answer}.00`;
   } catch {
     return null;
@@ -119,7 +128,7 @@ export async function generateWithLLM(system: string, userContent: string, maxTo
     return await withRetry(async () => {
       const anthropic = new Anthropic();
       const msg = await anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
+        model: 'claude-opus-4-6',
         max_tokens: maxTokens,
         system,
         messages: [{ role: 'user', content: userContent }],
@@ -166,6 +175,7 @@ The wiki page context below is your source material. Extract the most interestin
 const TITLE_SYSTEM_PROMPT = `Write a short, attention-grabbing title (under 80 chars) for a Moltbook post.
 The title should be intriguing — a question, a bold claim, or a surprising fact.
 NOT the wiki page title. NOT an announcement. Think Reddit thread title.
+PLAIN TEXT ONLY — no markdown, no bold (**), no italic (*), no formatting.
 Respond with ONLY the title, nothing else.`;
 
 export async function generatePost(
@@ -217,16 +227,22 @@ export async function generateCommentReply(
 
 export const moltbook = {
   async post(submolt: string, title: string, content: string): Promise<{ postId?: string }> {
+    // Strip markdown formatting from title — Moltbook spam filter flags bold/italic titles
+    const cleanTitle = title.replace(/\*+/g, '').replace(/_+/g, '').trim();
     const res = await request<{ post: { id?: string; verification?: { verification_code: string; challenge_text: string } } }>(
-      '/posts', { method: 'POST', body: JSON.stringify({ submolt_name: submolt, title, content }) },
+      '/posts', { method: 'POST', body: JSON.stringify({ submolt_name: submolt, title: cleanTitle, content }) },
     );
+    let postId = res.post?.id;
     const v = res.post?.verification;
     if (v) {
       const answer = await solveChallenge(v.challenge_text);
       if (!answer) throw new Error(`Failed to solve verification challenge: ${v.challenge_text}`);
-      await request('/verify', { method: 'POST', body: JSON.stringify({ verification_code: v.verification_code, answer }) });
+      const verifyRes = await request<{ post?: { id?: string } }>('/verify', {
+        method: 'POST', body: JSON.stringify({ verification_code: v.verification_code, answer }),
+      });
+      postId = verifyRes.post?.id ?? postId;
     }
-    return { postId: res.post?.id };
+    return { postId };
   },
 
   comment(postId: string, body: string) {

@@ -73,8 +73,14 @@
   ::selection { @apply bg-accent-muted text-text; }
   :focus-visible { @apply outline-2 outline-accent outline-offset-2; }
 
-  * { scrollbar-width: none; }
-  ::-webkit-scrollbar { @apply hidden; }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+  ::-webkit-scrollbar { @apply w-1.5 h-1.5; }
+  ::-webkit-scrollbar-track { @apply bg-transparent; }
+  ::-webkit-scrollbar-thumb { @apply rounded-full bg-border; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-border-muted; }
 
   input, textarea, select { font: inherit; color: inherit; }
   hr { @apply border-0 border-t border-border-muted; }

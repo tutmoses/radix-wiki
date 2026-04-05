@@ -221,7 +221,7 @@ function TelegramSection() {
                       {sub.events.map(e => <span key={e} className="badge">{e.replace('.', ' ')}</span>)}
                     </div>
                   </div>
-                  <button onClick={() => handleUnsubscribe(sub.id)} className="icon-btn text-text-muted hover:text-error" aria-label="Unsubscribe">
+                  <button onClick={() => handleUnsubscribe(sub.id)} className="icon-btn text-text-muted hover:text-error" title="Unsubscribe" aria-label="Unsubscribe">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -337,7 +337,7 @@ export function WebhookSettings() {
               <div className="text-small font-medium">Signing secret (shown once):</div>
               <div className="row">
                 <code className="webhook-secret-value">{newSecret}</code>
-                <button onClick={copySecret} className="icon-btn" aria-label="Copy secret">
+                <button onClick={copySecret} className="icon-btn" title="Copy secret" aria-label="Copy secret">
                   {copied ? <Check size={14} /> : <Copy size={14} />}
                 </button>
               </div>
@@ -362,7 +362,7 @@ export function WebhookSettings() {
                     </div>
                     {w.tagPathFilter && <div className="text-xs text-text-muted">Filter: {w.tagPathFilter}</div>}
                   </div>
-                  <button onClick={() => handleDelete(w.id)} className="icon-btn text-text-muted hover:text-error" aria-label="Delete webhook">
+                  <button onClick={() => handleDelete(w.id)} className="icon-btn text-text-muted hover:text-error" title="Delete webhook" aria-label="Delete webhook">
                     <Trash2 size={14} />
                   </button>
                 </div>
