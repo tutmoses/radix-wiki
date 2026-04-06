@@ -201,7 +201,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
 
     // Create new page
     const body: WikiPageInput = await request.json();
-    const { title, content, excerpt, bannerImage, tagPath, metadata } = body;
+    const { title, content, bannerImage, tagPath, metadata } = body;
 
     if (!title || !content) return errors.badRequest('Title and content required');
     if (!validateBlocks(content)) return errors.badRequest('Invalid block structure');
@@ -230,7 +230,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
         data: {
           slug, title,
           content: content as unknown as Prisma.InputJsonValue,
-          excerpt, bannerImage, tagPath,
+          bannerImage, tagPath,
           metadata: metadata as unknown as Prisma.InputJsonValue,
           version: initialVersion, authorId: auth.session.userId,
         },
@@ -266,7 +266,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     if ('error' in auth) return auth.error;
 
     const body: Partial<WikiPageInput> & { revisionMessage?: string; newSlug?: string; editorIds?: string[] } = await request.json();
-    const { title, content, excerpt, bannerImage, metadata, revisionMessage, newSlug, editorIds } = body;
+    const { title, content, bannerImage, metadata, revisionMessage, newSlug, editorIds } = body;
 
     if (content !== undefined && !validateBlocks(content)) {
       return errors.badRequest('Invalid block structure');
@@ -353,7 +353,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
         data: {
           title: title ?? undefined, slug: slugUpdate ?? undefined,
           content: content !== undefined ? (content as unknown as Prisma.InputJsonValue) : undefined,
-          excerpt: excerpt ?? undefined, bannerImage: bannerImage ?? undefined,
+          bannerImage: bannerImage ?? undefined,
           metadata: metadata !== undefined ? (metadata as unknown as Prisma.InputJsonValue) : undefined,
           version: newVersion,
           ...(editorIds !== undefined && existing.authorId === auth.session.userId ? { editorIds } : {}),

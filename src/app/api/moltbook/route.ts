@@ -37,12 +37,12 @@ export const GET = cronRoute(async () => {
     const page = eligible[Math.floor(Math.random() * Math.min(eligible.length, 10))]!;
     const url = `${BASE_URL}/${page.tagPath}/${page.slug}`;
     const submolt = pickSubmolt();
-    const pageWithExcerpt = { ...page, excerpt: getContentSnippet(page.content) };
+    const pageWithSnippet = { ...page, snippet: getContentSnippet(page.content) };
 
     try {
       const [text, title] = await Promise.all([
-        generatePost(pageWithExcerpt, url),
-        generateTitle(pageWithExcerpt),
+        generatePost(pageWithSnippet, url),
+        generateTitle(pageWithSnippet),
       ]);
 
       const { postId } = await moltbook.post(submolt, title, text);

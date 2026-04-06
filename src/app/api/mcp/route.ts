@@ -18,11 +18,11 @@ const SERVER_INFO = { name: 'radix-wiki', version: '2.0.0' };
 const TOOLS = [
   {
     name: 'search_wiki',
-    description: 'Search Radix Wiki pages by keyword. Matches against titles and excerpts. Returns titles, URLs, excerpts, and update dates.',
+    description: 'Search Radix Wiki pages by keyword. Matches against titles and content. Returns titles, URLs, snippets, and update dates.',
     inputSchema: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'Search term (matched against page titles and excerpts)' },
+        query: { type: 'string', description: 'Search term (matched against page titles)' },
         tagPath: { type: 'string', description: 'Limit results to a tag path (e.g. "contents/tech/core-concepts")' },
         page: { type: 'number', description: 'Page number (default 1)' },
         pageSize: { type: 'number', description: 'Results per page (default 20, max 50)' },
@@ -110,7 +110,7 @@ function summarizePage(p: { title: string; tagPath: string; slug: string; conten
     url: pageUrl(p.tagPath, p.slug),
     tagPath: p.tagPath,
     slug: p.slug,
-    excerpt: getContentSnippet(p.content),
+    snippet: getContentSnippet(p.content),
     updatedAt: p.updatedAt.toISOString().split('T')[0],
   };
 }

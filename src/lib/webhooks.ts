@@ -16,7 +16,6 @@ interface WebhookPayload {
     title: string;
     tagPath: string;
     version: string;
-    excerpt?: string | null;
     url: string;
   };
   revision?: { changeType: string; message?: string | null; version: string };
@@ -34,7 +33,7 @@ function signPayload(payload: string, secret: string): string {
 
 export function deliverWebhooks(
   event: WebhookEvent,
-  page: { slug: string; title: string; tagPath: string; version: string; excerpt?: string | null },
+  page: { slug: string; title: string; tagPath: string; version: string },
   revision?: { changeType: string; message?: string | null; version: string } | null,
   actor?: { displayName?: string | null; radixAddress: string } | null,
   comment?: { id: string; content: string; parentId?: string | null } | null,
@@ -48,7 +47,7 @@ export function deliverWebhooks(
 
 async function _deliver(
   event: WebhookEvent,
-  page: { slug: string; title: string; tagPath: string; version: string; excerpt?: string | null },
+  page: { slug: string; title: string; tagPath: string; version: string },
   revision?: { changeType: string; message?: string | null; version: string } | null,
   actor?: { displayName?: string | null; radixAddress: string } | null,
   comment?: { id: string; content: string; parentId?: string | null } | null,
@@ -74,7 +73,6 @@ async function _deliver(
       title: page.title,
       tagPath: page.tagPath,
       version: page.version,
-      excerpt: page.excerpt,
       url: pageUrl,
     },
     ...(revision && { revision }),

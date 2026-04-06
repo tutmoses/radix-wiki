@@ -118,8 +118,8 @@ export function pickSubmolt(): string {
 
 // --- LLM generation (shared — also used by buffer.ts for Twitter) ---
 
-export function formatPageContext(page: { title: string; excerpt: string | null; tagPath?: string }, url: string): string {
-  return `Wiki page: "${page.title}"\nExcerpt: ${page.excerpt || 'No excerpt.'}${page.tagPath ? `\nTag path: ${page.tagPath}` : ''}\nURL: ${url}`;
+export function formatPageContext(page: { title: string; snippet: string | null; tagPath?: string }, url: string): string {
+  return `Wiki page: "${page.title}"\nSummary: ${page.snippet || 'No summary.'}${page.tagPath ? `\nTag path: ${page.tagPath}` : ''}\nURL: ${url}`;
 }
 
 export async function generateWithLLM(system: string, userContent: string, maxTokens: number, url?: string): Promise<string | null> {
@@ -179,7 +179,7 @@ PLAIN TEXT ONLY — no markdown, no bold (**), no italic (*), no formatting.
 Respond with ONLY the title, nothing else.`;
 
 export async function generatePost(
-  page: { title: string; excerpt: string | null; tagPath: string },
+  page: { title: string; snippet: string | null; tagPath: string },
   url: string,
 ): Promise<string> {
   const text = await generateWithLLM(POST_SYSTEM_PROMPT, formatPageContext(page, url), 300, url);
@@ -188,9 +188,9 @@ export async function generatePost(
 }
 
 export async function generateTitle(
-  page: { title: string; excerpt: string | null },
+  page: { title: string; snippet: string | null },
 ): Promise<string> {
-  const title = await generateWithLLM(TITLE_SYSTEM_PROMPT, `Topic: ${page.title}\nExcerpt: ${page.excerpt || ''}`, 40);
+  const title = await generateWithLLM(TITLE_SYSTEM_PROMPT, `Topic: ${page.title}\nSummary: ${page.snippet || ''}`, 40);
   return title || page.title;
 }
 

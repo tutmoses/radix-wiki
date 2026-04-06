@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     if (!content?.trim()) return errors.badRequest('Content is required');
     if (content.length > 5000) return errors.badRequest('Comment too long (max 5000 chars)');
 
-    const page = await prisma.page.findUnique({ where: { id: pageId }, select: { id: true, slug: true, title: true, tagPath: true, version: true, excerpt: true, authorId: true } });
+    const page = await prisma.page.findUnique({ where: { id: pageId }, select: { id: true, slug: true, title: true, tagPath: true, version: true, authorId: true } });
     if (!page) return errors.notFound('Page not found');
 
     const auth = await requireAuth(request, { type: 'comment', tagPath: page.tagPath });

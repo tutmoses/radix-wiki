@@ -27,7 +27,7 @@ export function sendMessage(chatId: string, text: string): Promise<boolean> {
 
 function formatMessage(
   event: WebhookEvent,
-  page: { slug: string; title: string; tagPath: string; version: string; excerpt?: string | null },
+  page: { slug: string; title: string; tagPath: string; version: string },
   revision?: { changeType: string; message?: string | null; version: string } | null,
   actor?: { displayName?: string | null; address: string } | null,
   comment?: { id: string; content: string } | null,
@@ -90,7 +90,7 @@ function matchesSubscription(
 
 export function deliverTelegram(
   event: WebhookEvent,
-  page: { slug: string; title: string; tagPath: string; version: string; excerpt?: string | null },
+  page: { slug: string; title: string; tagPath: string; version: string },
   revision?: { changeType: string; message?: string | null; version: string } | null,
   actor?: { displayName?: string | null; radixAddress: string } | null,
   comment?: { id: string; content: string; parentId?: string | null } | null,
@@ -103,7 +103,7 @@ export function deliverTelegram(
 
 async function _deliverTelegram(
   event: WebhookEvent,
-  page: { slug: string; title: string; tagPath: string; version: string; excerpt?: string | null },
+  page: { slug: string; title: string; tagPath: string; version: string },
   revision?: { changeType: string; message?: string | null; version: string } | null,
   actor?: { displayName?: string | null; radixAddress: string } | null,
   comment?: { id: string; content: string; parentId?: string | null } | null,

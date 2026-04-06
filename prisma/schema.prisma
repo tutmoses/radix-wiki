@@ -33,7 +33,6 @@ model Page {
   slug        String
   title       String
   content     Json      @default("{}")
-  excerpt     String?
   bannerImage String?   @map("banner_image")
   tagPath     String    @map("tag_path")
   metadata    Json?     @default("{}")

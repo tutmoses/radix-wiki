@@ -63,7 +63,7 @@ export const GET = cronRoute(async () => {
     } catch { /* no feedback file yet — that's fine */ }
 
     const systemPrompt = TWEET_SYSTEM_PROMPT + feedbackHint;
-    const text = await generateWithLLM(systemPrompt, formatPageContext({ ...page, excerpt: snippet }, url), 100, url)
+    const text = await generateWithLLM(systemPrompt, formatPageContext({ ...page, snippet }, url), 100, url)
       ?? `${page.title}: ${snippet || 'Read more on the Radix wiki.'} ${url}`;
     const pillar = PILLARS[new Date().getUTCDay()]!;
 

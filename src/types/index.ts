@@ -55,7 +55,6 @@ export type WikiPageInput = {
   slug?: string;
   title: string;
   content: Prisma.JsonValue;
-  excerpt?: string;
   bannerImage?: string;
   tagPath: string;
   metadata?: PageMetadata;

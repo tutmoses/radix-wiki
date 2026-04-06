@@ -17,8 +17,8 @@ const SECTION_NAMES = new Map(
   TAG_HIERARCHY.filter(n => !n.hidden && n.slug).map(n => [n.slug, n.name.replace(/^\S+\s/, '')]),  // strip emoji prefix
 );
 
-/** Strip URLs, parenthesised URLs, and clean up whitespace from excerpts */
-function cleanExcerpt(s: string): string {
+/** Strip URLs, parenthesised URLs, and clean up whitespace from snippets */
+function cleanSnippet(s: string): string {
   return s
     .replace(/\(https?:\/\/[^)]*\)/g, '')
     .replace(/https?:\/\/\S+/g, '')
@@ -146,7 +146,7 @@ export async function GET() {
   const categories = collectCategories(TAG_HIERARCHY);
   const validPages = pages.filter(p => p.tagPath && p.slug);
   const fmt = (p: typeof validPages[number]) => {
-    const e = cleanExcerpt(getContentSnippet(p.content));
+    const e = cleanSnippet(getContentSnippet(p.content));
     return `- [${p.title}](${BASE_URL}/${p.tagPath}/${p.slug})${e ? `: ${e}` : ''}`;
   };
 

@@ -16,7 +16,6 @@ interface MetricsSnapshot {
     pages_updated_7d: number;
     stale_pages_30d: number;
     infobox_pct: number;
-    excerpt_pct: number;
   };
   agents: {
     error_rate_24h: number;
@@ -51,18 +50,15 @@ async function collectSnapshot(): Promise<MetricsSnapshot> {
     prisma.page.count(),
     prisma.page.count({ where: { updatedAt: { gte: day7 } } }),
     prisma.page.count({ where: { updatedAt: { lt: day30 } } }),
-    prisma.page.findMany({ select: { content: true, excerpt: true } }),
+    prisma.page.findMany({ select: { content: true } }),
   ]);
 
   let hasInfobox = 0;
-  let hasExcerpt = 0;
   for (const p of allPages) {
     const str = JSON.stringify(p.content);
     if (str.includes('"type":"infobox"') || str.includes('"type": "infobox"')) hasInfobox++;
-    if (p.excerpt && p.excerpt.trim().length > 0) hasExcerpt++;
   }
   const infoboxPct = pageCount > 0 ? hasInfobox / pageCount : 0;
-  const excerptPct = pageCount > 0 ? hasExcerpt / pageCount : 0;
 
   // --- Agent metrics ---
   const [errors24h, total24h, errors7d, total7d] = await Promise.all([
@@ -120,7 +116,7 @@ async function collectSnapshot(): Promise<MetricsSnapshot> {
   const brokenLinkRate = sentinelTotal > 0 ? sentinelIssues / sentinelTotal : 0;
   const staleRate = pageCount > 0 ? stalePages30d / pageCount : 0;
 
-  const contentQualityScore = infoboxPct * 0.3 + excerptPct * 0.2 + (1 - brokenLinkRate) * 0.3 + (1 - staleRate) * 0.2;
+  const contentQualityScore = infoboxPct * 0.4 + (1 - brokenLinkRate) * 0.3 + (1 - staleRate) * 0.3;
   const systemHealthScore = (1 - errorRate7d) * 0.4 + pulseHealthPct * 0.3 + mendSuccessRate * 0.3;
   const distributionVelocity = tweetsSent7d + moltbookPosts7d;
 
@@ -131,7 +127,6 @@ async function collectSnapshot(): Promise<MetricsSnapshot> {
       pages_updated_7d: pagesUpdated7d,
       stale_pages_30d: stalePages30d,
       infobox_pct: Math.round(infoboxPct * 1000) / 1000,
-      excerpt_pct: Math.round(excerptPct * 1000) / 1000,
     },
     agents: {
       error_rate_24h: Math.round(errorRate24h * 1000) / 1000,

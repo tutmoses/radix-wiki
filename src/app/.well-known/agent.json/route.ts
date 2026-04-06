@@ -16,7 +16,7 @@ const AGENT_CARD = {
     {
       id: 'search',
       name: 'Search Wiki',
-      description: 'Search Radix Wiki pages by keyword across titles and excerpts',
+      description: 'Search Radix Wiki pages by keyword across titles and content',
       tags: ['search', 'radix', 'blockchain', 'wiki', 'scrypto', 'defi'],
       examples: ['Search for Cerberus consensus', 'Find pages about Scrypto', 'What is Xi\'an sharding?'],
     },

@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       where: { tagPath, slug },
       select: {
         slug: true, tagPath: true, title: true, content: true,
-        excerpt: true, version: true, updatedAt: true, createdAt: true,
+        version: true, updatedAt: true, createdAt: true,
         bannerImage: true,
         author: { select: { displayName: true, radixAddress: true } },
       },

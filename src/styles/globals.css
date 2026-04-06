@@ -336,7 +336,7 @@
 
   .page-card-body { @apply flex flex-col gap-2 p-4; }
   .page-card-title { @apply font-medium transition-colors truncate; .group:hover & { @apply text-accent; } }
-  .page-card-excerpt { @apply text-text-muted line-clamp-2 text-small; }
+  .page-card-snippet { @apply text-text-muted line-clamp-2 text-small; }
   .page-card-meta { @apply flex items-center gap-2 flex-wrap mt-auto pt-1; }
   .page-card-compact { @apply flex items-center gap-2 p-3 bg-surface-1 border border-border-muted rounded-lg hover:bg-surface-2 transition-colors; }
 

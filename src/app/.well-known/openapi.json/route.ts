@@ -100,7 +100,6 @@ const SPEC = {
           title: { type: 'string' },
           slug: { type: 'string' },
           tagPath: { type: 'string' },
-          excerpt: { type: 'string', nullable: true },
           updatedAt: { type: 'string', format: 'date-time' },
         },
       },

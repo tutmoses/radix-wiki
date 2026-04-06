@@ -154,7 +154,6 @@ interface PageData {
   title: string;
   tagPath: string;
   slug: string;
-  excerpt?: string | null;
   bannerImage?: string | null;
   version?: string;
   author?: { displayName?: string | null; radixAddress: string } | null;
@@ -171,7 +170,6 @@ export function blocksToMdx(page: PageData): string {
     title: page.title,
     path: `/${page.tagPath}/${page.slug}`,
   };
-  if (page.excerpt) frontmatter.excerpt = page.excerpt;
   if (page.bannerImage) frontmatter.bannerImage = page.bannerImage;
   if (page.version) frontmatter.version = page.version;
   if (page.author) {
