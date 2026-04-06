@@ -5,6 +5,7 @@ import { Suspense } from 'react';
 import { parsePath, getHomepage, getPage, getCategoryPages, isIdeasPath, getIdeasPages, getPageHistory, getAdjacentPages, resolveBlockData } from '@/lib/wiki';
 import { findTagByPath, getSortOrder, TAG_HIERARCHY, type TagNode, type SortOrder } from '@/lib/tags';
 import { highlightBlocks } from '@/lib/highlight';
+import { processBlocks } from '@/lib/html';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { prisma } from '@/lib/prisma/client';
 import { PageView, HomepageView, CategoryView, PageSkeleton, StatusCard, HistoryView, type HistoryData } from './PageContent';
@@ -41,6 +42,8 @@ export const revalidate = 60;
 
 type Props = { params: Promise<{ path?: string[] }>; searchParams: Promise<{ sort?: string }> };
 
+const NOINDEX_ROBOTS = { index: false, follow: true, googleBot: { index: false, follow: true } } as const;
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { path } = await params;
   const parsed = parsePath(path);
@@ -54,7 +57,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const staticMeta = STATIC_META[parsed.type];
   if (staticMeta) {
-    const ogUrl = `${BASE_URL}/og?title=${encodeURIComponent(staticMeta.title)}&excerpt=${encodeURIComponent(staticMeta.description)}`;
+    const ogUrl = `${BASE_URL}/og?title=${encodeURIComponent(staticMeta.title)}&description=${encodeURIComponent(staticMeta.description)}`;
     return {
       title: staticMeta.title, description: staticMeta.description,
       alternates: { canonical: `${BASE_URL}/${parsed.type}` },
@@ -68,9 +71,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const tagSegments = parsed.tagPath.split('/');
     const tag = findTagByPath(tagSegments);
     const categoryName = tag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagSegments.at(-1)?.replace(/-/g, ' ') || 'Category';
-    const categoryDescription = tag?.description || `Browse ${categoryName} articles on RADIX Wiki.`;
+    const parentPath = tagSegments.slice(0, -1).join(' › ');
+    const categoryDescription = tag?.description
+      || `${categoryName} on RADIX Wiki${parentPath ? ` (${parentPath})` : ''} — browse community-maintained pages covering ${categoryName.toLowerCase()} in the Radix DLT ecosystem.`;
     const categoryUrl = `${BASE_URL}/${parsed.tagPath}`;
-    const ogUrl = `${BASE_URL}/og?title=${encodeURIComponent(categoryName)}&excerpt=${encodeURIComponent(categoryDescription)}`;
+    const ogUrl = `${BASE_URL}/og?title=${encodeURIComponent(categoryName)}&description=${encodeURIComponent(categoryDescription)}`;
     return {
       title: categoryName, description: categoryDescription,
       alternates: { canonical: categoryUrl },
@@ -79,20 +84,37 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
+  // Edit, history, and mdx variants shouldn't be indexed (they produce near-duplicate content)
+  if (parsed.type === 'edit' || parsed.type === 'history' || parsed.type === 'mdx') {
+    const label = parsed.type === 'edit' ? 'Edit' : parsed.type === 'history' ? 'Revision history' : 'MDX export';
+    return {
+      title: `${label} — RADIX Wiki`,
+      description: `${label} view on RADIX Wiki.`,
+      robots: NOINDEX_ROBOTS,
+      alternates: { canonical: `${BASE_URL}/${parsed.tagPath}/${parsed.slug}`.replace(/\/+$/, '') || BASE_URL },
+    };
+  }
+
   let page = null;
   if (parsed.type === 'homepage') page = await getHomepage();
-  else if (parsed.type === 'page' || parsed.type === 'edit') page = await getPage(parsed.tagPath, parsed.slug);
+  else if (parsed.type === 'page') page = await getPage(parsed.tagPath, parsed.slug);
 
   const title = page?.title || 'RADIX Wiki';
-  const description = getContentSnippet(page?.content) || `${title} — community-maintained article on RADIX Wiki.`;
+  const snippet = getContentSnippet(page?.content);
+  const tagSegments = page?.tagPath?.split('/').filter(Boolean) || [];
+  const sectionName = tagSegments.length
+    ? findTagByPath(tagSegments.slice(0, 1))?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '')
+    : undefined;
+  // Description derived directly from content so it never goes stale
+  const description = snippet
+    || (page
+      ? `${title}${sectionName ? ` — a ${sectionName} article` : ''} on RADIX Wiki, the community-maintained knowledge base for the Radix DLT ecosystem.`
+      : 'RADIX Wiki — community-maintained knowledge base for Radix DLT, the layer-1 blockchain with linear scalability and asset-oriented smart contracts.');
   const segments = path?.length ? path.join('/') : '';
   const canonical = segments ? `${BASE_URL}/${segments}` : BASE_URL;
-  const ogParams = new URLSearchParams({ title, excerpt: description, tagPath: page?.tagPath || '' });
+  const ogParams = new URLSearchParams({ title, description, tagPath: page?.tagPath || '' });
   if (page?.bannerImage) ogParams.set('banner', page.bannerImage);
   const ogUrl = `${BASE_URL}/og?${ogParams}`;
-
-  const tagSegments = page?.tagPath?.split('/').filter(Boolean) || [];
-  const section = tagSegments.length ? findTagByPath(tagSegments.slice(0, 1))?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') : undefined;
 
   return {
     title,
@@ -103,7 +125,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       images: [{ url: ogUrl, width: 1200, height: 630 }],
       ...(page?.createdAt && { publishedTime: new Date(page.createdAt).toISOString() }),
       ...(page?.updatedAt && { modifiedTime: new Date(page.updatedAt).toISOString() }),
-      ...(section && { section }),
+      ...(sectionName && { section: sectionName }),
       ...(page?.tagPath && { tags: page.tagPath.split('/') }),
     },
     twitter: { card: 'summary_large_image', title, description, images: [ogUrl] },
@@ -115,6 +137,8 @@ async function withProcessedContent<T extends { content: unknown }>(page: T | nu
   let content = page.content as Block[];
   content = await resolveBlockData(content);
   if (hasCodeBlocksInContent(content)) content = await highlightBlocks(content);
+  // Normalise HTML server-side so SSR output has demoted h1s, alt attrs, and correct link attributes
+  content = processBlocks(content);
   return { ...page, content };
 }
 

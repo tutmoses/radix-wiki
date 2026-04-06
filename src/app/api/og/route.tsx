@@ -26,7 +26,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const title = searchParams.get('title') || 'RADIX Wiki';
   const tagPath = searchParams.get('tagPath') || '';
-  const excerpt = searchParams.get('excerpt') || 'A decentralized wiki powered by Radix DLT';
+  const description = searchParams.get('description') || 'A decentralized wiki powered by Radix DLT';
   const banner = searchParams.get('banner');
 
   if (banner) {
@@ -56,7 +56,7 @@ export async function GET(req: Request) {
             <div style={{ fontSize: 24, color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ color: '#ff9da0', fontWeight: 600 }}>RADIX.wiki</span>
               <span style={{ color: 'rgba(255,255,255,0.4)' }}>|</span>
-              <span>{excerpt.length > 80 ? excerpt.slice(0, 80) + '...' : excerpt}</span>
+              <span>{description.length > 80 ? description.slice(0, 80) + '...' : description}</span>
             </div>
           </div>
         </div>
@@ -100,7 +100,7 @@ export async function GET(req: Request) {
           <div style={{ fontSize: 24, color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ color: '#ff9da0', fontWeight: 600 }}>RADIX.wiki</span>
             <span style={{ color: 'rgba(255,255,255,0.4)' }}>|</span>
-            <span>{excerpt.length > 80 ? excerpt.slice(0, 80) + '...' : excerpt}</span>
+            <span>{description.length > 80 ? description.slice(0, 80) + '...' : description}</span>
           </div>
         </div>
       </div>
