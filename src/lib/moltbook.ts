@@ -4,6 +4,11 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const API_BASE = 'https://www.moltbook.com/api/v1';
 
+// Single source of truth — bump to the newest Opus snapshot when Anthropic
+// ships one (Anthropic does not expose a `claude-opus-latest` alias, so this
+// has to be updated by hand). All Moltbook LLM calls use this.
+const OPUS_MODEL = 'claude-opus-4-6';
+
 function headers() {
   const key = process.env.MOLTBOOK_API_KEY;
   if (!key) throw new Error('MOLTBOOK_API_KEY not set');
@@ -72,7 +77,7 @@ async function solveChallenge(text: string): Promise<string | null> {
     const cleaned = deobfuscate(text);
     const anthropic = new Anthropic();
     const msg = await anthropic.messages.create({
-      model: 'claude-opus-4-6',
+      model: OPUS_MODEL,
       max_tokens: 50,
       system: `You are solving a lobster-themed math challenge. The text is obfuscated but contains a simple arithmetic problem (addition, subtraction, multiplication, or division).
 
@@ -128,7 +133,7 @@ export async function generateWithLLM(system: string, userContent: string, maxTo
     return await withRetry(async () => {
       const anthropic = new Anthropic();
       const msg = await anthropic.messages.create({
-        model: 'claude-opus-4-6',
+        model: OPUS_MODEL,
         max_tokens: maxTokens,
         system,
         messages: [{ role: 'user', content: userContent }],
@@ -170,13 +175,41 @@ Example openings (vary these):
 - "Most sharded L1s break atomic composability. There's exactly one that doesn't, and nobody talks about it."
 - "Hot take: the approval pattern in ERC-20 is a security liability disguised as a feature."
 
-The wiki page context below is your source material. Extract the most interesting angle from it. Do NOT summarize the page.`;
+The wiki page context below is your source material. Extract the most interesting angle from it. Do NOT summarize the page.
+
+If the page is genuinely unsuitable (too thin, off-topic, no agent-infrastructure angle you can honestly draw), respond with exactly "[SKIP]" on a single line and nothing else. Do NOT explain, apologise, or describe why — a structured skip is the only acceptable refusal. Never publish meta-commentary about your own task, voice, or constraints.`;
 
 const TITLE_SYSTEM_PROMPT = `Write a short, attention-grabbing title (under 80 chars) for a Moltbook post.
 The title should be intriguing — a question, a bold claim, or a surprising fact.
 NOT the wiki page title. NOT an announcement. Think Reddit thread title.
 PLAIN TEXT ONLY — no markdown, no bold (**), no italic (*), no formatting.
-Respond with ONLY the title, nothing else.`;
+Respond with ONLY the title, nothing else.
+If the topic is unsuitable, respond with exactly "[SKIP]" on a single line.`;
+
+// Detects when the LLM has produced meta-commentary instead of the requested
+// content — e.g. "I'll skip this one. No post." Triggered by the structured
+// [SKIP] marker or by free-form refusal phrases that should never appear in a
+// genuine first-person post or Reddit-style title.
+export function looksLikeRefusal(text: string): boolean {
+  const t = text.trim().toLowerCase();
+  if (!t) return true;
+  if (/^\[?\s*(skip|no[\s-]?post|decline|pass)\s*\]?\.?$/.test(t)) return true;
+  const patterns: RegExp[] = [
+    /\[\s*(skip|no[\s-]?post|decline)\s*\]/,
+    /\bno post\b\.?/,
+    /\bi(?:'ll| will|'m going to| am going to)? skip\b/,
+    /\bskip(?:ping)? this (?:one|page|post|topic)\b/,
+    /\bi (?:won'?t|will not|can'?t|cannot|shouldn'?t|should not) (?:post|write|publish|create)\b/,
+    /\bnot enough substance\b/,
+    /\boff[-\s]brand\b/,
+    /\b(?:would |will |'?d )?(?:feel|sound|seem)s? forced\b/,
+    /\bvoice (?:i'?m|i am) supposed to\b/,
+    /\bdoesn'?t fit (?:the |my |our )?(?:voice|brand|persona|tone|style)\b/,
+    /\b(?:better|best) (?:to |off )?skip(?:ping)?\b/,
+    /\bdecided (?:not to (?:post|write|publish)|to skip)\b/,
+  ];
+  return patterns.some(p => p.test(t));
+}
 
 export async function generatePost(
   page: { title: string; snippet: string | null; tagPath: string },
@@ -184,6 +217,7 @@ export async function generatePost(
 ): Promise<string> {
   const text = await generateWithLLM(POST_SYSTEM_PROMPT, formatPageContext(page, url), 300, url);
   if (!text) throw new Error('Empty LLM response');
+  if (looksLikeRefusal(text)) throw new Error(`LLM declined to post about "${page.title}"`);
   return text;
 }
 
@@ -191,7 +225,8 @@ export async function generateTitle(
   page: { title: string; snippet: string | null },
 ): Promise<string> {
   const title = await generateWithLLM(TITLE_SYSTEM_PROMPT, `Topic: ${page.title}\nSummary: ${page.snippet || ''}`, 40);
-  return title || page.title;
+  if (!title || looksLikeRefusal(title)) return page.title;
+  return title;
 }
 
 // --- API client ---

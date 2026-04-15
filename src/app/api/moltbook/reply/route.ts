@@ -27,7 +27,7 @@ export const GET = cronRoute(async () => {
 
     if (recentPosts.length === 0) return json({ replied: 0, results: [{ status: 'no_posts_with_ids' }] });
 
-    // 2. Load dedup set — comment IDs we've already replied to
+    // 2. Load dedup set — keyed by postId:authorUsername (comment IDs are unstable across API calls)
     const recentReplies = await prisma.tweet.findMany({
       where: { type: 'moltbook_reply', createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) } },
       select: { inReplyTo: true },
@@ -50,13 +50,19 @@ export const GET = cronRoute(async () => {
         continue; // Post may have been deleted or API shape differs
       }
 
-      // Filter: skip our own comments and already-replied ones
-      const newComments = comments.filter(c =>
-        c.author?.username !== 'radixwiki' && !repliedTo.has(c.id) && c.content?.trim(),
-      );
+      // Filter: skip our own comments and already-replied authors on this post
+      const newComments = comments.filter(c => {
+        const author = c.author?.username;
+        if (!author || author === 'radixwiki') return false;
+        if (!c.content?.trim()) return false;
+        const dedupKey = `${postId}:${author}`;
+        return !repliedTo.has(dedupKey);
+      });
 
       for (const comment of newComments) {
         if (replied >= MAX_REPLIES_PER_RUN) break;
+        const author = comment.author?.username ?? 'anonymous';
+        const dedupKey = `${postId}:${author}`;
 
         const wikiUrl = post.pageTagPath && post.pageSlug
           ? `${BASE_URL}/${post.pageTagPath}/${post.pageSlug}`
@@ -66,12 +72,12 @@ export const GET = cronRoute(async () => {
           const replyText = await generateCommentReply(
             post.text,
             comment.content,
-            comment.author?.username ?? 'anonymous',
+            author,
             wikiUrl,
           );
 
           if (!replyText) {
-            results.push({ postId, commentId: comment.id, commenter: comment.author?.username, status: 'generation_failed' });
+            results.push({ postId, commentId: comment.id, commenter: author, status: 'generation_failed' });
             continue;
           }
 
@@ -81,21 +87,21 @@ export const GET = cronRoute(async () => {
             data: {
               type: 'moltbook_reply',
               text: replyText,
-              inReplyTo: comment.id,
+              inReplyTo: dedupKey,
               pageSlug: post.pageSlug,
               pageTagPath: post.pageTagPath,
               status: 'sent',
             },
           });
 
-          repliedTo.add(comment.id);
-          results.push({ postId, commentId: comment.id, commenter: comment.author?.username, status: 'replied' });
+          repliedTo.add(dedupKey);
+          results.push({ postId, commentId: comment.id, commenter: author, status: 'replied' });
           replied++;
         } catch (e) {
           const errorMsg = (e as Error).message;
-          results.push({ postId, commentId: comment.id, commenter: comment.author?.username, status: 'failed', error: errorMsg });
+          results.push({ postId, commentId: comment.id, commenter: author, status: 'failed', error: errorMsg });
           await prisma.tweet.create({
-            data: { type: 'moltbook_reply', text: '', inReplyTo: comment.id, status: 'failed', error: errorMsg },
+            data: { type: 'moltbook_reply', text: '', inReplyTo: dedupKey, status: 'failed', error: errorMsg },
           }).catch(() => {});
         }
       }
