@@ -10,6 +10,7 @@ const SPEC = {
     version: '1.0.0',
     description: 'REST API and MCP server for the Radix DLT ecosystem knowledge base. Read endpoints are public; write endpoints require ROLA authentication.',
     contact: { name: 'RADIX Wiki', url: BASE_URL },
+    license: { name: 'CC-BY-4.0', identifier: 'CC-BY-4.0', url: 'https://creativecommons.org/licenses/by/4.0/' },
   },
   servers: [{ url: BASE_URL }],
   paths: {

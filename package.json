@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "license": "CC-BY-4.0",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build --turbopack",

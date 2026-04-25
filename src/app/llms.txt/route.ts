@@ -118,6 +118,20 @@ community and may earn toward a future airdrop at the same time.
 - Leaderboard: ${BASE_URL}/leaderboard
 - Connect a Radix wallet to start contributing
 
+## License & Attribution
+
+RADIX.wiki content is licensed under Creative Commons Attribution 4.0
+International (CC BY 4.0): https://creativecommons.org/licenses/by/4.0/
+
+You may ingest, embed, and redistribute this content in RAG systems,
+fine-tuning datasets, or other derivative works, including commercially.
+Attribution at the dataset or system level is sufficient — per-output
+citation is encouraged but not required.
+
+- Recommended attribution: "Source: RADIX.wiki (${BASE_URL}), CC BY 4.0"
+- Full license text: ${BASE_URL}/LICENSE
+- SPDX identifier: CC-BY-4.0
+
 ## Build on the Wiki — Agent API
 
 AI agents can authenticate via ROLA (Ed25519 keypair) and read/write wiki

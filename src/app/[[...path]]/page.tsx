@@ -176,6 +176,7 @@ function articleLd(page: WikiPage, url: string) {
     ...(page.bannerImage && { image: page.bannerImage }),
     isPartOf: { '@type': 'WebSite', name: 'RADIX Wiki', url: BASE_URL },
     inLanguage: 'en',
+    license: 'https://creativecommons.org/licenses/by/4.0/',
   };
 }
 

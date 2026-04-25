@@ -37,6 +37,10 @@ export async function GET() {
     `> This is the full-text version of llms.txt for ${BASE_URL}`,
     `> ${pages.length} pages, last generated ${new Date().toISOString().split('T')[0]}`,
     ``,
+    `> License: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)`,
+    `> Attribution: "Source: RADIX.wiki (${BASE_URL}), CC BY 4.0"`,
+    `> Full license text: ${BASE_URL}/LICENSE`,
+    ``,
     ...sections,
   ].join('\n\n');
 

@@ -47,6 +47,11 @@ const AGENT_CARD = {
   documentationUrl: `${BASE_URL}/llms.txt`,
   apiSpecUrl: `${BASE_URL}/.well-known/openapi.json`,
   mcpEndpoint: `${BASE_URL}/api/mcp`,
+  license: {
+    name: 'CC-BY-4.0',
+    url: 'https://creativecommons.org/licenses/by/4.0/',
+    scope: 'content',
+  },
   securitySchemes: {
     rola: {
       type: 'custom',
