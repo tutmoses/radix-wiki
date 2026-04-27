@@ -518,6 +518,24 @@
   /* ===== EMPTY STATES ===== */
   .empty-state { @apply py-12 text-center; }
 
+  /* ===== CHARTS / DATA TABLES ===== */
+  .charts-stat-grid { @apply grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3; }
+  .charts-section-title { @apply text-h4 font-semibold; }
+  .charts-section-link { @apply inline-flex items-center gap-1 text-small text-accent hover:underline; }
+
+  .data-table-wrap { @apply bg-surface-1 border border-border-muted rounded-lg overflow-hidden overflow-x-auto; }
+  .data-table { @apply w-full text-small border-collapse; }
+  .data-table-th { @apply text-left text-small text-text-muted border-b border-surface-2 p-3 font-medium; }
+  .data-table-td { @apply p-3 border-b border-surface-2; }
+  .data-table-row { @apply transition-colors hover:bg-surface-1/40; }
+  .data-table-row:last-child .data-table-td { @apply border-b-0; }
+  .sort-header { @apply inline-flex items-center gap-1 cursor-pointer hover:text-text transition-colors; }
+  .sort-header-active { @apply text-text; }
+
+  .token-detail-header { @apply flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border-muted; }
+  .token-detail-price { @apply flex items-center gap-3; }
+  .token-detail-meta { @apply grid grid-cols-2 sm:grid-cols-4 gap-3; }
+
   /* ===== ASSET PRICE ===== */
   .asset-price { @apply bg-surface-1 border border-border-muted rounded-lg p-4 flex items-center gap-4; }
   .asset-chart { @apply mt-1 relative; }

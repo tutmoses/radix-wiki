@@ -15,6 +15,10 @@ const IdeasView = dynamic(() => import('./IdeasView'), { loading: () => <PageSke
 const LeaderboardView = dynamic(() => import('@/components/LeaderboardView'), { loading: () => <PageSkeleton /> });
 const WelcomeView = dynamic(() => import('@/components/WelcomeView'), { loading: () => <PageSkeleton /> });
 const RewardsView = dynamic(() => import('@/components/RewardsView'), { loading: () => <PageSkeleton /> });
+import ChartsOverview from '@/components/charts/ChartsOverview';
+import ValidatorsView from '@/components/charts/ValidatorsView';
+import TokensView from '@/components/charts/TokensView';
+import TokenDetailView from '@/components/charts/TokenDetailView';
 import { BASE_URL, getContentSnippet } from '@/lib/utils';
 import type { Block } from '@/types/blocks';
 import type { WikiPage } from '@/types';
@@ -53,6 +57,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     leaderboard: { title: 'Leaderboard', description: 'Top RADIX.wiki contributors ranked by contribution points.' },
     welcome: { title: 'Welcome', description: 'Get started with RADIX Wiki — connect your Radix wallet and begin contributing to the decentralized knowledge base.' },
     rewards: { title: 'Rewards', description: 'Track contributor rewards and XRD airdrop eligibility on RADIX Wiki.' },
+    charts: { title: 'Charts', description: 'Live Radix network statistics, validator directory, and ecosystem token analytics — successor to RadixCharts.' },
+    'charts-validators': { title: 'Validators', description: 'Sortable directory of all Radix validators with stake, fee, and ownership data.' },
+    'charts-tokens': { title: 'Tokens', description: 'Top tokens on Radix ranked by total value locked, with price, volume, and 24h change.' },
+    'token-detail': { title: 'Token', description: 'Token detail page with price chart, supply, and links.' },
   };
 
   const staticMeta = STATIC_META[parsed.type];
@@ -244,6 +252,10 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   if (parsed.type === 'leaderboard') return <LeaderboardView />;
   if (parsed.type === 'welcome') return <WelcomeView />;
   if (parsed.type === 'rewards') return <RewardsView />;
+  if (parsed.type === 'charts') return <ChartsOverview />;
+  if (parsed.type === 'charts-validators') return <ValidatorsView />;
+  if (parsed.type === 'charts-tokens') return <TokensView />;
+  if (parsed.type === 'token-detail' && parsed.tokenAddress) return <TokenDetailView address={parsed.tokenAddress} />;
 
   if (parsed.type === 'homepage') {
     const page = await withProcessedContent(await getHomepage());

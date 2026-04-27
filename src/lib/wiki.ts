@@ -33,10 +33,11 @@ const SUFFIXES = ['edit', 'history', 'mdx'] as const;
 type Suffix = typeof SUFFIXES[number];
 
 export interface ParsedPath {
-  type: 'homepage' | 'category' | 'page' | 'history' | 'edit' | 'mdx' | 'leaderboard' | 'welcome' | 'rewards' | 'invalid';
+  type: 'homepage' | 'category' | 'page' | 'history' | 'edit' | 'mdx' | 'leaderboard' | 'welcome' | 'rewards' | 'charts' | 'charts-validators' | 'charts-tokens' | 'token-detail' | 'invalid';
   tagPath: string;
   slug: string;
   suffix: Suffix | null;
+  tokenAddress?: string;
 }
 
 export function parsePath(segments: string[] = [], mode: 'client' | 'api' = 'client'): ParsedPath {
@@ -52,6 +53,17 @@ export function parsePath(segments: string[] = [], mode: 'client' | 'api' = 'cli
   }
   if (segments.length === 1 && segments[0] === 'rewards') {
     return { ...base, type: 'rewards' };
+  }
+
+  // Charts section
+  if (segments[0] === 'charts') {
+    if (segments.length === 1) return { ...base, type: 'charts' };
+    if (segments.length === 2 && segments[1] === 'validators') return { ...base, type: 'charts-validators' };
+    if (segments.length === 2 && segments[1] === 'tokens') return { ...base, type: 'charts-tokens' };
+    if (segments.length === 3 && segments[1] === 'tokens' && segments[2]!.startsWith('resource_')) {
+      return { ...base, type: 'token-detail', tokenAddress: segments[2] };
+    }
+    return { ...base, type: 'invalid' };
   }
 
   // Single-segment suffix (e.g., /edit, /history, /mdx)
