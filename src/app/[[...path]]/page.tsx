@@ -3,6 +3,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { parsePath, getHomepage, getPage, getCategoryPages, isIdeasPath, getIdeasPages, getPageHistory, getAdjacentPages, resolveBlockData } from '@/lib/wiki';
+import type { RelatedPage } from './PageContent';
 import { findTagByPath, getSortOrder, TAG_HIERARCHY, type TagNode, type SortOrder } from '@/lib/tags';
 import { highlightBlocks } from '@/lib/highlight';
 import { processBlocks } from '@/lib/html';
@@ -20,6 +21,7 @@ import ValidatorsView from '@/components/charts/ValidatorsView';
 import TokensView from '@/components/charts/TokensView';
 import TokenDetailView from '@/components/charts/TokenDetailView';
 import { BASE_URL, getContentSnippet } from '@/lib/utils';
+import { getTokenDetail } from '@/lib/radix/tokens';
 import type { Block } from '@/types/blocks';
 import type { WikiPage } from '@/types';
 
@@ -52,6 +54,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { path } = await params;
   const parsed = parsePath(path);
 
+  // Token detail — derive unique metadata from on-chain data
+  if (parsed.type === 'token-detail' && parsed.tokenAddress) {
+    const token = await getTokenDetail(parsed.tokenAddress);
+    const canonical = `${BASE_URL}/charts/tokens/${parsed.tokenAddress}`;
+    if (!token) {
+      return {
+        title: 'Token', description: 'Token detail page with price chart, supply, and links.',
+        alternates: { canonical }, robots: NOINDEX_ROBOTS,
+      };
+    }
+    const label = token.symbol || token.name || 'Token';
+    const fullName = token.name && token.symbol && token.name !== token.symbol ? `${token.name} (${token.symbol})` : (token.name || token.symbol || 'Token');
+    const title = `${label} — Token on Radix`;
+    const baseDesc = `${fullName}. Live price, supply, holders, and trading volume on the Radix network.`;
+    const extraDesc = token.description ? ` ${token.description.replace(/\s+/g, ' ').trim()}` : '';
+    const description = (baseDesc + extraDesc).slice(0, 160);
+    const ogUrl = `${BASE_URL}/og?title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}`;
+    return {
+      title, description,
+      alternates: { canonical },
+      openGraph: { title, description, type: 'article', images: [{ url: ogUrl, width: 1200, height: 630 }] },
+      twitter: { card: 'summary_large_image', title, images: [ogUrl] },
+    };
+  }
+
   // Static pages with fixed metadata
   const STATIC_META: Record<string, { title: string; description: string }> = {
     leaderboard: { title: 'Leaderboard', description: 'Top RADIX.wiki contributors ranked by contribution points.' },
@@ -60,7 +87,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     charts: { title: 'Charts', description: 'Live Radix network statistics, validator directory, and ecosystem token analytics — successor to RadixCharts.' },
     'charts-validators': { title: 'Validators', description: 'Sortable directory of all Radix validators with stake, fee, and ownership data.' },
     'charts-tokens': { title: 'Tokens', description: 'Top tokens on Radix ranked by total value locked, with price, volume, and 24h change.' },
-    'token-detail': { title: 'Token', description: 'Token detail page with price chart, supply, and links.' },
   };
 
   const staticMeta = STATIC_META[parsed.type];
@@ -311,6 +337,12 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   const faqPairs = rawPage ? extractFaqPairs(rawPage.content) : [];
   const page = parsed.suffix === 'edit' ? rawPage : await withProcessedContent(rawPage);
   const adjacent = page ? await getAdjacentPages(parsed.tagPath, page.title, new Date(page.createdAt).toISOString(), new Date(page.updatedAt).toISOString()) : { prev: null, next: null };
+  const related: RelatedPage[] = page && parsed.suffix !== 'edit'
+    ? (await getCategoryPages(parsed.tagPath))
+        .filter(p => p.slug !== parsed.slug)
+        .slice(0, 5)
+        .map(p => ({ id: p.id, title: p.title, slug: p.slug, tagPath: p.tagPath, snippet: getContentSnippet(p.content, 100) }))
+    : [];
   const pathSegments = [...parsed.tagPath.split('/'), parsed.slug];
   const pageUrl = `${BASE_URL}/${pathSegments.join('/')}`;
   return (
@@ -318,7 +350,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
       {page && <JsonLd data={articleLd(page, pageUrl)} />}
       <JsonLd data={faqLd(faqPairs)} />
       <JsonLd data={breadcrumbLd(pathSegments)} />
-      <Suspense fallback={<PageSkeleton />}><PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} adjacent={adjacent} /></Suspense>
+      <Suspense fallback={<PageSkeleton />}><PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} adjacent={adjacent} related={related} /></Suspense>
     </>
   );
 }

@@ -202,6 +202,42 @@ function CategoryHero({ tag, tagPath }: { tag: TagNode; tagPath: string }) {
   );
 }
 
+// ========== CATEGORY SUMMARY ==========
+function CategorySummary({ tag, tagPath, pages }: { tag: TagNode | null; tagPath: string[]; pages: WikiPage[] }) {
+  const categoryName = tag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagPath[tagPath.length - 1] || 'this section';
+  const latest = pages.length > 0 ? pages.reduce((acc, p) => (new Date(p.updatedAt) > new Date(acc.updatedAt) ? p : acc), pages[0]!) : null;
+  const parent = tagPath.length > 1 ? findTagByPath(tagPath.slice(0, -1)) : null;
+  const siblings = parent?.children?.filter(c => !c.hidden && c.slug !== tagPath[tagPath.length - 1]) ?? [];
+  const parentPath = tagPath.slice(0, -1).join('/');
+
+  if (pages.length === 0 && siblings.length === 0) return null;
+
+  return (
+    <div className="category-summary stack-sm">
+      {pages.length > 0 && latest && (
+        <p className="text-text-muted text-small">
+          {categoryName} contains <strong>{pages.length}</strong> page{pages.length === 1 ? '' : 's'}, last updated {formatRelativeTime(latest.updatedAt)}.
+        </p>
+      )}
+      {siblings.length > 0 && parent && (
+        <div className="stack-xs">
+          <span className="sidebar-label">Related sections in {parent.name.replace(/^\p{Emoji_Presentation}\s*/u, '')}</span>
+          <ul className="related-sections">
+            {siblings.map(s => (
+              <li key={s.slug}>
+                <Link href={`/${parentPath}/${s.slug}`} className="related-section-link">
+                  <span className="font-medium">{s.name}</span>
+                  {s.description && <span className="text-text-muted text-small"> — {s.description}</span>}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ========== HOMEPAGE VIEW ==========
 export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEditing: boolean }) {
   const router = useRouter();
@@ -320,6 +356,7 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
         )}
       </div>
       {tag && <CategoryHero tag={tag} tagPath={pathStr} />}
+      <CategorySummary tag={tag} tagPath={tagPath} pages={pages} />
       <div className="center">
         <SortToggle sort={sort} tagPath={pathStr} />
       </div>
@@ -356,8 +393,33 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
   );
 }
 
+// ========== SEE ALSO ==========
+export type RelatedPage = Pick<WikiPage, 'id' | 'title' | 'slug' | 'tagPath'> & { snippet?: string };
+
+function SeeAlso({ pages, tagPath }: { pages: RelatedPage[]; tagPath: string }) {
+  if (!pages.length) return null;
+  const sectionTag = findTagByPath(tagPath.split('/'));
+  const sectionName = sectionTag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagPath;
+  return (
+    <aside className="see-also" aria-labelledby="see-also-heading">
+      <h2 id="see-also-heading" className="text-h4">See also</h2>
+      <p className="text-text-muted text-small">More from {sectionName}.</p>
+      <ul className="see-also-grid">
+        {pages.map(p => (
+          <li key={p.id}>
+            <Link href={`/${p.tagPath}/${p.slug}`} className="see-also-card">
+              <span className="font-medium">{p.title}</span>
+              {p.snippet && <span className="text-text-muted text-small line-clamp-2">{p.snippet}</span>}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </aside>
+  );
+}
+
 // ========== PAGE VIEW (Read-only) ==========
-function PageViewContent({ page, adjacent }: { page: WikiPage; adjacent: AdjacentPages }) {
+function PageViewContent({ page, adjacent, related }: { page: WikiPage; adjacent: AdjacentPages; related: RelatedPage[] }) {
   const { isAuthenticated } = useAuth();
   const isCommunityPage = page.tagPath.startsWith('community');
   const blocks = (page.content as unknown as Block[]) || [];
@@ -375,6 +437,7 @@ function PageViewContent({ page, adjacent }: { page: WikiPage; adjacent: Adjacen
       <div className="page-with-infobox">
         <div className="page-main-content stack">
           <BlockRenderer content={mainBlocks} />
+          <SeeAlso pages={related} tagPath={page.tagPath} />
           {isCommunityPage && <UserStats authorId={page.authorId} />}
           <Discussion pageId={page.id} tagPath={page.tagPath} />
           <PageNav adjacent={adjacent} />
@@ -389,7 +452,7 @@ function PageViewContent({ page, adjacent }: { page: WikiPage; adjacent: Adjacen
 }
 
 // ========== PAGE VIEW WRAPPER ==========
-export function PageView({ page, tagPath, slug, isEditMode, adjacent }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; adjacent: AdjacentPages }) {
+export function PageView({ page, tagPath, slug, isEditMode, adjacent, related = [] }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; adjacent: AdjacentPages; related?: RelatedPage[] }) {
   const { isAuthenticated } = useAuth();
 
   const viewPath = `/${tagPath}/${slug}`;
@@ -398,5 +461,5 @@ export function PageView({ page, tagPath, slug, isEditMode, adjacent }: { page: 
   if (!page && !isAuthenticated) return <StatusCard status="notFound" backHref="/" />;
   if (!page && isAuthenticated) return <LazyPageEditor tagPath={tagPath} slug={slug} />;
   if (!page) return <StatusCard status="notFound" backHref="/" />;
-  return isEditMode ? <LazyPageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} adjacent={adjacent} />;
+  return isEditMode ? <LazyPageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} adjacent={adjacent} related={related} />;
 }

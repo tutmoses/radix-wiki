@@ -26,17 +26,19 @@ export const TAG_HIERARCHY: TagNode[] = [
   {
     name: '📚 Contents',
     slug: 'contents',
+    description: 'The encyclopedic core of RADIX Wiki — protocol fundamentals, ecosystem history, research, releases, and reference material on the Radix DLT.',
     children: [
       {
         name: 'Tech',
         slug: 'tech',
+        description: 'Deep technical coverage of the Radix protocol — Cerberus consensus, Radix Engine, Scrypto, scalability research, and core architecture.',
         children: [
-          { name: 'Comparisons', slug: 'comparisons' },
-          { name: 'Core Concepts', slug: 'core-concepts' },
-          { name: 'Core Protocols', slug: 'core-protocols' },
-          { name: 'DeSci', slug: 'desci' },
-          { name: 'Releases', slug: 'releases' },
-          { name: 'Research', slug: 'research' },
+          { name: 'Comparisons', slug: 'comparisons', description: 'Side-by-side comparisons of Radix against Ethereum, Solana, and other ledgers — feature, performance, and architecture differences.' },
+          { name: 'Core Concepts', slug: 'core-concepts', description: 'Foundational ideas behind Radix — assets as primitives, atomic composability, finality, sharding, and DeFi-native design.' },
+          { name: 'Core Protocols', slug: 'core-protocols', description: 'The protocols that power Radix — Cerberus consensus, Radix Engine state machine, transaction manifests, and the ledger model.' },
+          { name: 'DeSci', slug: 'desci', description: 'Decentralized science on Radix — IP-NFTs, research DAOs, and how asset-oriented programming enables verifiable scientific funding.' },
+          { name: 'Releases', slug: 'releases', description: 'Major Radix protocol upgrades and Babylon-era release notes — what shipped, when, and what each release unlocks.' },
+          { name: 'Research', slug: 'research', description: 'Active research efforts driving the Radix roadmap — Xi’an, Hyperscale, MFA Security Shield, RAC, and academic papers behind them.' },
           { name: 'Operations', slug: 'operations', hidden: true },
         ],
       },
@@ -44,6 +46,7 @@ export const TAG_HIERARCHY: TagNode[] = [
         name: 'History / Events',
         slug: 'history',
         sort: 'newest',
+        description: 'A chronological record of Radix milestones — conferences, hackathons, mainnet upgrades, and pivotal community moments.',
         metadataKeys: [
           { key: 'attendees', label: 'Attendees:', type: 'text'},
           { key: 'date', label: 'Date:', type: 'date' },
@@ -51,7 +54,10 @@ export const TAG_HIERARCHY: TagNode[] = [
           { key: 'type', label: 'Type:', type: 'select', options: ['Conference', 'Hackathon', 'Milestone', 'Workshop'] },
           { key: 'website', label: 'Website:', type: 'url' }
         ]},
-      { name: 'Resources', slug: 'resources', children: [{ name: 'Legal', slug: 'legal' }, { name: 'Python Scripts', slug: 'python-scripts' }] },
+      { name: 'Resources', slug: 'resources', description: 'Practical resources for Radix users and builders — legal templates, Python scripts, and external tooling references.', children: [
+        { name: 'Legal', slug: 'legal', description: 'Legal templates, terms, and compliance references relevant to building and operating on Radix.' },
+        { name: 'Python Scripts', slug: 'python-scripts', description: 'Reusable Python utilities for interacting with the Radix Gateway, Babylon transactions, and on-chain data.' },
+      ] },
     ],
   },
   { name: '👾 Developers',
@@ -74,6 +80,7 @@ export const TAG_HIERARCHY: TagNode[] = [
   { name: '🌐 Ecosystem',
     slug: 'ecosystem',
     sort: 'recent',
+    description: 'Projects building on Radix — DeFi protocols, NFT platforms, infrastructure, DAOs, and tooling, with status, team, and asset metadata.',
     metadataKeys: [
       { key: 'assets', label: 'Asset:', type: 'resource_address' },
       { key: 'status', label: 'Status:', type: 'select', options: ['🟢 Active','🟡 Testnet','🟠 Dormant','🔴 Closed'], required: true },
@@ -88,15 +95,19 @@ export const TAG_HIERARCHY: TagNode[] = [
     ],
     xrd: { create: 20_000 } },
   { name: '👥 Community', slug: 'community', sort: 'recent',
+    description: 'Community member profiles, working groups, and contributor pages — the people, builders, and collectives shaping the Radix ecosystem.',
     metadataKeys: [
       { key: 'X', label: 'X:', type: 'url' },
     ],
   },
-  { name: '✍️ Blog', slug: 'blog', sort: 'newest', metadataKeys: [{ key: 'date', label: 'Published:', type: 'date' }], xrd: { create: 50_000 } },
+  { name: '✍️ Blog', slug: 'blog', sort: 'newest',
+    description: 'Long-form essays and analysis from the RADIX Wiki community — protocol commentary, ecosystem deep-dives, and editorial pieces.',
+    metadataKeys: [{ key: 'date', label: 'Published:', type: 'date' }], xrd: { create: 50_000 } },
   {
     name: '💡 Ideas Pipeline',
     slug: 'ideas',
     sort: 'recent' as SortOrder,
+    description: 'A community-curated pipeline of proposals, feature requests, and research ideas for Radix — tracked from discussion through delivery.',
     metadataKeys: [
       { key: 'status', label: 'Status:', type: 'select', options: ['🔴 Discussion', '🟠 Proposed', '🟡 Approved', '🔵 In Progress', '🟣 Testing', '🟢 Done'], required: true },
       { key: 'priority', label: 'Priority:', type: 'select', options: ['㆔ High', '㆓ Medium', '⼀ Low'] },

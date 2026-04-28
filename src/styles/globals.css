@@ -357,6 +357,16 @@
   .category-hero-grid { @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3; }
   .category-hero-card { @apply flex flex-col gap-1 p-4 bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5 hover:shadow; }
 
+  /* ===== CATEGORY SUMMARY ===== */
+  .category-summary { @apply pb-4 border-b border-border-muted; }
+  .related-sections { @apply list-disc pl-5 flex flex-col gap-1; }
+  .related-section-link { @apply hover:text-accent transition-colors; }
+
+  /* ===== SEE ALSO ===== */
+  .see-also { @apply mt-8 pt-6 border-t border-border-muted flex flex-col gap-3; }
+  .see-also-grid { @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3; }
+  .see-also-card { @apply flex flex-col gap-1 p-3 bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5; }
+
   /* ===== CATEGORY GRID ===== */
   .category-grid { @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4; }
 

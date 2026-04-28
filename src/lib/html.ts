@@ -16,27 +16,42 @@ function removeAttr(attrs: string, name: string): string {
   return attrs.replace(new RegExp(`\\s${name}\\s*=\\s*"[^"]*"`, 'gi'), '');
 }
 
-/** Normalise one anchor tag: fix internal/external links, strip nofollow from internal. */
-function normaliseAnchor(attrs: string): string {
+/** Derive a sensible visible label for an empty anchor from its href. */
+function fallbackAnchorText(href: string): string {
+  if (href.startsWith('#')) return href.slice(1).replace(/-/g, ' ') || 'section';
+  if (href.startsWith('/')) {
+    const last = href.split('/').filter(Boolean).pop();
+    return last ? last.replace(/-/g, ' ') : 'page';
+  }
+  try {
+    const u = new URL(href);
+    return u.hostname.replace(/^www\./, '') || href;
+  } catch {
+    return href;
+  }
+}
+
+/** Normalise one anchor tag: fix internal/external links, fix empty anchor text. */
+function normaliseAnchor(attrs: string, inner: string): string {
   const rawHref = getAttr(attrs, 'href');
-  if (rawHref == null) return `<a${attrs}>`;
+  if (rawHref == null) return `<a${attrs}>${inner}</a>`;
 
   // Rewrite absolute radix.wiki links (http or https) to relative paths
-  let href = rawHref.replace(/^https?:\/\/(?:www\.)?radix\.wiki(\/.*)?$/i, (_, path) => path || '/');
+  const href = rawHref.replace(/^https?:\/\/(?:www\.)?radix\.wiki(\/.*)?$/i, (_, path) => path || '/');
   const isInternal = href.startsWith('/') || href.startsWith('#');
   let cleanedAttrs = removeAttr(attrs, 'href');
-
-  if (isInternal) {
-    // Internal: strip any nofollow/noreferrer and drop target="_blank" (stay in tab)
-    cleanedAttrs = removeAttr(cleanedAttrs, 'rel');
-    cleanedAttrs = removeAttr(cleanedAttrs, 'target');
-    return `<a href="${href}"${cleanedAttrs}>`;
-  }
-
-  // External: ensure target="_blank" and rel="noopener" (strip any nofollow)
   cleanedAttrs = removeAttr(cleanedAttrs, 'rel');
   cleanedAttrs = removeAttr(cleanedAttrs, 'target');
-  return `<a href="${href}"${cleanedAttrs} target="_blank" rel="noopener">`;
+
+  // If the anchor has no visible text, synthesise a label from the href so search
+  // engines and assistive tech aren't faced with an empty link.
+  const visible = stripTags(inner);
+  const safeInner = visible ? inner : fallbackAnchorText(href);
+
+  if (isInternal) {
+    return `<a href="${href}"${cleanedAttrs}>${safeInner}</a>`;
+  }
+  return `<a href="${href}"${cleanedAttrs} target="_blank" rel="noopener">${safeInner}</a>`;
 }
 
 /** Process HTML content for display: heading IDs, link normalization, alt attrs, external link attributes. */
@@ -57,8 +72,9 @@ export function processHtml(html: string): string {
       if (/\salt\s*=/i.test(attrs)) return match;
       return `<img${attrs} alt="">`;
     })
-    // Normalise every anchor (attribute-order agnostic)
-    .replace(/<a\b([^>]*)>/gi, (_match, attrs) => normaliseAnchor(attrs));
+    // Normalise every anchor including its inner text (attribute-order agnostic).
+    // Note: this regex does not handle nested <a>, which is invalid HTML anyway.
+    .replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, (_match, attrs, inner) => normaliseAnchor(attrs, inner));
 }
 
 /** Apply processHtml to every content block recursively (for SSR normalisation). */

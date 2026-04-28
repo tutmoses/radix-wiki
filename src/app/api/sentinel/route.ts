@@ -12,9 +12,11 @@ const BATCH_SIZE = 10;
 
 interface Issue {
   page: string;
-  type: 'broken_link' | 'missing_infobox';
+  type: 'broken_link' | 'missing_infobox' | 'empty_anchor' | 'vague_anchor' | 'low_word_count';
   detail: string;
 }
+
+const VAGUE_ANCHOR_RE = /^(click here|here|this|read more|link|learn more|more)\.?$/i;
 
 function extractExternalLinks(content: unknown): string[] {
   const text = JSON.stringify(content);
@@ -23,6 +25,40 @@ function extractExternalLinks(content: unknown): string[] {
     links.push(match[1]!);
   }
   return [...new Set(links)];
+}
+
+function extractAnchors(content: unknown): { href: string; text: string }[] {
+  const out: { href: string; text: string }[] = [];
+  function walk(blocks: any) {
+    if (!Array.isArray(blocks)) return;
+    for (const b of blocks) {
+      if (b?.type === 'content' && typeof b.text === 'string') {
+        for (const m of b.text.matchAll(/<a\s+[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi)) {
+          const text = (m[2] ?? '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+          out.push({ href: m[1] ?? '', text });
+        }
+      }
+      if (b?.type === 'infobox' && Array.isArray(b.blocks)) walk(b.blocks);
+      if (b?.type === 'columns' && Array.isArray(b.columns)) for (const c of b.columns) walk(c?.blocks);
+    }
+  }
+  walk(content);
+  return out;
+}
+
+function countWords(content: unknown): number {
+  if (!Array.isArray(content)) return 0;
+  let text = '';
+  function walk(blocks: any) {
+    if (!Array.isArray(blocks)) return;
+    for (const b of blocks) {
+      if (b?.type === 'content' && typeof b.text === 'string') text += ' ' + b.text.replace(/<[^>]+>/g, ' ');
+      if (b?.type === 'infobox' && Array.isArray(b.blocks)) walk(b.blocks);
+      if (b?.type === 'columns' && Array.isArray(b.columns)) for (const c of b.columns) walk(c?.blocks);
+    }
+  }
+  walk(content);
+  return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
 async function checkLink(url: string): Promise<boolean> {
@@ -68,6 +104,24 @@ export const GET = cronRoute(async () => {
       if (!contentStr.includes('"type":"infobox"')) {
         issues.push({ page: pageKey, type: 'missing_infobox', detail: page.title });
         pageIssues.push('missing_infobox');
+      }
+
+      // Word count check
+      const words = countWords(page.content);
+      if (words > 0 && words < 200) {
+        issues.push({ page: pageKey, type: 'low_word_count', detail: String(words) });
+        pageIssues.push(`low_word_count:${words}`);
+      }
+
+      // Anchor-text quality
+      for (const a of extractAnchors(page.content)) {
+        if (!a.text) {
+          issues.push({ page: pageKey, type: 'empty_anchor', detail: a.href });
+          pageIssues.push(`empty_anchor:${a.href}`);
+        } else if (VAGUE_ANCHOR_RE.test(a.text)) {
+          issues.push({ page: pageKey, type: 'vague_anchor', detail: `${a.text} → ${a.href}` });
+          pageIssues.push(`vague_anchor:${a.href}`);
+        }
       }
 
       // External link checks (batched for speed)
