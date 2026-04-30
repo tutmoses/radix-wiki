@@ -118,6 +118,15 @@ export const getPage = cached('getPage',
   },
 );
 
+export const getEcosystemPageByAsset = cached('getEcosystemPageByAsset',
+  async (resourceAddress: string): Promise<{ tagPath: string; slug: string; title: string } | null> => {
+    return prisma.page.findFirst({
+      where: { tagPath: { startsWith: 'ecosystem' }, metadata: { path: ['assets'], equals: resourceAddress } },
+      select: { tagPath: true, slug: true, title: true },
+    });
+  },
+);
+
 const sortOrderBy: Record<SortOrder, object> = {
   title: { title: 'asc' as const },
   newest: { createdAt: 'desc' as const },

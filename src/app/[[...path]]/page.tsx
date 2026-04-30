@@ -3,7 +3,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-import { parsePath, getHomepage, getPage, getCategoryPages, isIdeasPath, getIdeasPages, getPageHistory, getAdjacentPages, resolveBlockData } from '@/lib/wiki';
+import { parsePath, getHomepage, getPage, getCategoryPages, isIdeasPath, getIdeasPages, getPageHistory, getAdjacentPages, resolveBlockData, getEcosystemPageByAsset } from '@/lib/wiki';
 import { getSession } from '@/lib/auth';
 import type { RelatedPage } from './PageContent';
 import { findTagByPath, getSortOrder, TAG_HIERARCHY, type TagNode, type SortOrder } from '@/lib/tags';
@@ -291,7 +291,10 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   if (parsed.type === 'charts') return <ChartsOverview />;
   if (parsed.type === 'charts-validators') return <ValidatorsView />;
   if (parsed.type === 'charts-tokens') return <TokensView />;
-  if (parsed.type === 'token-detail' && parsed.tokenAddress) return <TokenDetailView address={parsed.tokenAddress} />;
+  if (parsed.type === 'token-detail' && parsed.tokenAddress) {
+    const wikiPage = await getEcosystemPageByAsset(parsed.tokenAddress);
+    return <TokenDetailView address={parsed.tokenAddress} wikiPage={wikiPage} />;
+  }
 
   if (parsed.type === 'homepage') {
     const page = await withProcessedContent(await getHomepage());

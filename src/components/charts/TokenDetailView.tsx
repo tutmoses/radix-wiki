@@ -3,13 +3,19 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ExternalLink } from 'lucide-react';
 import { getTokenDetail } from '@/lib/radix/tokens';
 import { TokenChart } from './TokenChart';
 import { formatUsd, formatPercent, formatCompact, formatPriceSubscript } from './format';
 import { cn, shortenAddress } from '@/lib/utils';
 
-export default async function TokenDetailView({ address }: { address: string }) {
+interface WikiPageRef {
+  tagPath: string;
+  slug: string;
+  title: string;
+}
+
+export default async function TokenDetailView({ address, wikiPage }: { address: string; wikiPage?: WikiPageRef | null }) {
   const token = await getTokenDetail(address);
   if (!token) notFound();
 
@@ -82,6 +88,11 @@ export default async function TokenDetailView({ address }: { address: string }) 
       </div>
 
       <div className="row-md wrap">
+        {wikiPage && (
+          <Link href={`/${wikiPage.tagPath}/${wikiPage.slug}`} className="charts-section-link">
+            Wiki: {wikiPage.title} <ArrowRight size={14} />
+          </Link>
+        )}
         <a href={token.ociswapUrl} target="_blank" rel="noopener" className="charts-section-link">
           OciSwap <ExternalLink size={14} />
         </a>

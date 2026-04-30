@@ -24,9 +24,7 @@ export default async function ChartsOverview() {
           <h1>Charts</h1>
         </div>
         <p className="text-text-muted">
-          Live Radix network statistics, validator directory, and ecosystem token data. Continuing the
-          mission of <a href="https://www.radixcharts.com" rel="noopener" target="_blank" className="text-accent hover:underline">RadixCharts</a> with public, open data sourced directly from the
-          Radix Gateway and OciSwap.
+          Live Radix network statistics, validator directory, and ecosystem token data.
         </p>
       </div>
 

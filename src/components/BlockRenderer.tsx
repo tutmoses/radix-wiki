@@ -131,6 +131,7 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
         {block.showChange && typeof data.change24h === 'number' && <span className={cn('font-medium', isPositive ? 'text-success' : 'text-error')}>{isPositive ? '↑' : '↓'} {Math.abs(data.change24h).toFixed(2)}%</span>}
       </div>
       {block.showChart && <TokenChart resourceAddress={block.resourceAddress!} defaultTimeframe={block.chartTimeframe || '30d'} />}
+      <Link href={`/charts/tokens/${block.resourceAddress}`} className="charts-section-link">View full chart →</Link>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { TAG_HIERARCHY, type TagNode } from '@/lib/tags';
+import { CHARTS_PAGES } from '@/lib/static-pages';
 import { BASE_URL, getContentSnippet } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -182,6 +183,10 @@ export async function GET() {
     PREAMBLE,
     '',
     ...sectionLines,
+    '## Live Data',
+    '',
+    ...CHARTS_PAGES.map(p => `- [${p.title}](${BASE_URL}/${p.path}): ${p.description}`),
+    '',
     '### Categories',
     '',
     ...categories.map(c => `- [${c.name}](${BASE_URL}/${c.path})`),
