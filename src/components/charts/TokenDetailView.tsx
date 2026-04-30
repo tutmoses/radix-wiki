@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { notFound } from 'next/navigation';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { getTokenDetail } from '@/lib/radix/tokens';
 import { TokenChart } from './TokenChart';
@@ -10,18 +11,7 @@ import { cn, shortenAddress } from '@/lib/utils';
 
 export default async function TokenDetailView({ address }: { address: string }) {
   const token = await getTokenDetail(address);
-
-  if (!token) {
-    return (
-      <div className="stack">
-        <Link href="/charts/tokens" className="charts-section-link"><ArrowLeft size={14} /> Tokens</Link>
-        <div className="surface p-8 text-center stack-sm">
-          <h2>Token not found</h2>
-          <p className="text-text-muted">No data available for <code>{address}</code>.</p>
-        </div>
-      </div>
-    );
-  }
+  if (!token) notFound();
 
   const change = token.change24h;
   const positive = (change ?? 0) >= 0;

@@ -2,7 +2,7 @@
 
 import type { MetadataRoute } from 'next';
 import { prisma } from '@/lib/prisma/client';
-import { TAG_HIERARCHY, type TagNode } from '@/lib/tags';
+import { TAG_HIERARCHY, isValidTagPath, type TagNode } from '@/lib/tags';
 import { BASE_URL } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -41,7 +41,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     })),
     ...pages
-      .filter(p => p.tagPath && p.slug)
+      .filter(p => p.tagPath && p.slug && isValidTagPath(p.tagPath.split('/')))
       .map(p => ({
         url: `${BASE_URL}/${p.tagPath}/${p.slug}`,
         lastModified: p.updatedAt,

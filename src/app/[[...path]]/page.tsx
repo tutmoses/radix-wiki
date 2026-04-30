@@ -2,14 +2,16 @@
 
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { notFound } from 'next/navigation';
 import { parsePath, getHomepage, getPage, getCategoryPages, isIdeasPath, getIdeasPages, getPageHistory, getAdjacentPages, resolveBlockData } from '@/lib/wiki';
+import { getSession } from '@/lib/auth';
 import type { RelatedPage } from './PageContent';
 import { findTagByPath, getSortOrder, TAG_HIERARCHY, type TagNode, type SortOrder } from '@/lib/tags';
 import { highlightBlocks } from '@/lib/highlight';
 import { processBlocks } from '@/lib/html';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { prisma } from '@/lib/prisma/client';
-import { PageView, HomepageView, CategoryView, PageSkeleton, StatusCard, HistoryView, type HistoryData } from './PageContent';
+import { PageView, HomepageView, CategoryView, PageSkeleton, HistoryView, type HistoryData } from './PageContent';
 import dynamic from 'next/dynamic';
 
 const IdeasView = dynamic(() => import('./IdeasView'), { loading: () => <PageSkeleton /> });
@@ -57,13 +59,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // Token detail — derive unique metadata from on-chain data
   if (parsed.type === 'token-detail' && parsed.tokenAddress) {
     const token = await getTokenDetail(parsed.tokenAddress);
+    if (!token) notFound();
     const canonical = `${BASE_URL}/charts/tokens/${parsed.tokenAddress}`;
-    if (!token) {
-      return {
-        title: 'Token', description: 'Token detail page with price chart, supply, and links.',
-        alternates: { canonical }, robots: NOINDEX_ROBOTS,
-      };
-    }
     const label = token.symbol || token.name || 'Token';
     const fullName = token.name && token.symbol && token.name !== token.symbol ? `${token.name} (${token.symbol})` : (token.name || token.symbol || 'Token');
     const title = `${label} — Token on Radix`;
@@ -132,6 +129,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   let page = null;
   if (parsed.type === 'homepage') page = await getHomepage();
   else if (parsed.type === 'page') page = await getPage(parsed.tagPath, parsed.slug);
+
+  // Missing page: 404 for unauthenticated visitors (incl. crawlers); for logged-in users render the
+  // page-creation editor with noindex metadata so the URL still becomes a real 404 in GSC.
+  if (parsed.type === 'page' && !page) {
+    const session = await getSession();
+    if (!session) notFound();
+    return {
+      title: 'New page — RADIX Wiki',
+      description: 'Create a new page on RADIX Wiki.',
+      robots: NOINDEX_ROBOTS,
+      alternates: { canonical: `${BASE_URL}/${parsed.tagPath}/${parsed.slug}` },
+    };
+  }
 
   const title = page?.title || 'RADIX Wiki';
   const snippet = getContentSnippet(page?.content);
@@ -273,7 +283,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   const { sort: sortParam } = await searchParams;
   const parsed = parsePath(path);
 
-  if (parsed.type === 'invalid') return <StatusCard status="invalidPath" backHref="/" />;
+  if (parsed.type === 'invalid') notFound();
 
   if (parsed.type === 'leaderboard') return <LeaderboardView />;
   if (parsed.type === 'welcome') return <WelcomeView />;
@@ -334,6 +344,11 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   }
 
   const rawPage = await getPage(parsed.tagPath, parsed.slug);
+  if (!rawPage) {
+    const session = await getSession();
+    if (!session) notFound();
+    // Authenticated visitors fall through to PageView, which renders the create-page editor.
+  }
   const faqPairs = rawPage ? extractFaqPairs(rawPage.content) : [];
   const page = parsed.suffix === 'edit' ? rawPage : await withProcessedContent(rawPage);
   const adjacent = page ? await getAdjacentPages(parsed.tagPath, page.title, new Date(page.createdAt).toISOString(), new Date(page.updatedAt).toISOString()) : { prev: null, next: null };

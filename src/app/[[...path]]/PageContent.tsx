@@ -458,8 +458,6 @@ export function PageView({ page, tagPath, slug, isEditMode, adjacent, related = 
   const viewPath = `/${tagPath}/${slug}`;
 
   if (isEditMode && !isAuthenticated) return <StatusCard status="authRequired" backHref={viewPath} />;
-  if (!page && !isAuthenticated) return <StatusCard status="notFound" backHref="/" />;
-  if (!page && isAuthenticated) return <LazyPageEditor tagPath={tagPath} slug={slug} />;
-  if (!page) return <StatusCard status="notFound" backHref="/" />;
+  if (!page) return <LazyPageEditor tagPath={tagPath} slug={slug} />;
   return isEditMode ? <LazyPageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} adjacent={adjacent} related={related} />;
 }

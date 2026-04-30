@@ -91,9 +91,7 @@ export function Spinner({ size = 'md', className }: { size?: 'sm' | 'md' | 'lg';
 // StatusCard - Reusable status/error display
 const STATUS = {
   authRequired: { title: 'Authentication Required', message: 'Please connect your Radix wallet.' },
-  notFound: { title: 'Page not found', message: "The page you're looking for doesn't exist." },
   notAuthorized: { title: 'Not Authorized', message: 'You can only edit your own pages in this category.' },
-  invalidPath: { title: 'Invalid path', message: 'The path you entered is not valid.' },
   error: { title: 'Error', message: 'Failed to load page' },
 } as const;
 
