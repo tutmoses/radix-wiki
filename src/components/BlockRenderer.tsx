@@ -13,7 +13,7 @@ import { usePages, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiPage, PageMetadata } from '@/types';
-import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock, StoreBlock, FooterBlock, StatsBlock, TestimonialBlock } from '@/types/blocks';
+import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock, StoreBlock, FooterBlock, StatsBlock, TestimonialBlock, LinkGridBlock } from '@/types/blocks';
 import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
 import { TokenChart } from '@/components/charts/TokenChart';
 import { formatPriceSubscript } from '@/components/charts/format';
@@ -379,6 +379,26 @@ function TestimonialBlockView({ block }: { block: TestimonialBlock }) {
   );
 }
 
+function LinkGridBlockView({ block }: { block: LinkGridBlock }) {
+  return (
+    <div className="link-grid">
+      {block.intro && <p>{block.intro}</p>}
+      {(block.groups || []).map(group => (
+        <section key={group.id} className="link-grid-group">
+          <h3>{group.heading}</h3>
+          <div className="link-grid-pills">
+            {(group.links || []).map((link, i) => (
+              /^https?:\/\//.test(link.href)
+                ? <a key={i} href={link.href} target="_blank" rel="noopener">{link.label}</a>
+                : <Link key={i} href={link.href}>{link.label}</Link>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
   switch (block.type) {
     case 'content': return <ContentBlockView html={block.text} />;
@@ -393,6 +413,7 @@ function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
     case 'footer': return <FooterBlockView block={block} />;
     case 'stats': return <StatsBlockView block={block} />;
     case 'testimonial': return <TestimonialBlockView block={block} />;
+    case 'linkGrid': return <LinkGridBlockView block={block} />;
   }
 }
 

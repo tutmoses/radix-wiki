@@ -13,13 +13,13 @@ import TiptapTableRow from '@tiptap/extension-table-row';
 import TiptapTableCell from '@tiptap/extension-table-cell';
 import TiptapTableHeader from '@tiptap/extension-table-header';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Pencil, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, X, Check, Info, Map, Rss, type LucideIcon } from 'lucide-react';
+import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Pencil, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, LayoutGrid, X, Check, Info, Map, Rss, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock, CODE_LANGS, DEFAULT_LANG } from '@/lib/block-utils';
 import { toMapEmbedUrl, resolveMapUrl } from '@/lib/map-utils';
 import { Button, Input, Dropdown } from '@/components/ui';
 import { Iframe, YouTube, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock } from '@/lib/tiptap/extensions';
-import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column } from '@/types/blocks';
+import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column, LinkGridBlock, LinkGridGroup } from '@/types/blocks';
 
 // ========== UTILITIES ==========
 async function uploadImage(file: File): Promise<string | null> {
@@ -244,6 +244,42 @@ function InfoboxBlockEdit({ block, onUpdate }: BlockProps<InfoboxBlock>) {
   );
 }
 
+function LinkGridBlockEdit({ block, onUpdate }: BlockProps<LinkGridBlock>) {
+  const updateGroup = (i: number, group: LinkGridGroup) =>
+    onUpdate?.({ ...block, groups: block.groups.map((g, j) => j === i ? group : g) });
+  const removeGroup = (i: number) =>
+    onUpdate?.({ ...block, groups: block.groups.filter((_, j) => j !== i) });
+  const addGroup = () =>
+    onUpdate?.({ ...block, groups: [...block.groups, { id: crypto.randomUUID(), heading: 'Group', links: [] }] });
+
+  return (
+    <EditWrapper icon={LayoutGrid} label="Link Grid">
+      <Input label="Intro (optional)" value={block.intro || ''} onChange={e => onUpdate?.({ ...block, intro: e.target.value || undefined })} placeholder="Optional preface paragraph" />
+      <div className="stack">
+        {block.groups.map((group, gi) => (
+          <div key={group.id} className="edit-wrapper">
+            <div className="spread">
+              <Input label="Heading" value={group.heading} onChange={e => updateGroup(gi, { ...group, heading: e.target.value })} />
+              <button onClick={() => removeGroup(gi)} className="icon-btn p-1 text-text-muted hover:text-error" title="Remove group" aria-label="Remove group"><Trash2 size={14} /></button>
+            </div>
+            <div className="stack-sm">
+              {group.links.map((link, li) => (
+                <div key={li} className="row">
+                  <input type="text" value={link.label} onChange={e => updateGroup(gi, { ...group, links: group.links.map((l, k) => k === li ? { ...l, label: e.target.value } : l) })} placeholder="Label" className="flex-1 input" />
+                  <input type="text" value={link.href} onChange={e => updateGroup(gi, { ...group, links: group.links.map((l, k) => k === li ? { ...l, href: e.target.value } : l) })} placeholder="/path or https://..." className="flex-1 input" />
+                  <button onClick={() => updateGroup(gi, { ...group, links: group.links.filter((_, k) => k !== li) })} className="icon-btn text-text-muted hover:text-error" title="Remove link" aria-label="Remove link"><Trash2 size={14} /></button>
+                </div>
+              ))}
+              <Button size="sm" onClick={() => updateGroup(gi, { ...group, links: [...group.links, { label: '', href: '' }] })}>+ Add link</Button>
+            </div>
+          </div>
+        ))}
+        <Button size="sm" onClick={addGroup}>+ Add group</Button>
+      </div>
+    </EditWrapper>
+  );
+}
+
 function ColumnsBlockEdit({ block, onUpdate }: BlockProps<ColumnsBlock>) {
   const [showSettings, setShowSettings] = useState(false);
   const gapClass = { sm: 'gap-2', md: 'gap-4', lg: 'gap-6' }[block.gap || 'md'];
@@ -321,6 +357,7 @@ function renderBlockEdit(block: Block | AtomicBlock, onUpdate?: (b: Block) => vo
     case 'rssFeed': return <RssFeedBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'columns': return <ColumnsBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'infobox': return <InfoboxBlockEdit block={block} onUpdate={onUpdate as any} />;
+    case 'linkGrid': return <LinkGridBlockEdit block={block} onUpdate={onUpdate as any} />;
   }
 }
 

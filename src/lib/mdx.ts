@@ -121,6 +121,9 @@ function convertAtomicBlock(block: AtomicBlock): string {
     case 'footer': return block.text || 'Site Footer';
     case 'stats': return block.items.map(i => `**${i.value}** ${i.label}`).join(' · ');
     case 'testimonial': return `> "${block.quote}"\n> — ${block.author}${block.role ? `, ${block.role}` : ''}`;
+    case 'linkGrid': return block.groups.map(g =>
+      `**${g.heading}**\n\n${g.links.map(l => `- [${l.label}](${l.href})`).join('\n')}`
+    ).join('\n\n');
   }
 }
 

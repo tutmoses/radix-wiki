@@ -1,6 +1,6 @@
 // src/types/blocks.ts - Shared block types (12-type standard)
 
-export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice' | 'infobox' | 'rssFeed' | 'codeTabs' | 'store' | 'footer' | 'stats' | 'testimonial';
+export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice' | 'infobox' | 'rssFeed' | 'codeTabs' | 'store' | 'footer' | 'stats' | 'testimonial' | 'linkGrid';
 
 interface BaseBlock { id: string; type: BlockType; }
 
@@ -16,9 +16,12 @@ export interface FooterBlock extends BaseBlock { type: 'footer'; text?: string; 
 export interface StatItem { id: string; value: string; label: string; suffix?: string; }
 export interface StatsBlock extends BaseBlock { type: 'stats'; items: StatItem[]; columns: 2 | 3 | 4; }
 export interface TestimonialBlock extends BaseBlock { type: 'testimonial'; quote: string; author: string; role?: string; avatarUrl?: string; }
+export interface LinkGridLink { label: string; href: string; }
+export interface LinkGridGroup { id: string; heading: string; links: LinkGridLink[]; }
+export interface LinkGridBlock extends BaseBlock { type: 'linkGrid'; intro?: string; groups: LinkGridGroup[]; }
 
 // Atomic blocks that can be nested inside containers
-export type AtomicBlock = ContentBlock | RecentPagesBlock | PageListBlock | AssetPriceBlock | RssFeedBlock | CodeTabsBlock | StoreBlock | FooterBlock | StatsBlock | TestimonialBlock;
+export type AtomicBlock = ContentBlock | RecentPagesBlock | PageListBlock | AssetPriceBlock | RssFeedBlock | CodeTabsBlock | StoreBlock | FooterBlock | StatsBlock | TestimonialBlock | LinkGridBlock;
 
 export interface InfoboxBlock extends BaseBlock {
   type: 'infobox';
