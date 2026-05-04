@@ -562,6 +562,8 @@
   .link-grid { @apply my-4; }
   .link-grid-group { @apply mt-4 first:mt-0; }
   .link-grid-group h3 { @apply text-h4 font-medium mt-0 mb-3 border-b-0; }
+  .link-grid-group-description { @apply text-text-muted mb-3; }
+  .link-grid-group-description p { @apply m-0; }
   .link-grid-pills {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

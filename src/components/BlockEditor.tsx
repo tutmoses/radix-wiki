@@ -262,6 +262,7 @@ function LinkGridBlockEdit({ block, onUpdate }: BlockProps<LinkGridBlock>) {
               <Input label="Heading" value={group.heading} onChange={e => updateGroup(gi, { ...group, heading: e.target.value })} />
               <button onClick={() => removeGroup(gi)} className="icon-btn p-1 text-text-muted hover:text-error" title="Remove group" aria-label="Remove group"><Trash2 size={14} /></button>
             </div>
+            <Input label="Description (optional, HTML)" value={group.description || ''} onChange={e => updateGroup(gi, { ...group, description: e.target.value || undefined })} placeholder="Optional prose paragraph above the link pills" />
             <div className="stack-sm">
               {group.links.map((link, li) => (
                 <div key={li} className="row">

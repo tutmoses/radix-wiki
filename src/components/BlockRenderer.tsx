@@ -386,6 +386,7 @@ function LinkGridBlockView({ block }: { block: LinkGridBlock }) {
       {(block.groups || []).map(group => (
         <section key={group.id} className="link-grid-group">
           <h3>{group.heading}</h3>
+          {group.description && <div className="link-grid-group-description" dangerouslySetInnerHTML={{ __html: group.description }} />}
           <div className="link-grid-pills">
             {(group.links || []).map((link, i) => (
               /^https?:\/\//.test(link.href)

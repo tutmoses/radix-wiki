@@ -17,7 +17,7 @@ export interface StatItem { id: string; value: string; label: string; suffix?: s
 export interface StatsBlock extends BaseBlock { type: 'stats'; items: StatItem[]; columns: 2 | 3 | 4; }
 export interface TestimonialBlock extends BaseBlock { type: 'testimonial'; quote: string; author: string; role?: string; avatarUrl?: string; }
 export interface LinkGridLink { label: string; href: string; }
-export interface LinkGridGroup { id: string; heading: string; links: LinkGridLink[]; }
+export interface LinkGridGroup { id: string; heading: string; description?: string; links: LinkGridLink[]; }
 export interface LinkGridBlock extends BaseBlock { type: 'linkGrid'; intro?: string; groups: LinkGridGroup[]; }
 
 // Atomic blocks that can be nested inside containers
