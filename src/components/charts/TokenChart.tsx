@@ -10,9 +10,10 @@ const TIMEFRAME_CONFIG: Record<string, { resolution: string; seconds: number; co
   '24h': { resolution: '60', seconds: 86400, countback: 24 },
   '7d': { resolution: '240', seconds: 604800, countback: 42 },
   '30d': { resolution: '1D', seconds: 2592000, countback: 30 },
+  '90d': { resolution: '1D', seconds: 7776000, countback: 90 },
 };
-const TIMEFRAMES = ['24h', '7d', '30d'] as const;
-const TIMEFRAME_LABELS: Record<string, string> = { '24h': '24H', '7d': '7D', '30d': '30D' };
+const TIMEFRAMES = ['24h', '7d', '30d', '90d'] as const;
+const TIMEFRAME_LABELS: Record<string, string> = { '24h': '24H', '7d': '7D', '30d': '30D', '90d': '90D' };
 
 type ChartPoint = { time: number; value: number };
 
