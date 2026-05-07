@@ -206,34 +206,14 @@ function CategoryHero({ tag, tagPath }: { tag: TagNode; tagPath: string }) {
 function CategorySummary({ tag, tagPath, pages }: { tag: TagNode | null; tagPath: string[]; pages: WikiPage[] }) {
   const categoryName = tag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagPath[tagPath.length - 1] || 'this section';
   const latest = pages.length > 0 ? pages.reduce((acc, p) => (new Date(p.updatedAt) > new Date(acc.updatedAt) ? p : acc), pages[0]!) : null;
-  const parent = tagPath.length > 1 ? findTagByPath(tagPath.slice(0, -1)) : null;
-  const siblings = parent?.children?.filter(c => !c.hidden && c.slug !== tagPath[tagPath.length - 1]) ?? [];
-  const parentPath = tagPath.slice(0, -1).join('/');
 
-  if (pages.length === 0 && siblings.length === 0) return null;
+  if (pages.length === 0 || !latest) return null;
 
   return (
     <div className="category-summary stack-sm">
-      {pages.length > 0 && latest && (
-        <p className="text-text-muted text-small">
-          {categoryName} contains <strong>{pages.length}</strong> page{pages.length === 1 ? '' : 's'}, last updated {formatRelativeTime(latest.updatedAt)}.
-        </p>
-      )}
-      {siblings.length > 0 && parent && (
-        <div className="stack-xs">
-          <span className="sidebar-label">Related sections in {parent.name.replace(/^\p{Emoji_Presentation}\s*/u, '')}</span>
-          <ul className="related-sections">
-            {siblings.map(s => (
-              <li key={s.slug}>
-                <Link href={`/${parentPath}/${s.slug}`} className="related-section-link">
-                  <span className="font-medium">{s.name}</span>
-                  {s.description && <span className="text-text-muted text-small"> — {s.description}</span>}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <p className="text-text-muted text-small">
+        {categoryName} contains <strong>{pages.length}</strong> page{pages.length === 1 ? '' : 's'}, last updated {formatRelativeTime(latest.updatedAt)}.
+      </p>
     </div>
   );
 }
