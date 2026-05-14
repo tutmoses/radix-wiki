@@ -58,22 +58,22 @@ export default async function ChartsOverview() {
 
       <section className="stack-sm">
         <div className="spread">
-          <h2 className="charts-section-title">Top validators</h2>
-          <Link href="/charts/validators" className="charts-section-link">
-            View all <ArrowRight size={14} />
-          </Link>
-        </div>
-        <ValidatorsTable validators={validators} limit={10} />
-      </section>
-
-      <section className="stack-sm">
-        <div className="spread">
           <h2 className="charts-section-title">Top tokens</h2>
           <Link href="/charts/tokens" className="charts-section-link">
             View all <ArrowRight size={14} />
           </Link>
         </div>
         <TokensTable tokens={tokens} limit={10} />
+      </section>
+
+      <section className="stack-sm">
+        <div className="spread">
+          <h2 className="charts-section-title">Top validators</h2>
+          <Link href="/charts/validators" className="charts-section-link">
+            View all <ArrowRight size={14} />
+          </Link>
+        </div>
+        <ValidatorsTable validators={validators} limit={10} />
       </section>
 
       <p className="text-text-muted text-small">
