@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import { RADIX_CONFIG, XRD_RESOURCE } from './config';
 import { paginatedGatewayFetch } from './gateway';
 import { prisma } from '@/lib/prisma/client';
-import { getXrdRequired } from '@/lib/tags';
+import { getXrdRequired, XRD_NOT_A_FEE } from '@/lib/tags';
 import type { AuthSession } from '@/types';
 
 export type BalanceAction = { type: 'create' | 'edit' | 'comment'; tagPath: string };
@@ -57,7 +57,7 @@ export async function requireBalance(session: AuthSession, action: BalanceAction
       ok: false,
       balance,
       required,
-      error: `You need ${required.toLocaleString()} XRD to ${ACTION_LABELS[action.type]}${action.tagPath ? ` in ${action.tagPath}` : ''}. You have ${Math.floor(balance).toLocaleString()} XRD (${shortfall.toLocaleString()} XRD short).`,
+      error: `To ${ACTION_LABELS[action.type]}${action.tagPath ? ` in ${action.tagPath}` : ''} you must hold at least ${required.toLocaleString()} XRD in your connected wallet. You currently hold ${Math.floor(balance).toLocaleString()} XRD (${shortfall.toLocaleString()} short). ${XRD_NOT_A_FEE}`,
     }, { status: 403 }),
   };
 }

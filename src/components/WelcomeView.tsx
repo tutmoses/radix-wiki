@@ -30,6 +30,7 @@ export default function WelcomeView() {
           <p className="text-text-muted text-small">Points may be considered in any future <strong>$EMOON airdrop</strong>. Track your rank on the leaderboard.</p>
         </div>
       </div>
+      <p className="text-text-muted text-small text-center">Editing and creating require holding a minimum XRD balance in your connected wallet — never spent, it just keeps spam out.</p>
       <div className="flex justify-center">
         <Link href="/contents"><Button size="lg">Start Exploring <ArrowRight size={18} /></Button></Link>
       </div>

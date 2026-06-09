@@ -12,7 +12,7 @@ import { Button, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
 import { slugify } from '@/lib/utils';
 import { findInfobox } from '@/components/BlockRenderer';
-import { isAuthorOnlyPath, isLockedPage, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, type MetadataKeyDefinition } from '@/lib/tags';
+import { isAuthorOnlyPath, isLockedPage, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, XRD_NOT_A_FEE, type MetadataKeyDefinition } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
 import { Banner } from './PageContent';
 import type { WikiPage, PageMetadata } from '@/types';
@@ -357,7 +357,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
           <Link href={backHref} className="row link-muted"><ArrowLeft size={16} /><span>{isCreating ? 'Back to Category' : 'Back to Page'}</span></Link>
           <Button onClick={save} disabled={isSaving || !canSave} size="sm"><Save size={16} />{saveLabel}</Button>
         </div>
-        <div data-callout="info"><p>{isCreating ? `Creating new page at` : `Editing page at`} <code>/{tagPath}/{slug}</code> — requires <strong>{getXrdRequired(isCreating ? 'create' : 'edit', tagPath).toLocaleString()} XRD</strong></p></div>
+        <div data-callout="info"><p>{isCreating ? 'Creating a new page at' : 'Editing the page at'} <code>/{tagPath}/{slug}</code> requires holding <strong>{getXrdRequired(isCreating ? 'create' : 'edit', tagPath).toLocaleString()} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
         <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
         <div className="slug-editor">
           <Link2 size={14} />

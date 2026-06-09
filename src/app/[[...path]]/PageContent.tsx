@@ -15,7 +15,7 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Badge, Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
 import { cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet } from '@/lib/utils';
-import { findTagByPath, getXrdRequired, type SortOrder, type TagNode } from '@/lib/tags';
+import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder, type TagNode } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
 import type { WikiPage, AdjacentPages } from '@/types';
 import type { Block } from '@/types/blocks';
@@ -257,7 +257,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
           <Button onClick={handleSave} disabled={isSaving} size="sm"><Save size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
         </div>
         <h1>Edit Homepage</h1>
-        <div data-callout="info"><p>Editing the homepage requires <strong>{getXrdRequired('edit', '').toLocaleString()} XRD</strong></p></div>
+        <div data-callout="info"><p>Editing the homepage requires holding <strong>{getXrdRequired('edit', '').toLocaleString()} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
         <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
         <div className="page-with-infobox">
           <div className="page-main-content">

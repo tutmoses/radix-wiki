@@ -175,6 +175,9 @@ const XRD_DEFAULTS = { create: 10_000, edit: 20_000, comment: 10_000 } as const;
 export function getXrdRequired(action: 'create' | 'edit' | 'comment', tagPath: string): number {
   return resolveTagPath(tagPath.split('/')).xrdRequirements[action] ?? XRD_DEFAULTS[action];
 }
+
+// XRD requirements are a minimum wallet balance, not a fee — the balance is read, never spent.
+export const XRD_NOT_A_FEE = 'Your XRD is never spent — this is a wallet balance check, not a fee.';
 export const getMetadataKeys = (pathSegments: string[]): MetadataKeyDefinition[] => resolveTagPath(pathSegments).metadataKeys;
 export const getSortOrder = (pathSegments: string[]): SortOrder => resolveTagPath(pathSegments).sort;
 export const getVisibleTags = (hierarchy: TagNode[] = TAG_HIERARCHY): TagNode[] => hierarchy.filter(n => !n.hidden);
