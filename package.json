@@ -14,7 +14,6 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.78.0",
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
     "@radixdlt/radix-dapp-toolkit": "^2.3.0",
@@ -47,7 +46,6 @@
     "rehype-pretty-code": "^0.14.1",
     "rehype-stringify": "^10.0.1",
     "tailwind-merge": "^2.5.0",
-    "telegram": "^2.26.22",
     "unified": "^11.0.5",
     "zustand": "^5.0.0"
   },
@@ -61,8 +59,10 @@
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.1.6",
+    "playwright": "^1.60.0",
     "postcss": "^8.4.47",
     "prisma": "^7.2.0",
+    "radix-studio": "file:../radix-studio",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.6.0"
   }

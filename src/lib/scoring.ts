@@ -101,17 +101,6 @@ export const getEditorScores = unstable_cache(
   { revalidate: 3600, tags: ['leaderboard'] },
 );
 
-// --- Distribution dedup ---
-
-export async function getRecentPostSlugs(type: string | string[], days: number): Promise<Set<string>> {
-  const types = Array.isArray(type) ? type : [type];
-  const rows = await prisma.tweet.findMany({
-    where: { type: { in: types }, createdAt: { gte: new Date(Date.now() - days * 86_400_000) } },
-    select: { pageSlug: true, pageTagPath: true },
-  });
-  return new Set(rows.map(r => `${r.pageTagPath}/${r.pageSlug}`));
-}
-
 /** Log-dampened 0-100 ring score for profile display */
 export function ringScore(s: ScoreInput): number {
   const dampen = (v: number, base: number) => v > 0 ? Math.log(v + 1) / Math.log(base) : 0;

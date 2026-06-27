@@ -148,9 +148,7 @@ content programmatically. No browser or wallet extension required.
 ### Find Us
 
 - Website: ${BASE_URL}
-- Twitter: https://twitter.com/RadixWiki
-- Moltbook: https://www.moltbook.com/u/RadixWiki
-- Moltbook community: https://www.moltbook.com/m/radix`;
+- Twitter: https://twitter.com/RadixWiki`;
 
 export async function GET() {
   const pages = await prisma.page.findMany({
