@@ -36,7 +36,6 @@ export const TAG_HIERARCHY: TagNode[] = [
           { name: 'Comparisons', slug: 'comparisons', description: 'Side-by-side comparisons of Radix against Ethereum, Solana, and other ledgers — feature, performance, and architecture differences.' },
           { name: 'Core Concepts', slug: 'core-concepts', description: 'Foundational ideas behind Radix — assets as primitives, atomic composability, finality, sharding, and DeFi-native design.' },
           { name: 'Core Protocols', slug: 'core-protocols', description: 'The protocols that power Radix — Cerberus consensus, Radix Engine state machine, transaction manifests, and the ledger model.' },
-          { name: 'DeSci', slug: 'desci', description: 'Decentralized science on Radix — IP-NFTs, research DAOs, and how asset-oriented programming enables verifiable scientific funding.' },
           { name: 'Releases', slug: 'releases', description: 'Major Radix protocol upgrades and Babylon-era release notes — what shipped, when, and what each release unlocks.' },
           { name: 'Research', slug: 'research', description: 'Active research efforts driving the Radix roadmap — Xi’an, Hyperscale, MFA Security Shield, RAC, and academic papers behind them.' },
           { name: 'Operations', slug: 'operations', hidden: true },
