@@ -71,6 +71,11 @@ const CATEGORY_PALETTES: Record<string, [string, string, string]> = {
 };
 const DEFAULT_PALETTE: [string, string, string] = ['#3b1520', '#c06a73', '#ff9da0'];
 
+/** [dark base, mid accent, bright accent] for a tag path, falling back to the default palette. */
+export function paletteFor(tagPath: string): [string, string, string] {
+  return Object.entries(CATEGORY_PALETTES).find(([k]) => tagPath.startsWith(k))?.[1] ?? DEFAULT_PALETTE;
+}
+
 export function hashStr(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
@@ -89,7 +94,7 @@ export function generateBannerSvg(title: string, tagPath: string): string {
   const cached = svgCache.get(cacheKey);
   if (cached) return cached;
 
-  const palette = Object.entries(CATEGORY_PALETTES).find(([k]) => tagPath.startsWith(k))?.[1] ?? DEFAULT_PALETTE;
+  const palette = paletteFor(tagPath);
   const hash = hashStr(title + tagPath);
   const rand = seededRandom(hash);
   const w = 800, h = 200;

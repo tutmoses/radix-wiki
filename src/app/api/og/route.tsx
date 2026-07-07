@@ -1,24 +1,9 @@
 import { ImageResponse } from 'next/og';
-import { hashStr, seededRandom } from '@/lib/utils';
+import { hashStr, seededRandom, paletteFor } from '@/lib/utils';
 import { CACHE } from '@/lib/api';
 import sharp from 'sharp';
 
 export const runtime = 'nodejs';
-
-const CATEGORY_PALETTES: Record<string, [string, string, string]> = {
-  'contents/tech':    ['#1e1b4b', '#4f46e5', '#818cf8'],
-  'developers':       ['#052e16', '#059669', '#6ee7b7'],
-  'ecosystem':        ['#451a03', '#d97706', '#fcd34d'],
-  'community':        ['#500724', '#db2777', '#f9a8d4'],
-  'blog':             ['#450a0a', '#dc2626', '#fca5a5'],
-  'contents/history': ['#2e1065', '#7c3aed', '#c4b5fd'],
-  'forum':            ['#083344', '#0891b2', '#67e8f9'],
-};
-const DEFAULT_PALETTE: [string, string, string] = ['#3b1520', '#c06a73', '#ff9da0'];
-
-function getPalette(tagPath: string) {
-  return Object.entries(CATEGORY_PALETTES).find(([k]) => tagPath.startsWith(k))?.[1] ?? DEFAULT_PALETTE;
-}
 
 const SIZE = { width: 1200, height: 630 };
 
@@ -65,7 +50,7 @@ export async function GET(req: Request) {
     );
   }
 
-  const palette = getPalette(tagPath);
+  const palette = paletteFor(tagPath);
   const hash = hashStr(title + tagPath);
   const rand = seededRandom(hash);
   const angle = Math.floor(rand() * 360);
