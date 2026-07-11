@@ -81,6 +81,8 @@ export const TAG_HIERARCHY: TagNode[] = [
           { key: 'status', label: 'Status:', type: 'select', options: ['🟢 Active','🟡 Testnet','🟠 Dormant','🔴 Closed'], required: true },
           { key: 'website', label: 'Website:', type: 'url' },
           { key: 'github', label: 'GitHub:', type: 'url' },
+          { key: 'x', label: 'X:', type: 'url' },
+          { key: 'telegram', label: 'Telegram:', type: 'url' },
           { key: 'license', label: 'License:', type: 'text' },
           { key: 'team', label: 'Team:', type: 'text' },
           { key: 'founded', label: 'Founded:', type: 'date' },
@@ -93,7 +95,7 @@ export const TAG_HIERARCHY: TagNode[] = [
     metadataKeys: [
       { key: 'assets', label: 'Asset:', type: 'resource_address' },
       { key: 'status', label: 'Status:', type: 'select', options: ['🟢 Active','🟡 Testnet','🟠 Dormant','🔴 Closed'], required: true },
-      { key: 'category', label: 'Category:', type: 'select', options: ['DAO Platform', 'DeSci', 'Developer Tool', 'Education', 'Finance', 'Gaming', 'Healthcare', 'Infrastructure', 'Launchpad', 'Media', 'NFT Platform', 'Oracle', 'Stablecoin', 'Staking', 'Studio', 'Token'], required: true },
+      { key: 'category', label: 'Category:', type: 'select', options: ['DAO Platform', 'DeSci', 'Education', 'Finance', 'Gaming', 'Healthcare', 'Infrastructure', 'Launchpad', 'Media', 'NFT Platform', 'Oracle', 'Stablecoin', 'Staking', 'Studio', 'Token'], required: true },
       { key: 'founded', label: 'Founded:', type: 'date' },
       { key: 'website', label: 'Website:', type: 'url' },
       { key: 'x', label: 'X:', type: 'url' },
