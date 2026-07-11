@@ -355,7 +355,7 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
                 <div className="page-card-body">
                   <div className="spread">
                     <h3 className="m-0!">{p.title}</h3>
-                    {p.metadata?.status && <span title={p.metadata.status === '🟢' ? 'Active' : p.metadata.status === '🟠' ? 'In Development' : 'Inactive'}>{p.metadata.status}</span>}
+                    {p.metadata?.status && <span>{p.metadata.status}</span>}
                   </div>
                   {(() => { const snippet = getContentSnippet(p.content); return snippet && <p className="text-text-muted text-small line-clamp-2">{snippet}</p>; })()}
                 </div>
