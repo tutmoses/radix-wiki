@@ -5,7 +5,7 @@ import { unstable_cache } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { isValidTagPath, getSortOrder, getMetadataKeys, type SortOrder } from '@/lib/tags';
 import type { WikiPage, IdeasPage } from '@/types';
-import type { Block, RecentPagesBlock, PageListBlock, ColumnsBlock } from '@/types/blocks';
+import type { Block, RecentPagesBlock, PageListBlock, RssFeedBlock, ColumnsBlock } from '@/types/blocks';
 import { computeRevisionDiff } from '@/lib/versioning';
 
 // ========== PRISMA QUERY FRAGMENTS ==========
@@ -277,28 +277,43 @@ const getPagesByIds = unstable_cache(
   }, ['getPagesByIds'], CACHE_OPTS,
 );
 
-/** Pre-resolve recentPages and pageList blocks server-side to avoid client waterfalls. */
+const getFeedItems = unstable_cache(
+  async (url: string, limit: number): Promise<any[]> => {
+    try {
+      const res = await fetch(url, { headers: { 'User-Agent': 'radix-wiki' } });
+      if (!res.ok) return [];
+      const json = await res.json();
+      return Array.isArray(json?.items) ? json.items.slice(0, limit) : [];
+    } catch { return []; }
+  }, ['getFeedItems'], CACHE_OPTS,
+);
+
+/** Pre-resolve recentPages, pageList, and rssFeed blocks server-side to avoid client waterfalls. */
 export async function resolveBlockData(blocks: Block[]): Promise<Block[]> {
   const recentPending: { block: RecentPagesBlock; promise: Promise<any[]> }[] = [];
   const listPending: { block: PageListBlock; promise: Promise<any[]> }[] = [];
+  const feedPending: { block: RssFeedBlock; promise: Promise<any[]> }[] = [];
 
   function collect(list: (Block | import('@/types/blocks').AtomicBlock)[]) {
     for (const b of list) {
       if (b.type === 'recentPages') recentPending.push({ block: b, promise: getRecentPages(b.tagPath, b.limit) });
       else if (b.type === 'pageList') listPending.push({ block: b as PageListBlock, promise: getPagesByIds((b as PageListBlock).pageIds) });
+      else if (b.type === 'rssFeed') feedPending.push({ block: b as RssFeedBlock, promise: getFeedItems((b as RssFeedBlock).url, (b as RssFeedBlock).limit || 20) });
       else if (b.type === 'columns') for (const col of (b as ColumnsBlock).columns) collect(col.blocks);
       else if (b.type === 'infobox') collect((b as import('@/types/blocks').InfoboxBlock).blocks);
     }
   }
 
   collect(blocks);
-  if (!recentPending.length && !listPending.length) return blocks;
+  if (!recentPending.length && !listPending.length && !feedPending.length) return blocks;
 
-  const [recentResults, listResults] = await Promise.all([
+  const [recentResults, listResults, feedResults] = await Promise.all([
     Promise.all(recentPending.map(p => p.promise)),
     Promise.all(listPending.map(p => p.promise)),
+    Promise.all(feedPending.map(p => p.promise)),
   ]);
   recentPending.forEach((p, i) => { p.block.resolvedPages = recentResults[i]; });
   listPending.forEach((p, i) => { p.block.resolvedPages = listResults[i]; });
+  feedPending.forEach((p, i) => { p.block.resolvedItems = feedResults[i]; });
   return blocks;
 }

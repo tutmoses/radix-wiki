@@ -8,7 +8,7 @@ export interface ContentBlock extends BaseBlock { type: 'content'; text: string;
 export interface RecentPagesBlock extends BaseBlock { type: 'recentPages'; tagPath?: string; limit: number; resolvedPages?: any[]; }
 export interface PageListBlock extends BaseBlock { type: 'pageList'; pageIds: string[]; resolvedPages?: any[]; }
 export interface AssetPriceBlock extends BaseBlock { type: 'assetPrice'; resourceAddress?: string; showChange?: boolean; showChart?: boolean; chartTimeframe?: '24h' | '7d' | '30d'; }
-export interface RssFeedBlock extends BaseBlock { type: 'rssFeed'; url: string; limit?: number; }
+export interface RssFeedBlock extends BaseBlock { type: 'rssFeed'; url: string; limit?: number; resolvedItems?: { title: string; link: string; image?: string; source: string; date?: string; description?: string }[]; }
 export interface CodeTab { label: string; language: string; code: string; }
 export interface CodeTabsBlock extends BaseBlock { type: 'codeTabs'; tabs: CodeTab[]; }
 export interface StoreBlock extends BaseBlock { type: 'store'; columns: 2 | 3 | 4; showPrice: boolean; }

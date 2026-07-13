@@ -139,10 +139,13 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
 interface RssFeedItem { title: string; link: string; image?: string; source: string; date?: string; description?: string; }
 
 function RssFeedBlockView({ block }: { block: RssFeedBlock }) {
-  const { data, isLoading } = useFetch<RssFeedItem[]>(block.url, { transform: d => d.items || [] });
-  const items = data || [];
+  // Prefer items pre-resolved server-side (rendered as static HTML, no client hydration
+  // needed); fall back to a client fetch for editor/preview where they aren't resolved.
+  const preResolved = block.resolvedItems as RssFeedItem[] | undefined;
+  const { data, isLoading } = useFetch<RssFeedItem[]>(preResolved ? null : block.url, { transform: d => d.items || [] });
+  const items = preResolved || data || [];
 
-  if (isLoading) return <div className="rss-feed-scroll"><div className="stack-sm">{Array.from({ length: 3 }, (_, i) => <div key={i} className="h-[280px] skeleton rounded-md" />)}</div></div>;
+  if (!preResolved && isLoading) return <div className="rss-feed-scroll"><div className="stack-sm">{Array.from({ length: 3 }, (_, i) => <div key={i} className="h-[280px] skeleton rounded-md" />)}</div></div>;
   if (!items.length) return <p className="text-text-muted">No feed items found.</p>;
 
   return (
