@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { BASE_URL, getContentSnippet } from '@/lib/utils';
 import { extractText } from '@/lib/content';
-import { TAG_HIERARCHY, type TagNode } from '@/lib/tags';
+import { TAG_HIERARCHY, getMetadataKeys, type TagNode } from '@/lib/tags';
 import type { Block } from '@/types/blocks';
 
 export const dynamic = 'force-dynamic';
@@ -76,6 +76,17 @@ const TOOLS = [
     description: 'Return the entire Radix Wiki as a single text document. Use for comprehensive context or bulk ingestion.',
     inputSchema: { type: 'object', properties: {} },
   },
+  {
+    name: 'get_ideas_board',
+    description: 'Get the RADIX Wiki Ideas Pipeline kanban — community proposals and Radix DAO tasks grouped into status columns (Discussion → Proposed → Approved → In Progress → Testing → Done), each card carrying its working group, category, priority, and assignee. Use this to follow DAO / project progress.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        category: { type: 'string', description: 'Filter to one category: Governance, Protocol, Tooling, Ecosystem, or Community' },
+        workingGroup: { type: 'string', description: 'Filter by working group name substring, e.g. "Treasury", "Legal", "NetOps"' },
+      },
+    },
+  },
 ] as const;
 
 // ========== RESOURCES ==========
@@ -97,14 +108,16 @@ const RESOURCES = [
 
 // ========== DB SELECT SHAPES ==========
 
-const SUMMARY_SELECT = { title: true, tagPath: true, slug: true, content: true, updatedAt: true } as const;
+const SUMMARY_SELECT = { title: true, tagPath: true, slug: true, content: true, updatedAt: true, metadata: true } as const;
 const FULL_SELECT = { ...SUMMARY_SELECT, version: true } as const;
+const IDEAS_SELECT = { title: true, tagPath: true, slug: true, metadata: true, updatedAt: true } as const;
 
 function pageUrl(tagPath: string, slug: string) {
   return `${BASE_URL}/${tagPath}/${slug}`;
 }
 
-function summarizePage(p: { title: string; tagPath: string; slug: string; content: unknown; updatedAt: Date }) {
+function summarizePage(p: { title: string; tagPath: string; slug: string; content: unknown; updatedAt: Date; metadata?: unknown }) {
+  const meta = (p.metadata ?? null) as Record<string, unknown> | null;
   return {
     title: p.title,
     url: pageUrl(p.tagPath, p.slug),
@@ -112,7 +125,27 @@ function summarizePage(p: { title: string; tagPath: string; slug: string; conten
     slug: p.slug,
     snippet: getContentSnippet(p.content),
     updatedAt: p.updatedAt.toISOString().split('T')[0],
+    ...(meta && Object.keys(meta).length ? { metadata: meta } : {}),
   };
+}
+
+// ========== IDEAS BOARD HELPERS ==========
+
+/** Strip a leading emoji/symbol prefix from a metadata value (e.g. "🔴 Discussion" → "Discussion"). */
+function normalizeField(raw?: string): string {
+  return raw ? raw.replace(/^[^\p{Lu}\p{Ll}\p{Nd}]+/u, '').trim() : '';
+}
+
+/** Assignee is stored either as a JSON string {name,address} or a plain name. */
+function assigneeName(raw?: string): string | null {
+  if (!raw) return null;
+  try { const parsed = JSON.parse(raw); return (parsed && parsed.name) || null; } catch { return raw; }
+}
+
+/** Working group is encoded as a "<WG> · <task>" title prefix. */
+function workingGroupFromTitle(title: string): string | null {
+  const i = title.indexOf('·');
+  return i === -1 ? null : title.slice(0, i).trim();
 }
 
 // ========== TAG HIERARCHY HELPERS ==========
@@ -217,6 +250,51 @@ async function get_full_corpus() {
   return [`# Radix Wiki — Full Content\n\n> ${pages.length} pages, generated ${new Date().toISOString().split('T')[0]}`, ...sections].join('\n\n');
 }
 
+async function get_ideas_board(args: { category?: string; workingGroup?: string }) {
+  const pages = await prisma.page.findMany({
+    where: { tagPath: { startsWith: 'ideas' } },
+    select: IDEAS_SELECT,
+    orderBy: { updatedAt: 'desc' },
+  });
+
+  const catFilter = args.category ? normalizeField(args.category).toLowerCase() : null;
+  const wgFilter = args.workingGroup ? args.workingGroup.toLowerCase() : null;
+
+  const cards = pages.map(p => {
+    const m = (p.metadata ?? {}) as Record<string, string>;
+    return {
+      title: p.title,
+      url: pageUrl(p.tagPath, p.slug),
+      workingGroup: workingGroupFromTitle(p.title),
+      rawStatus: m.status ?? '',
+      priority: normalizeField(m.priority) || null,
+      category: normalizeField(m.category) || null,
+      assignee: assigneeName(m.assignee),
+      updatedAt: p.updatedAt.toISOString().split('T')[0],
+    };
+  }).filter(c => {
+    if (catFilter && (c.category ?? '').toLowerCase() !== catFilter) return false;
+    if (wgFilter && !(c.workingGroup ?? '').toLowerCase().includes(wgFilter)) return false;
+    return true;
+  });
+
+  const statusOptions = getMetadataKeys(['ideas']).find(k => k.key === 'status')?.options ?? [];
+  const known = new Set(statusOptions);
+  const shape = (c: typeof cards[number]) => ({
+    title: c.title, workingGroup: c.workingGroup, category: c.category,
+    priority: c.priority, assignee: c.assignee, url: c.url, updatedAt: c.updatedAt,
+  });
+
+  const columns = statusOptions.map(opt => {
+    const items = cards.filter(c => c.rawStatus === opt);
+    return { status: normalizeField(opt), count: items.length, cards: items.map(shape) };
+  });
+  const orphans = cards.filter(c => !known.has(c.rawStatus));
+  if (orphans.length) columns.push({ status: 'Uncategorized', count: orphans.length, cards: orphans.map(shape) });
+
+  return { board: 'ideas', url: `${BASE_URL}/ideas`, totalCards: cards.length, columns };
+}
+
 // ========== RESOURCE HANDLERS ==========
 
 async function readResource(uri: string): Promise<string | null> {
@@ -278,6 +356,7 @@ async function handleRpc(req: RpcRequest): Promise<object | null> {
           case 'get_categories':    data = await get_categories();                                                   break;
           case 'get_recent_changes': data = await get_recent_changes(args as Parameters<typeof get_recent_changes>[0]); break;
           case 'get_full_corpus':   data = await get_full_corpus();                                                  break;
+          case 'get_ideas_board':   data = await get_ideas_board(args as Parameters<typeof get_ideas_board>[0]);       break;
           default: return { jsonrpc: '2.0', id, error: { code: -32601, message: `Unknown tool: ${name}` } };
         }
 

@@ -13,13 +13,14 @@ import TiptapTableRow from '@tiptap/extension-table-row';
 import TiptapTableCell from '@tiptap/extension-table-cell';
 import TiptapTableHeader from '@tiptap/extension-table-header';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Pencil, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, LayoutGrid, X, Check, Info, Map, Rss, type LucideIcon } from 'lucide-react';
+import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Pencil, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, LayoutGrid, X, Check, Info, Map, Rss, QrCode, type LucideIcon } from 'lucide-react';
+import QRCode from 'qrcode';
 import { cn } from '@/lib/utils';
 import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock, CODE_LANGS, DEFAULT_LANG } from '@/lib/block-utils';
 import { toMapEmbedUrl, resolveMapUrl } from '@/lib/map-utils';
 import { Button, Input, Dropdown } from '@/components/ui';
 import { Iframe, YouTube, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock } from '@/lib/tiptap/extensions';
-import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column, LinkGridBlock, LinkGridGroup } from '@/types/blocks';
+import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column, LinkGridBlock, LinkGridGroup, TipJarBlock } from '@/types/blocks';
 
 // ========== UTILITIES ==========
 async function uploadImage(file: File): Promise<string | null> {
@@ -349,6 +350,36 @@ function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Colum
   );
 }
 
+const RADIX_ACCOUNT_RE = /^account_(rdx|tdx_2_)1[a-z0-9]{50,}$/;
+
+function TipJarBlockEdit({ block, onUpdate }: BlockProps<TipJarBlock>) {
+  const [qr, setQr] = useState<string | null>(null);
+  const address = (block.address || '').trim();
+  const isValid = RADIX_ACCOUNT_RE.test(address);
+  useEffect(() => {
+    if (!isValid) { setQr(null); return; }
+    let active = true;
+    QRCode.toString(address, { type: 'svg', errorCorrectionLevel: 'M', margin: 1, color: { dark: '#1a1d29', light: '#ffffff' } })
+      .then(u => { if (active) setQr(u); })
+      .catch(() => { if (active) setQr(null); });
+    return () => { active = false; };
+  }, [address, isValid]);
+  return (
+    <EditWrapper icon={QrCode} label="Tip Jar (QR)">
+      <Input label="Heading" value={block.label || ''} onChange={e => onUpdate?.({ ...block, label: e.target.value })} placeholder="Tip the author ☕️" />
+      <div className="stack-sm">
+        <label className="font-medium">Radix account address</label>
+        <input type="text" value={block.address || ''} onChange={e => onUpdate?.({ ...block, address: e.target.value })} placeholder="account_rdx12..." className="input font-mono" />
+        <small className={!address || isValid ? 'text-text-muted' : 'text-error'}>
+          {!address ? 'Paste your Radix account address — a scannable QR generates automatically.' : isValid ? 'Valid Radix account address.' : 'Not a valid Radix account address (must start with account_rdx or account_tdx_2_).'}
+        </small>
+      </div>
+      <Input label="Message" value={block.message || ''} onChange={e => onUpdate?.({ ...block, message: e.target.value })} placeholder="Support independent writing on Radix." />
+      {qr && <div className="tip-jar-qr tip-jar-qr-preview" dangerouslySetInnerHTML={{ __html: qr }} />}
+    </EditWrapper>
+  );
+}
+
 function renderBlockEdit(block: Block | AtomicBlock, onUpdate?: (b: Block) => void): ReactNode {
   switch (block.type) {
     case 'content': return <ContentBlockEdit block={block} onUpdate={onUpdate as any} />;
@@ -359,6 +390,7 @@ function renderBlockEdit(block: Block | AtomicBlock, onUpdate?: (b: Block) => vo
     case 'columns': return <ColumnsBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'infobox': return <InfoboxBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'linkGrid': return <LinkGridBlockEdit block={block} onUpdate={onUpdate as any} />;
+    case 'tipJar': return <TipJarBlockEdit block={block} onUpdate={onUpdate as any} />;
   }
 }
 

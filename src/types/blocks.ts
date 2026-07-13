@@ -1,6 +1,6 @@
 // src/types/blocks.ts - Shared block types (12-type standard)
 
-export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice' | 'infobox' | 'rssFeed' | 'codeTabs' | 'store' | 'footer' | 'stats' | 'testimonial' | 'linkGrid';
+export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice' | 'infobox' | 'rssFeed' | 'codeTabs' | 'store' | 'footer' | 'stats' | 'testimonial' | 'linkGrid' | 'tipJar';
 
 interface BaseBlock { id: string; type: BlockType; }
 
@@ -19,9 +19,10 @@ export interface TestimonialBlock extends BaseBlock { type: 'testimonial'; quote
 export interface LinkGridLink { label: string; href: string; }
 export interface LinkGridGroup { id: string; heading: string; description?: string; links: LinkGridLink[]; }
 export interface LinkGridBlock extends BaseBlock { type: 'linkGrid'; intro?: string; groups: LinkGridGroup[]; }
+export interface TipJarBlock extends BaseBlock { type: 'tipJar'; address: string; label?: string; message?: string; }
 
 // Atomic blocks that can be nested inside containers
-export type AtomicBlock = ContentBlock | RecentPagesBlock | PageListBlock | AssetPriceBlock | RssFeedBlock | CodeTabsBlock | StoreBlock | FooterBlock | StatsBlock | TestimonialBlock | LinkGridBlock;
+export type AtomicBlock = ContentBlock | RecentPagesBlock | PageListBlock | AssetPriceBlock | RssFeedBlock | CodeTabsBlock | StoreBlock | FooterBlock | StatsBlock | TestimonialBlock | LinkGridBlock | TipJarBlock;
 
 export interface InfoboxBlock extends BaseBlock {
   type: 'infobox';

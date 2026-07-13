@@ -72,7 +72,7 @@ const SPEC = {
     '/api/mcp': {
       post: {
         operationId: 'mcpServer',
-        summary: 'Model Context Protocol (MCP) server — JSON-RPC 2.0 endpoint with 6 tools and 2 resources',
+        summary: 'Model Context Protocol (MCP) server — JSON-RPC 2.0 endpoint with 7 tools and 2 resources',
         requestBody: { content: { 'application/json': { schema: { type: 'object' } } } },
         responses: { '200': { description: 'JSON-RPC response' } },
       },

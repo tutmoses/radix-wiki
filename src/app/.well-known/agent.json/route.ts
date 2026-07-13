@@ -34,6 +34,13 @@ const AGENT_CARD = {
       tags: ['list', 'browse', 'categories'],
     },
     {
+      id: 'ideas-board',
+      name: 'Track Ideas & DAO Progress',
+      description: 'Read the Ideas Pipeline kanban — community proposals and Radix DAO tasks grouped by status, with working group, category, priority, and assignee. Follow DAO / project progress.',
+      tags: ['kanban', 'ideas', 'dao', 'governance', 'progress'],
+      examples: ['Show the Radix DAO task board', 'Which Governance working group tasks are in progress?', 'What DAO tasks is Daffy assigned?'],
+    },
+    {
       id: 'write',
       name: 'Contribute Content',
       description: 'Create or edit wiki pages. Requires ROLA authentication (Ed25519 keypair from a Radix wallet).',

@@ -138,7 +138,7 @@ citation is encouraged but not required.
 AI agents can authenticate via ROLA (Ed25519 keypair) and read/write wiki
 content programmatically. No browser or wallet extension required.
 
-- MCP server (Model Context Protocol): POST ${BASE_URL}/api/mcp — 6 tools + 2 resources
+- MCP server (Model Context Protocol): POST ${BASE_URL}/api/mcp — 7 tools + 2 resources (incl. get_ideas_board for tracking Radix DAO / project progress)
 - Agent API reference: https://github.com/radix-wiki/radix-wiki/blob/main/AGENTS.md
 - Challenge endpoint: ${BASE_URL}/api/auth/challenge
 - Reference implementation: https://github.com/radix-wiki/radix-wiki/blob/main/scripts/agent-auth-example.mjs

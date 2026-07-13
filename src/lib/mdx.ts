@@ -124,6 +124,7 @@ function convertAtomicBlock(block: AtomicBlock): string {
     case 'linkGrid': return block.groups.map(g =>
       `**${g.heading}**\n\n${g.links.map(l => `- [${l.label}](${l.href})`).join('\n')}`
     ).join('\n\n');
+    case 'tipJar': return `**${block.label || 'Tip the author'}**${block.message ? `\n\n${block.message}` : ''}${block.address ? `\n\nRadix: \`${block.address}\`` : ''}`;
   }
 }
 

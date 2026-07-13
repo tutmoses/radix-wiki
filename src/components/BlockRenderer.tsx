@@ -5,7 +5,8 @@
 import { useState, useEffect, useRef, memo, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Clock, FileText, User } from 'lucide-react';
+import { Clock, FileText, User, Copy, Check } from 'lucide-react';
+import QRCode from 'qrcode';
 import { cn, formatRelativeTime, formatDate, generateBannerSvg, getContentSnippet } from '@/lib/utils';
 import { findTagByPath } from '@/lib/tags';
 import { processHtml } from '@/lib/html';
@@ -13,7 +14,7 @@ import { usePages, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiPage, PageMetadata } from '@/types';
-import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock, StoreBlock, FooterBlock, StatsBlock, TestimonialBlock, LinkGridBlock } from '@/types/blocks';
+import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock, StoreBlock, FooterBlock, StatsBlock, TestimonialBlock, LinkGridBlock, TipJarBlock } from '@/types/blocks';
 import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
 import { TokenChart } from '@/components/charts/TokenChart';
 import { formatPriceSubscript } from '@/components/charts/format';
@@ -403,6 +404,46 @@ function LinkGridBlockView({ block }: { block: LinkGridBlock }) {
   );
 }
 
+const RADIX_ACCOUNT_RE = /^account_(rdx|tdx_2_)1[a-z0-9]{50,}$/;
+
+function TipJarBlockView({ block }: { block: TipJarBlock }) {
+  const [qrSvg, setQrSvg] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const address = (block.address || '').trim();
+  const isValid = RADIX_ACCOUNT_RE.test(address);
+
+  useEffect(() => {
+    if (!isValid) { setQrSvg(null); return; }
+    let active = true;
+    QRCode.toString(address, { type: 'svg', errorCorrectionLevel: 'M', margin: 1, color: { dark: '#1a1d29', light: '#ffffff' } })
+      .then(svg => { if (active) setQrSvg(svg); })
+      .catch(() => { if (active) setQrSvg(null); });
+    return () => { active = false; };
+  }, [address, isValid]);
+
+  const copy = useCallback(() => {
+    navigator.clipboard.writeText(address).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+  }, [address]);
+
+  return (
+    <div className="tip-jar">
+      {block.label && <div className="tip-jar-label">{block.label}</div>}
+      {block.message && <p className="tip-jar-message">{block.message}</p>}
+      {isValid && qrSvg ? (
+        <div className="tip-jar-qr" dangerouslySetInnerHTML={{ __html: qrSvg }} />
+      ) : (
+        <div className="tip-jar-placeholder">{address && !isValid ? 'Not a valid Radix account address.' : 'No tip address set.'}</div>
+      )}
+      {isValid && (
+        <button type="button" className="tip-jar-address" onClick={copy} title="Copy address">
+          <span className="tip-jar-address-text">{address}</span>
+          {copied ? <Check size={14} /> : <Copy size={14} />}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
   switch (block.type) {
     case 'content': return <ContentBlockView html={block.text} />;
@@ -418,6 +459,7 @@ function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
     case 'stats': return <StatsBlockView block={block} />;
     case 'testimonial': return <TestimonialBlockView block={block} />;
     case 'linkGrid': return <LinkGridBlockView block={block} />;
+    case 'tipJar': return <TipJarBlockView block={block} />;
   }
 }
 
