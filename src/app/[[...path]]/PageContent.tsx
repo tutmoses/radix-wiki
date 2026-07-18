@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, ArrowRight, Save, Plus, Upload, X, Image as ImageIcon, ArrowDownAZ, CalendarPlus, RefreshCw, Clock, FileText } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Save, Plus, Upload, X, Image as ImageIcon, ArrowDownAZ, CalendarPlus, RefreshCw, Clock, FileText, ShieldCheck } from 'lucide-react';
 import { BlockRenderer, findInfobox, InfoboxSidebar, type InfoboxPageInfo } from '@/components/BlockRenderer';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Footer } from '@/components/Footer';
@@ -17,6 +17,7 @@ import { useAuth, useStore } from '@/hooks';
 import { cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet } from '@/lib/utils';
 import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder, type TagNode } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
+import { freshnessBanner } from '@/lib/freshness';
 import type { WikiPage, AdjacentPages } from '@/types';
 import type { Block } from '@/types/blocks';
 
@@ -114,6 +115,12 @@ export function Banner({ src, title, tagPath, editable, onUpload, onRemove, page
         <div className="banner-info-row">
           <FileText size={14} className="shrink-0 opacity-60" />
           <span>{pageInfo.revisionCount} revisions</span>
+        </div>
+      )}
+      {pageInfo.lastVerifiedAt && (
+        <div className="banner-info-row">
+          <ShieldCheck size={14} className="shrink-0 opacity-60" />
+          <span>Verified {formatDate(pageInfo.lastVerifiedAt)}</span>
         </div>
       )}
     </div>
@@ -404,9 +411,10 @@ function PageViewContent({ page, adjacent, related }: { page: WikiPage; adjacent
   const isCommunityPage = page.tagPath.startsWith('community');
   const blocks = (page.content as unknown as Block[]) || [];
   const infobox = findInfobox(blocks) || { id: '__infobox__', type: 'infobox' as const, blocks: [] };
-  const mainBlocks = blocks.filter(b => b.type !== 'infobox');
+  const fresh = freshnessBanner(page);
+  const mainBlocks = [...(fresh ? [fresh] : []), ...blocks.filter(b => b.type !== 'infobox')];
 
-  const pageInfo = { author: page.author, updatedAt: page.updatedAt, createdAt: page.createdAt, revisionCount: page._count?.revisions ?? 0 };
+  const pageInfo = { author: page.author, updatedAt: page.updatedAt, createdAt: page.createdAt, revisionCount: page._count?.revisions ?? 0, lastVerifiedAt: page.lastVerifiedAt };
 
   return (
     <article className="stack">

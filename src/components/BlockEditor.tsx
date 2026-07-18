@@ -20,7 +20,7 @@ import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplica
 import { toMapEmbedUrl, resolveMapUrl } from '@/lib/map-utils';
 import { Button, Input, Dropdown } from '@/components/ui';
 import { Iframe, YouTube, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock } from '@/lib/tiptap/extensions';
-import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column, LinkGridBlock, LinkGridGroup, TipJarBlock } from '@/types/blocks';
+import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column, LinkGridBlock, LinkGridGroup, TipJarBlock, ReferencesBlock, ReferenceItem, BannerBlock, BannerVariant } from '@/types/blocks';
 
 // ========== UTILITIES ==========
 async function uploadImage(file: File): Promise<string | null> {
@@ -380,6 +380,54 @@ function TipJarBlockEdit({ block, onUpdate }: BlockProps<TipJarBlock>) {
   );
 }
 
+const BANNER_VARIANTS: { value: BannerVariant; label: string }[] = [
+  { value: 'stub', label: 'Stub' },
+  { value: 'unsourced', label: 'Needs citations' },
+  { value: 'outdated', label: 'May be outdated' },
+  { value: 'promotional', label: 'Reads like an ad' },
+  { value: 'cleanup', label: 'Needs cleanup' },
+  { value: 'coi', label: 'Conflict of interest' },
+];
+
+function BannerBlockEdit({ block, onUpdate }: BlockProps<BannerBlock>) {
+  return (
+    <EditWrapper icon={Info} label="Notice Banner">
+      <div className="stack-sm">
+        <label className="font-medium">Type</label>
+        <div className="toggle-group wrap">
+          {BANNER_VARIANTS.map(v => (
+            <button key={v.value} type="button" onClick={() => onUpdate?.({ ...block, variant: v.value })} className={cn('toggle-option', block.variant === v.value && 'toggle-option-active')}>{v.label}</button>
+          ))}
+        </div>
+      </div>
+      <Input label="Custom message (optional)" value={block.text || ''} onChange={e => onUpdate?.({ ...block, text: e.target.value || undefined })} placeholder="Leave empty to use the default notice text" />
+    </EditWrapper>
+  );
+}
+
+function ReferencesBlockEdit({ block, onUpdate }: BlockProps<ReferencesBlock>) {
+  const items = block.items || [];
+  const updateItem = (i: number, item: ReferenceItem) => onUpdate?.({ ...block, items: items.map((x, j) => j === i ? item : x) });
+  const removeItem = (i: number) => onUpdate?.({ ...block, items: items.filter((_, j) => j !== i) });
+  const addItem = () => onUpdate?.({ ...block, items: [...items, { id: crypto.randomUUID(), text: '', url: '' }] });
+  return (
+    <EditWrapper icon={List} label="References">
+      <Input label="Heading" value={block.title || ''} onChange={e => onUpdate?.({ ...block, title: e.target.value || undefined })} placeholder="References" />
+      <div className="stack-sm">
+        {items.map((item, i) => (
+          <div key={item.id} className="row">
+            <span className="text-text-muted text-small w-5 text-right">{i + 1}.</span>
+            <input type="text" value={item.text} onChange={e => updateItem(i, { ...item, text: e.target.value })} placeholder="Source title, author, publisher (HTML allowed)" className="flex-1 input" />
+            <input type="text" value={item.url || ''} onChange={e => updateItem(i, { ...item, url: e.target.value || undefined })} placeholder="https://source-url" className="flex-1 input" />
+            <button onClick={() => removeItem(i)} className="icon-btn text-text-muted hover:text-error" title="Remove reference" aria-label="Remove reference"><Trash2 size={14} /></button>
+          </div>
+        ))}
+        <Button size="sm" onClick={addItem}>+ Add reference</Button>
+      </div>
+    </EditWrapper>
+  );
+}
+
 function renderBlockEdit(block: Block | AtomicBlock, onUpdate?: (b: Block) => void): ReactNode {
   switch (block.type) {
     case 'content': return <ContentBlockEdit block={block} onUpdate={onUpdate as any} />;
@@ -391,6 +439,8 @@ function renderBlockEdit(block: Block | AtomicBlock, onUpdate?: (b: Block) => vo
     case 'infobox': return <InfoboxBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'linkGrid': return <LinkGridBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'tipJar': return <TipJarBlockEdit block={block} onUpdate={onUpdate as any} />;
+    case 'banner': return <BannerBlockEdit block={block} onUpdate={onUpdate as any} />;
+    case 'references': return <ReferencesBlockEdit block={block} onUpdate={onUpdate as any} />;
   }
 }
 

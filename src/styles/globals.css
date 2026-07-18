@@ -221,6 +221,25 @@
   .tip-jar-address:hover { color: var(--color-accent); border-color: var(--color-accent); }
   .tip-jar-address-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+  /* ===== EDITORIAL NOTICE BANNERS ===== */
+  .editorial-banner { @apply flex items-start gap-3 p-3 my-3 rounded-lg border text-small; }
+  .editorial-banner-icon { @apply shrink-0 mt-0.5; }
+  .editorial-banner-body { @apply flex-1 min-w-0 m-0; }
+  .editorial-banner-stub, .editorial-banner-cleanup { @apply border-info/30 bg-info/10; .editorial-banner-icon { @apply text-info; } }
+  .editorial-banner-unsourced, .editorial-banner-outdated { @apply border-warning/30 bg-warning/10; .editorial-banner-icon { @apply text-warning; } }
+  .editorial-banner-promotional, .editorial-banner-coi { @apply border-error/30 bg-error/10; .editorial-banner-icon { @apply text-error; } }
+
+  /* ===== REFERENCES BLOCK ===== */
+  .references-block { @apply mt-6 pt-4 border-t border-border-muted; h2 { @apply text-h4 mb-2; } }
+  .references-list { @apply list-decimal pl-6 text-small text-text-muted; }
+  .reference-item { @apply pl-1 mb-1; scroll-margin-top: calc(var(--header-height) + 1rem); a { @apply text-accent hover:underline; } }
+  .reference-item:target { @apply bg-accent-muted rounded; }
+  .reference-link { @apply no-underline; }
+
+  /* ===== INLINE CITATIONS ===== */
+  sup.cite, sup.cite a { @apply text-accent no-underline text-[0.7em] align-super; }
+  .citation-needed { @apply text-[0.7em] align-super text-error italic; }
+
   /* ===== STEP-BY-STEP GUIDES ===== */
   [data-steps] {
     @apply list-none pl-0 mb-4;

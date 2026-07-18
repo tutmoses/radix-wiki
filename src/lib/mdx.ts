@@ -1,6 +1,11 @@
 // src/lib/mdx.ts - Convert wiki blocks to MDX format
 
-import type { Block, AtomicBlock, ContentBlock, ColumnsBlock, InfoboxBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock } from '@/types/blocks';
+import type { Block, AtomicBlock, ContentBlock, ColumnsBlock, InfoboxBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, ReferencesBlock, BannerBlock } from '@/types/blocks';
+
+const BANNER_LABELS: Record<BannerBlock['variant'], string> = {
+  stub: 'Stub', unsourced: 'Needs citations', outdated: 'May be outdated',
+  promotional: 'Written like an advertisement', cleanup: 'Needs cleanup', coi: 'Conflict of interest',
+};
 
 function htmlToMarkdown(html: string): string {
   if (!html?.trim()) return '';
@@ -125,6 +130,8 @@ function convertAtomicBlock(block: AtomicBlock): string {
       `**${g.heading}**\n\n${g.links.map(l => `- [${l.label}](${l.href})`).join('\n')}`
     ).join('\n\n');
     case 'tipJar': return `**${block.label || 'Tip the author'}**${block.message ? `\n\n${block.message}` : ''}${block.address ? `\n\nRadix: \`${block.address}\`` : ''}`;
+    case 'banner': return `> **[${BANNER_LABELS[block.variant]}]** ${block.text?.trim() || ''}`.trim();
+    case 'references': return `## ${block.title || 'References'}\n\n${block.items.map((it, i) => `${i + 1}. ${htmlToMarkdown(it.text)}${it.url ? ` — ${it.url}` : ''}`).join('\n')}`;
   }
 }
 

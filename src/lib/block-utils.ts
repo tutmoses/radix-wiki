@@ -1,7 +1,7 @@
 // src/lib/block-utils.ts - Shared block constants and utilities
 
 import type { Block, BlockType, AtomicBlock } from '@/types/blocks';
-import { Clock, FileText, Columns, TrendingUp, Pencil, Info, Rss, Code2, ShoppingBag, PanelBottom, BarChart3, MessageSquareQuote, LayoutGrid, QrCode, type LucideIcon } from 'lucide-react';
+import { Clock, FileText, Columns, TrendingUp, Pencil, Info, Rss, Code2, ShoppingBag, PanelBottom, BarChart3, MessageSquareQuote, LayoutGrid, QrCode, ListOrdered, AlertTriangle, type LucideIcon } from 'lucide-react';
 
 export const CODE_LANGS = ['javascript', 'typescript', 'css', 'json', 'bash', 'python', 'rust', 'sql', 'html', 'xml', 'jsx', 'tsx', 'markdown', 'yaml', 'toml'] as const;
 export const DEFAULT_LANG = 'rust';
@@ -21,6 +21,8 @@ export const BLOCK_META: Record<BlockType, { label: string; icon: LucideIcon }> 
   testimonial: { label: 'Testimonial', icon: MessageSquareQuote },
   linkGrid: { label: 'Link Grid', icon: LayoutGrid },
   tipJar: { label: 'Tip Jar', icon: QrCode },
+  references: { label: 'References', icon: ListOrdered },
+  banner: { label: 'Notice Banner', icon: AlertTriangle },
 };
 
 const BLOCK_DEFAULTS: Record<BlockType, () => Omit<Block, 'id'>> = {
@@ -42,10 +44,12 @@ const BLOCK_DEFAULTS: Record<BlockType, () => Omit<Block, 'id'>> = {
   testimonial: () => ({ type: 'testimonial', quote: 'An amazing product that changed everything.', author: 'Jane Doe', role: 'CEO' }),
   linkGrid: () => ({ type: 'linkGrid', groups: [{ id: crypto.randomUUID(), heading: 'Group', links: [] }] }),
   tipJar: () => ({ type: 'tipJar', address: '', label: 'Tip the author ☕️', message: 'Support independent writing on Radix — scan to send XRD.' }),
+  references: () => ({ type: 'references', title: 'References', items: [] }),
+  banner: () => ({ type: 'banner', variant: 'stub' }),
 };
 
-export const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'columns', 'recentPages', 'pageList', 'assetPrice', 'rssFeed', 'codeTabs', 'store', 'footer', 'stats', 'testimonial', 'linkGrid', 'tipJar'];
-export const ATOMIC_BLOCK_TYPES: readonly BlockType[] = ['content', 'recentPages', 'pageList', 'assetPrice', 'rssFeed', 'codeTabs', 'store', 'footer', 'stats', 'testimonial', 'linkGrid', 'tipJar'];
+export const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'banner', 'columns', 'recentPages', 'pageList', 'assetPrice', 'rssFeed', 'codeTabs', 'store', 'footer', 'stats', 'testimonial', 'linkGrid', 'tipJar', 'references'];
+export const ATOMIC_BLOCK_TYPES: readonly BlockType[] = ['content', 'banner', 'recentPages', 'pageList', 'assetPrice', 'rssFeed', 'codeTabs', 'store', 'footer', 'stats', 'testimonial', 'linkGrid', 'tipJar', 'references'];
 
 export const createBlock = (type: BlockType): Block => ({ id: crypto.randomUUID(), ...BLOCK_DEFAULTS[type]() } as Block);
 
@@ -97,6 +101,14 @@ function validateAtomicBlock(block: unknown): block is AtomicBlock {
       return typeof b.quote === 'string' && typeof b.author === 'string';
     case 'tipJar':
       return typeof b.address === 'string';
+    case 'banner':
+      return typeof b.variant === 'string';
+    case 'references':
+      return Array.isArray(b.items) && b.items.every((it: unknown) => {
+        if (!it || typeof it !== 'object') return false;
+        const item = it as Record<string, unknown>;
+        return typeof item.id === 'string' && typeof item.text === 'string' && (item.url === undefined || typeof item.url === 'string');
+      });
     case 'linkGrid':
       return Array.isArray(b.groups) && b.groups.every((g: unknown) => {
         if (!g || typeof g !== 'object') return false;

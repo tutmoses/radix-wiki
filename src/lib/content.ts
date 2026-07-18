@@ -13,9 +13,16 @@ export function stripHtml(html: string): string {
     .trim();
 }
 
+const BANNER_LABELS: Record<string, string> = {
+  stub: 'Stub', unsourced: 'Needs citations', outdated: 'May be outdated',
+  promotional: 'Written like an advertisement', cleanup: 'Needs cleanup', coi: 'Conflict of interest',
+};
+
 function extractAtomicText(block: AtomicBlock): string {
   if (block.type === 'content') return stripHtml(block.text);
   if (block.type === 'codeTabs') return block.tabs.map(t => `[${t.label}]\n${t.code}`).join('\n');
+  if (block.type === 'banner') return `[Notice: ${BANNER_LABELS[block.variant] ?? block.variant}]${block.text ? ' ' + stripHtml(block.text) : ''}`;
+  if (block.type === 'references') return block.items.length ? `References:\n${block.items.map((it, i) => `${i + 1}. ${stripHtml(it.text)}${it.url ? ` (${it.url})` : ''}`).join('\n')}` : '';
   return '';
 }
 
@@ -25,6 +32,7 @@ export function extractText(blocks: Block[]): string {
     if (b.type === 'infobox') return b.blocks.map(extractAtomicText).filter(Boolean).join('\n');
     if (b.type === 'columns') return b.columns.map(col => col.blocks.map(extractAtomicText).filter(Boolean).join('\n')).join('\n');
     if (b.type === 'codeTabs') return b.tabs.map(t => `[${t.label}]\n${t.code}`).join('\n');
+    if (b.type === 'banner' || b.type === 'references') return extractAtomicText(b);
     return '';
   }).filter(Boolean).join('\n\n');
 }

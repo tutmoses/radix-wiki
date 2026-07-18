@@ -108,7 +108,7 @@ const RESOURCES = [
 
 // ========== DB SELECT SHAPES ==========
 
-const SUMMARY_SELECT = { title: true, tagPath: true, slug: true, content: true, updatedAt: true, metadata: true } as const;
+const SUMMARY_SELECT = { title: true, tagPath: true, slug: true, content: true, updatedAt: true, metadata: true, lastVerifiedAt: true } as const;
 const FULL_SELECT = { ...SUMMARY_SELECT, version: true } as const;
 const IDEAS_SELECT = { title: true, tagPath: true, slug: true, metadata: true, updatedAt: true } as const;
 
@@ -116,7 +116,7 @@ function pageUrl(tagPath: string, slug: string) {
   return `${BASE_URL}/${tagPath}/${slug}`;
 }
 
-function summarizePage(p: { title: string; tagPath: string; slug: string; content: unknown; updatedAt: Date; metadata?: unknown }) {
+function summarizePage(p: { title: string; tagPath: string; slug: string; content: unknown; updatedAt: Date; metadata?: unknown; lastVerifiedAt?: Date | null }) {
   const meta = (p.metadata ?? null) as Record<string, unknown> | null;
   return {
     title: p.title,
@@ -125,6 +125,7 @@ function summarizePage(p: { title: string; tagPath: string; slug: string; conten
     slug: p.slug,
     snippet: getContentSnippet(p.content),
     updatedAt: p.updatedAt.toISOString().split('T')[0],
+    ...(p.lastVerifiedAt ? { lastVerified: p.lastVerifiedAt.toISOString().split('T')[0] } : {}),
     ...(meta && Object.keys(meta).length ? { metadata: meta } : {}),
   };
 }

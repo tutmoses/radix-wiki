@@ -127,6 +127,16 @@ export const TAG_HIERARCHY: TagNode[] = [
     ],
     xrd: { create: 10_000, comment: 10_000 },
   },
+  {
+    name: '⚖️ Policy',
+    slug: 'policy',
+    description: 'RADIX Wiki editorial policy — the standards every article is held to: verifiability, neutral point of view, no original research, notability, and freshness.',
+  },
+];
+
+// Article-assessment grade — a global key merged onto every page (Wikipedia-style quality scale).
+export const GLOBAL_METADATA_KEYS: MetadataKeyDefinition[] = [
+  { key: 'quality', label: 'Quality:', type: 'select', options: ['📄 Stub', '🌱 Start', '🥉 C-class', '🥈 B-class', '🥇 Good', '⭐ Featured'] },
 ];
 
 const AUTHOR_ONLY_PATHS = new Set(['blog']);
@@ -170,6 +180,7 @@ function resolveTagPath(pathSegments: string[], hierarchy: TagNode[] = TAG_HIERA
   }
 
   const isAuthorOnly = AUTHOR_ONLY_PATHS.has(key) || [...AUTHOR_ONLY_PATHS].some(p => key.startsWith(p + '/'));
+  metadataKeys.push(...GLOBAL_METADATA_KEYS);
   const result: TagPathContext = { node, isValid: pathSegments.length > 0, isAuthorOnly, sort, xrdRequirements: requirements, metadataKeys };
   resolveCache.set(key, result);
   return result;

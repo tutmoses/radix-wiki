@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef, memo, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Clock, FileText, User, Copy, Check } from 'lucide-react';
+import { Clock, FileText, User, Copy, Check, AlertTriangle, Megaphone, CalendarClock, type LucideIcon } from 'lucide-react';
 import QRCode from 'qrcode';
 import { cn, formatRelativeTime, formatDate, generateBannerSvg, getContentSnippet } from '@/lib/utils';
 import { findTagByPath } from '@/lib/tags';
@@ -14,7 +14,7 @@ import { usePages, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiPage, PageMetadata } from '@/types';
-import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock, StoreBlock, FooterBlock, StatsBlock, TestimonialBlock, LinkGridBlock, TipJarBlock } from '@/types/blocks';
+import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock, StoreBlock, FooterBlock, StatsBlock, TestimonialBlock, LinkGridBlock, TipJarBlock, ReferencesBlock, BannerBlock, BannerVariant } from '@/types/blocks';
 import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
 import { TokenChart } from '@/components/charts/TokenChart';
 import { formatPriceSubscript } from '@/components/charts/format';
@@ -247,6 +247,7 @@ export interface InfoboxPageInfo {
   updatedAt: string | Date;
   createdAt: string | Date;
   revisionCount?: number;
+  lastVerifiedAt?: string | Date | null;
 }
 
 export function InfoboxSidebar({ block, metadata, tagPath }: { block: InfoboxBlock; metadata?: PageMetadata | null; tagPath?: string }) {
@@ -444,6 +445,45 @@ function TipJarBlockView({ block }: { block: TipJarBlock }) {
   );
 }
 
+// ========== EDITORIAL NOTICES ==========
+const BANNER_META: Record<BannerVariant, { label: string; message: string; icon: LucideIcon }> = {
+  stub: { label: 'Stub', message: 'This article is a stub. You can help RADIX Wiki by expanding it.', icon: FileText },
+  unsourced: { label: 'Needs citations', message: 'This article needs additional citations for verification. Please help improve it by adding references to reliable sources.', icon: AlertTriangle },
+  outdated: { label: 'May be outdated', message: 'Some information here may be out of date. Please help update it to reflect the current state of the Radix ecosystem.', icon: CalendarClock },
+  promotional: { label: 'Written like an advertisement', message: 'This article may read like an advertisement. Please help rewrite it from a neutral point of view.', icon: Megaphone },
+  cleanup: { label: 'Needs cleanup', message: 'This article may require cleanup to meet RADIX Wiki quality standards.', icon: AlertTriangle },
+  coi: { label: 'Conflict of interest', message: 'A major contributor to this article may have a close connection with its subject. It may need additional review for a neutral point of view.', icon: AlertTriangle },
+};
+
+function BannerBlockView({ block }: { block: BannerBlock }) {
+  const meta = BANNER_META[block.variant] ?? BANNER_META.cleanup;
+  const Icon = meta.icon;
+  return (
+    <div className={cn('editorial-banner', `editorial-banner-${block.variant}`)} role="note">
+      <Icon size={18} className="editorial-banner-icon" />
+      <p className="editorial-banner-body"><strong>{meta.label}.</strong> {block.text?.trim() || meta.message}</p>
+    </div>
+  );
+}
+
+function ReferencesBlockView({ block }: { block: ReferencesBlock }) {
+  const items = block.items || [];
+  if (!items.length) return null;
+  return (
+    <section className="references-block" aria-labelledby="references-heading">
+      <h2 id="references-heading">{block.title || 'References'}</h2>
+      <ol className="references-list">
+        {items.map((item, i) => (
+          <li key={item.id} id={`ref-${i + 1}`} className="reference-item">
+            <span dangerouslySetInnerHTML={{ __html: processHtml(item.text) }} />
+            {item.url && <> <a href={item.url} target="_blank" rel="noopener" className="reference-link" aria-label="Open source">↗</a></>}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
   switch (block.type) {
     case 'content': return <ContentBlockView html={block.text} />;
@@ -460,6 +500,8 @@ function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
     case 'testimonial': return <TestimonialBlockView block={block} />;
     case 'linkGrid': return <LinkGridBlockView block={block} />;
     case 'tipJar': return <TipJarBlockView block={block} />;
+    case 'references': return <ReferencesBlockView block={block} />;
+    case 'banner': return <BannerBlockView block={block} />;
   }
 }
 
