@@ -301,7 +301,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   return (
     <div className="stack">
       <Banner src={bannerImage} title="Homepage" pageInfo={pageInfo}>
-        <h1 className="sr-only">RADIX Wiki</h1>
+        <h1 className="sr-only">Radix (XRD) – The Radix DLT Crypto Wiki</h1>
       </Banner>
       {infobox ? (
         <div className="page-with-infobox">

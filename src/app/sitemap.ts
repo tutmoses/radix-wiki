@@ -18,6 +18,7 @@ function collectTagPaths(nodes: TagNode[], parentPath = ''): string[] {
 
 const HIGH_PRIORITY_PATHS = ['contents/tech/research', 'contents/tech/releases', 'contents/tech/core-protocols', 'contents/tech/core-concepts'];
 const MED_PRIORITY_PATHS = ['developers', 'ecosystem'];
+const STATIC_APP_PAGES = ['welcome', 'leaderboard', 'rewards'] as const;
 
 function pagePriority(tagPath: string): number {
   if (HIGH_PRIORITY_PATHS.some(hp => tagPath.startsWith(hp))) return 0.9;
@@ -33,11 +34,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const categoryPaths = collectTagPaths(TAG_HIERARCHY);
 
+  // Newest page under each category → real lastModified (pages already ordered updatedAt desc)
+  const catModified = new Map<string, Date>();
+  for (const path of categoryPaths) {
+    const latest = pages.find(p => p.tagPath === path || p.tagPath.startsWith(`${path}/`));
+    if (latest) catModified.set(path, latest.updatedAt);
+  }
+
   return [
     { url: BASE_URL, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
     ...categoryPaths.map(path => ({
       url: `${BASE_URL}/${path}`,
-      lastModified: new Date(),
+      lastModified: catModified.get(path) ?? new Date(),
       changeFrequency: 'weekly' as const,
       priority: 0.8,
     })),
@@ -46,6 +54,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: 'daily' as const,
       priority: 0.7,
+    })),
+    ...STATIC_APP_PAGES.map(path => ({
+      url: `${BASE_URL}/${path}`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.5,
     })),
     ...pages
       .filter(p => p.tagPath && p.slug && isValidTagPath(p.tagPath.split('/')))

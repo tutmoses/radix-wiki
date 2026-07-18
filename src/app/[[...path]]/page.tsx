@@ -126,9 +126,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
+  // Homepage — hand-tuned, keyword-rich metadata (title.absolute bypasses the "%s | RADIX Wiki" template)
+  if (parsed.type === 'homepage') {
+    const title = 'Radix Wiki: XRD, Scrypto & the Radix DLT Crypto Ecosystem';
+    const description = 'The community-maintained wiki for Radix DLT – XRD, the Radix Engine, Scrypto smart contracts, Cerberus consensus, validators, staking, and the DeFi ecosystem.';
+    const ogUrl = `${BASE_URL}/og?title=${encodeURIComponent('RADIX Wiki')}&description=${encodeURIComponent(description)}`;
+    return {
+      title: { absolute: title },
+      description,
+      alternates: { canonical: BASE_URL },
+      openGraph: { title, description, type: 'website', url: BASE_URL, images: [{ url: ogUrl, width: 1200, height: 630 }] },
+      twitter: { card: 'summary_large_image', site: '@RadixWiki', creator: '@RadixWiki', title, description, images: [ogUrl] },
+    };
+  }
+
   let page = null;
-  if (parsed.type === 'homepage') page = await getHomepage();
-  else if (parsed.type === 'page') page = await getPage(parsed.tagPath, parsed.slug);
+  if (parsed.type === 'page') page = await getPage(parsed.tagPath, parsed.slug);
 
   // Missing page: 404 for unauthenticated visitors (incl. crawlers); for logged-in users render the
   // page-creation editor with noindex metadata so the URL still becomes a real 404 in GSC.

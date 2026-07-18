@@ -17,13 +17,15 @@ const inter = Inter({
   display: 'swap',
 });
 
+const SITE_DESCRIPTION = 'Community-maintained knowledge base for Radix DLT — the layer-1 blockchain with linear scalability and asset-oriented smart contracts.';
+
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
     default: 'RADIX Wiki',
     template: '%s | RADIX Wiki',
   },
-  description: 'Community-maintained knowledge base for Radix DLT — the layer-1 blockchain with linear scalability and asset-oriented smart contracts.',
+  description: SITE_DESCRIPTION,
   keywords: ['wiki', 'radix', 'blockchain', 'decentralized', 'web3', 'scrypto', 'defi', 'layer-1', 'radix dlt', 'xrd'],
   authors: [{ name: 'RADIX Wiki' }],
   robots: {
@@ -34,6 +36,7 @@ export const metadata: Metadata = {
     'max-video-preview': -1,
   },
   verification: {
+    ...(process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : {}),
     other: {
       ...(process.env.BING_SITE_VERIFICATION ? { 'msvalidate.01': [process.env.BING_SITE_VERIFICATION] } : {}),
     },
@@ -44,10 +47,20 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'RADIX Wiki',
-    description: 'Community-maintained knowledge base for Radix DLT — the layer-1 blockchain with linear scalability and asset-oriented smart contracts.',
+    description: SITE_DESCRIPTION,
     type: 'website',
     siteName: 'RADIX Wiki',
     locale: 'en_US',
+    url: BASE_URL,
+    images: [{ url: `${BASE_URL}/og`, width: 1200, height: 630, alt: 'RADIX Wiki' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    site: '@RadixWiki',
+    creator: '@RadixWiki',
+    title: 'RADIX Wiki',
+    description: SITE_DESCRIPTION,
+    images: [`${BASE_URL}/og`],
   },
 };
 
