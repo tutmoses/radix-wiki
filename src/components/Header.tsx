@@ -140,7 +140,16 @@ export function Header() {
   const [isSearching, setIsSearching] = useState(false);
   const clearSearchResults = useCallback(() => setSearchResults([]), []);
   const searchRef = useClickOutside<HTMLDivElement>(clearSearchResults);
+  const desktopSearchRef = useClickOutside<HTMLFormElement>(clearSearchResults);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const goToSearchPage = useCallback(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return;
+    setSearchResults([]);
+    setShowSearch(false);
+    router.push(`/search?q=${encodeURIComponent(trimmed)}`);
+  }, [searchQuery, router]);
 
   const displayName = user?.displayName || walletData?.persona?.label ||
     (walletData?.accounts?.[0]?.address ? shortenAddress(walletData.accounts[0].address) : null) ||
@@ -197,8 +206,32 @@ export function Header() {
             <span className="logo-text">RADIX Wiki</span>
           </Link>
 
+          <form ref={desktopSearchRef} className="header-search" onSubmit={e => { e.preventDefault(); goToSearchPage(); }}>
+            <Search className="search-icon-left" size={18} />
+            <input type="search" placeholder="Search the wiki..." className="input pl-10" value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Escape') { setSearchQuery(''); setSearchResults([]); } }} />
+            {isSearching && <Loader2 className="search-icon-right" size={18} />}
+            {searchResults.length > 0 && (
+              <div className="search-results">
+                {searchResults.map(page => (
+                  <button key={page.id} type="button" onClick={() => handleSearchSelect(page)} className="search-result">
+                    <FileText size={16} className="text-accent shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{page.title}</div>
+                      <div className="text-small text-text-muted truncate">/{page.tagPath}/{page.slug}</div>
+                    </div>
+                  </button>
+                ))}
+                <button type="button" onClick={goToSearchPage} className="search-result search-result-all">
+                  See all results for &ldquo;{searchQuery.trim()}&rdquo;
+                </button>
+              </div>
+            )}
+          </form>
+
           <div className="header-actions">
-            <button onClick={() => setShowSearch(!showSearch)} className="icon-btn" title="Search" aria-label="Search" aria-expanded={showSearch}><Search size={20} /></button>
+            <button onClick={() => setShowSearch(!showSearch)} className="icon-btn sm:hidden" title="Search" aria-label="Search" aria-expanded={showSearch}><Search size={20} /></button>
 
             {canExportMdx && mdxPath && <a href={mdxPath} className="icon-btn" title="Download MDX" aria-label="Download MDX" download><FileCode size={20} /></a>}
             {canEdit && <Link href={editPath} className="icon-btn" title="Edit page" aria-label="Edit page"><Edit size={20} /></Link>}
@@ -247,12 +280,12 @@ export function Header() {
         </div>
 
         {showSearch && (
-          <div ref={searchRef} className="search-panel">
+          <div ref={searchRef} className="search-panel sm:hidden">
             <div className="relative">
               <Search className="search-icon-left" size={18} />
-              <input ref={searchInputRef} type="search" placeholder="Search pages..." className="input pl-10" value={searchQuery}
+              <input ref={searchInputRef} type="search" placeholder="Search the wiki..." className="input pl-10" value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && searchResults.length) handleSearchSelect(searchResults[0]!); else if (e.key === 'Escape') { setShowSearch(false); setSearchQuery(''); setSearchResults([]); } }} />
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); goToSearchPage(); } else if (e.key === 'Escape') { setShowSearch(false); setSearchQuery(''); setSearchResults([]); } }} />
               {isSearching && <Loader2 className="search-icon-right" size={18} />}
 
               {searchResults.length > 0 && (

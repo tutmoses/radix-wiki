@@ -7,6 +7,7 @@ import '@/styles/globals.css';
 import { RadixProvider } from '@/components/RadixProvider';
 import { Header } from '@/components/Header';
 import { Sidebar } from '@/components/Sidebar';
+import { Footer } from '@/components/Footer';
 import { Toast } from '@/components/Toast';
 
 import { BASE_URL } from '@/lib/utils';
@@ -78,7 +79,7 @@ const SITE_JSON_LD = JSON.stringify([
     '@type': 'WebSite',
     name: 'RADIX Wiki',
     url: BASE_URL,
-    potentialAction: { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: `${BASE_URL}/?search={search_term_string}` }, 'query-input': 'required name=search_term_string' },
+    potentialAction: { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: `${BASE_URL}/search?q={search_term_string}` }, 'query-input': 'required name=search_term_string' },
   },
   {
     '@context': 'https://schema.org',
@@ -117,6 +118,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Sidebar />
               <main id="main" className="app-main">
                 <div className="app-content">{children}</div>
+                <Footer />
               </main>
             </div>
           </div>

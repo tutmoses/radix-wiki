@@ -475,6 +475,7 @@ function ReferencesBlockView({ block }: { block: ReferencesBlock }) {
       <ol className="references-list">
         {items.map((item, i) => (
           <li key={item.id} id={`ref-${i + 1}`} className="reference-item">
+            <a href={`#cite-${i + 1}`} className="ref-backlink" aria-label="Back to citation">↑</a>{' '}
             <span dangerouslySetInnerHTML={{ __html: processHtml(item.text) }} />
             {item.url && <> <a href={item.url} target="_blank" rel="noopener" className="reference-link" aria-label="Open source">↗</a></>}
           </li>

@@ -10,8 +10,9 @@ import dynamic from 'next/dynamic';
 import { ArrowLeft, ArrowRight, Save, Plus, Upload, X, Image as ImageIcon, ArrowDownAZ, CalendarPlus, RefreshCw, Clock, FileText, ShieldCheck } from 'lucide-react';
 import { BlockRenderer, findInfobox, InfoboxSidebar, type InfoboxPageInfo } from '@/components/BlockRenderer';
 import { UserAvatar } from '@/components/UserAvatar';
-import { Footer } from '@/components/Footer';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
+import { LinkPreview } from '@/components/LinkPreview';
+import { CiteThisPage } from '@/components/CiteThisPage';
 import { Badge, Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
 import { cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet } from '@/lib/utils';
@@ -70,6 +71,25 @@ function PageNav({ adjacent }: { adjacent: AdjacentPages }) {
           <span className="page-nav-title">{next.title}</span>
         </Link>
       )}
+    </nav>
+  );
+}
+
+// ========== ARTICLE CATEGORIES (foot) ==========
+function ArticleCategories({ tagPath }: { tagPath: string }) {
+  const segments = tagPath.split('/').filter(Boolean);
+  if (!segments.length) return null;
+  const cats = segments.map((seg, i) => {
+    const path = segments.slice(0, i + 1);
+    const tag = findTagByPath(path);
+    return { href: `/${path.join('/')}`, name: tag?.name || seg.replace(/-/g, ' ') };
+  });
+  return (
+    <nav className="article-categories" aria-label="Categories">
+      <span className="article-categories-label">Categories:</span>
+      {cats.map(c => (
+        <Link key={c.href} href={c.href} className="badge badge-accent">{c.name}</Link>
+      ))}
     </nav>
   );
 }
@@ -292,7 +312,6 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
         {!isAuthenticated && <Button size="lg" variant="primary" onClick={connect}>Connect Radix Wallet<ArrowRight size={18} /></Button>}
         <Link href="/contents"><Button variant="secondary" size="lg">Browse Content</Button></Link>
       </div>
-      <Footer />
     </>
   );
 
@@ -429,12 +448,15 @@ function PageViewContent({ page, adjacent, related }: { page: WikiPage; adjacent
           {isCommunityPage && <UserStats authorId={page.authorId} />}
           <Discussion pageId={page.id} tagPath={page.tagPath} />
           <PageNav adjacent={adjacent} />
+          <ArticleCategories tagPath={page.tagPath} />
+          <CiteThisPage title={page.title} tagPath={page.tagPath} slug={page.slug} />
           {isAuthenticated && (
             <Link href={`/${page.tagPath}/${page.slug}/edit`} className="edit-cta">Something missing? Edit this page →</Link>
           )}
         </div>
         <InfoboxSidebar block={infobox} metadata={page.metadata} tagPath={page.tagPath} />
       </div>
+      <LinkPreview />
     </article>
   );
 }

@@ -31,8 +31,12 @@ function fallbackAnchorText(href: string): string {
   }
 }
 
-/** Normalise one anchor tag: fix internal/external links, fix empty anchor text. */
-function normaliseAnchor(attrs: string, inner: string): string {
+/** Normalise one anchor tag: fix internal/external links, fix empty anchor text, wire citation back-links. */
+function normaliseAnchor(attrs: string, inner: string, citedRefs?: Set<number>): string {
+  // Leave injected heading anchors untouched — their glyph comes from CSS, so the
+  // empty-anchor label synthesis below must not fill them with text.
+  if (/\bheading-anchor\b/.test(attrs)) return `<a${attrs}>${inner}</a>`;
+
   const rawHref = getAttr(attrs, 'href');
   if (rawHref == null) return `<a${attrs}>${inner}</a>`;
 
@@ -42,6 +46,14 @@ function normaliseAnchor(attrs: string, inner: string): string {
   let cleanedAttrs = removeAttr(attrs, 'href');
   cleanedAttrs = removeAttr(cleanedAttrs, 'rel');
   cleanedAttrs = removeAttr(cleanedAttrs, 'target');
+
+  // Inline citation `[n]` → `#ref-n`: tag the first occurrence with `id="cite-n"`
+  // so the matching reference can carry a `^` back-link to it.
+  const refMatch = citedRefs ? href.match(/^#ref-(\d+)$/) : null;
+  if (refMatch && !/\bid\s*=/.test(cleanedAttrs)) {
+    const n = Number(refMatch[1]);
+    if (!citedRefs!.has(n)) { citedRefs!.add(n); cleanedAttrs = ` id="cite-${n}"${cleanedAttrs}`; }
+  }
 
   // If the anchor has no visible text, synthesise a label from the href so search
   // engines and assistive tech aren't faced with an empty link.
@@ -54,18 +66,22 @@ function normaliseAnchor(attrs: string, inner: string): string {
   return `<a href="${href}"${cleanedAttrs} target="_blank" rel="noopener">${safeInner}</a>`;
 }
 
-/** Process HTML content for display: heading IDs, link normalization, alt attrs, external link attributes. */
-export function processHtml(html: string): string {
+/** Process HTML content for display: heading IDs + anchors, link normalization, alt attrs, external link attributes. */
+export function processHtml(html: string, citedRefs?: Set<number>): string {
   if (!html.trim()) return html;
   return html
     // Demote h1 in content to h2 (page title is the only h1)
     .replace(/<h1(\s[^>]*)?>([\s\S]*?)<\/h1>/gi, '<h2$1>$2</h2>')
-    // Add IDs to headings for anchor links
+    // Add IDs + a hover permalink anchor to headings (glyph is CSS, so the anchor
+    // stays empty and never leaks into TOC labels or heading text extraction).
     .replace(/<(h[2-4])([^>]*)>([\s\S]*?)<\/\1>/gi, (match, tag, attrs, content) => {
-      if (attrs.includes(' id=')) return match;
-      const text = stripTags(content);
-      const id = slugify(text);
-      return id ? `<${tag}${attrs} id="${id}">${content}</${tag}>` : match;
+      if (content.includes('heading-anchor')) return match;
+      const existingId = getAttr(attrs, 'id');
+      const id = existingId || slugify(stripTags(content));
+      if (!id) return match;
+      const attrsWithId = existingId ? attrs : `${attrs} id="${id}"`;
+      const anchor = `<a class="heading-anchor" href="#${id}" aria-label="Permalink to this section" tabindex="-1"></a>`;
+      return `<${tag}${attrsWithId}>${content}${anchor}</${tag}>`;
     })
     // Add alt="" to <img> tags that don't have one (decorative fallback keeps crawlers happy)
     .replace(/<img\b([^>]*)>/gi, (match, attrs) => {
@@ -74,14 +90,16 @@ export function processHtml(html: string): string {
     })
     // Normalise every anchor including its inner text (attribute-order agnostic).
     // Note: this regex does not handle nested <a>, which is invalid HTML anyway.
-    .replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, (_match, attrs, inner) => normaliseAnchor(attrs, inner));
+    .replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, (_match, attrs, inner) => normaliseAnchor(attrs, inner, citedRefs));
 }
 
 /** Apply processHtml to every content block recursively (for SSR normalisation). */
 export function processBlocks(blocks: Block[]): Block[] {
+  // Shared across content blocks so citation `id="cite-n"` targets are unique doc-wide.
+  const citedRefs = new Set<number>();
   const mapAtomic = (b: AtomicBlock): AtomicBlock => {
     if (b.type === 'content' && typeof b.text === 'string') {
-      return { ...b, text: processHtml(b.text) };
+      return { ...b, text: processHtml(b.text, citedRefs) };
     }
     return b;
   };

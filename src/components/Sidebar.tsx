@@ -38,7 +38,8 @@ function TagNavItem({ node, parentPath, pathname, depth, onNavigate }: { node: T
 
 function TableOfContents() {
   const [headings, setHeadings] = useState<{ text: string; level: number; id: string }[]>([]);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [activeId, setActiveId] = useState('');
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -46,11 +47,17 @@ function TableOfContents() {
       clearTimeout(timer);
       timer = setTimeout(() => {
         const els = document.querySelector('main')?.querySelectorAll('h1[id], h2[id], h3[id]') || [];
-        setHeadings(Array.from(els).map(el => ({
+        const next = Array.from(els).map(el => ({
           text: el.textContent?.trim() || '',
           level: parseInt(el.tagName[1]!),
           id: el.id,
-        })).filter(h => h.text && h.id));
+        })).filter(h => h.text && h.id);
+        // Keep the same array reference when unchanged so the scroll-spy observer
+        // isn't torn down by unrelated DOM mutations (live price ticker, RSS feed).
+        setHeadings(prev =>
+          prev.length === next.length && prev.every((h, i) => h.id === next[i]!.id && h.text === next[i]!.text)
+            ? prev : next,
+        );
       }, 200);
     };
 
@@ -60,6 +67,36 @@ function TableOfContents() {
     if (main) observer.observe(main, { childList: true, subtree: true, characterData: false, attributes: false });
     return () => { clearTimeout(timer); observer.disconnect(); };
   }, []);
+
+  // Scroll-spy: highlight the section currently under the top of the viewport.
+  useEffect(() => {
+    if (!headings.length) return;
+    setActiveId(prev => prev || headings[0]!.id);
+    const order = new Map(headings.map((h, i) => [h.id, i]));
+    const visible = new Set<string>();
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const headerRem = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-height')) || 4;
+    const topOffset = Math.round(headerRem * rem + rem * 0.5);
+    const observer = new IntersectionObserver(
+      entries => {
+        for (const e of entries) {
+          if (e.isIntersecting) visible.add(e.target.id);
+          else visible.delete(e.target.id);
+        }
+        if (!visible.size) return;
+        let bestId = '';
+        let bestIdx = Infinity;
+        for (const id of visible) {
+          const idx = order.get(id) ?? Infinity;
+          if (idx < bestIdx) { bestIdx = idx; bestId = id; }
+        }
+        if (bestId) setActiveId(bestId);
+      },
+      { rootMargin: `-${topOffset}px 0px -75% 0px`, threshold: 0 },
+    );
+    headings.forEach(h => { const el = document.getElementById(h.id); if (el) observer.observe(el); });
+    return () => observer.disconnect();
+  }, [headings]);
 
   if (!headings.length) return null;
 
@@ -75,8 +112,9 @@ function TableOfContents() {
           {headings.map((h, i) => (
             <button
               key={i}
-              onClick={() => document.getElementById(h.id)?.scrollIntoView({ behavior: 'smooth' })}
-              className="toc-item"
+              onClick={() => { setActiveId(h.id); document.getElementById(h.id)?.scrollIntoView({ behavior: 'smooth' }); }}
+              className={cn('toc-item', activeId === h.id && 'toc-item-active')}
+              aria-current={activeId === h.id ? 'location' : undefined}
               style={{ paddingLeft: `${(h.level - 1) * 0.75}rem` }}
             >
               {h.text}

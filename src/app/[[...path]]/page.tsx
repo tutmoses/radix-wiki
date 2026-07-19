@@ -18,6 +18,7 @@ const IdeasView = dynamic(() => import('./IdeasView'), { loading: () => <PageSke
 const LeaderboardView = dynamic(() => import('@/components/LeaderboardView'), { loading: () => <PageSkeleton /> });
 const WelcomeView = dynamic(() => import('@/components/WelcomeView'), { loading: () => <PageSkeleton /> });
 const RewardsView = dynamic(() => import('@/components/RewardsView'), { loading: () => <PageSkeleton /> });
+const SearchView = dynamic(() => import('@/components/SearchView'), { loading: () => <PageSkeleton /> });
 import ChartsOverview from '@/components/charts/ChartsOverview';
 import ValidatorsView from '@/components/charts/ValidatorsView';
 import TokensView from '@/components/charts/TokensView';
@@ -48,7 +49,7 @@ export async function generateStaticParams() {
 export const dynamicParams = true;
 export const revalidate = 60;
 
-type Props = { params: Promise<{ path?: string[] }>; searchParams: Promise<{ sort?: string }> };
+type Props = { params: Promise<{ path?: string[] }>; searchParams: Promise<{ sort?: string; q?: string }> };
 
 const NOINDEX_ROBOTS = { index: false, follow: true, googleBot: { index: false, follow: true } } as const;
 
@@ -73,6 +74,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       alternates: { canonical },
       openGraph: { title, description, type: 'article', images: [{ url: ogUrl, width: 1200, height: 630 }] },
       twitter: { card: 'summary_large_image', title, images: [ogUrl] },
+    };
+  }
+
+  // Search results — noindex (thin, query-dependent)
+  if (parsed.type === 'search') {
+    return {
+      title: 'Search — RADIX Wiki',
+      description: 'Search the community-maintained RADIX Wiki.',
+      robots: NOINDEX_ROBOTS,
+      alternates: { canonical: `${BASE_URL}/search` },
     };
   }
 
@@ -293,11 +304,12 @@ const VALID_SORTS = new Set<string>(['title', 'newest', 'oldest', 'recent']);
 
 export default async function DynamicPage({ params, searchParams }: Props) {
   const { path } = await params;
-  const { sort: sortParam } = await searchParams;
+  const { sort: sortParam, q } = await searchParams;
   const parsed = parsePath(path);
 
   if (parsed.type === 'invalid') notFound();
 
+  if (parsed.type === 'search') return <SearchView query={q ?? ''} />;
   if (parsed.type === 'leaderboard') return <LeaderboardView />;
   if (parsed.type === 'welcome') return <WelcomeView />;
   if (parsed.type === 'rewards') return <RewardsView />;
