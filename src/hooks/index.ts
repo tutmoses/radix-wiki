@@ -13,7 +13,8 @@ import type { WikiPage, AuthSession, RadixWalletData, WikiNotification } from '@
 export function useClickOutside<T extends HTMLElement>(onClose: () => void): RefObject<T | null> {
   const ref = useRef<T>(null);
   useEffect(() => {
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
+    // offsetParent is null while the element is display:none — a hidden container must not claim outside-clicks
+    const handler = (e: MouseEvent) => { if (ref.current && ref.current.offsetParent !== null && !ref.current.contains(e.target as Node)) onClose(); };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [onClose]);
