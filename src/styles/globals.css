@@ -34,6 +34,8 @@
   --header-height: 4rem;
   --sidebar-width: 18rem;
   --content-width: 72rem;
+  --scrollbar-thumb: var(--color-border);
+  --scrollbar-thumb-hover: var(--color-border-muted);
 }
 
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -71,17 +73,25 @@
   tr:last-child td:last-child { border-bottom-right-radius: var(--radius); }
   tr:hover td { @apply bg-white/5; }
 
+  /* Canonical table-overflow policy (STRUCTURE.md D8): wide prose tables scroll on
+     mobile instead of breaking layout. Scoped to .prose-content so infobox
+     key-value tables keep wrapping. */
+  @media (max-width: 639px) {
+    .prose-content table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+  }
+
   ::selection { @apply bg-accent-muted text-text; }
   :focus-visible { @apply outline-2 outline-accent outline-offset-2; }
 
+  /* Canonical scrollbar policy (STRUCTURE.md D8): themed-thin via tokens. */
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--color-border) transparent;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
   }
   ::-webkit-scrollbar { @apply w-1.5 h-1.5; }
-  ::-webkit-scrollbar-track { @apply bg-transparent; }
-  ::-webkit-scrollbar-thumb { @apply rounded-full bg-border; }
-  ::-webkit-scrollbar-thumb:hover { @apply bg-border-muted; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { border-radius: 9999px; background: var(--scrollbar-thumb); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
   input, textarea, select { font: inherit; color: inherit; }
   hr { @apply border-0 border-t border-border-muted; }
@@ -309,6 +319,14 @@
   /* ===== SKELETON / LOADING ===== */
   .skeleton { @apply bg-surface-1 rounded-lg animate-pulse; }
   .spinner { @apply inline-block rounded-full border-2 border-current border-t-transparent animate-[spin_0.6s_linear_infinite]; }
+
+  /* ===== BREADCRUMBS (STRUCTURE.md D8 canonical) ===== */
+  .breadcrumbs { @apply flex flex-wrap items-center gap-1 text-small text-text-muted; }
+  .breadcrumb-link { @apply capitalize text-text-muted no-underline hover:text-accent; }
+  .breadcrumb-current { @apply capitalize text-text; }
+
+  /* Long Radix addresses / tx hashes wrap instead of overflowing (STRUCTURE.md D8). */
+  .break-anywhere { overflow-wrap: anywhere; word-break: break-word; }
 
   /* ===== LINKS ===== */
   .link-muted { @apply text-text-muted hover:text-text; }
