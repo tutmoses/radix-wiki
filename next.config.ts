@@ -2,6 +2,31 @@
 
 import type { NextConfig } from 'next';
 
+// Content-Security-Policy (STRUCTURE.md S9). Landed as Report-Only in production
+// first — it enforces nothing, only reports violations — so the wallet-connect,
+// KaTeX/TipTap, and arbitrary wiki-content embed/image surfaces can be observed
+// before flipping the key to the enforcing `Content-Security-Policy`. Dev is
+// exempt (Next's inline HMR runtime would spam it). 'unsafe-inline' is required
+// (Next injects inline hydration + an inline plausible-init script, no nonce
+// middleware); img/frame stay `https:`-broad because published articles embed
+// arbitrary hosts.
+const isProd = process.env.NODE_ENV === 'production';
+const csp = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self' data:",
+  "img-src 'self' data: blob: https:",
+  "connect-src 'self' https://*.radixdlt.com https://api.ociswap.com",
+  "frame-src https:",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+].join('; ');
+
 const nextConfig: NextConfig = {
   // Studio renders boot a second dev server alongside your running one. Next 16
   // allows only one dev server per distDir (the lock lives at <distDir>/lock),
@@ -51,6 +76,7 @@ const nextConfig: NextConfig = {
       {
         source: '/:path*',
         headers: [
+          ...(isProd ? [{ key: 'Content-Security-Policy-Report-Only', value: csp }] : []),
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
