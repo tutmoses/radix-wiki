@@ -2,14 +2,13 @@
 
 import type { NextConfig } from 'next';
 
-// Content-Security-Policy (STRUCTURE.md S9). Landed as Report-Only in production
-// first — it enforces nothing, only reports violations — so the wallet-connect,
-// KaTeX/TipTap, and arbitrary wiki-content embed/image surfaces can be observed
-// before flipping the key to the enforcing `Content-Security-Policy`. Dev is
-// exempt (Next's inline HMR runtime would spam it). 'unsafe-inline' is required
-// (Next injects inline hydration + an inline plausible-init script, no nonce
-// middleware); img/frame stay `https:`-broad because published articles embed
-// arbitrary hosts.
+// Content-Security-Policy (STRUCTURE.md S9). Enforcing in production, dev exempt
+// (Next's inline HMR runtime would trip it). Verified against home, article pages
+// with embeds/images, and the wallet-connect init before flipping from
+// Report-Only. 'unsafe-inline' is required (Next injects inline hydration + an
+// inline plausible-init script, no nonce middleware); img/frame stay `https:`-broad
+// because published articles embed arbitrary hosts; connect-src covers the Radix
+// Gateway + wallet Connect Relay (both under *.radixdlt.com) and OciSwap.
 const isProd = process.env.NODE_ENV === 'production';
 const csp = [
   "default-src 'self'",
@@ -76,7 +75,7 @@ const nextConfig: NextConfig = {
       {
         source: '/:path*',
         headers: [
-          ...(isProd ? [{ key: 'Content-Security-Policy-Report-Only', value: csp }] : []),
+          ...(isProd ? [{ key: 'Content-Security-Policy', value: csp }] : []),
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
