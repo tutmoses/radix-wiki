@@ -20,6 +20,11 @@ const inter = Inter({
 
 const SITE_DESCRIPTION = 'Community-maintained knowledge base for Radix DLT — the layer-1 blockchain with linear scalability and asset-oriented smart contracts.';
 
+const PLAUSIBLE_DOMAIN = (() => {
+  try { return new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki').hostname; }
+  catch { return 'radix.wiki'; }
+})();
+
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
@@ -105,10 +110,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script
           src="/js/script.js"
           data-api="/api/event"
+          data-domain={PLAUSIBLE_DOMAIN}
           strategy="afterInteractive"
         />
         <Script id="plausible-init" strategy="afterInteractive">
-          {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init();`}
+          {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init({ domain: ${JSON.stringify(PLAUSIBLE_DOMAIN)} });`}
         </Script>
         <RadixProvider>
           <div className="min-h-screen bg-surface-0">
