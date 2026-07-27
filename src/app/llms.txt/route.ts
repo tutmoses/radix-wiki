@@ -105,7 +105,8 @@ transaction manifests, the Gateway API, wallet integration, and more:
   encoding, transaction manifests (V1/V2), radix-dapp-toolkit wallet integration,
   Gateway API (Rust & TypeScript), sub-intents, and Effect-based dApp patterns.
 - AGENTS.md follows the agents.md standard for automatic discovery by compatible tools.
-- Wiki page: ${BASE_URL}/developers/infrastructure/radix-context
+- Wiki page: ${BASE_URL}/developers/ai-agents/radix-context
+- More on building agents that transact on Radix: ${BASE_URL}/developers/ai-agents
 
 ## Contribute to RADIX.wiki & Earn Points
 

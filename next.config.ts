@@ -90,6 +90,15 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: '/llm.txt', destination: '/llms.txt', permanent: true },
+      // Developers taxonomy reorganisation, 2026-07-27: the AI-agent guides and tools were
+      // collected under /developers/ai-agents, and the oracle guide joined the Scrypto series.
+      { source: '/developers/infrastructure/ai-agents-and-x402', destination: '/developers/ai-agents/ai-agents-and-x402', permanent: true },
+      { source: '/developers/infrastructure/radix-context', destination: '/developers/ai-agents/radix-context', permanent: true },
+      { source: '/developers/tools/agent-wallet-ai', destination: '/developers/ai-agents/agent-wallet-ai', permanent: true },
+      { source: '/developers/tools/igentix', destination: '/developers/ai-agents/igentix', permanent: true },
+      { source: '/developers/infrastructure/03-oracle-integration', destination: '/developers/scrypto/08-oracle-integration', permanent: true },
+      // RRC-404 is a token standard, not a developer tool.
+      { source: '/developers/tools/rrc-404', destination: '/contents/tech/core-protocols/rrc-404', permanent: true },
     ];
   },
 

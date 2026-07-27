@@ -21,6 +21,21 @@ export interface TagNode {
   metadataKeys?: MetadataKeyDefinition[];
 }
 
+// Shared by developers/tools and developers/ai-agents: both catalogue third-party
+// projects, and the pages move between them. If only one node declared these keys,
+// moving a page would leave its status/licence/links in the JSON column but render
+// nothing, and `status` would stop being required on edit.
+const TOOL_METADATA_KEYS: MetadataKeyDefinition[] = [
+  { key: 'status', label: 'Status:', type: 'select', options: ['🟢 Active', '🟡 Testnet', '🟠 Dormant', '🔴 Closed'], required: true },
+  { key: 'website', label: 'Website:', type: 'url' },
+  { key: 'github', label: 'GitHub:', type: 'url' },
+  { key: 'x', label: 'X:', type: 'url' },
+  { key: 'telegram', label: 'Telegram:', type: 'url' },
+  { key: 'license', label: 'License:', type: 'text' },
+  { key: 'team', label: 'Team:', type: 'text' },
+  { key: 'founded', label: 'Founded:', type: 'date' },
+];
+
 export const TAG_HIERARCHY: TagNode[] = [
   { name: 'Homepage', slug: '', hidden: true, xrd: { edit: 100_000 } },
   {
@@ -63,30 +78,30 @@ export const TAG_HIERARCHY: TagNode[] = [
     slug: 'developers',
     metadataKeys: [
       { key: 'difficulty', label: 'Difficulty:', type: 'select', options: ['Beginner', 'Intermediate', 'Advanced'] },
-      { key: 'language', label: 'Language:', type: 'text' },
-      { key: 'prerequisites', label: 'Prerequisites:', type: 'text' },
       { key: 'estimatedTime', label: 'Est. Time:', type: 'text' },
-      { key: 'lastVerified', label: 'Last Verified:', type: 'date' },
+      { key: 'prerequisites', label: 'Prerequisites:', type: 'text' },
+      { key: 'language', label: 'Language:', type: 'text' },
+      // 'text', not 'url': these carry a human label ("Getting Rust & Scrypto") that a
+      // url-typed field would flatten to a bare hostname via linkify().
+      { key: 'officialDocs', label: 'Official Docs:', type: 'text' },
     ],
     description: 'Build on Radix — tutorials, guides, design patterns, and API references for Scrypto, transaction manifests, and the Radix stack.',
     children: [
       { name: 'Getting Started', slug: 'getting-started', description: 'Install Scrypto, write your first blueprint, and deploy to the network.' },
-      { name: 'Scrypto', slug: 'scrypto', description: 'Asset-oriented programming: resources, auth, testing, and design patterns.' },
+      { name: 'Scrypto', slug: 'scrypto', description: 'Asset-oriented programming: resources, auth, testing, and design patterns.',
+        metadataKeys: [
+          { key: 'patternType', label: 'Pattern Type:', type: 'text' },
+          { key: 'concepts', label: 'Concepts:', type: 'text' },
+        ] },
       { name: 'Transactions', slug: 'transactions', description: 'Transaction manifests, lifecycle, and submission.' },
       { name: 'Frontend', slug: 'frontend', description: 'Connect wallets, read ledger state, and authenticate users.' },
-      { name: 'Infrastructure', slug: 'infrastructure', description: 'Run a node, use the APIs, and integrate with Radix.' },
+      { name: 'Infrastructure', slug: 'infrastructure', description: 'Run a node, use the APIs, and integrate off-ledger services with Radix.' },
+      { name: 'AI Agents', slug: 'ai-agents',
+        description: 'Building AI agents on Radix — x402 agentic payments, policy-constrained agent wallets, MCP servers, and context packs for coding agents.',
+        metadataKeys: TOOL_METADATA_KEYS },
       { name: 'Tools', slug: 'tools', sort: 'recent',
         description: 'Open-source developer tools, libraries, SDKs, and utilities for building on Radix — with status, source, and license metadata.',
-        metadataKeys: [
-          { key: 'status', label: 'Status:', type: 'select', options: ['🟢 Active','🟡 Testnet','🟠 Dormant','🔴 Closed'], required: true },
-          { key: 'website', label: 'Website:', type: 'url' },
-          { key: 'github', label: 'GitHub:', type: 'url' },
-          { key: 'x', label: 'X:', type: 'url' },
-          { key: 'telegram', label: 'Telegram:', type: 'url' },
-          { key: 'license', label: 'License:', type: 'text' },
-          { key: 'team', label: 'Team:', type: 'text' },
-          { key: 'founded', label: 'Founded:', type: 'date' },
-        ] },
+        metadataKeys: TOOL_METADATA_KEYS },
     ] },
   { name: '🌐 Ecosystem',
     slug: 'ecosystem',
