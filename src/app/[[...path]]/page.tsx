@@ -24,6 +24,7 @@ import ValidatorsView from '@/components/charts/ValidatorsView';
 import TokensView from '@/components/charts/TokensView';
 import TokenDetailView from '@/components/charts/TokenDetailView';
 import { BASE_URL, getContentSnippet } from '@/lib/utils';
+import { articleType, aboutEntity, articleLearningProps } from '@/lib/entity-ld';
 import { getTokenDetail } from '@/lib/radix/tokens';
 import type { Block } from '@/types/blocks';
 import type { WikiPage } from '@/types';
@@ -226,11 +227,49 @@ function JsonLd({ data }: { data: Record<string, unknown> | null }) {
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context': 'https://schema.org', ...data }) }} />;
 }
 
+/**
+ * Sources from the page's own `references` blocks, as Article.citation. The
+ * block type already stores {id, text, url} per entry, so the citation list is
+ * read straight off the content rather than re-parsed out of rendered HTML.
+ */
+function citationsFrom(content: unknown): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = [];
+
+  // References blocks are usually top-level, but infobox/columns can nest them,
+  // so walk containers the same way processBlocks does.
+  const walk = (blocks: unknown) => {
+    if (!Array.isArray(blocks)) return;
+    for (const block of blocks) {
+      if (block?.type === 'infobox') { walk(block.blocks); continue; }
+      if (block?.type === 'columns') { (block.columns ?? []).forEach((c: { blocks?: unknown }) => walk(c?.blocks)); continue; }
+      if (block?.type !== 'references' || !Array.isArray(block.items)) continue;
+      for (const ref of block.items) {
+        const text = typeof ref?.text === 'string' ? ref.text.replace(/<[^>]+>/g, '').trim() : '';
+        if (!text) continue;
+        out.push({
+          '@type': 'CreativeWork',
+          name: text.slice(0, 250),
+          ...(typeof ref.url === 'string' && ref.url && { url: ref.url }),
+        });
+      }
+    }
+  };
+
+  walk(content);
+  return out.slice(0, 50);
+}
+
 function articleLd(page: WikiPage, url: string) {
   const tagSegments = page.tagPath?.split('/').filter(Boolean) || [];
   const section = tagSegments.length ? (findTagByPath(tagSegments.slice(0, 1))?.name ?? tagSegments[0] ?? '').replace(/^\p{Emoji_Presentation}\s*/u, '') : undefined;
+  const citations = citationsFrom(page.content);
+  const about = aboutEntity(page.tagPath, page.title, page.metadata);
+  // Google recommends an image on every article; pages without a banner get the
+  // same generated card the OG tags already use, rather than no image at all.
+  const image = page.bannerImage
+    || `${BASE_URL}/og?title=${encodeURIComponent(page.title)}&tagPath=${encodeURIComponent(page.tagPath ?? '')}`;
   return {
-    '@type': 'Article',
+    '@type': articleType(page.tagPath),
     mainEntityOfPage: { '@type': 'WebPage', '@id': url },
     headline: page.title,
     description: getContentSnippet(page.content) || '',
@@ -239,12 +278,25 @@ function articleLd(page: WikiPage, url: string) {
     dateModified: page.updatedAt,
     wordCount: countWords(page.content),
     ...(section && { articleSection: section }),
-    author: { '@type': 'Person', name: page.author?.displayName || 'Anonymous', identifier: page.author?.radixAddress },
+    author: {
+      '@type': 'Person',
+      name: page.author?.displayName || 'Anonymous',
+      ...(page.author?.radixAddress && {
+        identifier: page.author.radixAddress,
+        // A contributor has no profile page on the wiki, so the canonical URL for
+        // their identity is their Radix account on the network's own explorer.
+        url: `https://dashboard.radixdlt.com/account/${page.author.radixAddress}`,
+      }),
+    },
     publisher: { '@type': 'Organization', name: 'RADIX Wiki', url: BASE_URL, logo: { '@type': 'ImageObject', url: `${BASE_URL}/logo.png` } },
-    ...(page.bannerImage && { image: page.bannerImage }),
+    image,
     isPartOf: { '@type': 'WebSite', name: 'RADIX Wiki', url: BASE_URL },
     inLanguage: 'en',
     license: 'https://creativecommons.org/licenses/by/4.0/',
+    ...(page.version && { version: page.version }),
+    ...(citations.length && { citation: citations }),
+    ...(about && { about }),
+    ...articleLearningProps(page.tagPath, page.metadata),
   };
 }
 
@@ -262,42 +314,21 @@ function collectionLd(name: string, url: string, pages: { title: string; tagPath
   };
 }
 
-function breadcrumbLd(path: string[]) {
+/**
+ * `leafTitle` names the final crumb. findTagByPath resolves category segments
+ * but returns null for a page slug, which left the last crumb showing a
+ * de-hyphenated slug ("cerberus consensus") instead of the page title.
+ */
+function breadcrumbLd(path: string[], leafTitle?: string) {
   const items = [{ '@type': 'ListItem' as const, position: 1, name: 'Home', item: BASE_URL }];
   for (let i = 0; i < path.length; i++) {
     const segments = path.slice(0, i + 1);
+    const isLeaf = i === path.length - 1;
     const tag = findTagByPath(segments);
-    items.push({ '@type': 'ListItem', position: i + 2, name: tag?.name || segments[i]!.replace(/-/g, ' '), item: `${BASE_URL}/${segments.join('/')}` });
+    const name = tag?.name || (isLeaf && leafTitle) || segments[i]!.replace(/-/g, ' ');
+    items.push({ '@type': 'ListItem', position: i + 2, name, item: `${BASE_URL}/${segments.join('/')}` });
   }
   return { '@type': 'BreadcrumbList', itemListElement: items };
-}
-
-const FAQ_SKIP = new Set(['external links', 'references', 'see also', 'further reading']);
-
-function extractFaqPairs(blocks: unknown) {
-  if (!Array.isArray(blocks)) return [];
-  const pairs: { question: string; answer: string }[] = [];
-  for (const block of blocks) {
-    if (block?.type !== 'content' || typeof block.text !== 'string') continue;
-    const sections = block.text.split(/<h2[^>]*>/i);
-    for (let i = 1; i < sections.length; i++) {
-      const [rawHeading, ...rest] = sections[i].split(/<\/h2>/i);
-      const heading = rawHeading.replace(/<[^>]+>/g, '').trim();
-      if (!heading || FAQ_SKIP.has(heading.toLowerCase())) continue;
-      const answer = rest.join('').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 300);
-      if (answer.length < 50) continue;
-      pairs.push({ question: heading.endsWith('?') ? heading : `What is ${heading}?`, answer });
-    }
-  }
-  return pairs.slice(0, 10);
-}
-
-function faqLd(pairs: { question: string; answer: string }[]) {
-  if (pairs.length < 2) return null;
-  return {
-    '@type': 'FAQPage',
-    mainEntity: pairs.map(p => ({ '@type': 'Question', name: p.question, acceptedAnswer: { '@type': 'Answer', text: p.answer } })),
-  };
 }
 
 const VALID_SORTS = new Set<string>(['title', 'newest', 'oldest', 'recent']);
@@ -377,7 +408,6 @@ export default async function DynamicPage({ params, searchParams }: Props) {
     if (!session) notFound();
     // Authenticated visitors fall through to PageView, which renders the create-page editor.
   }
-  const faqPairs = rawPage ? extractFaqPairs(rawPage.content) : [];
   const page = parsed.suffix === 'edit' ? rawPage : await withProcessedContent(rawPage);
   const adjacent = page ? await getAdjacentPages(parsed.tagPath, page.title, new Date(page.createdAt).toISOString(), new Date(page.updatedAt).toISOString()) : { prev: null, next: null };
   const related: RelatedPage[] = page && parsed.suffix !== 'edit'
@@ -391,8 +421,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   return (
     <>
       {page && <JsonLd data={articleLd(page, pageUrl)} />}
-      <JsonLd data={faqLd(faqPairs)} />
-      <JsonLd data={breadcrumbLd(pathSegments)} />
+      <JsonLd data={breadcrumbLd(pathSegments, page?.title)} />
       <PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} adjacent={adjacent} related={related} />
     </>
   );

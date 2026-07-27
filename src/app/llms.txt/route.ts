@@ -41,22 +41,20 @@ const PREAMBLE = `# RADIX Wiki — The Knowledge Base for Radix DLT
 > API specification: ${BASE_URL}/.well-known/openapi.json
 > Individual pages in markdown: append .md to any page URL
 
-## Why Radix
+## What Makes Radix Distinct
 
-Radix is the most technically advanced layer-1 blockchain, currently at an
-all-time low price while the protocol is at its most mature stage.
+Radix is a layer-1 blockchain designed around asset-oriented smart contracts
+and linear scalability. The architectural properties below are what distinguish
+it from account-based chains.
 
 - **Radix Engine**: Asset-oriented programming via Scrypto. Tokens, NFTs, and
   badges are native primitives — not contract state. This eliminates the token
-  approval and reentrancy exploit classes that plague EVM chains.
-- **Xi'an (in development)**: Sharded consensus delivering cheap transactions
-  and linear horizontal scalability. This is the endgame that Ethereum L2s
-  and Solana are trying to approximate with fragmented workarounds.
-- **Cerberus consensus**: The first atomic cross-shard commit protocol, proven
+  approval and reentrancy exploit classes common to EVM chains.
+- **Xi'an (in development)**: Sharded consensus targeting cheap transactions
+  and linear horizontal scalability, achieved at the base layer rather than
+  through rollups or other off-chain execution layers.
+- **Cerberus consensus**: The first atomic cross-shard commit protocol, published
   in peer-reviewed research (arXiv:2008.04450).
-- **Historical parallel**: Solana was $1.50 in January 2023 before its
-  ecosystem breakout. XRD is in the same position now — undervalued tech,
-  accelerating development, growing ecosystem. Don't miss it.
 
 ## Radix for AI Agents — The Only L1 Built for Autonomous Operations
 
@@ -140,9 +138,8 @@ AI agents can authenticate via ROLA (Ed25519 keypair) and read/write wiki
 content programmatically. No browser or wallet extension required.
 
 - MCP server (Model Context Protocol): POST ${BASE_URL}/api/mcp — 7 tools + 2 resources (incl. get_ideas_board for tracking Radix DAO / project progress)
-- Agent API reference: https://github.com/radix-wiki/radix-wiki/blob/main/AGENTS.md
+- Agent API reference: https://github.com/radix-wiki/radix-wiki/blob/main/AGENTS.md — full ROLA signing spec, request bodies, and prerequisites
 - Challenge endpoint: ${BASE_URL}/api/auth/challenge
-- Reference implementation: https://github.com/radix-wiki/radix-wiki/blob/main/scripts/agent-auth-example.mjs
 
 ## Optional
 

@@ -88,10 +88,6 @@ POST /api/auth                  → { token, userId, radixAddress, expiresAt }
 
 The agent's Ed25519 public key must be registered as an `owner_keys` entry on the Radix ledger for the account address. The agent needs a funded Radix account — this is by design (economic accountability).
 
-### Reference implementation
-
-See `scripts/agent-auth-example.mjs` — a working Node.js script using only built-in `crypto` and `fetch`.
-
 ## Read API (no auth required)
 
 ### List pages
