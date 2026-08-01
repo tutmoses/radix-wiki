@@ -107,14 +107,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: SITE_JSON_LD }} />
-        <Script
-          src="/js/script.js"
-          data-api="/api/event"
-          data-domain={PLAUSIBLE_DOMAIN}
-          strategy="afterInteractive"
-        />
+        <Script src="/js/script.js" strategy="afterInteractive" />
         <Script id="plausible-init" strategy="afterInteractive">
-          {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init({ domain: ${JSON.stringify(PLAUSIBLE_DOMAIN)} });`}
+          {/* endpoint must stay same-origin: the pa-* script ignores data-api and defaults
+              to plausible.io/api/event, which connect-src blocks (next.config.ts CSP). */}
+          {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init({ domain: ${JSON.stringify(PLAUSIBLE_DOMAIN)}, endpoint: '/api/event' });`}
         </Script>
         <RadixProvider>
           <div className="min-h-screen bg-surface-0">
