@@ -229,7 +229,7 @@ Pages live under tag paths. Common paths:
 - `developers` — Developer resources
 - `developers/scrypto` — Scrypto language
 - `ecosystem` — Projects and dApps
-- `community` — User pages (author-only editing)
+- `community` — Curated member profiles and notable-person articles
 
 Some paths require minimum XRD balance (e.g., 50,000 XRD for `blog`).
 

@@ -1,24 +1,10 @@
 // src/app/api/auth/route.ts
 
 import { NextRequest } from 'next/server';
-import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma/client';
 import { getSession, createSession, destroySession, verifySignedChallenge } from '@/lib/auth';
 import { json, errors, handleRoute } from '@/lib/api';
-import { userProfileSlug } from '@/lib/utils';
 import type { SignedChallenge, RadixAccount, RadixPersona } from '@/types';
-import type { Block } from '@/types/blocks';
-
-function createCommunityPageContent(displayName?: string): Block[] {
-  const title = displayName ? `Welcome to ${displayName}` : 'Welcome to My Page';
-  return [
-    {
-      id: crypto.randomUUID(),
-      type: 'content',
-      text: `<h1>${title}</h1><p>This is your personal community page. Edit it to share your thoughts, projects, and contributions with the RADIX community.</p><h2>About Me</h2><p>Tell the community about yourself...</p>`,
-    },
-  ];
-}
 
 export async function GET() {
   return handleRoute(async () => {
@@ -79,47 +65,6 @@ export async function POST(request: NextRequest) {
           displayName: persona?.label || user.displayName,
         },
       });
-    }
-
-    // Create community page if user doesn't have one (using transaction to prevent race conditions)
-    const existingPage = await prisma.page.findFirst({
-      where: { tagPath: 'community', authorId: user.id },
-    });
-
-    if (!existingPage) {
-      try {
-        const displayName = user.displayName || undefined;
-        const baseSlug = userProfileSlug(displayName, primaryAccount.address);
-        const pageTitle = displayName || 'My Community Page';
-        const content = createCommunityPageContent(displayName);
-
-        await prisma.$transaction(async (tx) => {
-          const slugExists = await tx.page.findFirst({ where: { tagPath: 'community', slug: baseSlug } });
-          const slug = slugExists ? `${baseSlug}-${Date.now().toString(36)}` : baseSlug;
-
-          const page = await tx.page.create({
-            data: {
-              tagPath: 'community',
-              slug,
-              title: pageTitle,
-              content: content as unknown as Prisma.InputJsonValue,
-              authorId: user.id,
-            },
-          });
-
-          await tx.revision.create({
-            data: {
-              pageId: page.id,
-              title: pageTitle,
-              content: content as unknown as Prisma.InputJsonValue,
-              authorId: user.id,
-              message: 'Initial community page',
-            },
-          });
-        });
-      } catch (error) {
-        console.error('Failed to create community page:', error);
-      }
     }
 
     const token = await createSession(

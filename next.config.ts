@@ -99,6 +99,11 @@ const nextConfig: NextConfig = {
       { source: '/developers/infrastructure/03-oracle-integration', destination: '/developers/scrypto/08-oracle-integration', permanent: true },
       // RRC-404 is a token standard, not a developer tool.
       { source: '/developers/tools/rrc-404', destination: '/contents/tech/core-protocols/rrc-404', permanent: true },
+      // Community cleanup, 2026-07-27: these URLs still draw traffic but their pages moved
+      // out of /community (projects and councils belong under /ecosystem).
+      { source: '/talent-pool/dan-hughes', destination: '/community/dan-hughes', permanent: true },
+      { source: '/community/radix-accountability-council', destination: '/ecosystem/radix-accountability-council', permanent: true },
+      { source: '/community/hydraswap', destination: '/ecosystem/hydraswap', permanent: true },
     ];
   },
 

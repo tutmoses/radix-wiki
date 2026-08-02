@@ -15,7 +15,7 @@ import { LinkPreview } from '@/components/LinkPreview';
 import { CiteThisPage } from '@/components/CiteThisPage';
 import { Badge, Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
-import { cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet } from '@/lib/utils';
+import { cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet, userProfileSlug } from '@/lib/utils';
 import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder, type TagNode } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
 import { freshnessBanner } from '@/lib/freshness';
@@ -427,7 +427,10 @@ function SeeAlso({ pages, tagPath }: { pages: RelatedPage[]; tagPath: string }) 
 // ========== PAGE VIEW (Read-only) ==========
 function PageViewContent({ page, adjacent, related }: { page: WikiPage; adjacent: AdjacentPages; related: RelatedPage[] }) {
   const { isAuthenticated } = useAuth();
-  const isCommunityPage = page.tagPath.startsWith('community');
+  // Contributor stats belong only on a member's own profile — not on curated
+  // articles that happen to live under /community (e.g. Dan Hughes).
+  const isOwnProfile = page.tagPath === 'community' && !!page.author &&
+    page.slug === userProfileSlug(page.author.displayName, page.author.radixAddress);
   const blocks = (page.content as unknown as Block[]) || [];
   const infobox = findInfobox(blocks) || { id: '__infobox__', type: 'infobox' as const, blocks: [] };
   const fresh = freshnessBanner(page);
@@ -445,7 +448,7 @@ function PageViewContent({ page, adjacent, related }: { page: WikiPage; adjacent
         <div className="page-main-content stack">
           <BlockRenderer content={mainBlocks} />
           <SeeAlso pages={related} tagPath={page.tagPath} />
-          {isCommunityPage && <UserStats authorId={page.authorId} />}
+          {isOwnProfile && <UserStats authorId={page.authorId} />}
           <Discussion pageId={page.id} tagPath={page.tagPath} />
           <PageNav adjacent={adjacent} />
           <ArticleCategories tagPath={page.tagPath} />

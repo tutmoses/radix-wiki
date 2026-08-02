@@ -121,7 +121,7 @@ export const TAG_HIERARCHY: TagNode[] = [
     ],
     xrd: { create: 20_000 } },
   { name: '👥 Community', slug: 'community', sort: 'recent',
-    description: 'Community member profiles, working groups, and contributor pages — the people, builders, and collectives shaping the Radix ecosystem.',
+    description: 'Profiles of the people behind Radix — founders, core contributors, and active community members shaping the ecosystem.',
     metadataKeys: [
       { key: 'X', label: 'X:', type: 'url' },
     ],

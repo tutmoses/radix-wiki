@@ -4,7 +4,6 @@
 
 import { Trophy, FileText, Edit3, MessageSquare, Star } from 'lucide-react';
 import { useFetch } from '@/hooks';
-import { userProfileSlug } from '@/lib/utils';
 import { UserAvatar } from '@/components/UserAvatar';
 import Link from 'next/link';
 
@@ -69,10 +68,10 @@ export default function LeaderboardView() {
               </tr>
             ))}
             {data?.items.map((entry, i) => (
-              <tr key={entry.id} className="border-b border-surface-2 last:border-0">
+              <tr key={entry.id} id={`u-${entry.id}`} className="border-b border-surface-2 last:border-0 target:bg-surface-2">
                 <td className="p-3"><RankBadge rank={i + 1} /></td>
                 <td className="p-3">
-                  <Link href={`/community/${userProfileSlug(entry.displayName, entry.radixAddress)}`} className="row">
+                  <Link href={`/leaderboard#u-${entry.id}`} className="row">
                     <UserAvatar radixAddress={entry.radixAddress} avatarUrl={entry.avatarUrl} size="sm" />
                     <span className="font-medium truncate">{entry.displayName || entry.radixAddress.slice(0, 12) + '...'}</span>
                   </Link>

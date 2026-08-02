@@ -8,7 +8,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, FileCode, Bell, Webhook, Database } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth, useClickOutside, usePagePath, useFetch } from '@/hooks';
-import { cn, shortenAddress, formatRelativeTime, userProfileSlug } from '@/lib/utils';
+import { cn, shortenAddress, formatRelativeTime } from '@/lib/utils';
 import { Button, Dropdown } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiPage, WikiNotification } from '@/types';
@@ -156,7 +156,7 @@ export function Header() {
     (user?.radixAddress ? shortenAddress(user.radixAddress) : 'Connected');
 
   const showAsConnected = isAuthenticated;
-  const userProfilePath = user ? `/community/${userProfileSlug(user.displayName, user.radixAddress)}` : null;
+  const userProfilePath = user ? `/leaderboard#u-${user.id}` : null;
 
   useEffect(() => {
     if (!isAuthenticated) return;

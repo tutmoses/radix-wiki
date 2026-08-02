@@ -10,7 +10,7 @@ import { Button, Badge } from '@/components/ui';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { useAuth } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
-import { formatDate, cn, userProfileSlug } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
 import { stripHtml } from '@/lib/content';
 import type { BlockChange } from '@/lib/versioning';
 
@@ -204,7 +204,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                       </td>
                       <td className="py-2 px-3 truncate max-w-32">
                         {rev.author ? (
-                          <Link href={`/community/${userProfileSlug(rev.author.displayName, rev.author.radixAddress)}`} className="row text-text-muted hover:text-accent">
+                          <Link href={`/leaderboard#u-${rev.author.id}`} className="row text-text-muted hover:text-accent">
                             <UserAvatar radixAddress={rev.author.radixAddress} avatarUrl={rev.author.avatarUrl} size="sm" />
                             {rev.author.displayName || rev.author.radixAddress.slice(0, 12) + '…'}
                           </Link>
