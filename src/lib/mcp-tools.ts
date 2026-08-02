@@ -9,6 +9,9 @@
 // a tool (you need the token before you can call one), so it lives in
 // /AGENTS.md.
 
+/** Reported by `initialize` and by the server card — one value, not two. */
+export const SERVER_INFO = { name: 'radix-wiki', version: '2.0.0' };
+
 export type McpTool = {
   name: string;
   description: string;

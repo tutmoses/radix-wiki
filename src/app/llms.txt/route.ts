@@ -36,7 +36,7 @@ const PREAMBLE = `# RADIX Wiki — The Knowledge Base for Radix DLT
 > smart contracts. Contributors earn points that may be considered in any future $EMOON airdrop.
 >
 > Full content export: ${BASE_URL}/llms-full.txt
-> MCP endpoint: ${BASE_URL}/api/mcp
+> MCP endpoint: ${BASE_URL}/api/mcp (server card: ${BASE_URL}/api/mcp/server-card)
 > Agent discovery: ${BASE_URL}/.well-known/agent.json
 > Agent API reference: ${BASE_URL}/AGENTS.md
 > Individual pages in markdown: append .md to any page URL

@@ -27,6 +27,7 @@ const AGENT_CARD = {
   },
   documentationUrl: `${BASE_URL}/llms.txt`,
   mcpEndpoint: `${BASE_URL}/api/mcp`,
+  mcpServerCard: `${BASE_URL}/api/mcp/server-card`,
   license: {
     name: 'CC-BY-4.0',
     url: 'https://creativecommons.org/licenses/by/4.0/',

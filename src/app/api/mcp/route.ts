@@ -6,13 +6,12 @@ import { prisma } from '@/lib/prisma/client';
 import { BASE_URL, getContentSnippet } from '@/lib/utils';
 import { extractText } from '@/lib/content';
 import { TAG_HIERARCHY, getMetadataKeys, type TagNode } from '@/lib/tags';
-import { MCP_MANIFEST } from '@/lib/mcp-tools';
+import { MCP_MANIFEST, SERVER_INFO } from '@/lib/mcp-tools';
 import type { Block } from '@/types/blocks';
 
 export const dynamic = 'force-dynamic';
 
 const PROTOCOL_VERSION = '2025-03-26';
-const SERVER_INFO = { name: 'radix-wiki', version: '2.0.0' };
 
 // ========== RESOURCES ==========
 
