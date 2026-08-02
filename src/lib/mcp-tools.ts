@@ -9,8 +9,17 @@
 // a tool (you need the token before you can call one), so it lives in
 // /AGENTS.md.
 
-/** Reported by `initialize` and by the server card — one value, not two. */
-export const SERVER_INFO = { name: 'radix-wiki', version: '2.0.0' };
+// server.json is the registry publish manifest and the only copy of the
+// version that an external system reads, so it owns the number. `initialize`
+// and the server card follow it rather than keeping their own.
+import serverManifest from '../../server.json';
+
+/** Reported by `initialize`. `name` is the MCP server id, distinct from the
+ *  registry's namespaced `serverManifest.name`. */
+export const SERVER_INFO = { name: 'radix-wiki', version: serverManifest.version };
+
+/** Registry identity, for the server card. */
+export const REGISTRY_NAME = serverManifest.name;
 
 export type McpTool = {
   name: string;

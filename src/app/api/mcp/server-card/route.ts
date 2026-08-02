@@ -14,13 +14,13 @@
 
 import { NextResponse } from 'next/server';
 import { BASE_URL } from '@/lib/utils';
-import { SERVER_INFO } from '@/lib/mcp-tools';
+import { SERVER_INFO, REGISTRY_NAME } from '@/lib/mcp-tools';
 
 export const revalidate = 86400;
 
 const SERVER_CARD = {
   $schema: 'https://static.modelcontextprotocol.io/schemas/draft/server-card.schema.json',
-  name: 'wiki.radix/radix-wiki',
+  name: REGISTRY_NAME,
   title: 'Radix Wiki',
   description:
     'Community-maintained knowledge base for Radix DLT. Search and read the corpus, track the Radix DAO ideas board, and — with a ROLA bearer token — create and edit pages.',
