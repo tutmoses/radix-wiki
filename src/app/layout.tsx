@@ -106,7 +106,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Kept here rather than in `alternates.types`: pages set `alternates.canonical`,
             which replaces the whole object and would drop the feed link from every page. */}
         <link rel="alternate" type="application/rss+xml" href="/blog.xml" title="RADIX Wiki Blog" />
-        <link rel="service-desc" type="application/openapi+json" href="/.well-known/openapi.json" />
+        <link rel="service-desc" type="application/json" href="/.well-known/agent.json" />
+        <link rel="author" type="text/markdown" href="/AGENTS.md" title="Agent API reference" />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: SITE_JSON_LD }} />

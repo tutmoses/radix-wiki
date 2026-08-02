@@ -2,9 +2,10 @@
 
 import { NextResponse } from 'next/server';
 import { BASE_URL } from '@/lib/utils';
+import { TOOLS } from '@/lib/mcp-tools';
 
 const AGENT_CARD = {
-  name: 'RADIX Wiki',
+  name: 'Radix Wiki',
   description: 'Community-maintained knowledge base for Radix DLT — the layer-1 blockchain with linear scalability and asset-oriented smart contracts.',
   url: BASE_URL,
   version: '1.0.0',
@@ -12,47 +13,19 @@ const AGENT_CARD = {
     streaming: false,
     pushNotifications: false,
   },
-  skills: [
-    {
-      id: 'search',
-      name: 'Search Wiki',
-      description: 'Search Radix Wiki pages by keyword across titles and content',
-      tags: ['search', 'radix', 'blockchain', 'wiki', 'scrypto', 'defi'],
-      examples: ['Search for Cerberus consensus', 'Find pages about Scrypto', 'What is Xi\'an sharding?'],
-    },
-    {
-      id: 'read',
-      name: 'Read Page',
-      description: 'Fetch full content of any wiki page in JSON or markdown format',
-      tags: ['read', 'content', 'article', 'documentation'],
-      examples: ['Read the Radix Engine overview', 'Get the Xi\'an roadmap page'],
-    },
-    {
-      id: 'list',
-      name: 'List Pages',
-      description: 'List wiki pages by category with pagination and sorting',
-      tags: ['list', 'browse', 'categories'],
-    },
-    {
-      id: 'ideas-board',
-      name: 'Track Ideas & DAO Progress',
-      description: 'Read the Ideas Pipeline kanban — community proposals and Radix DAO tasks grouped by status, with working group, category, priority, and assignee. Follow DAO / project progress.',
-      tags: ['kanban', 'ideas', 'dao', 'governance', 'progress'],
-      examples: ['Show the Radix DAO task board', 'Which Governance working group tasks are in progress?', 'What DAO tasks is Daffy assigned?'],
-    },
-    {
-      id: 'write',
-      name: 'Contribute Content',
-      description: 'Create or edit wiki pages. Requires ROLA authentication (Ed25519 keypair from a Radix wallet).',
-      tags: ['write', 'edit', 'contribute'],
-    },
-  ],
+  skills: TOOLS.filter(t => t.skill).map(t => ({
+    id: t.skill!.id,
+    name: t.name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+    description: t.description,
+    tags: t.skill!.tags,
+    ...(t.skill!.examples ? { examples: t.skill!.examples } : {}),
+    ...(t.auth ? { authentication: t.auth } : {}),
+  })),
   provider: {
-    organization: 'RADIX Wiki',
+    organization: 'Radix Wiki',
     url: BASE_URL,
   },
   documentationUrl: `${BASE_URL}/llms.txt`,
-  apiSpecUrl: `${BASE_URL}/.well-known/openapi.json`,
   mcpEndpoint: `${BASE_URL}/api/mcp`,
   license: {
     name: 'CC-BY-4.0',
@@ -62,8 +35,8 @@ const AGENT_CARD = {
   securitySchemes: {
     rola: {
       type: 'custom',
-      description: 'Radix On-Ledger Authentication — Ed25519 keypair signed challenge. See AGENTS.md for details.',
-      documentationUrl: 'https://github.com/radix-wiki/radix-wiki/blob/main/AGENTS.md',
+      description: 'Radix On-Ledger Authentication — Ed25519 keypair signed challenge. Required by the create_page and edit_page tools.',
+      documentationUrl: `${BASE_URL}/AGENTS.md`,
     },
   },
   defaultInputModes: ['text/plain', 'application/json'],

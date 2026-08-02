@@ -38,7 +38,7 @@ const PREAMBLE = `# RADIX Wiki — The Knowledge Base for Radix DLT
 > Full content export: ${BASE_URL}/llms-full.txt
 > MCP endpoint: ${BASE_URL}/api/mcp
 > Agent discovery: ${BASE_URL}/.well-known/agent.json
-> API specification: ${BASE_URL}/.well-known/openapi.json
+> Agent API reference: ${BASE_URL}/AGENTS.md
 > Individual pages in markdown: append .md to any page URL
 
 ## What Makes Radix Distinct
@@ -102,7 +102,7 @@ transaction manifests, the Gateway API, wallet integration, and more:
 - 19 context files covering: Scrypto access rules, account blueprints, SBOR
   encoding, transaction manifests (V1/V2), radix-dapp-toolkit wallet integration,
   Gateway API (Rust & TypeScript), sub-intents, and Effect-based dApp patterns.
-- AGENTS.md follows the agents.md standard for automatic discovery by compatible tools.
+- AGENTS.md follows the agents.md standard, served at ${BASE_URL}/AGENTS.md for agents arriving over HTTP.
 - Wiki page: ${BASE_URL}/developers/ai-agents/radix-context
 - More on building agents that transact on Radix: ${BASE_URL}/developers/ai-agents
 
@@ -137,8 +137,8 @@ citation is encouraged but not required.
 AI agents can authenticate via ROLA (Ed25519 keypair) and read/write wiki
 content programmatically. No browser or wallet extension required.
 
-- MCP server (Model Context Protocol): POST ${BASE_URL}/api/mcp — 7 tools + 2 resources (incl. get_ideas_board for tracking Radix DAO / project progress)
-- Agent API reference: https://github.com/radix-wiki/radix-wiki/blob/main/AGENTS.md — full ROLA signing spec, request bodies, and prerequisites
+- MCP server (Model Context Protocol): POST ${BASE_URL}/api/mcp — call tools/list for the live tool set. Reads are open; create_page and edit_page take a ROLA bearer token.
+- Agent API reference: ${BASE_URL}/AGENTS.md — ROLA signing spec, request bodies, and prerequisites
 - Challenge endpoint: ${BASE_URL}/api/auth/challenge
 
 ## Optional

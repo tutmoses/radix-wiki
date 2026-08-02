@@ -6,88 +6,13 @@ import { prisma } from '@/lib/prisma/client';
 import { BASE_URL, getContentSnippet } from '@/lib/utils';
 import { extractText } from '@/lib/content';
 import { TAG_HIERARCHY, getMetadataKeys, type TagNode } from '@/lib/tags';
+import { MCP_MANIFEST } from '@/lib/mcp-tools';
 import type { Block } from '@/types/blocks';
 
 export const dynamic = 'force-dynamic';
 
 const PROTOCOL_VERSION = '2025-03-26';
 const SERVER_INFO = { name: 'radix-wiki', version: '2.0.0' };
-
-// ========== TOOL MANIFEST ==========
-
-const TOOLS = [
-  {
-    name: 'search_wiki',
-    description: 'Search Radix Wiki pages by keyword. Matches against titles and content. Returns titles, URLs, snippets, and update dates.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        query: { type: 'string', description: 'Search term (matched against page titles)' },
-        tagPath: { type: 'string', description: 'Limit results to a tag path (e.g. "contents/tech/core-concepts")' },
-        page: { type: 'number', description: 'Page number (default 1)' },
-        pageSize: { type: 'number', description: 'Results per page (default 20, max 50)' },
-      },
-      required: ['query'],
-    },
-  },
-  {
-    name: 'get_page',
-    description: 'Fetch the full text content of a specific Radix Wiki page.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        tagPath: { type: 'string', description: 'Tag path (e.g. "contents/tech/core-concepts")' },
-        slug: { type: 'string', description: 'Page slug (e.g. "utxo-model")' },
-      },
-      required: ['tagPath', 'slug'],
-    },
-  },
-  {
-    name: 'list_pages',
-    description: 'List Radix Wiki pages, optionally filtered by tag path.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        tagPath: { type: 'string', description: 'Filter by tag path prefix (e.g. "developers")' },
-        sort: { type: 'string', enum: ['title', 'updatedAt'], description: 'Sort order (default "updatedAt")' },
-        page: { type: 'number', description: 'Page number (default 1)' },
-        pageSize: { type: 'number', description: 'Results per page (default 20, max 100)' },
-      },
-    },
-  },
-  {
-    name: 'get_categories',
-    description: 'Get the wiki tag hierarchy with page counts per category. Useful for understanding what content exists.',
-    inputSchema: { type: 'object', properties: {} },
-  },
-  {
-    name: 'get_recent_changes',
-    description: 'Get recently updated wiki pages. Useful for monitoring new content.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        days: { type: 'number', description: 'Look back N days (default 7, max 30)' },
-        limit: { type: 'number', description: 'Max results (default 20, max 50)' },
-      },
-    },
-  },
-  {
-    name: 'get_full_corpus',
-    description: 'Return the entire Radix Wiki as a single text document. Use for comprehensive context or bulk ingestion.',
-    inputSchema: { type: 'object', properties: {} },
-  },
-  {
-    name: 'get_ideas_board',
-    description: 'Get the RADIX Wiki Ideas Pipeline kanban — community proposals and Radix DAO tasks grouped into status columns (Discussion → Proposed → Approved → In Progress → Testing → Done), each card carrying its working group, category, priority, and assignee. Use this to follow DAO / project progress.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        category: { type: 'string', description: 'Filter to one category: Governance, Protocol, Tooling, Ecosystem, or Community' },
-        workingGroup: { type: 'string', description: 'Filter by working group name substring, e.g. "Treasury", "Legal", "NetOps"' },
-      },
-    },
-  },
-] as const;
 
 // ========== RESOURCES ==========
 
@@ -313,11 +238,60 @@ async function readResource(uri: string): Promise<string | null> {
   }
 }
 
+// ========== WRITE HANDLERS ==========
+//
+// Writes forward to the REST wiki API carrying the caller's bearer token, so
+// ROLA auth, XRD balance gating, locked/author-only checks, block validation,
+// semver bumping, the revision entry, and cache revalidation all stay in the
+// one handler that already owns them. Nothing about the write path is
+// reimplemented here — this is a transport, not a second implementation.
+
+type WriteResult = { error: string } | Record<string, unknown>;
+
+async function forwardWrite(path: string, method: 'POST' | 'PUT', body: unknown, auth: string | null): Promise<WriteResult> {
+  if (!auth) {
+    return { error: 'Authentication required. Obtain a ROLA bearer token first — see ' + `${BASE_URL}/AGENTS.md` + ' — then resend this call with an Authorization: Bearer <token> header.' };
+  }
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', Authorization: auth },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => null) as Record<string, unknown> | null;
+  if (!res.ok) return { error: (data?.error as string) || `Request failed (${res.status})` };
+  return data ?? {};
+}
+
+async function create_page(args: Record<string, unknown>, auth: string | null) {
+  const { tagPath, title, content, metadata, slug, bannerImage } = args;
+  const result = await forwardWrite('/api/wiki', 'POST', { tagPath, title, content, metadata, slug, bannerImage }, auth);
+  if ('error' in result) return result;
+  return {
+    created: true,
+    url: pageUrl(result.tagPath as string, result.slug as string),
+    tagPath: result.tagPath,
+    slug: result.slug,
+    version: result.version,
+    ...(result.isFirstContribution ? { isFirstContribution: true } : {}),
+  };
+}
+
+async function edit_page(args: Record<string, unknown>, auth: string | null) {
+  const { tagPath, slug, content, title, revisionMessage, metadata } = args;
+  const result = await forwardWrite(`/api/wiki/${tagPath}/${slug}`, 'PUT', { content, title, revisionMessage, metadata }, auth);
+  if ('error' in result) return result;
+  return {
+    edited: true,
+    url: pageUrl(result.tagPath as string, result.slug as string),
+    version: result.version,
+  };
+}
+
 // ========== JSON-RPC DISPATCH ==========
 
 type RpcRequest = { jsonrpc: '2.0'; id: string | number | null; method: string; params?: unknown };
 
-async function handleRpc(req: RpcRequest): Promise<object | null> {
+async function handleRpc(req: RpcRequest, auth: string | null): Promise<object | null> {
   const { id, method, params } = req;
   const p = (params ?? {}) as Record<string, unknown>;
 
@@ -333,7 +307,7 @@ async function handleRpc(req: RpcRequest): Promise<object | null> {
         return { jsonrpc: '2.0', id, result: {} };
 
       case 'tools/list':
-        return { jsonrpc: '2.0', id, result: { tools: TOOLS } };
+        return { jsonrpc: '2.0', id, result: { tools: MCP_MANIFEST } };
 
       case 'resources/list':
         return { jsonrpc: '2.0', id, result: { resources: RESOURCES } };
@@ -358,11 +332,16 @@ async function handleRpc(req: RpcRequest): Promise<object | null> {
           case 'get_recent_changes': data = await get_recent_changes(args as Parameters<typeof get_recent_changes>[0]); break;
           case 'get_full_corpus':   data = await get_full_corpus();                                                  break;
           case 'get_ideas_board':   data = await get_ideas_board(args as Parameters<typeof get_ideas_board>[0]);       break;
+          case 'create_page':       data = await create_page(args, auth);                                            break;
+          case 'edit_page':         data = await edit_page(args, auth);                                              break;
           default: return { jsonrpc: '2.0', id, error: { code: -32601, message: `Unknown tool: ${name}` } };
         }
 
         if (data === null) {
           return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: 'Not found.' }], isError: true } };
+        }
+        if (typeof data === 'object' && data !== null && 'error' in data) {
+          return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: String((data as { error: unknown }).error) }], isError: true } };
         }
         const text = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
         return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text }] } };
@@ -380,6 +359,7 @@ async function handleRpc(req: RpcRequest): Promise<object | null> {
 export async function POST(request: NextRequest) {
   const body = await request.json() as RpcRequest | RpcRequest[];
   const isBatch = Array.isArray(body);
-  const responses = (await Promise.all((isBatch ? body : [body]).map(handleRpc))).filter(Boolean);
+  const auth = request.headers.get('Authorization');
+  const responses = (await Promise.all((isBatch ? body : [body]).map(r => handleRpc(r, auth)))).filter(Boolean);
   return NextResponse.json(isBatch ? responses : (responses[0] ?? null));
 }
