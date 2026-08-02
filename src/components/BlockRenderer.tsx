@@ -246,6 +246,7 @@ export interface InfoboxPageInfo {
   author?: { displayName?: string | null; radixAddress: string; avatarUrl?: string | null } | null;
   updatedAt: string | Date;
   createdAt: string | Date;
+  version?: string;
   revisionCount?: number;
   lastVerifiedAt?: string | Date | null;
 }

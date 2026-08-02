@@ -131,10 +131,14 @@ export function Banner({ src, title, tagPath, editable, onUpload, onRemove, page
         <Clock size={14} className="shrink-0 opacity-60" />
         <span>Created {formatDate(pageInfo.createdAt)}</span>
       </div>
-      {(pageInfo.revisionCount ?? 0) > 0 && (
+      {(pageInfo.version || (pageInfo.revisionCount ?? 0) > 0) && (
         <div className="banner-info-row">
           <FileText size={14} className="shrink-0 opacity-60" />
-          <span>{pageInfo.revisionCount} revisions</span>
+          <span>
+            {pageInfo.version && <span className="font-mono">v{pageInfo.version}</span>}
+            {pageInfo.version && (pageInfo.revisionCount ?? 0) > 0 && ' · '}
+            {(pageInfo.revisionCount ?? 0) > 0 && `${pageInfo.revisionCount} revisions`}
+          </span>
         </div>
       )}
       {pageInfo.lastVerifiedAt && (
@@ -315,7 +319,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
     </>
   );
 
-  const pageInfo = page ? { author: page.author, updatedAt: page.updatedAt, createdAt: page.createdAt, revisionCount: page._count?.revisions ?? 0 } : null;
+  const pageInfo = page ? { author: page.author, updatedAt: page.updatedAt, createdAt: page.createdAt, version: page.version, revisionCount: page._count?.revisions ?? 0 } : null;
 
   return (
     <div className="stack">
@@ -436,7 +440,7 @@ function PageViewContent({ page, adjacent, related }: { page: WikiPage; adjacent
   const fresh = freshnessBanner(page);
   const mainBlocks = [...(fresh ? [fresh] : []), ...blocks.filter(b => b.type !== 'infobox')];
 
-  const pageInfo = { author: page.author, updatedAt: page.updatedAt, createdAt: page.createdAt, revisionCount: page._count?.revisions ?? 0, lastVerifiedAt: page.lastVerifiedAt };
+  const pageInfo = { author: page.author, updatedAt: page.updatedAt, createdAt: page.createdAt, version: page.version, revisionCount: page._count?.revisions ?? 0, lastVerifiedAt: page.lastVerifiedAt };
 
   return (
     <article className="stack">
