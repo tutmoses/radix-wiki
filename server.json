@@ -3,7 +3,7 @@
   "name": "wiki.radix/radix-wiki",
   "title": "Radix Wiki",
   "description": "Community-maintained knowledge base for Radix DLT — search, read, and contribute wiki pages.",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "websiteUrl": "https://radix.wiki",
   "remotes": [
     {
