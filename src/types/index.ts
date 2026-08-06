@@ -75,9 +75,6 @@ export type IdeasPage = WikiPage & {
   lastActivity: Date;
 };
 
-export type AdjacentPage = { tagPath: string; slug: string; title: string } | null;
-export type AdjacentPages = { prev: AdjacentPage; next: AdjacentPage };
-
 export type NotificationType = 'comment_on_page' | 'comment_reply' | 'page_edited';
 
 export type WikiNotification = Notification & {

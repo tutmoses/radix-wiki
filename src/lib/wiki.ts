@@ -254,44 +254,6 @@ export const getPageHistory = cached('getPageHistory',
   },
 );
 
-export const getAdjacentPages = cached('getAdjacentPages',
-  async (tagPath: string, title: string, createdAt?: string, updatedAt?: string) => {
-    const sort = getSortOrder(tagPath.split('/'));
-    const select = { tagPath: true, slug: true, title: true, metadata: true } as const;
-    const hasDateMeta = sort !== 'title' && sort !== 'recent' && getMetadataKeys(tagPath.split('/')).some(k => k.key === 'date' && k.type === 'date');
-
-    if (hasDateMeta) {
-      const pages = await prisma.page.findMany({ where: { tagPath }, select });
-      const dir = sort === 'oldest' ? 1 : -1;
-      const sorted = pages.sort((a, b) => {
-        const da = (a.metadata as Record<string, string> | null)?.date || '';
-        const db = (b.metadata as Record<string, string> | null)?.date || '';
-        return (da < db ? -1 : da > db ? 1 : 0) * dir;
-      });
-      const idx = sorted.findIndex(p => p.title === title);
-      return { prev: idx > 0 ? sorted[idx - 1] ?? null : null, next: idx < sorted.length - 1 ? sorted[idx + 1] ?? null : null };
-    }
-
-    const field = sort === 'recent' ? 'updatedAt' : sort !== 'title' && createdAt ? 'createdAt' : 'title';
-    const cursor = sort === 'recent' ? updatedAt : field === 'createdAt' ? createdAt : title;
-    const ascending = sort === 'oldest' || sort === 'title';
-
-    const [prev, next] = await Promise.all([
-      prisma.page.findFirst({
-        where: { tagPath, [field]: { [ascending ? 'lt' : 'gt']: cursor } },
-        orderBy: { [field]: ascending ? 'desc' : 'asc' },
-        select,
-      }),
-      prisma.page.findFirst({
-        where: { tagPath, [field]: { [ascending ? 'gt' : 'lt']: cursor } },
-        orderBy: { [field]: ascending ? 'asc' : 'desc' },
-        select,
-      }),
-    ]);
-    return { prev, next };
-  },
-);
-
 // ========== BLOCK DATA RESOLUTION ==========
 
 const getRecentPages = unstable_cache(

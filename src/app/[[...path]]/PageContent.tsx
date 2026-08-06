@@ -16,10 +16,10 @@ import { Badge, Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
 import { cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet, userProfileSlug, shortenAddress } from '@/lib/utils';
 import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder, type TagNode } from '@/lib/tags';
-import { categoryHref, toggleFilter, type Facet, type FacetFilters, type FacetValue } from '@/lib/taxonomy';
+import { categoryHref, toggleFilter, type Facet, type FacetFilters, type FacetValue, type SharedFacet } from '@/lib/taxonomy';
 import { createBlock } from '@/lib/block-utils';
 import { freshnessBanner } from '@/lib/freshness';
-import type { WikiPage, AdjacentPages } from '@/types';
+import type { WikiPage } from '@/types';
 import type { Block } from '@/types/blocks';
 
 const LazyPageEditor = dynamic(() => import('./PageEditor'), {
@@ -51,27 +51,6 @@ export function PageSkeleton() {
       <div className="h-6 w-3/4 skeleton rounded" />
       <div className="h-6 w-1/2 skeleton rounded" />
     </div>
-  );
-}
-
-function PageNav({ adjacent }: { adjacent: AdjacentPages }) {
-  const { prev, next } = adjacent;
-  if (!prev && !next) return null;
-  return (
-    <nav className="page-nav">
-      {prev ? (
-        <Link href={`/${prev.tagPath}/${prev.slug}`} className="page-nav-link">
-          <span className="page-nav-label"><ArrowLeft size={14} />Previous</span>
-          <span className="page-nav-title">{prev.title}</span>
-        </Link>
-      ) : <div />}
-      {next && (
-        <Link href={`/${next.tagPath}/${next.slug}`} className="page-nav-link text-right">
-          <span className="page-nav-label justify-end">Next<ArrowRight size={14} /></span>
-          <span className="page-nav-title">{next.title}</span>
-        </Link>
-      )}
-    </nav>
   );
 }
 
@@ -444,19 +423,25 @@ export function CategoryView({ tagPath, pages, sort, total, facets, filters, let
 
 // ========== SEE ALSO ==========
 export type RelatedPage = Pick<WikiPage, 'id' | 'title' | 'slug' | 'tagPath'> & { snippet?: string };
-/** `sharedValue` names the facet the ranking found in common, so the heading can say what "related" meant. */
-export type RelatedPages = { pages: RelatedPage[]; sharedValue: string | null };
+/** `sharedFacet` names the axis the ranking found in common, so the heading can be the way into the whole set. */
+export type RelatedPages = { pages: RelatedPage[]; sharedFacet: SharedFacet | null };
 
-function SeeAlso({ pages, tagPath, sharedValue }: { pages: RelatedPage[]; tagPath: string; sharedValue?: string | null }) {
+/**
+ * The heading *is* the link: it names what these five have in common and opens
+ * the filtered category holding the rest. The sentence that used to sit under it
+ * only restated the infobox row that now carries the same link.
+ */
+function SeeAlso({ pages, tagPath, sharedFacet }: { pages: RelatedPage[]; tagPath: string; sharedFacet?: SharedFacet | null }) {
   if (!pages.length) return null;
   const sectionTag = findTagByPath(tagPath.split('/'));
   const sectionName = sectionTag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagPath;
   return (
     <aside className="see-also" aria-labelledby="see-also-heading">
-      <h2 id="see-also-heading" className="text-h4">See also</h2>
-      <p className="text-text-muted text-small">
-        {sharedValue ? <>Other {sharedValue} pages in {sectionName}.</> : <>More from {sectionName}.</>}
-      </p>
+      <h2 id="see-also-heading" className="text-h4">
+        <Link href={categoryHref(tagPath, sharedFacet ? { filters: { [sharedFacet.key]: sharedFacet.value } } : {})} className="link">
+          {sharedFacet ? <>More {sharedFacet.value} in {sectionName}</> : <>More from {sectionName}</>}
+        </Link>
+      </h2>
       <ul className="see-also-grid">
         {pages.map(p => (
           <li key={p.id}>
@@ -472,7 +457,7 @@ function SeeAlso({ pages, tagPath, sharedValue }: { pages: RelatedPage[]; tagPat
 }
 
 // ========== PAGE VIEW (Read-only) ==========
-function PageViewContent({ page, adjacent, related }: { page: WikiPage; adjacent: AdjacentPages; related: RelatedPages }) {
+function PageViewContent({ page, related, series }: { page: WikiPage; related: RelatedPages; series: PageRef | null }) {
   const { isAuthenticated } = useAuth();
   // Contributor stats belong only on a member's own profile — not on curated
   // articles that happen to live under /community (e.g. Dan Hughes).
@@ -489,9 +474,8 @@ function PageViewContent({ page, adjacent, related }: { page: WikiPage; adjacent
   const main = (
     <div className="page-main-content stack">
       <BlockRenderer content={mainBlocks} />
-      <SeeAlso pages={related.pages} tagPath={page.tagPath} sharedValue={related.sharedValue} />
+      <SeeAlso pages={related.pages} tagPath={page.tagPath} sharedFacet={related.sharedFacet} />
       {isOwnProfile && <UserStats authorId={page.authorId} />}
-      <PageNav adjacent={adjacent} />
       <PageMeta page={page} />
       <Discussion pageId={page.id} tagPath={page.tagPath} />
       {isAuthenticated && (
@@ -509,7 +493,7 @@ function PageViewContent({ page, adjacent, related }: { page: WikiPage; adjacent
       {showInfobox ? (
         <div className="page-with-infobox">
           {main}
-          <InfoboxSidebar block={infobox ?? { id: '__infobox__', type: 'infobox', blocks: [] }} metadata={page.metadata} tagPath={page.tagPath} />
+          <InfoboxSidebar block={infobox ?? { id: '__infobox__', type: 'infobox', blocks: [] }} metadata={page.metadata} tagPath={page.tagPath} series={series} />
         </div>
       ) : main}
       <LinkPreview />
@@ -518,12 +502,12 @@ function PageViewContent({ page, adjacent, related }: { page: WikiPage; adjacent
 }
 
 // ========== PAGE VIEW WRAPPER ==========
-export function PageView({ page, tagPath, slug, isEditMode, adjacent, related = { pages: [], sharedValue: null } }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; adjacent: AdjacentPages; related?: RelatedPages }) {
+export function PageView({ page, tagPath, slug, isEditMode, related = { pages: [], sharedFacet: null }, series = null }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; related?: RelatedPages; series?: PageRef | null }) {
   const { isAuthenticated } = useAuth();
 
   const viewPath = `/${tagPath}/${slug}`;
 
   if (isEditMode && !isAuthenticated) return <StatusCard status="authRequired" backHref={viewPath} />;
   if (!page) return <LazyPageEditor tagPath={tagPath} slug={slug} />;
-  return isEditMode ? <LazyPageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} adjacent={adjacent} related={related} />;
+  return isEditMode ? <LazyPageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} related={related} series={series} />;
 }

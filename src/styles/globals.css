@@ -348,9 +348,6 @@
 
   /* Nav items */
   .nav-item { @apply flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-text-muted hover:bg-surface-2 hover:text-text; }
-  .nav-indent { @apply inline-flex items-center justify-center w-4 shrink-0 text-text-muted hover:text-text transition-colors cursor-pointer p-0 bg-transparent border-none; }
-  .nav-leaf { @apply ml-4; }
-  .nav-link { @apply flex-1 min-w-0 truncate px-2 py-1.5 rounded-md transition-colors text-text-muted hover:bg-surface-2 hover:text-text; }
 
   /* Table of contents */
   .toc-btn { @apply flex items-center gap-2 px-3 py-2 text-text-muted hover:text-text transition-colors w-full; }
@@ -381,12 +378,6 @@
 
   /* ===== STATUS CARD ===== */
   .status-icon { @apply flex items-center justify-center w-16 h-16 rounded-2xl bg-surface-2 text-text-muted; }
-
-  /* ===== PAGE NAV ===== */
-  .page-nav { @apply pt-8 border-t border-border grid grid-cols-2 gap-4; }
-  .page-nav-link { @apply flex flex-col gap-2 p-4 rounded-lg bg-surface-1 hover:bg-surface-2 transition-colors; }
-  .page-nav-label { @apply flex items-center gap-2 text-text-muted text-small; }
-  .page-nav-title { @apply font-medium transition-colors line-clamp-1; .group:hover & { @apply text-accent; } }
 
   /* ===== SECTION DIVIDER ===== */
   .section-divider { @apply pt-6 border-t border-border; }
@@ -544,6 +535,8 @@
   }
 
   /* Infobox sidebar */
+  .infobox-series { @apply flex flex-col items-center gap-0.5 text-center text-small text-text-muted pb-3 border-b border-border-muted; }
+
   .infobox {
     @apply bg-surface-1 border border-border-muted rounded-lg overflow-hidden p-4;
     width: 100%;

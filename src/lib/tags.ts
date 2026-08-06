@@ -170,6 +170,8 @@ interface TagPathContext {
   isValid: boolean;
   isAuthorOnly: boolean;
   sort: SortOrder;
+  /** Inherited down the trail — the topic an article says it is part of. */
+  mainArticle?: string;
   xrdRequirements: NonNullable<TagNode['xrd']>;
   metadataKeys: MetadataKeyDefinition[];
 }
@@ -187,6 +189,7 @@ function resolveTagPath(pathSegments: string[], hierarchy: TagNode[] = TAG_HIERA
   let current: TagNode[] = hierarchy;
   let node: TagNode | null = null;
   let sort: SortOrder = 'title';
+  let mainArticle: string | undefined;
 
   for (const segment of pathSegments) {
     node = current.find(n => n.slug === segment) ?? null;
@@ -198,12 +201,15 @@ function resolveTagPath(pathSegments: string[], hierarchy: TagNode[] = TAG_HIERA
     if (node.xrd) Object.assign(requirements, node.xrd);
     if (node.metadataKeys) metadataKeys.push(...node.metadataKeys);
     if (node.sort) sort = node.sort;
+    // Nearest declaration down the trail wins, so a topic declared once at the
+    // top covers every page beneath it without restating it per node.
+    if (node.mainArticle) mainArticle = node.mainArticle;
     current = node.children || [];
   }
 
   const isAuthorOnly = AUTHOR_ONLY_PATHS.has(key) || [...AUTHOR_ONLY_PATHS].some(p => key.startsWith(p + '/'));
   metadataKeys.push(...GLOBAL_METADATA_KEYS);
-  const result: TagPathContext = { node, isValid: pathSegments.length > 0, isAuthorOnly, sort, xrdRequirements: requirements, metadataKeys };
+  const result: TagPathContext = { node, isValid: pathSegments.length > 0, isAuthorOnly, sort, mainArticle, xrdRequirements: requirements, metadataKeys };
   resolveCache.set(key, result);
   return result;
 }
@@ -223,5 +229,11 @@ export function getXrdRequired(action: 'create' | 'edit' | 'comment', tagPath: s
 // XRD requirements are a minimum wallet balance, not a fee — the balance is read, never spent.
 export const XRD_NOT_A_FEE = 'Your XRD is never spent — this is a wallet balance check, not a fee.';
 export const getMetadataKeys = (pathSegments: string[]): MetadataKeyDefinition[] => resolveTagPath(pathSegments).metadataKeys;
+/**
+ * The article a page under this tag path is "part of a series on". Inherited,
+ * unlike `TagNode.mainArticle` read directly — a category page names *its own*
+ * main article, an article names the nearest topic above it.
+ */
+export const getMainArticle = (tagPath: string): string | undefined => resolveTagPath(tagPath.split('/')).mainArticle;
 export const getSortOrder = (pathSegments: string[]): SortOrder => resolveTagPath(pathSegments).sort;
 export const getVisibleTags = (hierarchy: TagNode[] = TAG_HIERARCHY): TagNode[] => hierarchy.filter(n => !n.hidden);

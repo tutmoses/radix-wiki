@@ -64,7 +64,10 @@ export function buildFacets(tagPath: string, pages: WikiPage[], filters: FacetFi
       const value = metaValue(page, key.key);
       if (value) counts.set(value, (counts.get(value) ?? 0) + 1);
     }
-    if (counts.size < 2) return [];
+    // A single-valued facet is no choice, so it stays hidden — unless it's the
+    // active one. Infobox rows can now set a filter the chips never offered, and
+    // without its chip the reader gets a narrowed list and no way to widen it.
+    if (counts.size < 2 && !(key.key in filters)) return [];
     const values = [...counts].map(([value, count]) => ({ value, count })).sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
     return [{ key: key.key, label: key.label.replace(/:$/, ''), values }];
   });
@@ -100,17 +103,21 @@ export function toggleFilter(filters: FacetFilters, key: string, value: string):
   return next;
 }
 
-export interface RelatedRanking { pages: WikiPage[]; sharedValue: string | null }
+export interface SharedFacet { key: string; value: string }
+export interface RelatedRanking { pages: WikiPage[]; sharedFacet: SharedFacet | null }
 
 /**
  * Siblings ranked by how many facet values they share with the page — a real
  * relatedness signal. The previous behaviour (first five of the category) showed
  * every one of a 141-page category the same five links. Ties keep the category's
  * own sort order, so the tail degrades to that rather than to nothing.
+ *
+ * The shared facet comes back as `{key, value}` rather than a bare label so the
+ * heading above the five can be the link to the whole set, not a sentence about it.
  */
 export function rankRelated(page: WikiPage, siblings: WikiPage[], tagPath: string, limit = 5): RelatedRanking {
   const keys = facetKeys(tagPath);
-  if (!keys.length) return { pages: siblings.slice(0, limit), sharedValue: null };
+  if (!keys.length) return { pages: siblings.slice(0, limit), sharedFacet: null };
 
   const score = (other: WikiPage) => keys.reduce((n, k) => n + (metaValue(page, k.key) && metaValue(other, k.key) === metaValue(page, k.key) ? 1 : 0), 0);
   const ranked = siblings.map((p, i) => ({ p, score: score(p), i }))
@@ -120,6 +127,6 @@ export function rankRelated(page: WikiPage, siblings: WikiPage[], tagPath: strin
   // Name the narrowest axis the page shares — `category` (15 options) says more
   // about a project than `status` (4), so headline that rather than the first key.
   const narrowest = keys.filter(k => metaValue(page, k.key)).sort((a, b) => (b.options?.length ?? 0) - (a.options?.length ?? 0))[0];
-  const shared = narrowest && ranked[0]?.score ? metaValue(page, narrowest.key) : null;
-  return { pages: ranked.map(r => r.p), sharedValue: shared || null };
+  const value = narrowest && ranked[0]?.score ? metaValue(page, narrowest.key) : '';
+  return { pages: ranked.map(r => r.p), sharedFacet: narrowest && value ? { key: narrowest.key, value } : null };
 }

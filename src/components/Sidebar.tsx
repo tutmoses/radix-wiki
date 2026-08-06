@@ -8,33 +8,13 @@ import { Home, Trophy, BarChart3, ChevronRight, ChevronDown, ListTree, Wrench } 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { useStore, useIsMobile, usePagePath, useAuth } from '@/hooks';
-import { getVisibleTags, type TagNode } from '@/lib/tags';
+import { getVisibleTags } from '@/lib/tags';
 
 function NavItem({ href, icon, label, isActive, onNavigate }: { href: string; icon: React.ReactNode; label: string; isActive?: boolean; onNavigate?: () => void }) {
   return (
     <Link href={href} onClick={onNavigate} className={cn('nav-item', isActive && 'bg-accent-muted text-accent font-medium')}>
       {icon}<span>{label}</span>
     </Link>
-  );
-}
-
-function TagNavItem({ node, parentPath, pathname, depth, onNavigate }: { node: TagNode; parentPath: string; pathname: string; depth: number; onNavigate?: () => void }) {
-  const currentPath = parentPath ? `${parentPath}/${node.slug}` : node.slug;
-  const href = `/${currentPath}`;
-  const isActive = pathname === href || pathname.startsWith(href + '/');
-  const hasChildren = node.children && node.children.length > 0;
-  // Derived from the route, so the tree follows navigation; a manual toggle overrides it.
-  const [manualToggle, setManualToggle] = useState<boolean | null>(null);
-  const isExpanded = manualToggle ?? isActive;
-
-  return (
-    <div style={{ paddingLeft: `${depth * 0.75}rem` }}>
-      <div className="row">
-        {hasChildren && <button onClick={() => setManualToggle(!isExpanded)} className="nav-indent">{isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button>}
-        <Link href={href} onClick={onNavigate} title={node.name} className={cn('nav-link', !hasChildren && 'nav-leaf', isActive && 'bg-accent-muted text-accent font-medium')}>{node.name}</Link>
-      </div>
-      {hasChildren && isExpanded && <div className="mt-1">{node.children!.map(child => <TagNavItem key={child.slug} node={child} parentPath={currentPath} pathname={pathname} depth={depth + 1} onNavigate={onNavigate} />)}</div>}
-    </div>
   );
 }
 
@@ -158,10 +138,19 @@ export function Sidebar() {
           </nav>
         </div>
 
+        {/* Top-level sections only. Every category page already renders its own
+            children as cards carrying a blurb and a page count, which a tree
+            can't — mirroring the whole hierarchy here made it the third copy on
+            screen, next to the breadcrumbs and those cards. */}
         <div className="stack-sm p-4">
           <span className="sidebar-label">Categories</span>
           <nav className="stack-sm">
-            {visibleTags.map(node => <TagNavItem key={node.slug} node={node} parentPath="" pathname={pathname} depth={0} onNavigate={closeMobile} />)}
+            {visibleTags.map(node => (
+              <Link key={node.slug} href={`/${node.slug}`} onClick={closeMobile} title={node.name}
+                className={cn('nav-item', (pathname === `/${node.slug}` || pathname.startsWith(`/${node.slug}/`)) && 'bg-accent-muted text-accent font-medium')}>
+                <span className="truncate">{node.name}</span>
+              </Link>
+            ))}
           </nav>
         </div>
 

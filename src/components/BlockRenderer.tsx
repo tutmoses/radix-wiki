@@ -16,6 +16,7 @@ import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiPage, PageMetadata } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock, LinkGridBlock, TipJarBlock, ReferencesBlock, BannerBlock, BannerVariant } from '@/types/blocks';
 import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
+import { categoryHref, facetKeys } from '@/lib/taxonomy';
 import { TokenChart } from '@/components/charts/TokenChart';
 import { formatPriceSubscript } from '@/components/charts/format';
 
@@ -235,9 +236,17 @@ function buildMetadataBlock(metadata: PageMetadata, tagPath: string): ContentBlo
   if (!keys.length || !metadata) return null;
   const entries = keys.filter(k => metadata[k.key]?.trim() && k.type !== 'resource_address');
   if (!entries.length) return null;
-  const rows = entries.map(({ key, label, type }) =>
-    `<tr><th>${label}</th><td>${formatMetadataValue(metadata[key]!, type)}</td></tr>`
-  ).join('');
+  // A `select` value is precisely a facet the category view already filters and
+  // counts, so the row is the way into that set — Wikipedia's linked infobox
+  // fields, reusing the one URL contract every facet chip is built from.
+  const facets = new Set(facetKeys(tagPath).map(k => k.key));
+  const rows = entries.map(({ key, label, type }) => {
+    const value = metadata[key]!;
+    const cell = facets.has(key)
+      ? `<a href="${categoryHref(tagPath, { filters: { [key]: value.trim() } })}" class="link">${value}</a>`
+      : formatMetadataValue(value, type);
+    return `<tr><th>${label}</th><td>${cell}</td></tr>`;
+  }).join('');
   return { id: '__metadata__', type: 'content', text: `<table>${rows}</table>` };
 }
 
@@ -253,11 +262,20 @@ export function infoboxHasContent(block: InfoboxBlock | null, metadata?: PageMet
   return getResourceAddressEntries(metadata, tagPath).length > 0 || buildMetadataBlock(metadata, tagPath) !== null;
 }
 
-export function InfoboxSidebar({ block, metadata, tagPath }: { block: InfoboxBlock; metadata?: PageMetadata | null; tagPath?: string }) {
+export function InfoboxSidebar({ block, metadata, tagPath, series }: { block: InfoboxBlock; metadata?: PageMetadata | null; tagPath?: string; series?: { title: string; href: string } | null }) {
   const metaBlock = metadata && tagPath ? buildMetadataBlock(metadata, tagPath) : null;
   const assetEntries = metadata && tagPath ? getResourceAddressEntries(metadata, tagPath) : [];
   return (
     <aside className="infobox stack">
+      {/* Wikipedia's {{Category main article}}, pointed from the article: the tag
+          path names the topic's main article, so every page in it opens onto the
+          one that defines it. Breadcrumbs already say where the page sits. */}
+      {series && (
+        <div className="infobox-series">
+          <span>Part of a series on</span>
+          <Link href={series.href} className="link">{series.title}</Link>
+        </div>
+      )}
       {assetEntries.map(entry => (
         <div key={entry.key}>
           <AssetPriceBlockView block={{ id: `__asset_${entry.key}__`, type: 'assetPrice', resourceAddress: entry.value, showChange: true, showChart: true, chartTimeframe: '30d' }} />

@@ -3,12 +3,12 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { notFound, redirect } from 'next/navigation';
-import { parsePath, getHomepage, getPage, getCategoryPages, getDescendantPages, getTagCounts, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, getAdjacentPages, resolveBlockData, getEcosystemPageByAsset } from '@/lib/wiki';
+import { parsePath, getHomepage, getPage, getCategoryPages, getDescendantPages, getTagCounts, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getEcosystemPageByAsset } from '@/lib/wiki';
 import { getMaintenanceQueues } from '@/lib/maintenance';
 import { getSession } from '@/lib/auth';
 import type { RelatedPages, SubcategorySummary } from './PageContent';
 import { alphaIndex, buildFacets, facetFilters, filterPages, rankRelated, ALPHA_INDEX_MIN_PAGES } from '@/lib/taxonomy';
-import { findTagByPath, getSortOrder, TAG_HIERARCHY, type TagNode, type SortOrder } from '@/lib/tags';
+import { findTagByPath, getMainArticle, getSortOrder, TAG_HIERARCHY, type TagNode, type SortOrder } from '@/lib/tags';
 import { highlightBlocks } from '@/lib/highlight';
 import { processBlocks } from '@/lib/html';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
@@ -462,23 +462,25 @@ export default async function DynamicPage({ params, searchParams }: Props) {
     // Authenticated visitors fall through to PageView, which renders the create-page editor.
   }
   const page = parsed.suffix === 'edit' ? rawPage : await withProcessedContent(rawPage);
-  const adjacent = page ? await getAdjacentPages(parsed.tagPath, page.title, new Date(page.createdAt).toISOString(), new Date(page.updatedAt).toISOString()) : { prev: null, next: null };
-  let related: RelatedPages = { pages: [], sharedValue: null };
+  let related: RelatedPages = { pages: [], sharedFacet: null };
   if (page && parsed.suffix !== 'edit') {
     const siblings = (await getCategoryPages(parsed.tagPath)).filter(p => p.slug !== parsed.slug);
     const ranked = rankRelated(page, siblings, parsed.tagPath);
     related = {
       pages: ranked.pages.map(p => ({ id: p.id, title: p.title, slug: p.slug, tagPath: p.tagPath, snippet: getContentSnippet(p.content, 100) })),
-      sharedValue: ranked.sharedValue,
+      sharedFacet: ranked.sharedFacet,
     };
   }
+  // The topic this page is part of, unless this page *is* it.
+  const mainArticle = getMainArticle(parsed.tagPath);
+  const series = mainArticle && mainArticle !== `${parsed.tagPath}/${parsed.slug}` ? await getPageRef(mainArticle) : null;
   const pathSegments = [...parsed.tagPath.split('/'), parsed.slug];
   const pageUrl = `${BASE_URL}/${pathSegments.join('/')}`;
   return (
     <>
       {page && <JsonLd data={articleLd(page, pageUrl)} />}
       <JsonLd data={breadcrumbLd(pathSegments, page?.title)} />
-      <PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} adjacent={adjacent} related={related} />
+      <PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} related={related} series={series} />
     </>
   );
 }
