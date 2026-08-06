@@ -23,7 +23,7 @@ export const PAGE_LIST_SELECT = {
 const CACHE_OPTS = { tags: ['wiki'], revalidate: 60 };
 
 /** Shorthand for cache(unstable_cache(fn, [key], CACHE_OPTS)) */
-function cached<T extends (...args: any[]) => Promise<any>>(key: string, fn: T): T {
+export function cached<T extends (...args: any[]) => Promise<any>>(key: string, fn: T): T {
   return cache(unstable_cache(fn, [key], CACHE_OPTS)) as T;
 }
 
@@ -33,7 +33,7 @@ const SUFFIXES = ['edit', 'history', 'mdx'] as const;
 type Suffix = typeof SUFFIXES[number];
 
 export interface ParsedPath {
-  type: 'homepage' | 'category' | 'page' | 'history' | 'edit' | 'mdx' | 'leaderboard' | 'welcome' | 'rewards' | 'search' | 'charts' | 'charts-validators' | 'charts-tokens' | 'token-detail' | 'invalid';
+  type: 'homepage' | 'category' | 'page' | 'history' | 'edit' | 'mdx' | 'leaderboard' | 'welcome' | 'rewards' | 'search' | 'maintenance' | 'charts' | 'charts-validators' | 'charts-tokens' | 'token-detail' | 'invalid';
   tagPath: string;
   slug: string;
   suffix: Suffix | null;
@@ -56,6 +56,9 @@ export function parsePath(segments: string[] = [], mode: 'client' | 'api' = 'cli
   }
   if (segments.length === 1 && segments[0] === 'search') {
     return { ...base, type: 'search' };
+  }
+  if (segments.length === 1 && segments[0] === 'maintenance') {
+    return { ...base, type: 'maintenance' };
   }
 
   // Charts section
@@ -154,6 +157,35 @@ export const getCategoryPages = cached('getCategoryPages',
       const db = (b.metadata as Record<string, string> | null)?.date || '';
       return (da < db ? -1 : da > db ? 1 : 0) * dir;
     });
+  },
+);
+
+/** Pages under a container category's subtree, so browsing never dead-ends on a page of cards. */
+export const getDescendantPages = cached('getDescendantPages',
+  async (tagPath: string, sort?: SortOrder, limit = 200): Promise<WikiPage[]> => {
+    const resolvedSort = sort ?? getSortOrder(tagPath.split('/'));
+    return prisma.page.findMany({
+      where: { tagPath: { startsWith: `${tagPath}/` } },
+      select: CATEGORY_SELECT,
+      orderBy: sortOrderBy[resolvedSort],
+      take: limit,
+    }) as unknown as WikiPage[];
+  },
+);
+
+/** Pages per tag path, for the "44 pages · 3 subcategories" line on subcategory cards. */
+export const getTagCounts = cached('getTagCounts', async (): Promise<Record<string, number>> => {
+  const rows = await prisma.page.groupBy({ by: ['tagPath'], _count: { _all: true } });
+  return Object.fromEntries(rows.map(r => [r.tagPath, r._count._all]));
+});
+
+/** Title-only lookup — a category's main article usually lives in another category. */
+export const getPageRef = cached('getPageRef',
+  async (path: string): Promise<{ title: string; href: string } | null> => {
+    const slug = path.split('/').pop() ?? '';
+    const tagPath = path.slice(0, -(slug.length + 1));
+    const page = await prisma.page.findUnique({ where: { tagPath_slug: { tagPath, slug } }, select: { title: true } });
+    return page && { title: page.title, href: `/${path}` };
   },
 );
 

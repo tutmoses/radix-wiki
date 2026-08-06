@@ -2,10 +2,12 @@
 
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { notFound } from 'next/navigation';
-import { parsePath, getHomepage, getPage, getCategoryPages, isIdeasPath, getIdeasPages, getPageHistory, getAdjacentPages, resolveBlockData, getEcosystemPageByAsset } from '@/lib/wiki';
+import { notFound, redirect } from 'next/navigation';
+import { parsePath, getHomepage, getPage, getCategoryPages, getDescendantPages, getTagCounts, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, getAdjacentPages, resolveBlockData, getEcosystemPageByAsset } from '@/lib/wiki';
+import { getMaintenanceQueues } from '@/lib/maintenance';
 import { getSession } from '@/lib/auth';
-import type { RelatedPage } from './PageContent';
+import type { RelatedPages, SubcategorySummary } from './PageContent';
+import { alphaIndex, buildFacets, facetFilters, filterPages, rankRelated, ALPHA_INDEX_MIN_PAGES } from '@/lib/taxonomy';
 import { findTagByPath, getSortOrder, TAG_HIERARCHY, type TagNode, type SortOrder } from '@/lib/tags';
 import { highlightBlocks } from '@/lib/highlight';
 import { processBlocks } from '@/lib/html';
@@ -19,6 +21,7 @@ const LeaderboardView = dynamic(() => import('@/components/LeaderboardView'), { 
 const WelcomeView = dynamic(() => import('@/components/WelcomeView'), { loading: () => <PageSkeleton /> });
 const RewardsView = dynamic(() => import('@/components/RewardsView'), { loading: () => <PageSkeleton /> });
 const SearchView = dynamic(() => import('@/components/SearchView'), { loading: () => <PageSkeleton /> });
+const MaintenanceView = dynamic(() => import('@/components/MaintenanceView'), { loading: () => <PageSkeleton /> });
 import ChartsOverview from '@/components/charts/ChartsOverview';
 import ValidatorsView from '@/components/charts/ValidatorsView';
 import TokensView from '@/components/charts/TokensView';
@@ -50,7 +53,8 @@ export async function generateStaticParams() {
 export const dynamicParams = true;
 export const revalidate = 60;
 
-type Props = { params: Promise<{ path?: string[] }>; searchParams: Promise<{ sort?: string; q?: string }> };
+// Facet keys are open-ended — a tag path's `select` metadata keys decide them.
+type Props = { params: Promise<{ path?: string[] }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 const NOINDEX_ROBOTS = { index: false, follow: true, googleBot: { index: false, follow: true } } as const;
 
@@ -85,6 +89,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: 'Search the community-maintained RADIX Wiki.',
       robots: NOINDEX_ROBOTS,
       alternates: { canonical: `${BASE_URL}/search` },
+    };
+  }
+
+  // Work queues — noindex, the same way Wikipedia hides maintenance categories from readers
+  if (parsed.type === 'maintenance') {
+    return {
+      title: 'Maintenance — RADIX Wiki',
+      description: 'Pages flagged as outdated, orphaned, unsourced, or missing required metadata.',
+      robots: NOINDEX_ROBOTS,
+      alternates: { canonical: `${BASE_URL}/maintenance` },
     };
   }
 
@@ -335,12 +349,20 @@ const VALID_SORTS = new Set<string>(['title', 'newest', 'oldest', 'recent']);
 
 export default async function DynamicPage({ params, searchParams }: Props) {
   const { path } = await params;
-  const { sort: sortParam, q } = await searchParams;
+  const query = await searchParams;
+  const str = (v: string | string[] | undefined) => (typeof v === 'string' ? v : undefined);
+  const sortParam = str(query.sort);
+  const q = str(query.q);
   const parsed = parsePath(path);
 
   if (parsed.type === 'invalid') notFound();
 
+  // The page-level /mdx URL is an export, not a page — send it to the API route
+  // instead of rendering a duplicate article at a noindex URL.
+  if (parsed.type === 'mdx') redirect(parsed.slug ? `/api/wiki/${parsed.tagPath}/${parsed.slug}/mdx` : '/api/wiki/mdx');
+
   if (parsed.type === 'search') return <SearchView query={q ?? ''} />;
+  if (parsed.type === 'maintenance') return <MaintenanceView queues={await getMaintenanceQueues()} />;
   if (parsed.type === 'leaderboard') return <LeaderboardView />;
   if (parsed.type === 'welcome') return <WelcomeView />;
   if (parsed.type === 'rewards') return <RewardsView />;
@@ -387,12 +409,43 @@ export default async function DynamicPage({ params, searchParams }: Props) {
     }
     const defaultSort = getSortOrder(tagSegments);
     const sort = (sortParam && VALID_SORTS.has(sortParam) ? sortParam : defaultSort) as SortOrder;
-    const pages = await getCategoryPages(parsed.tagPath, sort);
+    let all = await getCategoryPages(parsed.tagPath, sort);
+    // A container category (Contents, Tech) holds no pages of its own — list its
+    // subtree beneath the subcategory cards so browsing reaches articles in one hop.
+    if (!all.length && (tag?.children ?? []).some(c => !c.hidden)) {
+      all = await getDescendantPages(parsed.tagPath, sort);
+    }
+
+    // The tree gives one axis; `select` metadata gives the cross-cutting one, and
+    // the alphabetical index only earns its space once the grid outgrows a screen.
+    const filters = facetFilters(parsed.tagPath, query);
+    const letters = all.length >= ALPHA_INDEX_MIN_PAGES ? alphaIndex(all, filters) : [];
+    const letter = letters.some(l => l.value === str(query.letter)) ? str(query.letter) : undefined;
+    const pages = filterPages(all, filters, letter);
+
+    const counts = await getTagCounts();
+    const subcategories: SubcategorySummary[] = (tag?.children ?? []).filter(c => !c.hidden).map(child => {
+      const childPath = `${parsed.tagPath}/${child.slug}`;
+      const descendants = Object.entries(counts).filter(([p]) => p === childPath || p.startsWith(`${childPath}/`));
+      return {
+        name: child.name,
+        href: `/${childPath}`,
+        description: child.description,
+        pages: descendants.reduce((n, [, c]) => n + c, 0),
+        subs: (child.children ?? []).filter(c => !c.hidden).length,
+      };
+    });
+    const mainArticle = tag?.mainArticle ? await getPageRef(tag.mainArticle) : null;
+
     return (
       <>
         <JsonLd data={collectionLd(categoryName, categoryUrl, pages, tag?.description)} />
         <JsonLd data={breadcrumbLd(tagSegments)} />
-        <CategoryView tagPath={tagSegments} pages={pages} sort={sort} />
+        <CategoryView
+          tagPath={tagSegments} pages={pages} sort={sort} total={all.length}
+          facets={buildFacets(parsed.tagPath, all, filters, letter)} filters={filters}
+          letters={letters} letter={letter} subcategories={subcategories} mainArticle={mainArticle}
+        />
       </>
     );
   }
@@ -410,12 +463,15 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   }
   const page = parsed.suffix === 'edit' ? rawPage : await withProcessedContent(rawPage);
   const adjacent = page ? await getAdjacentPages(parsed.tagPath, page.title, new Date(page.createdAt).toISOString(), new Date(page.updatedAt).toISOString()) : { prev: null, next: null };
-  const related: RelatedPage[] = page && parsed.suffix !== 'edit'
-    ? (await getCategoryPages(parsed.tagPath))
-        .filter(p => p.slug !== parsed.slug)
-        .slice(0, 5)
-        .map(p => ({ id: p.id, title: p.title, slug: p.slug, tagPath: p.tagPath, snippet: getContentSnippet(p.content, 100) }))
-    : [];
+  let related: RelatedPages = { pages: [], sharedValue: null };
+  if (page && parsed.suffix !== 'edit') {
+    const siblings = (await getCategoryPages(parsed.tagPath)).filter(p => p.slug !== parsed.slug);
+    const ranked = rankRelated(page, siblings, parsed.tagPath);
+    related = {
+      pages: ranked.pages.map(p => ({ id: p.id, title: p.title, slug: p.slug, tagPath: p.tagPath, snippet: getContentSnippet(p.content, 100) })),
+      sharedValue: ranked.sharedValue,
+    };
+  }
   const pathSegments = [...parsed.tagPath.split('/'), parsed.slug];
   const pageUrl = `${BASE_URL}/${pathSegments.join('/')}`;
   return (

@@ -2,7 +2,7 @@
 
 import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
-import { getGatewayUrl, RADIX_CONFIG } from './config';
+import { postGateway } from './gateway';
 
 export interface TokenSummary {
   address: string;
@@ -100,19 +100,8 @@ const _getTopTokens = async (limit = 100): Promise<TokenSummary[]> => {
 export const getTopTokens = cache(_getTopTokens);
 
 async function gatewayEntity(address: string): Promise<any | null> {
-  try {
-    const res = await fetch(`${getGatewayUrl(RADIX_CONFIG.networkId)}/state/entity/details`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ addresses: [address] }),
-      cache: 'no-store',
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data?.items?.[0] ?? null;
-  } catch {
-    return null;
-  }
+  const data = await postGateway<any>('/state/entity/details', { addresses: [address] }, 'token-entity');
+  return data?.items?.[0] ?? null;
 }
 
 async function ociSwapToken(address: string): Promise<any | null> {

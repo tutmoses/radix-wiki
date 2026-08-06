@@ -79,3 +79,6 @@ Thumbs.db
 data/tweet-queue.json
 .claude/worktrees/trusting-newton/
 tsconfig.tsbuildinfo
+.repos/radix-web3.js
+.repos/radixdlt-scrypto
+.repos

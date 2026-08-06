@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, memo, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, memo, useMemo, useCallback, Fragment } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, FileText, User, Copy, Check, AlertTriangle, Megaphone, CalendarClock, type LucideIcon } from 'lucide-react';
@@ -14,7 +14,7 @@ import { usePages, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiPage, PageMetadata } from '@/types';
-import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock, StoreBlock, FooterBlock, StatsBlock, TestimonialBlock, LinkGridBlock, TipJarBlock, ReferencesBlock, BannerBlock, BannerVariant } from '@/types/blocks';
+import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock, LinkGridBlock, TipJarBlock, ReferencesBlock, BannerBlock, BannerVariant } from '@/types/blocks';
 import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
 import { TokenChart } from '@/components/charts/TokenChart';
 import { formatPriceSubscript } from '@/components/charts/format';
@@ -146,29 +146,33 @@ function RssFeedBlockView({ block }: { block: RssFeedBlock }) {
   const { data, isLoading } = useFetch<RssFeedItem[]>(preResolved ? null : block.url, { transform: d => d.items || [] });
   const items = preResolved || data || [];
 
-  if (!preResolved && isLoading) return <div className="rss-feed-scroll"><div className="stack-sm">{Array.from({ length: 3 }, (_, i) => <div key={i} className="h-[280px] skeleton rounded-md" />)}</div></div>;
+  if (!preResolved && isLoading) return <div className="rss-feed"><div className="rss-feed-scroll"><div className="stack-sm">{Array.from({ length: 3 }, (_, i) => <div key={i} className="h-[280px] skeleton rounded-md" />)}</div></div></div>;
   if (!items.length) return <p className="text-text-muted">No feed items found.</p>;
 
+  // Wrapper is the fill target: beside a taller sibling column it stretches, and the
+  // absolutely-positioned scroller inside keeps the feed's own length out of the layout.
   return (
-    <div className="rss-feed-scroll">
-      <div className="stack-sm">
-        {items.slice(0, block.limit || 15).map((item, i) => (
-          <div key={i} className="rss-card">
-            {item.image && (
-              <div className="rss-card-image">
-                <Image src={item.image} alt={item.title} fill className="object-cover" unoptimized />
+    <div className="rss-feed">
+      <div className="rss-feed-scroll">
+        <div className="stack-sm">
+          {items.slice(0, block.limit || 15).map((item, i) => (
+            <div key={i} className="rss-card">
+              {item.image && (
+                <div className="rss-card-image">
+                  <Image src={item.image} alt={item.title} fill className="object-cover" unoptimized />
+                </div>
+              )}
+              <div className="rss-card-body">
+                <div className="rss-card-title"><a href={item.link} target="_blank" rel="noopener">{item.title}</a></div>
+                <div className="rss-card-meta">
+                  <span className="rss-card-source">{item.source}</span>
+                  {item.date && <>{' · '}{new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</>}
+                </div>
+                {item.description && <div className="rss-card-desc">{item.description}...</div>}
               </div>
-            )}
-            <div className="rss-card-body">
-              <div className="rss-card-title"><a href={item.link} target="_blank" rel="noopener">{item.title}</a></div>
-              <div className="rss-card-meta">
-                <span className="rss-card-source">{item.source}</span>
-                {item.date && <>{' · '}{new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</>}
-              </div>
-              {item.description && <div className="rss-card-desc">{item.description}...</div>}
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -198,7 +202,7 @@ function ColumnsBlockView({ block }: { block: ColumnsBlock }) {
     <div className={cn('columns-layout', gapClass, alignClass)}>
       {block.columns.map(col => (
         <div key={col.id} className="column-view">
-          {(col.blocks || []).map(bl => <div key={bl.id}>{renderBlockView(bl)}</div>)}
+          {(col.blocks || []).map(bl => <Fragment key={bl.id}>{renderBlockView(bl)}</Fragment>)}
         </div>
       ))}
     </div>
@@ -242,13 +246,11 @@ function getResourceAddressEntries(metadata: PageMetadata, tagPath: string): { k
   return keys.filter(k => k.type === 'resource_address' && metadata[k.key]?.trim()).map(k => ({ key: k.key, label: k.label, value: metadata[k.key]! }));
 }
 
-export interface InfoboxPageInfo {
-  author?: { displayName?: string | null; radixAddress: string; avatarUrl?: string | null } | null;
-  updatedAt: string | Date;
-  createdAt: string | Date;
-  version?: string;
-  revisionCount?: number;
-  lastVerifiedAt?: string | Date | null;
+/** Whether the infobox aside would render anything — used to skip the empty bordered card. */
+export function infoboxHasContent(block: InfoboxBlock | null, metadata?: PageMetadata | null, tagPath?: string): boolean {
+  if (block?.blocks?.length) return true;
+  if (!metadata || !tagPath) return false;
+  return getResourceAddressEntries(metadata, tagPath).length > 0 || buildMetadataBlock(metadata, tagPath) !== null;
 }
 
 export function InfoboxSidebar({ block, metadata, tagPath }: { block: InfoboxBlock; metadata?: PageMetadata | null; tagPath?: string }) {
@@ -319,72 +321,6 @@ const ContentBlockView = memo(function ContentBlockView({ html }: { html: string
   return processedHtml.trim() ? <div ref={ref} className="prose-content" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: processedHtml }} /> : null;
 });
 
-function StoreBlockView({ block }: { block: StoreBlock }) {
-  const cols = block.columns || 3;
-  return (
-    <div className="product-grid" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
-      {Array.from({ length: cols }, (_, i) => (
-        <div key={i} className="product-card">
-          <div className="product-card-image center"><span className="text-text-muted text-small">Product {i + 1}</span></div>
-          <div className="product-card-body">
-            <span className="product-card-title">Product {i + 1}</span>
-            {block.showPrice && <span className="product-card-price">0 XRD</span>}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function FooterBlockView({ block }: { block: FooterBlock }) {
-  return (
-    <div className="footer-block">
-      {block.text ? <p className="text-small">{block.text}</p> : <p className="text-small text-text-muted">Site Footer</p>}
-      {block.showLinks && (
-        <div className="flex items-center gap-3 mt-2">
-          <span className="text-small text-text-muted">Privacy</span>
-          <span className="text-small text-text-muted">Terms</span>
-          <span className="text-small text-text-muted">Contact</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function StatsBlockView({ block }: { block: StatsBlock }) {
-  const cols = block.columns || 3;
-  return (
-    <div className="stats-grid" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
-      {(block.items || []).map(item => (
-        <div key={item.id} className="stat-card">
-          <span className="stat-value">{item.value}</span>
-          <span className="stat-label">{item.label}</span>
-          {item.suffix && <span className="stat-suffix">{item.suffix}</span>}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function TestimonialBlockView({ block }: { block: TestimonialBlock }) {
-  return (
-    <div className="testimonial-block">
-      <blockquote className="testimonial-quote">&ldquo;{block.quote}&rdquo;</blockquote>
-      <div className="testimonial-author">
-        {block.avatarUrl ? (
-          <Image src={block.avatarUrl} alt={block.author} width={40} height={40} className="testimonial-avatar" />
-        ) : (
-          <div className="testimonial-avatar-placeholder" />
-        )}
-        <div>
-          <div className="testimonial-name">{block.author}</div>
-          {block.role && <div className="testimonial-role">{block.role}</div>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function LinkGridBlockView({ block }: { block: LinkGridBlock }) {
   return (
     <div className="link-grid">
@@ -409,19 +345,23 @@ function LinkGridBlockView({ block }: { block: LinkGridBlock }) {
 const RADIX_ACCOUNT_RE = /^account_(rdx|tdx_2_)1[a-z0-9]{50,}$/;
 
 function TipJarBlockView({ block }: { block: TipJarBlock }) {
-  const [qrSvg, setQrSvg] = useState<string | null>(null);
+  const [renderedQr, setRenderedQr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const address = (block.address || '').trim();
   const isValid = RADIX_ACCOUNT_RE.test(address);
 
   useEffect(() => {
-    if (!isValid) { setQrSvg(null); return; }
+    if (!isValid) return;
     let active = true;
     QRCode.toString(address, { type: 'svg', errorCorrectionLevel: 'M', margin: 1, color: { dark: '#1a1d29', light: '#ffffff' } })
-      .then(svg => { if (active) setQrSvg(svg); })
-      .catch(() => { if (active) setQrSvg(null); });
+      .then(svg => { if (active) setRenderedQr(svg); })
+      .catch(() => { if (active) setRenderedQr(null); });
     return () => { active = false; };
   }, [address, isValid]);
+
+  // Masked at render instead of cleared from the effect, so an invalid address
+  // never shows the previous address's code.
+  const qrSvg = isValid ? renderedQr : null;
 
   const copy = useCallback(() => {
     navigator.clipboard.writeText(address).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
@@ -496,10 +436,6 @@ function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
     case 'codeTabs': return <CodeTabsBlockView block={block} />;
     case 'columns': return <ColumnsBlockView block={block} />;
     case 'infobox': return <InfoboxBlockView block={block} />;
-    case 'store': return <StoreBlockView block={block} />;
-    case 'footer': return <FooterBlockView block={block} />;
-    case 'stats': return <StatsBlockView block={block} />;
-    case 'testimonial': return <TestimonialBlockView block={block} />;
     case 'linkGrid': return <LinkGridBlockView block={block} />;
     case 'tipJar': return <TipJarBlockView block={block} />;
     case 'references': return <ReferencesBlockView block={block} />;

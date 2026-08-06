@@ -135,9 +135,21 @@ export async function verifySignedChallenge(
       return { isValid: false, error: 'Invalid or expired challenge' };
     }
 
+    // Guide: guide-wallet-rola.md §"Verify a persona proof" (lines 41,149-153) —
+    // account proofs must use type: 'account', persona (identity) proofs type: 'persona'.
+    const { address } = signedChallenge;
+    const type = address.startsWith('account_')
+      ? 'account'
+      : address.startsWith('identity_')
+        ? 'persona'
+        : null;
+    if (!type) {
+      throw new Error(`ROLA: unrecognized address prefix (expected account_* or identity_*): ${address}`);
+    }
+
     const result = await rola.verifySignedChallenge({
       ...signedChallenge,
-      type: 'account',
+      type,
     });
 
     if (result.isErr()) {

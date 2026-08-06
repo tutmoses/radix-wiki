@@ -58,8 +58,25 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       const sort = searchParams.get('sort') || 'updatedAt';
 
       const where: Prisma.PageWhereInput = {};
-      if (search) where.title = { contains: search, mode: 'insensitive' };
       if (tagPath) where.tagPath = tagPath;
+
+      if (search) {
+        // Title-prefix matches rank ahead of mere substring matches; the homepage
+        // row (empty slug) is chrome, not content. Split queries keep pagination exact.
+        where.slug = { not: '' };
+        const prefix: Prisma.PageWhereInput = { ...where, title: { startsWith: search, mode: 'insensitive' } };
+        const rest: Prisma.PageWhereInput = { ...where, title: { contains: search, mode: 'insensitive' }, NOT: { title: { startsWith: search, mode: 'insensitive' } } };
+        const [prefixTotal, restTotal] = await Promise.all([prisma.page.count({ where: prefix }), prisma.page.count({ where: rest })]);
+        const skip = (page - 1) * pageSize;
+        const prefixSkip = Math.min(skip, prefixTotal);
+        const prefixTake = Math.max(0, Math.min(pageSize, prefixTotal - prefixSkip));
+        const restTake = pageSize - prefixTake;
+        const [prefixPages, restPages] = await Promise.all([
+          prefixTake ? prisma.page.findMany({ where: prefix, select: PAGE_LIST_SELECT, orderBy: { title: 'asc' }, skip: prefixSkip, take: prefixTake }) : [],
+          restTake > 0 ? prisma.page.findMany({ where: rest, select: PAGE_LIST_SELECT, orderBy: { updatedAt: 'desc' }, skip: Math.max(0, skip - prefixTotal), take: restTake }) : [],
+        ]);
+        return cachedJson(paginatedResponse([...prefixPages, ...restPages], prefixTotal + restTotal, page, pageSize));
+      }
 
       const orderBy = sort === 'title' ? { title: 'asc' as const } : { updatedAt: 'desc' as const };
 

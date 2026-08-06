@@ -32,7 +32,9 @@ const InfoboxEditor = dynamic(() => import('@/components/BlockEditor').then(m =>
 function RichInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  // Written after render, not during: a ref mutated mid-render can tear under
+  // concurrent rendering. Callers only read it from events, which run later.
+  useEffect(() => { onChangeRef.current = onChange; });
 
   useEffect(() => {
     if (ref.current && ref.current.innerHTML !== value) ref.current.innerHTML = value || '';
@@ -84,12 +86,16 @@ function UserPicker({ value, onChange }: { value: string; onChange: (v: string) 
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (query.length < 2) { setResults([]); return; }
+    if (query.length < 2) return;
     const controller = new AbortController();
     fetch(`/api/users/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
       .then(r => r.json()).then(setResults).catch(() => {});
     return () => controller.abort();
   }, [query]);
+
+  // Derived rather than cleared from the effect: a short query has no results by
+  // definition, so there is nothing to synchronise.
+  const visibleResults = query.length < 2 ? [] : results;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
@@ -105,9 +111,9 @@ function UserPicker({ value, onChange }: { value: string; onChange: (v: string) 
         onFocus={() => setOpen(true)}
         placeholder="Search users..."
       />
-      {open && results.length > 0 && (
+      {open && visibleResults.length > 0 && (
         <div className="user-picker-dropdown">
-          {results.map(u => (
+          {visibleResults.map(u => (
             <button key={u.id} className="user-picker-option" onClick={() => { const name = u.displayName || u.radixAddress.slice(0, 12) + '...'; setQuery(name); onChange(JSON.stringify({ id: u.id, name, address: u.radixAddress })); setOpen(false); }}>
               <span className="font-medium">{u.displayName || 'Anonymous'}</span>
               <span className="text-text-muted text-xs">{u.radixAddress.slice(0, 12)}...</span>
@@ -119,18 +125,29 @@ function UserPicker({ value, onChange }: { value: string; onChange: (v: string) 
   );
 }
 
-function MetadataFields({ metadataKeys, metadata, onChange }: { metadataKeys: MetadataKeyDefinition[]; metadata: PageMetadata; onChange: (metadata: PageMetadata) => void }) {
+function MetadataFields({ metadataKeys, metadata, onChange, invalidKeys = [] }: { metadataKeys: MetadataKeyDefinition[]; metadata: PageMetadata; onChange: (metadata: PageMetadata) => void; invalidKeys?: string[] }) {
+  // Required or already-populated fields stay visible; the rest sit behind one disclosure.
+  const [showAll, setShowAll] = useState(false);
   if (metadataKeys.length === 0) return null;
 
   const updateField = (key: string, value: string) => {
     onChange({ ...metadata, [key]: value });
   };
 
+  const primary = metadataKeys.filter(k => k.required || metadata[k.key]?.trim());
+  const hiddenCount = metadataKeys.length - primary.length;
+  const visible = showAll ? metadataKeys : primary;
+
   return (
     <div className="metadata-panel">
-      <h4 className="text-small font-medium text-text-muted m-0!">Page Metadata</h4>
+      <div className="spread">
+        <h4 className="text-small font-medium text-text-muted m-0!">Page Metadata</h4>
+        {!showAll && hiddenCount > 0 && (
+          <button type="button" className="link text-small" onClick={() => setShowAll(true)}>More fields ({hiddenCount})</button>
+        )}
+      </div>
       <div className="metadata-grid">
-        {metadataKeys.map(({ key, label, type, required, options }) => (
+        {visible.map(({ key, label, type, required, options }) => (
           <div key={key} className="stack-xs">
             <label className="text-small font-medium">
               {label}{required && <span className="text-error ml-1">*</span>}
@@ -184,6 +201,7 @@ function MetadataFields({ metadataKeys, metadata, onChange }: { metadataKeys: Me
                 placeholder={label}
               />
             )}
+            {invalidKeys.includes(key) && !metadata[key]?.trim() && <span className="text-error text-xs">Required</span>}
           </div>
         ))}
       </div>
@@ -203,7 +221,7 @@ function EditorWhitelist({ editors, onAdd, onRemove }: {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (query.length < 2) { setResults([]); return; }
+    if (query.length < 2) return;
     const controller = new AbortController();
     fetch(`/api/users/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
       .then(r => r.json())
@@ -212,6 +230,10 @@ function EditorWhitelist({ editors, onAdd, onRemove }: {
       .catch(() => {});
     return () => controller.abort();
   }, [query, editors]);
+
+  // Derived rather than cleared from the effect: a short query has no results by
+  // definition, so there is nothing to synchronise.
+  const visibleResults = query.length < 2 ? [] : results;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
@@ -239,9 +261,9 @@ function EditorWhitelist({ editors, onAdd, onRemove }: {
           onFocus={() => setOpen(true)}
           placeholder="Search users to add..."
         />
-        {open && results.length > 0 && (
+        {open && visibleResults.length > 0 && (
           <div className="user-picker-dropdown">
-            {results.map(u => (
+            {visibleResults.map(u => (
               <button key={u.id} className="user-picker-option" onClick={() => { onAdd(u); setQuery(''); setOpen(false); }}>
                 <span className="font-medium">{u.displayName || 'Anonymous'}</span>
                 <span className="text-text-muted text-xs">{u.radixAddress.slice(0, 12)}...</span>
@@ -269,8 +291,22 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const [editors, setEditors] = useState<{ id: string; displayName: string | null; radixAddress: string }[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [missingKeys, setMissingKeys] = useState<string[]>([]);
+  const [revisionMessage, setRevisionMessage] = useState('');
+  const [gate, setGate] = useState<{ allowed: boolean; balance?: number; required?: number; error?: string } | null>(null);
   const isAuthor = user && page?.authorId === user.id;
   const metadataKeys = getMetadataKeys(tagPath.split('/'));
+
+  // State the XRD gate before any writing happens, not as a 403 after save.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/auth/gate?type=${isCreating ? 'create' : 'edit'}&tagPath=${encodeURIComponent(tagPath)}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (!cancelled && d) setGate(d); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isCreating, tagPath]);
 
   useEffect(() => {
     if (page) {
@@ -298,27 +334,31 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   }, [page, tagPath, slug]);
 
   const save = async () => {
-    if (!title.trim()) { alert('Title is required'); return; }
-    const requiredKeys = metadataKeys.filter(k => k.required);
-    const missingKeys = requiredKeys.filter(k => !metadata[k.key]?.trim());
-    if (missingKeys.length > 0) {
-      alert(`Missing required metadata: ${missingKeys.map(k => k.label).join(', ')}`);
+    if (!title.trim()) { setSaveError('Title is required.'); return; }
+    const missing = metadataKeys.filter(k => k.required && !metadata[k.key]?.trim());
+    if (missing.length > 0) {
+      setMissingKeys(missing.map(k => k.key));
+      setSaveError(`Missing required metadata: ${missing.map(k => k.label).join(', ')}.`);
       return;
     }
+    setMissingKeys([]);
+    setSaveError(null);
     setIsSaving(true);
     try {
       const exists = page || (await fetch(`/api/wiki/${tagPath}/${slug}`).then(r => r.ok));
       const method = exists ? 'PUT' : 'POST';
       const endpoint = exists ? `/api/wiki/${tagPath}/${slug}` : '/api/wiki';
       const newSlug = slugify(editSlug);
-      const body = exists ? { title, content, bannerImage, metadata, newSlug, editorIds } : { title, content, bannerImage, metadata, tagPath, slug: newSlug || slug };
+      const body = exists
+        ? { title, content, bannerImage, metadata, newSlug, editorIds, revisionMessage: revisionMessage.trim() || undefined }
+        : { title, content, bannerImage, metadata, tagPath, slug: newSlug || slug };
       const res = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
       if (res.ok) {
         if (data.isFirstContribution) useStore.getState().showToast('Your first contribution! Welcome to the wiki.');
         window.location.href = `/${data.tagPath}/${data.slug}`;
-      } else { alert(data.error || 'Failed to save'); setIsSaving(false); }
-    } catch { alert('Failed to save'); setIsSaving(false); }
+      } else { setSaveError(data.error || 'Failed to save.'); setIsSaving(false); }
+    } catch { setSaveError('Failed to save.'); setIsSaving(false); }
   };
 
   const handleDelete = async () => {
@@ -337,10 +377,10 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   }
 
   if (page && isLockedPage(page.tagPath, page.slug)) {
-    return <StatusCard status="notAuthorized" backHref={viewPath} />;
+    return <StatusCard status="locked" backHref={viewPath} />;
   }
 
-  const canSave = isCreating ? title.trim() : true;
+  const canSave = (isCreating ? !!title.trim() : true) && (gate ? gate.allowed : true);
   const backHref = isCreating ? `/${tagPath}` : viewPath;
   const saveLabel = isCreating ? (isSaving ? 'Creating...' : 'Create Page') : (isSaving ? 'Saving...' : 'Save Changes');
 
@@ -357,16 +397,24 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
           <Link href={backHref} className="row link-muted"><ArrowLeft size={16} /><span>{isCreating ? 'Back to Category' : 'Back to Page'}</span></Link>
           <Button onClick={save} disabled={isSaving || !canSave} size="sm"><Save size={16} />{saveLabel}</Button>
         </div>
-        <div data-callout="info"><p>{isCreating ? 'Creating a new page at' : 'Editing the page at'} <code>/{tagPath}/{slug}</code> requires holding <strong>{getXrdRequired(isCreating ? 'create' : 'edit', tagPath).toLocaleString()} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
+        {gate && !gate.allowed ? (
+          <div data-callout="warning"><p>{gate.error}</p></div>
+        ) : gate === null ? (
+          <div data-callout="info"><p>{isCreating ? 'Creating a new page at' : 'Editing the page at'} <code>/{tagPath}/{slug}</code> requires holding <strong>{getXrdRequired(isCreating ? 'create' : 'edit', tagPath).toLocaleString()} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
+        ) : null}
+        {saveError && <div data-callout="error"><p>{saveError}</p></div>}
         <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
         <div className="slug-editor">
           <Link2 size={14} />
           <span>/{tagPath}/</span>
           <input type="text" value={editSlug} onChange={e => setEditSlug(e.target.value.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-'))} onBlur={() => setEditSlug(slugify(editSlug))} placeholder="page-slug" />
         </div>
+        {!isCreating && (
+          <Input value={revisionMessage} onChange={e => setRevisionMessage(e.target.value)} placeholder="Edit summary — what changed and why (optional)" maxLength={200} />
+        )}
       </header>
       <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
-      <MetadataFields metadataKeys={metadataKeys} metadata={metadata} onChange={setMetadata} />
+      <MetadataFields metadataKeys={metadataKeys} metadata={metadata} onChange={setMetadata} invalidKeys={missingKeys} />
       {isAuthor && isAuthorOnlyPath(tagPath) && !isCreating && (
         <EditorWhitelist
           editors={editors}

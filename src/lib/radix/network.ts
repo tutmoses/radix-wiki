@@ -2,7 +2,8 @@
 
 import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
-import { getGatewayUrl, RADIX_CONFIG, XRD_RESOURCE } from './config';
+import { RADIX_CONFIG, XRD_RESOURCE } from './config';
+import { postGateway } from './gateway';
 import { getValidators } from './validators';
 
 export interface NetworkStats {
@@ -16,49 +17,14 @@ export interface NetworkStats {
   lastUpdated: string;
 }
 
-async function gatewayPost<T>(path: string, body: Record<string, unknown>, label: string): Promise<T | null> {
-  try {
-    const res = await fetch(`${getGatewayUrl(RADIX_CONFIG.networkId)}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      cache: 'no-store',
-    });
-    if (!res.ok) {
-      console.error(`[${label}] Gateway ${res.status}`);
-      return null;
-    }
-    return await res.json() as T;
-  } catch (err) {
-    console.error(`[${label}] Gateway error`, err);
-    return null;
-  }
-}
-
-async function gatewayGet<T>(path: string, label: string): Promise<T | null> {
-  try {
-    const res = await fetch(`${getGatewayUrl(RADIX_CONFIG.networkId)}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-      cache: 'no-store',
-    });
-    if (!res.ok) return null;
-    return await res.json() as T;
-  } catch (err) {
-    console.error(`[${label}] error`, err);
-    return null;
-  }
-}
-
 const _getNetworkStats = unstable_cache(
   async (): Promise<NetworkStats> => {
     const xrdAddress = XRD_RESOURCE[RADIX_CONFIG.networkId] ?? XRD_RESOURCE[1]!;
 
     const [validators, status, xrdEntity] = await Promise.all([
       getValidators(),
-      gatewayGet<any>('/status/gateway-status', 'gateway-status'),
-      gatewayPost<any>('/state/entity/details', { addresses: [xrdAddress] }, 'xrd-entity'),
+      postGateway<any>('/status/gateway-status', {}, 'gateway-status'),
+      postGateway<any>('/state/entity/details', { addresses: [xrdAddress] }, 'xrd-entity'),
     ]);
 
     const totalStake = validators.reduce((sum, v) => sum + v.totalStake, 0);

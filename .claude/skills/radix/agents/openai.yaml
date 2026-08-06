@@ -1,0 +1,4 @@
+interface:
+  display_name: "Radix"
+  short_description: "Build Radix code with verified local guidance"
+  default_prompt: "Use $radix to build or debug radix-web3.js packages, Effect services, testing, error diagnostics, dependencies/supply chain, TypeScript tooling, configuration, network/address handling, rdx CLI, Radix CLIs, tx-tool, Rust transaction crate, Radix Engine Toolkit, x402, Gateway, staking/validators, wallet/ROLA, accounts, account lockers, access controllers, access rules, role assignment, transaction manifests, receipts/events, costing/fees, royalties, resources/vaults, metadata, pools/pool units, components/packages, subintents, SBOR, or Scrypto."

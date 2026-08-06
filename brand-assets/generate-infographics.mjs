@@ -5,7 +5,7 @@ const { chromium } = pw;
 const REPO = '/Users/libertant/Desktop/GitHub/radix-wiki';
 
 // ============================ brand ========================================
-// Brand-parameterized toolkit (mirrors caper/brand-assets/generate-infographics.mjs —
+// Brand-parameterized toolkit (mirrors caper/brand-assets/generate-infographics.mjs –
 // same kit, radix.wiki's tokens). The color KEYS are shared vocabulary:
 // getaway = primary accent, jupiter = secondary/warn, neutral = structure.
 const LOGO_URI = fs.readFileSync(`${REPO}/brand-assets/.logo-data-uri.txt`, 'utf8').trim();
@@ -100,11 +100,11 @@ function frame(W, H, title, tag, note, body) {
 // cerberus-consensus-protocol, scrypto-programming-language).
 function radixEngine() {
   const W = 920, H = 650, L = 48, R = W - L, w = R - L;
-  let b = paras(L, 150, 'The Radix Engine is the execution environment for every Scrypto smart contract — purpose-built for DeFi, where tokens and NFTs are native assets rather than balances in a mapping.', 116, { size: 14, lh: 21, fill: C.text2 });
+  let b = paras(L, 150, 'The Radix Engine is the execution environment for every Scrypto smart contract – purpose-built for DeFi, where tokens and NFTs are native assets rather than balances in a mapping.', 116, { size: 14, lh: 21, fill: C.text2 });
   b += sectionLabel(L, 206, 'FOUR LAYERS, TOP TO BOTTOM');
   const layers = [
     { n: 1, name: 'Application', tag: 'topmost', desc: 'Your Scrypto blueprints, packages, and components execute here.' },
-    { n: 2, name: 'System', tag: '', desc: 'Objects, the resource model, and modules — Metadata · Royalty · Role Assignment.' },
+    { n: 2, name: 'System', tag: '', desc: 'Objects, the resource model, and modules – Metadata · Royalty · Role Assignment.' },
     { n: 3, name: 'VM', tag: '', desc: 'Runs blueprint code in two VMs: Scrypto (WebAssembly) and Native.' },
     { n: 4, name: 'Kernel', tag: 'lowest', desc: 'Substates, actors, ownership transfer, and execution costing.' },
   ];
@@ -124,7 +124,7 @@ function radixEngine() {
   const cy = kb + 26, ch = 60;
   b += card(L, cy, w, ch, true);
   b += t(L + 20, cy + 27, 'Cerberus consensus', { size: 16, w: 700, fill: C.getaway });
-  b += t(L + 20, cy + 47, 'Braided BFT — reaches agreement across only the shards each transaction touches.', { size: 13, w: 400, fill: C.text2 });
+  b += t(L + 20, cy + 47, 'Braided BFT – reaches agreement across only the shards each transaction touches.', { size: 13, w: 400, fill: C.text2 });
   return { W, H, title: 'The Radix Engine', tag: 'EXECUTION STACK', note: 'Written in Scrypto (Rust) · asset-oriented · Scrypto VM + Native VM.', body: b };
 }
 
@@ -161,7 +161,7 @@ function node(x, y, w, h, o) {
 
 function radixOrgChart() {
   const W = 920, H = 716, L = 48, R = W - L;
-  let b = paras(L, 146, 'How Radix is organized: a UK not-for-profit foundation and its subsidiaries build and steward the network — while governance is now handing over to a community-owned DAO.', 118, { size: 14, lh: 20, fill: C.text2 });
+  let b = paras(L, 146, 'How Radix is organized: a UK not-for-profit foundation and its subsidiaries build and steward the network – while governance is now handing over to a community-owned DAO.', 118, { size: 14, lh: 20, fill: C.text2 });
 
   // --- Section A: the Foundation group -------------------------------------
   b += sectionLabel(L, 198, 'THE FOUNDATION GROUP');
@@ -210,7 +210,7 @@ function radixOrgChart() {
   b += line(L, 462, R, 462, C.hair, { w: 0.5 });
 
   // --- Section B: governance in transition ---------------------------------
-  b += sectionLabel(L, 488, 'GOVERNANCE IN TRANSITION — 2026');
+  b += sectionLabel(L, 488, 'GOVERNANCE IN TRANSITION – 2026');
   const flY = 506, flH = 92, aGap = 58, flW = (R - L - 2 * aGap) / 3; // 236
   const fx = [0, 1, 2].map((i) => L + i * (flW + aGap)); // 48, 342, 636
   const fc = fx.map((x) => x + flW / 2); // 166, 460, 754
@@ -236,7 +236,7 @@ function radixOrgChart() {
   b += card(L, commY, R - L, commH);
   b += `<rect x="${L}" y="${commY}" width="3" height="${commH}" fill="${C.xrd}"/>`;
   b += t(L + 16, commY + 18, 'COMMUNITY', { size: 10, w: 700, fill: C.xrd, ls: '0.1em' });
-  b += t(L + 16, commY + 34, 'XRD holders elect the RAC and vote on proposals — 1 XRD = 1 vote, non-custodial balance snapshot.', { size: 12, w: 400, fill: C.text2 });
+  b += t(L + 16, commY + 34, 'XRD holders elect the RAC and vote on proposals – 1 XRD = 1 vote, non-custodial balance snapshot.', { size: 12, w: 400, fill: C.text2 });
   // up-arrow: community elects RAC
   b += line(fc[1], commY, fc[1], flY + flH, C.xrd, { w: 1.4 }) + triUp(fc[1], flY + flH, C.xrd);
   b += t(fc[1] + 10, commY - 6, 'elects', { size: 9.5, w: 700, fill: C.muted, anchor: 'start' });
@@ -245,7 +245,7 @@ function radixOrgChart() {
     W, H,
     title: 'Radix Organizational Structure',
     tag: 'ENTITIES & GOVERNANCE',
-    note: 'Grounded in radix.wiki — Radix Foundation & RAC pages · the 2026 Foundation-to-DAO transition.',
+    note: 'Grounded in radix.wiki – Radix Foundation & RAC pages · the 2026 Foundation-to-DAO transition.',
     body: b,
   };
 }

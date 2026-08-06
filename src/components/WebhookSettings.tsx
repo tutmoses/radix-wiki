@@ -97,8 +97,15 @@ function TelegramSection() {
   }, []);
 
   useEffect(() => {
-    fetchState().then(() => setLoading(false));
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    let cancelled = false;
+    // Declared inside the effect, mirroring useFetch: the load owns its own
+    // cancellation rather than settling into a component that has unmounted.
+    const load = async () => {
+      await fetchState();
+      if (!cancelled) setLoading(false);
+    };
+    load();
+    return () => { cancelled = true; if (pollRef.current) clearInterval(pollRef.current); };
   }, [fetchState]);
 
   const handleConnect = async () => {
@@ -265,7 +272,12 @@ export function WebhookSettings() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchWebhooks(); }, [fetchWebhooks]);
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => { if (!cancelled) await fetchWebhooks(); };
+    load();
+    return () => { cancelled = true; };
+  }, [fetchWebhooks]);
 
   const toggleEvent = (event: string) => {
     setEvents(prev => prev.includes(event) ? prev.filter(e => e !== event) : [...prev, event]);

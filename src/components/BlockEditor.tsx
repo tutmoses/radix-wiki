@@ -34,11 +34,37 @@ async function uploadImage(file: File): Promise<string | null> {
 }
 
 // ========== RICH TEXT EDITOR ==========
-const TOOLBAR_BUTTONS: { key: string; icon: LucideIcon; active?: string | [string, Record<string, unknown>]; action: (e: Editor, upload: () => void) => void }[] = [
+function insertEmbed(e: Editor, url: string) {
+  const yt = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+  if (yt) { e.chain().focus().setYoutubeVideo({ src: url }).run(); return; }
+  const tw = url.match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/);
+  if (tw) { e.chain().focus().insertContent({ type: 'twitterEmbed', attrs: { tweetId: tw[1], url } }).run(); return; }
+  const mapSrc = toMapEmbedUrl(url);
+  if (mapSrc) { e.chain().focus().insertContent({ type: 'mapEmbed', attrs: { src: mapSrc, url } }).run(); return; }
+  if (/maps\.app\.goo\.gl|goo\.gl\/maps/.test(url)) {
+    e.chain().focus().insertContent({ type: 'mapEmbed', attrs: { src: 'about:blank', url } }).run();
+    resolveMapUrl(url).then(src => {
+      if (!src) return;
+      const { doc } = e.state;
+      doc.descendants((node, pos) => {
+        if (node.type.name === 'mapEmbed' && node.attrs.url === url && node.attrs.src === 'about:blank') {
+          e.chain().setNodeSelection(pos).updateAttributes('mapEmbed', { src }).run();
+          return false;
+        }
+      });
+    });
+    return;
+  }
+  e.chain().focus().insertContent({ type: 'iframe', attrs: { src: url } }).run();
+}
+
+type UrlPromptKind = 'link' | 'embed';
+
+const TOOLBAR_BUTTONS: { key: string; icon: LucideIcon; active?: string | [string, Record<string, unknown>]; action?: (e: Editor, upload: () => void) => void; prompt?: UrlPromptKind }[] = [
   { key: 'bold', icon: Bold, active: 'bold', action: e => e.chain().focus().toggleBold().run() },
   { key: 'italic', icon: Italic, active: 'italic', action: e => e.chain().focus().toggleItalic().run() },
   { key: 'code', icon: Code, active: 'code', action: e => e.chain().focus().toggleCode().run() },
-  { key: 'link', icon: Link2, active: 'link', action: e => { const url = window.prompt('URL'); if (url) e.chain().focus().setLink({ href: url }).run(); } },
+  { key: 'link', icon: Link2, active: 'link', prompt: 'link' },
   { key: 'h2', icon: Heading2, active: ['heading', { level: 2 }], action: e => e.chain().focus().toggleHeading({ level: 2 }).run() },
   { key: 'h3', icon: Heading3, active: ['heading', { level: 3 }], action: e => e.chain().focus().toggleHeading({ level: 3 }).run() },
   { key: 'h4', icon: Heading4, active: ['heading', { level: 4 }], action: e => e.chain().focus().toggleHeading({ level: 4 }).run() },
@@ -47,31 +73,7 @@ const TOOLBAR_BUTTONS: { key: string; icon: LucideIcon; active?: string | [strin
   { key: 'codeBlock', icon: Code, active: 'codeBlock', action: e => e.chain().focus().toggleCodeBlock().run() },
   { key: 'divider', icon: Minus, action: e => e.chain().focus().setHorizontalRule().run() },
   { key: 'upload', icon: Upload, action: (_, upload) => upload() },
-  { key: 'embed', icon: Globe, action: e => {
-    const url = window.prompt('Embed URL (YouTube, Twitter/X, Google/Apple Maps, or any iframe)');
-    if (!url) return;
-    const yt = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-    if (yt) { e.chain().focus().setYoutubeVideo({ src: url }).run(); return; }
-    const tw = url.match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/);
-    if (tw) { e.chain().focus().insertContent({ type: 'twitterEmbed', attrs: { tweetId: tw[1], url } }).run(); return; }
-    const mapSrc = toMapEmbedUrl(url);
-    if (mapSrc) { e.chain().focus().insertContent({ type: 'mapEmbed', attrs: { src: mapSrc, url } }).run(); return; }
-    if (/maps\.app\.goo\.gl|goo\.gl\/maps/.test(url)) {
-      e.chain().focus().insertContent({ type: 'mapEmbed', attrs: { src: 'about:blank', url } }).run();
-      resolveMapUrl(url).then(src => {
-        if (!src) return;
-        const { doc } = e.state;
-        doc.descendants((node, pos) => {
-          if (node.type.name === 'mapEmbed' && node.attrs.url === url && node.attrs.src === 'about:blank') {
-            e.chain().setNodeSelection(pos).updateAttributes('mapEmbed', { src }).run();
-            return false;
-          }
-        });
-      });
-      return;
-    }
-    e.chain().focus().insertContent({ type: 'iframe', attrs: { src: url } }).run();
-  }},
+  { key: 'embed', icon: Globe, prompt: 'embed' },
   { key: 'table', icon: TableIcon, active: 'table', action: e => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
   { key: 'tabs', icon: LayoutList, active: 'tabGroup', action: e => e.chain().focus().insertContent({ type: 'tabGroup', content: [{ type: 'tabItem', attrs: { title: 'Tab 1' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Content for tab 1' }] }] }, { type: 'tabItem', attrs: { title: 'Tab 2' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Content for tab 2' }] }] }] }).run() },
 ];
@@ -81,10 +83,14 @@ const TABLE_ACTIONS: [string, string, boolean?][] = [['addColumnAfter', '+Col'],
 function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [urlPrompt, setUrlPrompt] = useState<UrlPromptKind | null>(null);
+  const [urlValue, setUrlValue] = useState('');
   const initialValueRef = useRef(value);
   const onChangeRef = useRef(onChange);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  onChangeRef.current = onChange;
+  // Written after render, not during: a ref mutated mid-render can tear under
+  // concurrent rendering. Only read from events and timeouts, which run later.
+  useEffect(() => { onChangeRef.current = onChange; });
 
   const extensions = useMemo(() => [
     StarterKit.configure({ heading: { levels: [2, 3, 4] }, codeBlock: false }),
@@ -130,13 +136,24 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
 
   const isActive = (a?: string | [string, Record<string, unknown>]) => a ? (Array.isArray(a) ? editor?.isActive(a[0], a[1]) : editor?.isActive(a)) : false;
 
+  const applyUrl = () => {
+    const url = urlValue.trim();
+    if (editor && url && urlPrompt) {
+      if (urlPrompt === 'link') editor.chain().focus().setLink({ href: url }).run();
+      else insertEmbed(editor, url);
+    }
+    setUrlPrompt(null); setUrlValue('');
+  };
+
   return (
     <div className="stack-sm">
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" className="hidden" onChange={handleFileChange} />
       {editor && (
         <div className="toolbar">
-          {TOOLBAR_BUTTONS.map(({ key, icon: Icon, active, action }) => (
-            <button key={key} type="button" onClick={() => action(editor, () => fileInputRef.current?.click())} className={cn('toolbar-btn', isActive(active) && 'bg-accent text-text-inverted')} title={key}><Icon size={14} /></button>
+          {TOOLBAR_BUTTONS.map(({ key, icon: Icon, active, action, prompt }) => (
+            <button key={key} type="button"
+              onClick={() => prompt ? (setUrlPrompt(urlPrompt === prompt ? null : prompt), setUrlValue('')) : action?.(editor, () => fileInputRef.current?.click())}
+              className={cn('toolbar-btn', (isActive(active) || (!!prompt && urlPrompt === prompt)) && 'bg-accent text-text-inverted')} title={key}><Icon size={14} /></button>
           ))}
           {editor.isActive('table') && (
             <>
@@ -146,6 +163,22 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
               ))}
             </>
           )}
+        </div>
+      )}
+      {editor && urlPrompt && (
+        <div className="row">
+          <Input
+            autoFocus
+            value={urlValue}
+            onChange={e => setUrlValue(e.target.value)}
+            placeholder={urlPrompt === 'link' ? 'https://…' : 'YouTube, Twitter/X, Maps, or iframe URL'}
+            onKeyDown={e => {
+              if (e.key === 'Enter') { e.preventDefault(); applyUrl(); }
+              else if (e.key === 'Escape') { setUrlPrompt(null); setUrlValue(''); }
+            }}
+          />
+          <Button size="sm" onClick={applyUrl}>Insert</Button>
+          <Button size="sm" variant="ghost" onClick={() => { setUrlPrompt(null); setUrlValue(''); }}>Cancel</Button>
         </div>
       )}
       <div className={cn('tiptap-editor tiptap-field', isUploading && 'tiptap-field-disabled')}>
@@ -317,8 +350,12 @@ function useBlockOperations<T extends Block | AtomicBlock>(blocks: T[], setBlock
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const blocksRef = useRef(blocks);
   const setBlocksRef = useRef(setBlocks);
-  blocksRef.current = blocks;
-  setBlocksRef.current = setBlocks;
+  // Written after render, not during. The callbacks below read these only from
+  // event handlers, and React flushes pending effects before the next event.
+  useEffect(() => {
+    blocksRef.current = blocks;
+    setBlocksRef.current = setBlocks;
+  });
 
   return {
     selectedIndex, setSelectedIndex,
@@ -353,17 +390,21 @@ function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Colum
 const RADIX_ACCOUNT_RE = /^account_(rdx|tdx_2_)1[a-z0-9]{50,}$/;
 
 function TipJarBlockEdit({ block, onUpdate }: BlockProps<TipJarBlock>) {
-  const [qr, setQr] = useState<string | null>(null);
+  const [renderedQr, setRenderedQr] = useState<string | null>(null);
   const address = (block.address || '').trim();
   const isValid = RADIX_ACCOUNT_RE.test(address);
   useEffect(() => {
-    if (!isValid) { setQr(null); return; }
+    if (!isValid) return;
     let active = true;
     QRCode.toString(address, { type: 'svg', errorCorrectionLevel: 'M', margin: 1, color: { dark: '#1a1d29', light: '#ffffff' } })
-      .then(u => { if (active) setQr(u); })
-      .catch(() => { if (active) setQr(null); });
+      .then(u => { if (active) setRenderedQr(u); })
+      .catch(() => { if (active) setRenderedQr(null); });
     return () => { active = false; };
   }, [address, isValid]);
+
+  // Masked at render instead of cleared from the effect, so an invalid address
+  // never shows the previous address's code.
+  const qr = isValid ? renderedQr : null;
   return (
     <EditWrapper icon={QrCode} label="Tip Jar (QR)">
       <Input label="Heading" value={block.label || ''} onChange={e => onUpdate?.({ ...block, label: e.target.value })} placeholder="Tip the author ☕️" />

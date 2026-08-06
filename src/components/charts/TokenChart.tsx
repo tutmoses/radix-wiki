@@ -18,15 +18,15 @@ const TIMEFRAME_LABELS: Record<string, string> = { '24h': '24H', '7d': '7D', '30
 type ChartPoint = { time: number; value: number };
 
 function useChartData(resourceAddress?: string, timeframe: string = '7d') {
-  const [data, setData] = useState<ChartPoint[] | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const requestKey = resourceAddress ? `${resourceAddress}|${timeframe}` : null;
+  // One state value, tagged with the request it answers. "Loading" is then derived
+  // — the settled result not matching the request we want — instead of being
+  // flagged by a synchronous setState at the top of the effect.
+  const [settled, setSettled] = useState<{ key: string; data: ChartPoint[] | null; error: string | null } | null>(null);
 
   useEffect(() => {
-    if (!resourceAddress) return;
+    if (!resourceAddress || !requestKey) return;
     let cancelled = false;
-    setIsLoading(true);
-    setError(null);
 
     const cfg = TIMEFRAME_CONFIG[timeframe] ?? TIMEFRAME_CONFIG['7d']!;
     const now = Math.floor(Date.now() / 1000);
@@ -37,17 +37,17 @@ function useChartData(resourceAddress?: string, timeframe: string = '7d') {
       .then(r => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
       .then(json => {
         if (cancelled) return;
-        if (json.s !== 'ok' || !Array.isArray(json.t)) { setError('No chart data'); return; }
+        if (json.s !== 'ok' || !Array.isArray(json.t)) { setSettled({ key: requestKey, data: null, error: 'No chart data' }); return; }
         const points: ChartPoint[] = json.t.map((t: number, i: number) => ({ time: t, value: parseFloat(json.c[i]) || 0 }));
-        setData(points);
+        setSettled({ key: requestKey, data: points, error: null });
       })
-      .catch(e => { if (!cancelled) setError(e.message); })
-      .finally(() => { if (!cancelled) setIsLoading(false); });
+      .catch(e => { if (!cancelled) setSettled({ key: requestKey, data: null, error: e.message }); });
 
     return () => { cancelled = true; };
-  }, [resourceAddress, timeframe]);
+  }, [resourceAddress, timeframe, requestKey]);
 
-  return { data, isLoading, error };
+  const current = settled?.key === requestKey ? settled : null;
+  return { data: current?.data ?? null, isLoading: Boolean(requestKey) && !current, error: current?.error ?? null };
 }
 
 export function TokenChart({ resourceAddress, defaultTimeframe = '30d', height = 260 }: { resourceAddress: string; defaultTimeframe?: string; height?: number }) {

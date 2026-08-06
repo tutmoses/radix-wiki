@@ -48,8 +48,12 @@ const BLOCK_DEFAULTS: Record<BlockType, () => Omit<Block, 'id'>> = {
   banner: () => ({ type: 'banner', variant: 'stub' }),
 };
 
-export const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'banner', 'columns', 'recentPages', 'pageList', 'assetPrice', 'rssFeed', 'codeTabs', 'store', 'footer', 'stats', 'testimonial', 'linkGrid', 'tipJar', 'references'];
-export const ATOMIC_BLOCK_TYPES: readonly BlockType[] = ['content', 'banner', 'recentPages', 'pageList', 'assetPrice', 'rssFeed', 'codeTabs', 'store', 'footer', 'stats', 'testimonial', 'linkGrid', 'tipJar', 'references'];
+// store/footer/stats/testimonial exist in the shared block-type standard (miow
+// renders them) but no page or revision here uses them, so they are neither
+// insertable nor valid. codeTabs stays valid and renderable (one live tutorial
+// uses it) but has no editor UI, so it is not insertable either.
+export const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'banner', 'columns', 'recentPages', 'pageList', 'assetPrice', 'rssFeed', 'linkGrid', 'tipJar', 'references'];
+export const ATOMIC_BLOCK_TYPES: readonly BlockType[] = ['content', 'banner', 'recentPages', 'pageList', 'assetPrice', 'rssFeed', 'codeTabs', 'linkGrid', 'tipJar', 'references'];
 
 export const createBlock = (type: BlockType): Block => ({ id: crypto.randomUUID(), ...BLOCK_DEFAULTS[type]() } as Block);
 
@@ -91,14 +95,6 @@ function validateAtomicBlock(block: unknown): block is AtomicBlock {
       return typeof b.url === 'string';
     case 'codeTabs':
       return Array.isArray(b.tabs);
-    case 'store':
-      return typeof b.columns === 'number' && typeof b.showPrice === 'boolean';
-    case 'footer':
-      return true;
-    case 'stats':
-      return Array.isArray(b.items);
-    case 'testimonial':
-      return typeof b.quote === 'string' && typeof b.author === 'string';
     case 'tipJar':
       return typeof b.address === 'string';
     case 'banner':

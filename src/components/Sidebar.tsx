@@ -4,10 +4,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Trophy, BarChart3, ChevronRight, ChevronDown, ListTree } from 'lucide-react';
+import { Home, Trophy, BarChart3, ChevronRight, ChevronDown, ListTree, Wrench } from 'lucide-react';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { useStore, useIsMobile, usePagePath } from '@/hooks';
+import { useStore, useIsMobile, usePagePath, useAuth } from '@/hooks';
 import { getVisibleTags, type TagNode } from '@/lib/tags';
 
 function NavItem({ href, icon, label, isActive, onNavigate }: { href: string; icon: React.ReactNode; label: string; isActive?: boolean; onNavigate?: () => void }) {
@@ -23,12 +23,14 @@ function TagNavItem({ node, parentPath, pathname, depth, onNavigate }: { node: T
   const href = `/${currentPath}`;
   const isActive = pathname === href || pathname.startsWith(href + '/');
   const hasChildren = node.children && node.children.length > 0;
-  const [isExpanded, setIsExpanded] = useState(isActive);
+  // Derived from the route, so the tree follows navigation; a manual toggle overrides it.
+  const [manualToggle, setManualToggle] = useState<boolean | null>(null);
+  const isExpanded = manualToggle ?? isActive;
 
   return (
     <div style={{ paddingLeft: `${depth * 0.75}rem` }}>
       <div className="row">
-        {hasChildren && <button onClick={() => setIsExpanded(!isExpanded)} className="nav-indent">{isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button>}
+        {hasChildren && <button onClick={() => setManualToggle(!isExpanded)} className="nav-indent">{isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button>}
         <Link href={href} onClick={onNavigate} title={node.name} className={cn('nav-link', !hasChildren && 'nav-leaf', isActive && 'bg-accent-muted text-accent font-medium')}>{node.name}</Link>
       </div>
       {hasChildren && isExpanded && <div className="mt-1">{node.children!.map(child => <TagNavItem key={child.slug} node={child} parentPath={currentPath} pathname={pathname} depth={depth + 1} onNavigate={onNavigate} />)}</div>}
@@ -71,7 +73,6 @@ function TableOfContents() {
   // Scroll-spy: highlight the section currently under the top of the viewport.
   useEffect(() => {
     if (!headings.length) return;
-    setActiveId(prev => prev || headings[0]!.id);
     const order = new Map(headings.map((h, i) => [h.id, i]));
     const visible = new Set<string>();
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
@@ -100,6 +101,10 @@ function TableOfContents() {
 
   if (!headings.length) return null;
 
+  // Until the observer reports a section, the first heading is the current one.
+  // Derived rather than seeded from the effect, which would set state on mount.
+  const currentId = activeId || headings[0]?.id;
+
   return (
     <div className="stack-sm">
       <button onClick={() => setIsExpanded(!isExpanded)} className="toc-btn">
@@ -113,8 +118,8 @@ function TableOfContents() {
             <button
               key={i}
               onClick={() => { setActiveId(h.id); document.getElementById(h.id)?.scrollIntoView({ behavior: 'smooth' }); }}
-              className={cn('toc-item', activeId === h.id && 'toc-item-active')}
-              aria-current={activeId === h.id ? 'location' : undefined}
+              className={cn('toc-item', currentId === h.id && 'toc-item-active')}
+              aria-current={currentId === h.id ? 'location' : undefined}
               style={{ paddingLeft: `${(h.level - 1) * 0.75}rem` }}
             >
               {h.text}
@@ -131,6 +136,7 @@ export function Sidebar() {
   const sidebarOpen = useStore(s => s.sidebarOpen);
   const setSidebarOpen = useStore(s => s.setSidebarOpen);
   const isMobile = useIsMobile();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => setSidebarOpen(!isMobile), [isMobile, setSidebarOpen]);
   const closeMobile = useCallback(() => { if (isMobile) setSidebarOpen(false); }, [isMobile, setSidebarOpen]);
@@ -147,21 +153,23 @@ export function Sidebar() {
             <NavItem href="/" icon={<Home size={18} />} label="Home" isActive={pathname === '/'} onNavigate={closeMobile} />
             <NavItem href="/charts" icon={<BarChart3 size={18} />} label="Charts" isActive={pathname === '/charts' || pathname.startsWith('/charts/')} onNavigate={closeMobile} />
             <NavItem href="/leaderboard" icon={<Trophy size={18} />} label="Leaderboard" isActive={pathname === '/leaderboard'} onNavigate={closeMobile} />
+            {/* Editorial work queues — reader nav stays free of maintenance machinery. */}
+            {isAuthenticated && <NavItem href="/maintenance" icon={<Wrench size={18} />} label="Maintenance" isActive={pathname === '/maintenance'} onNavigate={closeMobile} />}
           </nav>
         </div>
 
-        {showToc && (
-          <div className="px-4 pb-4 border-b border-border-muted">
-            <TableOfContents />
-          </div>
-        )}
-
-        <div className="stack-sm p-4 flex-1">
+        <div className="stack-sm p-4">
           <span className="sidebar-label">Categories</span>
           <nav className="stack-sm">
             {visibleTags.map(node => <TagNavItem key={node.slug} node={node} parentPath="" pathname={pathname} depth={0} onNavigate={closeMobile} />)}
           </nav>
         </div>
+
+        {showToc && (
+          <div className="px-4 pb-4 border-t border-border-muted pt-4 flex-1">
+            <TableOfContents />
+          </div>
+        )}
       </div>
     </aside>
   );

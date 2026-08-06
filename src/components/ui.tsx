@@ -92,6 +92,7 @@ export function Spinner({ size = 'md', className }: { size?: 'sm' | 'md' | 'lg';
 const STATUS = {
   authRequired: { title: 'Authentication Required', message: 'Please connect your Radix wallet.' },
   notAuthorized: { title: 'Not Authorized', message: 'You can only edit your own pages in this category.' },
+  locked: { title: 'Page Locked', message: 'This page is locked and cannot be edited.' },
   error: { title: 'Error', message: 'Failed to load page' },
 } as const;
 

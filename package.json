@@ -8,7 +8,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build --turbopack",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio"
@@ -46,6 +46,7 @@
     "rehype-parse": "^9.0.1",
     "rehype-pretty-code": "^0.14.1",
     "rehype-stringify": "^10.0.1",
+    "sharp": "^0.34.5",
     "tailwind-merge": "^2.5.0",
     "unified": "^11.0.5",
     "zustand": "^5.0.0"

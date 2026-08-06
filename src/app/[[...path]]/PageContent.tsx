@@ -7,16 +7,16 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, ArrowRight, Save, Plus, Upload, X, Image as ImageIcon, ArrowDownAZ, CalendarPlus, RefreshCw, Clock, FileText, ShieldCheck } from 'lucide-react';
-import { BlockRenderer, findInfobox, InfoboxSidebar, type InfoboxPageInfo } from '@/components/BlockRenderer';
+import { ArrowLeft, ArrowRight, Save, Plus, Upload, X, Image as ImageIcon, ArrowDownAZ, CalendarPlus, RefreshCw } from 'lucide-react';
+import { BlockRenderer, findInfobox, infoboxHasContent, InfoboxSidebar } from '@/components/BlockRenderer';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { LinkPreview } from '@/components/LinkPreview';
-import { CiteThisPage } from '@/components/CiteThisPage';
 import { Badge, Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
-import { cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet, userProfileSlug } from '@/lib/utils';
+import { cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet, userProfileSlug, shortenAddress } from '@/lib/utils';
 import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder, type TagNode } from '@/lib/tags';
+import { categoryHref, toggleFilter, type Facet, type FacetFilters, type FacetValue } from '@/lib/taxonomy';
 import { createBlock } from '@/lib/block-utils';
 import { freshnessBanner } from '@/lib/freshness';
 import type { WikiPage, AdjacentPages } from '@/types';
@@ -75,27 +75,30 @@ function PageNav({ adjacent }: { adjacent: AdjacentPages }) {
   );
 }
 
-// ========== ARTICLE CATEGORIES (foot) ==========
-function ArticleCategories({ tagPath }: { tagPath: string }) {
-  const segments = tagPath.split('/').filter(Boolean);
-  if (!segments.length) return null;
-  const cats = segments.map((seg, i) => {
-    const path = segments.slice(0, i + 1);
-    const tag = findTagByPath(path);
-    return { href: `/${path.join('/')}`, name: tag?.name || seg.replace(/-/g, ' ') };
-  });
+// ========== PAGE META (foot line) ==========
+// The single home for page provenance — Wikipedia's "This page was last edited …" line.
+function PageMeta({ page }: { page: WikiPage }) {
+  const revisions = page._count?.revisions ?? 0;
   return (
-    <nav className="article-categories" aria-label="Categories">
-      <span className="article-categories-label">Categories:</span>
-      {cats.map(c => (
-        <Link key={c.href} href={c.href} className="badge badge-accent">{c.name}</Link>
-      ))}
-    </nav>
+    <div className="page-meta">
+      {page.author && (
+        <span className="row">
+          <UserAvatar radixAddress={page.author.radixAddress} avatarUrl={page.author.avatarUrl} size="sm" />
+          <span className="truncate">{page.author.displayName || shortenAddress(page.author.radixAddress)}</span>
+        </span>
+      )}
+      <span>Last updated {formatRelativeTime(page.updatedAt)}</span>
+      <span className="font-mono">v{page.version}</span>
+      <Link href={`/${page.tagPath}/${page.slug}/history`} className="link">
+        {revisions} revision{revisions === 1 ? '' : 's'}
+      </Link>
+      {page.lastVerifiedAt && <span>Verified {formatDate(page.lastVerifiedAt)}</span>}
+    </div>
   );
 }
 
 // ========== BANNER ==========
-export function Banner({ src, title, tagPath, editable, onUpload, onRemove, pageInfo, children }: { src?: string | null; title?: string; tagPath?: string; editable?: boolean; onUpload?: (url: string) => void; onRemove?: () => void; pageInfo?: InfoboxPageInfo | null; children?: ReactNode }) {
+export function Banner({ src, title, tagPath, editable, onUpload, onRemove, children }: { src?: string | null; title?: string; tagPath?: string; editable?: boolean; onUpload?: (url: string) => void; onRemove?: () => void; children?: ReactNode }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -114,41 +117,6 @@ export function Banner({ src, title, tagPath, editable, onUpload, onRemove, page
   };
 
   const FileInput = <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />;
-
-  const pageInfoEl = pageInfo ? (
-    <div className="banner-page-info">
-      {pageInfo.author && (
-        <div className="banner-info-row">
-          <UserAvatar radixAddress={pageInfo.author.radixAddress} avatarUrl={pageInfo.author.avatarUrl} size="sm" />
-          <span className="truncate">{pageInfo.author.displayName || pageInfo.author.radixAddress.slice(0, 16)}...</span>
-        </div>
-      )}
-      <div className="banner-info-row">
-        <Clock size={14} className="shrink-0 opacity-60" />
-        <span>Updated {formatRelativeTime(pageInfo.updatedAt)}</span>
-      </div>
-      <div className="banner-info-row">
-        <Clock size={14} className="shrink-0 opacity-60" />
-        <span>Created {formatDate(pageInfo.createdAt)}</span>
-      </div>
-      {(pageInfo.version || (pageInfo.revisionCount ?? 0) > 0) && (
-        <div className="banner-info-row">
-          <FileText size={14} className="shrink-0 opacity-60" />
-          <span>
-            {pageInfo.version && <span className="font-mono">v{pageInfo.version}</span>}
-            {pageInfo.version && (pageInfo.revisionCount ?? 0) > 0 && ' · '}
-            {(pageInfo.revisionCount ?? 0) > 0 && `${pageInfo.revisionCount} revisions`}
-          </span>
-        </div>
-      )}
-      {pageInfo.lastVerifiedAt && (
-        <div className="banner-info-row">
-          <ShieldCheck size={14} className="shrink-0 opacity-60" />
-          <span>Verified {formatDate(pageInfo.lastVerifiedAt)}</span>
-        </div>
-      )}
-    </div>
-  ) : null;
 
   if (editable && !src) {
     return (
@@ -174,12 +142,9 @@ export function Banner({ src, title, tagPath, editable, onUpload, onRemove, page
       ) : (
         <div className="banner-placeholder" />
       )}
-      {(children || pageInfoEl) && (
+      {children && (
         <div className="banner-overlay">
-          <div className="banner-overlay-inner">
-            <div className="banner-overlay-left">{children}</div>
-            {pageInfoEl}
-          </div>
+          <div className="banner-overlay-left">{children}</div>
         </div>
       )}
       {editable && (
@@ -200,31 +165,44 @@ const SORT_OPTIONS: { value: SortOrder; label: string; icon: typeof ArrowDownAZ 
   { value: 'recent', label: 'Updated', icon: RefreshCw },
 ];
 
-export function SortToggle({ sort, tagPath }: { sort: SortOrder; tagPath: string }) {
+export function SortToggle({ sort, tagPath, filters = {}, letter }: { sort: SortOrder; tagPath: string; filters?: FacetFilters; letter?: string }) {
   const router = useRouter();
   return (
     <div className="toggle-group-sm">
       {SORT_OPTIONS.map(o => (
         <button key={o.value} className={cn('toggle-option-sm', sort === o.value && 'bg-accent text-text-inverted')}
-          onClick={() => router.push(`/${tagPath}?sort=${o.value}`)} title={o.label}><o.icon size={14} /></button>
+          onClick={() => router.push(categoryHref(tagPath, { sort: o.value, filters, letter }))} title={o.label}><o.icon size={14} /></button>
       ))}
     </div>
   );
 }
 
 // ========== CATEGORY HERO ==========
-function CategoryHero({ tag, tagPath }: { tag: TagNode; tagPath: string }) {
-  const children = tag.children?.filter(c => !c.hidden);
-  if (!tag.description && !children?.length) return null;
+export interface SubcategorySummary { name: string; href: string; description?: string; pages: number; subs: number }
+export interface PageRef { title: string; href: string }
+
+function subcategoryMeta({ pages, subs }: SubcategorySummary): string {
+  return [pages && `${pages} page${pages === 1 ? '' : 's'}`, subs && `${subs} subcategor${subs === 1 ? 'y' : 'ies'}`]
+    .filter(Boolean).join(' · ');
+}
+
+function CategoryHero({ description, mainArticle, subcategories }: { description?: string; mainArticle: PageRef | null; subcategories: SubcategorySummary[] }) {
+  if (!description && !mainArticle && !subcategories.length) return null;
   return (
     <div className="category-hero">
-      {tag.description && <p className="text-text-muted text-lg">{tag.description}</p>}
-      {children && children.length > 0 && (
+      {description && <p className="text-text-muted text-lg">{description}</p>}
+      {mainArticle && (
+        <p className="category-main-article">
+          The main article for this category is <Link href={mainArticle.href} className="link">{mainArticle.title}</Link>.
+        </p>
+      )}
+      {subcategories.length > 0 && (
         <div className="category-hero-grid">
-          {children.map(child => (
-            <Link key={child.slug} href={`/${tagPath}/${child.slug}`} className="category-hero-card">
+          {subcategories.map(child => (
+            <Link key={child.href} href={child.href} className="category-hero-card">
               <span className="font-medium">{child.name}</span>
               {child.description && <span className="text-text-muted text-small">{child.description}</span>}
+              <span className="subcategory-meta">{subcategoryMeta(child)}</span>
             </Link>
           ))}
         </div>
@@ -234,17 +212,61 @@ function CategoryHero({ tag, tagPath }: { tag: TagNode; tagPath: string }) {
 }
 
 // ========== CATEGORY SUMMARY ==========
-function CategorySummary({ tag, tagPath, pages }: { tag: TagNode | null; tagPath: string[]; pages: WikiPage[] }) {
+function CategorySummary({ tag, tagPath, total, shown }: { tag: TagNode | null; tagPath: string[]; total: number; shown: number }) {
   const categoryName = tag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagPath[tagPath.length - 1] || 'this section';
-  const latest = pages.length > 0 ? pages.reduce((acc, p) => (new Date(p.updatedAt) > new Date(acc.updatedAt) ? p : acc), pages[0]!) : null;
-
-  if (pages.length === 0 || !latest) return null;
-
+  if (!total) return null;
   return (
     <div className="category-summary stack-sm">
       <p className="text-text-muted text-small">
-        {categoryName} contains <strong>{pages.length}</strong> page{pages.length === 1 ? '' : 's'}, last updated {formatRelativeTime(latest.updatedAt)}.
+        {shown === total
+          ? <>The following <strong>{total}</strong> page{total === 1 ? ' is' : 's are'} in {categoryName}.</>
+          : <>Showing <strong>{shown}</strong> of {total} pages in {categoryName}.</>}
       </p>
+    </div>
+  );
+}
+
+// ========== CATEGORY FILTERS ==========
+function CategoryFilters({ tagPath, sort, facets, filters, letters, letter }: {
+  tagPath: string; sort: SortOrder; facets: Facet[]; filters: FacetFilters; letters: FacetValue[]; letter?: string;
+}) {
+  if (!facets.length && !letters.length) return null;
+  return (
+    <div className="category-filters">
+      {facets.map(facet => (
+        <div key={facet.key} className="facet-row">
+          <span className="facet-label">{facet.label}</span>
+          {facet.values.map(({ value, count }) => {
+            const active = filters[facet.key] === value;
+            return (
+              <Link
+                key={value}
+                href={categoryHref(tagPath, { sort, filters: toggleFilter(filters, facet.key, value), letter })}
+                className={cn('facet-chip', active && 'facet-chip-active')}
+                aria-pressed={active}
+              >
+                {value}<span className="facet-count">{count}</span>
+              </Link>
+            );
+          })}
+        </div>
+      ))}
+      {letters.length > 0 && (
+        <div className="facet-row">
+          <span className="facet-label">Index</span>
+          <Link href={categoryHref(tagPath, { sort, filters })} className={cn('facet-chip', !letter && 'facet-chip-active')}>All</Link>
+          {letters.map(({ value, count }) => (
+            <Link
+              key={value}
+              href={categoryHref(tagPath, { sort, filters, letter: letter === value ? undefined : value })}
+              className={cn('facet-chip', letter === value && 'facet-chip-active')}
+              title={`${count} page${count === 1 ? '' : 's'}`}
+            >
+              {value}
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -319,14 +341,12 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
     </>
   );
 
-  const pageInfo = page ? { author: page.author, updatedAt: page.updatedAt, createdAt: page.createdAt, version: page.version, revisionCount: page._count?.revisions ?? 0 } : null;
-
   return (
     <div className="stack">
-      <Banner src={bannerImage} title="Homepage" pageInfo={pageInfo}>
+      <Banner src={bannerImage} title="Homepage">
         <h1 className="sr-only">Radix (XRD) – The Radix DLT Crypto Wiki</h1>
       </Banner>
-      {infobox ? (
+      {infobox && infoboxHasContent(infobox) ? (
         <div className="page-with-infobox">
           <div className="page-main-content stack">{mainContent}</div>
           <InfoboxSidebar block={infobox} />
@@ -339,7 +359,11 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
 }
 
 // ========== CATEGORY VIEW ==========
-export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; pages: WikiPage[]; sort: SortOrder }) {
+export function CategoryView({ tagPath, pages, sort, total, facets, filters, letters, letter, subcategories, mainArticle }: {
+  tagPath: string[]; pages: WikiPage[]; sort: SortOrder; total: number;
+  facets: Facet[]; filters: FacetFilters; letters: FacetValue[]; letter?: string;
+  subcategories: SubcategorySummary[]; mainArticle: PageRef | null;
+}) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const pathStr = tagPath.join('/');
@@ -347,6 +371,7 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
   const [showCreate, setShowCreate] = useState(false);
   const tag = findTagByPath(tagPath);
   const canCreatePages = isAuthenticated;
+  const isContainer = total === 0 && subcategories.length > 0;
 
   return (
     <div className="stack">
@@ -365,10 +390,14 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
           </div>
         )}
       </div>
-      {tag && <CategoryHero tag={tag} tagPath={pathStr} />}
-      <CategorySummary tag={tag} tagPath={tagPath} pages={pages} />
+      <CategoryHero description={tag?.description} mainArticle={mainArticle} subcategories={subcategories} />
+      <CategorySummary tag={tag} tagPath={tagPath} total={total} shown={pages.length} />
+      <CategoryFilters tagPath={pathStr} sort={sort} facets={facets} filters={filters} letters={letters} letter={letter} />
+      {/* A container category (Tech, Contents) holds only subcategories — sorting and an
+          "empty" notice are both noise there; the subcategory cards are the whole page. */}
+      {isContainer ? null : <>
       <div className="center">
-        <SortToggle sort={sort} tagPath={pathStr} />
+        <SortToggle sort={sort} tagPath={pathStr} filters={filters} letter={letter} />
       </div>
       {pages.length > 0 ? (
         <div className="category-grid">
@@ -395,25 +424,39 @@ export function CategoryView({ tagPath, pages, sort }: { tagPath: string[]; page
         </div>
       ) : (
         <Card className="empty-state">
-          <p className="text-text-muted">No pages in this category yet.</p>
-          {canCreatePages && <small className="mt-2 block">Click "New Page" above to create one.</small>}
+          {total > 0 ? (
+            <>
+              <p className="text-text-muted">No pages match these filters.</p>
+              <Link href={categoryHref(pathStr, { sort })} className="link mt-2 inline-block">Clear filters</Link>
+            </>
+          ) : (
+            <>
+              <p className="text-text-muted">No pages in this category yet.</p>
+              {canCreatePages && <small className="mt-2 block">Click "New Page" above to create one.</small>}
+            </>
+          )}
         </Card>
       )}
+      </>}
     </div>
   );
 }
 
 // ========== SEE ALSO ==========
 export type RelatedPage = Pick<WikiPage, 'id' | 'title' | 'slug' | 'tagPath'> & { snippet?: string };
+/** `sharedValue` names the facet the ranking found in common, so the heading can say what "related" meant. */
+export type RelatedPages = { pages: RelatedPage[]; sharedValue: string | null };
 
-function SeeAlso({ pages, tagPath }: { pages: RelatedPage[]; tagPath: string }) {
+function SeeAlso({ pages, tagPath, sharedValue }: { pages: RelatedPage[]; tagPath: string; sharedValue?: string | null }) {
   if (!pages.length) return null;
   const sectionTag = findTagByPath(tagPath.split('/'));
   const sectionName = sectionTag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagPath;
   return (
     <aside className="see-also" aria-labelledby="see-also-heading">
       <h2 id="see-also-heading" className="text-h4">See also</h2>
-      <p className="text-text-muted text-small">More from {sectionName}.</p>
+      <p className="text-text-muted text-small">
+        {sharedValue ? <>Other {sharedValue} pages in {sectionName}.</> : <>More from {sectionName}.</>}
+      </p>
       <ul className="see-also-grid">
         {pages.map(p => (
           <li key={p.id}>
@@ -429,47 +472,53 @@ function SeeAlso({ pages, tagPath }: { pages: RelatedPage[]; tagPath: string }) 
 }
 
 // ========== PAGE VIEW (Read-only) ==========
-function PageViewContent({ page, adjacent, related }: { page: WikiPage; adjacent: AdjacentPages; related: RelatedPage[] }) {
+function PageViewContent({ page, adjacent, related }: { page: WikiPage; adjacent: AdjacentPages; related: RelatedPages }) {
   const { isAuthenticated } = useAuth();
   // Contributor stats belong only on a member's own profile — not on curated
   // articles that happen to live under /community (e.g. Dan Hughes).
   const isOwnProfile = page.tagPath === 'community' && !!page.author &&
     page.slug === userProfileSlug(page.author.displayName, page.author.radixAddress);
   const blocks = (page.content as unknown as Block[]) || [];
-  const infobox = findInfobox(blocks) || { id: '__infobox__', type: 'infobox' as const, blocks: [] };
-  const fresh = freshnessBanner(page);
+  const infobox = findInfobox(blocks);
+  const showInfobox = infoboxHasContent(infobox, page.metadata, page.tagPath);
+  // The synthetic freshness notice defers to an author-placed outdated banner.
+  const hasOutdatedBanner = blocks.some(b => b.type === 'banner' && b.variant === 'outdated');
+  const fresh = hasOutdatedBanner ? null : freshnessBanner(page);
   const mainBlocks = [...(fresh ? [fresh] : []), ...blocks.filter(b => b.type !== 'infobox')];
 
-  const pageInfo = { author: page.author, updatedAt: page.updatedAt, createdAt: page.createdAt, version: page.version, revisionCount: page._count?.revisions ?? 0, lastVerifiedAt: page.lastVerifiedAt };
+  const main = (
+    <div className="page-main-content stack">
+      <BlockRenderer content={mainBlocks} />
+      <SeeAlso pages={related.pages} tagPath={page.tagPath} sharedValue={related.sharedValue} />
+      {isOwnProfile && <UserStats authorId={page.authorId} />}
+      <PageNav adjacent={adjacent} />
+      <PageMeta page={page} />
+      <Discussion pageId={page.id} tagPath={page.tagPath} />
+      {isAuthenticated && (
+        <Link href={`/${page.tagPath}/${page.slug}/edit`} className="edit-cta">Something missing? Edit this page →</Link>
+      )}
+    </div>
+  );
 
   return (
     <article className="stack">
-      <Banner src={page.bannerImage} title={page.title} tagPath={page.tagPath} pageInfo={pageInfo}>
+      <Banner src={page.bannerImage} title={page.title} tagPath={page.tagPath}>
         <Breadcrumbs path={[...page.tagPath.split('/'), page.slug]} />
         <h1 id={slugify(page.title)} className="m-0!">{page.title}</h1>
       </Banner>
-      <div className="page-with-infobox">
-        <div className="page-main-content stack">
-          <BlockRenderer content={mainBlocks} />
-          <SeeAlso pages={related} tagPath={page.tagPath} />
-          {isOwnProfile && <UserStats authorId={page.authorId} />}
-          <Discussion pageId={page.id} tagPath={page.tagPath} />
-          <PageNav adjacent={adjacent} />
-          <ArticleCategories tagPath={page.tagPath} />
-          <CiteThisPage title={page.title} tagPath={page.tagPath} slug={page.slug} />
-          {isAuthenticated && (
-            <Link href={`/${page.tagPath}/${page.slug}/edit`} className="edit-cta">Something missing? Edit this page →</Link>
-          )}
+      {showInfobox ? (
+        <div className="page-with-infobox">
+          {main}
+          <InfoboxSidebar block={infobox ?? { id: '__infobox__', type: 'infobox', blocks: [] }} metadata={page.metadata} tagPath={page.tagPath} />
         </div>
-        <InfoboxSidebar block={infobox} metadata={page.metadata} tagPath={page.tagPath} />
-      </div>
+      ) : main}
       <LinkPreview />
     </article>
   );
 }
 
 // ========== PAGE VIEW WRAPPER ==========
-export function PageView({ page, tagPath, slug, isEditMode, adjacent, related = [] }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; adjacent: AdjacentPages; related?: RelatedPage[] }) {
+export function PageView({ page, tagPath, slug, isEditMode, adjacent, related = { pages: [], sharedValue: null } }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; adjacent: AdjacentPages; related?: RelatedPages }) {
   const { isAuthenticated } = useAuth();
 
   const viewPath = `/${tagPath}/${slug}`;

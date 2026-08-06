@@ -14,6 +14,12 @@ export interface TagNode {
   name: string;
   slug: string;
   description?: string;
+  /**
+   * The article that *is* this category's topic, as a full `tagPath/slug`
+   * (Wikipedia's `{{Category main article}}`). It need not live in the category:
+   * the Scrypto tutorials are a category, but the Scrypto article is a protocol page.
+   */
+  mainArticle?: string;
   children?: TagNode[];
   hidden?: boolean;
   sort?: SortOrder;
@@ -50,8 +56,8 @@ export const TAG_HIERARCHY: TagNode[] = [
         children: [
           { name: 'Comparisons', slug: 'comparisons', description: 'Side-by-side comparisons of Radix against Ethereum, Solana, and other ledgers — feature, performance, and architecture differences.' },
           { name: 'Core Concepts', slug: 'core-concepts', description: 'Foundational ideas behind Radix — assets as primitives, atomic composability, finality, sharding, and DeFi-native design.' },
-          { name: 'Core Protocols', slug: 'core-protocols', description: 'The protocols that power Radix — Cerberus consensus, Radix Engine state machine, transaction manifests, and the ledger model.' },
-          { name: 'Releases', slug: 'releases', description: 'Major Radix protocol upgrades and Babylon-era release notes — what shipped, when, and what each release unlocks.' },
+          { name: 'Core Protocols', slug: 'core-protocols', mainArticle: 'contents/tech/core-protocols/radix-engine', description: 'The protocols that power Radix — Cerberus consensus, Radix Engine state machine, transaction manifests, and the ledger model.' },
+          { name: 'Releases', slug: 'releases', mainArticle: 'contents/tech/releases/protocol-updates', description: 'Major Radix protocol upgrades and Babylon-era release notes — what shipped, when, and what each release unlocks.' },
           { name: 'Research', slug: 'research', description: 'Active research efforts driving the Radix roadmap — Xi’an, Hyperscale, MFA Security Shield, RAC, and academic papers behind them.' },
           { name: 'Operations', slug: 'operations', hidden: true },
         ],
@@ -60,6 +66,7 @@ export const TAG_HIERARCHY: TagNode[] = [
         name: 'History / Events',
         slug: 'history',
         sort: 'newest',
+        mainArticle: 'contents/history/history-of-radix',
         description: 'A chronological record of Radix milestones — conferences, hackathons, mainnet upgrades, and pivotal community moments.',
         metadataKeys: [
           { key: 'attendees', label: 'Attendees:', type: 'text'},
@@ -88,12 +95,12 @@ export const TAG_HIERARCHY: TagNode[] = [
     description: 'Build on Radix — tutorials, guides, design patterns, and API references for Scrypto, transaction manifests, and the Radix stack.',
     children: [
       { name: 'Getting Started', slug: 'getting-started', description: 'Install Scrypto, write your first blueprint, and deploy to the network.' },
-      { name: 'Scrypto', slug: 'scrypto', description: 'Asset-oriented programming: resources, auth, testing, and design patterns.',
+      { name: 'Scrypto', slug: 'scrypto', mainArticle: 'contents/tech/core-protocols/scrypto-programming-language', description: 'Asset-oriented programming: resources, auth, testing, and design patterns.',
         metadataKeys: [
           { key: 'patternType', label: 'Pattern Type:', type: 'text' },
           { key: 'concepts', label: 'Concepts:', type: 'text' },
         ] },
-      { name: 'Transactions', slug: 'transactions', description: 'Transaction manifests, lifecycle, and submission.' },
+      { name: 'Transactions', slug: 'transactions', mainArticle: 'contents/tech/core-protocols/transaction-manifests', description: 'Transaction manifests, lifecycle, and submission.' },
       { name: 'Frontend', slug: 'frontend', description: 'Connect wallets, read ledger state, and authenticate users.' },
       { name: 'Infrastructure', slug: 'infrastructure', description: 'Run a node, use the APIs, and integrate off-ledger services with Radix.' },
       { name: 'AI Agents', slug: 'ai-agents',

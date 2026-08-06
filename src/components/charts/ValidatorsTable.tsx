@@ -4,12 +4,19 @@
 
 import { useState, useMemo } from 'react';
 import Image from 'next/image';
-import { ArrowDown, ArrowUp } from 'lucide-react';
-import { cn, shortenAddress } from '@/lib/utils';
+import { shortenAddress } from '@/lib/utils';
+import { SortHead, type SortColumn } from './SortHead';
 import { formatXrd, formatPercent } from './format';
 import type { Validator } from '@/lib/radix/validators';
 
 type SortKey = 'rank' | 'name' | 'totalStake' | 'fee' | 'ownerStake';
+
+const COLUMNS: SortColumn<SortKey>[] = [
+  { k: 'name', label: 'Validator' },
+  { k: 'totalStake', label: 'Total Stake', className: 'text-right' },
+  { k: 'fee', label: 'Fee', className: 'text-right hidden-mobile' },
+  { k: 'ownerStake', label: 'Owner Stake', className: 'text-right hidden-mobile' },
+];
 
 export function ValidatorsTable({ validators, limit }: { validators: Validator[]; limit?: number }) {
   const [sortKey, setSortKey] = useState<SortKey>('totalStake');
@@ -33,14 +40,6 @@ export function ValidatorsTable({ validators, limit }: { validators: Validator[]
     else { setSortKey(key); setSortDir(key === 'name' ? 'asc' : 'desc'); }
   };
 
-  const SortHead = ({ k, label, className }: { k: SortKey; label: string; className?: string }) => (
-    <th className={cn('data-table-th', className)}>
-      <button onClick={() => handleSort(k)} className={cn('sort-header', sortKey === k && 'sort-header-active')}>
-        {label}
-        {sortKey === k && (sortDir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
-      </button>
-    </th>
-  );
 
   return (
     <div className="data-table-wrap">
@@ -48,10 +47,9 @@ export function ValidatorsTable({ validators, limit }: { validators: Validator[]
         <thead>
           <tr>
             <th className="data-table-th w-12">#</th>
-            <SortHead k="name" label="Validator" />
-            <SortHead k="totalStake" label="Total Stake" className="text-right" />
-            <SortHead k="fee" label="Fee" className="text-right hidden-mobile" />
-            <SortHead k="ownerStake" label="Owner Stake" className="text-right hidden-mobile" />
+            {COLUMNS.map(c => (
+              <SortHead key={c.k} {...c} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+            ))}
           </tr>
         </thead>
         <tbody>

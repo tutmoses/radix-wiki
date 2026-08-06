@@ -24,20 +24,24 @@ function buildCommentTree(comments: WikiComment[]): WikiComment[] {
   return roots;
 }
 
-type FormState = { error?: string; ok?: boolean };
+type FormState = { error?: string; ok?: boolean; submissions?: number };
 
 function CommentForm({ onSubmit, onCancel, placeholder = 'Write a comment...', autoFocus, compact }: {
   onSubmit: (content: string) => Promise<void>; onCancel?: () => void; placeholder?: string; autoFocus?: boolean; compact?: boolean;
 }) {
-  const [state, action, isPending] = useActionState<FormState, FormData>(async (_, fd) => {
+  const [state, action, isPending] = useActionState<FormState, FormData>(async (prev, fd) => {
     const content = (fd.get('content') as string)?.trim();
-    if (!content) return { error: 'Content required' };
-    try { await onSubmit(content); return { ok: true }; } catch { return { error: 'Failed to post' }; }
+    if (!content) return { error: 'Content required', submissions: prev.submissions };
+    // The submit counter is the textarea's key — bumping it remounts the field so
+    // it clears. Date.now() here was impure and changed on every render, so a
+    // posted comment re-mounted the box continuously and stole focus.
+    try { await onSubmit(content); return { ok: true, submissions: (prev.submissions ?? 0) + 1 }; }
+    catch { return { error: 'Failed to post', submissions: prev.submissions }; }
   }, {});
 
   return (
     <form action={action} className={cn('stack-sm', compact && 'pl-4')}>
-      <textarea name="content" placeholder={placeholder} defaultValue="" className={cn('input resize-none', compact ? 'min-h-16' : 'min-h-20')} rows={compact ? 2 : 3} autoFocus={autoFocus} key={state.ok ? Date.now() : 'form'} />
+      <textarea name="content" placeholder={placeholder} defaultValue="" className={cn('input resize-none', compact ? 'min-h-16' : 'min-h-20')} rows={compact ? 2 : 3} autoFocus={autoFocus} key={state.submissions ?? 0} />
       {state.error && <p className="text-error text-small">{state.error}</p>}
       <div className="row justify-end">
         {onCancel && <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>}
@@ -103,7 +107,8 @@ function CommentThread({ comment, depth, onReply, onDelete, currentUserId }: {
 export function Discussion({ pageId, tagPath }: { pageId: string; tagPath: string }) {
   const [comments, setComments] = useState<WikiComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [expanded, setExpanded] = useState(true);
+  // Collapsed by default — talk shouldn't compete with the article (Wikipedia keeps it off-page entirely).
+  const [expanded, setExpanded] = useState(false);
   const { isAuthenticated, user } = useAuth();
 
   const fetchComments = useCallback(async () => {

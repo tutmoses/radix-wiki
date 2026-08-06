@@ -91,7 +91,6 @@ interface AppStore {
   isLoading: boolean;
   isConnected: boolean;
   isConnecting: boolean;
-  walletNotFound: boolean;
   rdtReady: boolean;
   walletData: RadixWalletData | null;
   sidebarOpen: boolean;
@@ -126,7 +125,6 @@ export const useStore = create<AppStore>()((set, get) => ({
   isLoading: true,
   isConnected: false,
   isConnecting: false,
-  walletNotFound: false,
   rdtReady: false,
   walletData: null,
   sidebarOpen: false,
@@ -155,12 +153,12 @@ export const useStore = create<AppStore>()((set, get) => ({
   setWalletData: (walletData) => {
     const { _connectTimeout } = get();
     if (_connectTimeout) clearTimeout(_connectTimeout);
-    set({ walletData, isConnected: !!walletData, isConnecting: false, walletNotFound: false, _connectTimeout: null });
+    set({ walletData, isConnected: !!walletData, isConnecting: false, _connectTimeout: null });
   },
   clearConnecting: () => {
     const { _connectTimeout } = get();
     if (_connectTimeout) clearTimeout(_connectTimeout);
-    set({ isConnecting: false, walletNotFound: false, _connectTimeout: null });
+    set({ isConnecting: false, _connectTimeout: null });
   },
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
@@ -168,9 +166,10 @@ export const useStore = create<AppStore>()((set, get) => ({
     const { _rdtConnect, rdtReady, _connectTimeout } = get();
     if (_connectTimeout) clearTimeout(_connectTimeout);
     const timeout = setTimeout(() => {
-      set({ isConnecting: false, walletNotFound: true, _connectTimeout: null });
+      set({ isConnecting: false, _connectTimeout: null });
+      get().showToast('No response from the Radix Wallet. Make sure the wallet app or Connector extension is reachable, then try again.', 'info');
     }, 60_000);
-    set({ isConnecting: true, walletNotFound: false, _connectTimeout: timeout });
+    set({ isConnecting: true, _connectTimeout: timeout });
     if (_rdtConnect) {
       _rdtConnect();
     } else if (!rdtReady) {
@@ -261,6 +260,14 @@ export function usePages(mode: PageMode): SingleResult | ListResult {
   const [isLoading, setIsLoading] = useState(true);
   const [status, setStatus] = useState<'loading' | 'found' | 'notfound' | 'error'>('loading');
 
+  // Callers pass `mode` as an inline object literal, so it is a new reference on
+  // every render and cannot be a dependency itself. Flatten it to a primitive key
+  // instead — one value the linter can check, covering every field used below.
+  const modeKey =
+    mode.type === 'single' ? `single:${mode.tagPath}/${mode.slug}`
+    : mode.type === 'recent' ? `recent:${mode.tagPath || ''}:${mode.limit}:${mode.sort || 'updatedAt'}`
+    : `byIds:${mode.pageIds.join(',')}`;
+
   // Memoize mode properties to prevent unnecessary re-fetches
   const modeConfig = useMemo(() => {
     if (mode.type === 'single') {
@@ -270,7 +277,11 @@ export function usePages(mode: PageMode): SingleResult | ListResult {
       return { type: 'recent' as const, tagPath: mode.tagPath, limit: mode.limit, sort: mode.sort || 'updatedAt', key: `${mode.tagPath || ''}:${mode.limit}:${mode.sort || 'updatedAt'}` };
     }
     return { type: 'byIds' as const, pageIds: mode.pageIds, key: mode.pageIds.join(',') };
-  }, [mode.type, mode.type === 'single' ? mode.tagPath : '', mode.type === 'single' ? mode.slug : '', mode.type === 'recent' ? mode.tagPath : '', mode.type === 'recent' ? mode.limit : 0, mode.type === 'recent' ? mode.sort : '', mode.type === 'byIds' ? mode.pageIds.join(',') : '']);
+    // modeKey is the complete dependency: every `mode` field read above is folded
+    // into it, and `mode` itself is a new object literal on every render, so
+    // listing its fields would defeat the memo rather than tighten it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modeKey]);
 
   useEffect(() => {
     if (modeConfig.type === 'byIds' && !modeConfig.pageIds.length) {
