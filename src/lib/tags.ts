@@ -237,3 +237,13 @@ export const getMetadataKeys = (pathSegments: string[]): MetadataKeyDefinition[]
 export const getMainArticle = (tagPath: string): string | undefined => resolveTagPath(tagPath.split('/')).mainArticle;
 export const getSortOrder = (pathSegments: string[]): SortOrder => resolveTagPath(pathSegments).sort;
 export const getVisibleTags = (hierarchy: TagNode[] = TAG_HIERARCHY): TagNode[] => hierarchy.filter(n => !n.hidden);
+
+function collectHiddenPaths(nodes: TagNode[], parent = ''): string[] {
+  return nodes.flatMap(node => {
+    const path = parent ? `${parent}/${node.slug}` : node.slug;
+    return [...(node.hidden && node.slug ? [path] : []), ...collectHiddenPaths(node.children ?? [], path)];
+  });
+}
+
+/** Tag paths declared hidden — wiki-internal surfaces (operations logs), not article space. */
+export const HIDDEN_TAG_PATHS: string[] = collectHiddenPaths(TAG_HIERARCHY);

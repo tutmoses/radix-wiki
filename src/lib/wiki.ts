@@ -3,7 +3,7 @@
 import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
-import { isValidTagPath, getSortOrder, getMetadataKeys, type SortOrder } from '@/lib/tags';
+import { isValidTagPath, getSortOrder, getMetadataKeys, HIDDEN_TAG_PATHS, type SortOrder } from '@/lib/tags';
 import type { WikiPage, IdeasPage } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, RssFeedBlock, ColumnsBlock } from '@/types/blocks';
 import { computeRevisionDiff } from '@/lib/versioning';
@@ -254,6 +254,53 @@ export const getPageHistory = cached('getPageHistory',
   },
 );
 
+// ========== SEARCH ==========
+
+/** Re-order rows to match a ranked id list, dropping ids that no longer resolve. */
+export function orderByIds<T extends { id: string }>(rows: T[], ids: string[]): T[] {
+  const byId = new Map(rows.map(row => [row.id, row]));
+  return ids.map(id => byId.get(id)).filter((row): row is T => row !== undefined);
+}
+
+/**
+ * Ranked search over titles and page prose: title-prefix first, then title-substring,
+ * then body text. Body matching reads every `text` value at any block depth
+ * (`$.**.text`) rather than the raw JSON, so block ids, type discriminators and markup
+ * can't score as prose; tags and non-breaking spaces are collapsed so a typed
+ * "534 KB" still matches a stored "534&nbsp;KB". Hidden tag paths are article space's
+ * back office — the maintenance log quotes every edit ever made, so it would head the
+ * body tier on almost any query; it stays findable by title. Returns ranked ids and the
+ * unpaginated total — hydrate them with whichever select the caller needs.
+ */
+export async function searchPageIds(
+  query: string,
+  { tagPath = null, skip = 0, take = 25 }: { tagPath?: string | null; skip?: number; take?: number } = {},
+): Promise<{ ids: string[]; total: number }> {
+  const term = query.trim().replace(/[\\%_]/g, char => `\\${char}`);
+  if (!term) return { ids: [], total: 0 };
+  const like = `%${term}%`;
+
+  const rows = await prisma.$queryRaw<{ id: string; total: bigint }[]>`
+    WITH matched AS (
+      SELECT id, title, updated_at,
+             CASE WHEN title ILIKE ${`${term}%`} THEN 0 WHEN title ILIKE ${like} THEN 1 ELSE 2 END AS rank
+        FROM pages
+       WHERE slug <> ''
+         AND (${tagPath}::text IS NULL OR tag_path = ${tagPath})
+         AND (title ILIKE ${like}
+              OR (tag_path <> ALL(${HIDDEN_TAG_PATHS}::text[])
+                  AND regexp_replace(translate(jsonb_path_query_array(content, '$.**.text')::text, chr(160), ' '),
+                                     '<[^>]*>|&nbsp;', ' ', 'g') ILIKE ${like}))
+    )
+    SELECT id, count(*) OVER () AS total
+      FROM matched
+     ORDER BY rank, CASE WHEN rank = 0 THEN title END, updated_at DESC
+     LIMIT ${take} OFFSET ${skip}
+  `;
+
+  return { ids: rows.map(row => row.id), total: Number(rows[0]?.total ?? 0) };
+}
+
 // ========== BLOCK DATA RESOLUTION ==========
 
 const getRecentPages = unstable_cache(
@@ -269,8 +316,7 @@ const getPagesByIds = unstable_cache(
   async (ids: string[]) => {
     if (!ids.length) return [];
     const pages = await prisma.page.findMany({ where: { id: { in: ids } }, select: PAGE_LIST_SELECT });
-    const map = new Map(pages.map(p => [p.id, p]));
-    return ids.map(id => map.get(id)).filter(Boolean);
+    return orderByIds(pages, ids);
   }, ['getPagesByIds'], CACHE_OPTS,
 );
 

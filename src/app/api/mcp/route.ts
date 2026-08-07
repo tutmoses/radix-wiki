@@ -3,7 +3,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { BASE_URL, getContentSnippet } from '@/lib/utils';
+import { BASE_URL, getContentSnippet, getMatchSnippet } from '@/lib/utils';
+import { orderByIds, searchPageIds } from '@/lib/wiki';
 import { extractText } from '@/lib/content';
 import { TAG_HIERARCHY, getMetadataKeys, type TagNode } from '@/lib/tags';
 import { MCP_MANIFEST, SERVER_INFO } from '@/lib/mcp-tools';
@@ -40,14 +41,15 @@ function pageUrl(tagPath: string, slug: string) {
   return `${BASE_URL}/${tagPath}/${slug}`;
 }
 
-function summarizePage(p: { title: string; tagPath: string; slug: string; content: unknown; updatedAt: Date; metadata?: unknown; lastVerifiedAt?: Date | null }) {
+/** `query` swaps the opening-line snippet for the passage that matched. */
+function summarizePage(p: { title: string; tagPath: string; slug: string; content: unknown; updatedAt: Date; metadata?: unknown; lastVerifiedAt?: Date | null }, query?: string) {
   const meta = (p.metadata ?? null) as Record<string, unknown> | null;
   return {
     title: p.title,
     url: pageUrl(p.tagPath, p.slug),
     tagPath: p.tagPath,
     slug: p.slug,
-    snippet: getContentSnippet(p.content),
+    snippet: query ? getMatchSnippet(p.content, query) : getContentSnippet(p.content),
     updatedAt: p.updatedAt.toISOString().split('T')[0],
     ...(p.lastVerifiedAt ? { lastVerified: p.lastVerifiedAt.toISOString().split('T')[0] } : {}),
     ...(meta && Object.keys(meta).length ? { metadata: meta } : {}),
@@ -101,18 +103,11 @@ function buildCategoryTree(nodes: TagNode[], counts: Map<string, number>, parent
 async function search_wiki(args: { query: string; tagPath?: string; page?: number; pageSize?: number }) {
   const { query, tagPath, page = 1, pageSize = 20 } = args;
   const size = Math.min(pageSize, 50);
-  const where = {
-    OR: [
-      { title: { contains: query, mode: 'insensitive' as const } },
-      { content: { string_contains: query } },
-    ],
-    ...(tagPath ? { tagPath } : {}),
-  };
-  const [results, total] = await Promise.all([
-    prisma.page.findMany({ where, select: SUMMARY_SELECT, orderBy: { updatedAt: 'desc' }, skip: (page - 1) * size, take: size }),
-    prisma.page.count({ where }),
-  ]);
-  return { total, page, pageSize: size, pages: results.map(summarizePage) };
+  const { ids, total } = await searchPageIds(query, { tagPath, skip: (page - 1) * size, take: size });
+  const results = ids.length
+    ? await prisma.page.findMany({ where: { id: { in: ids } }, select: { id: true, ...SUMMARY_SELECT } })
+    : [];
+  return { total, page, pageSize: size, pages: orderByIds(results, ids).map(p => summarizePage(p, query)) };
 }
 
 async function get_page(args: { tagPath: string; slug: string }) {
@@ -137,7 +132,7 @@ async function list_pages(args: { tagPath?: string; sort?: string; page?: number
     prisma.page.findMany({ where, select: SUMMARY_SELECT, orderBy, skip: (page - 1) * size, take: size }),
     prisma.page.count({ where }),
   ]);
-  return { total, page, pageSize: size, pages: results.map(summarizePage) };
+  return { total, page, pageSize: size, pages: results.map(page => summarizePage(page)) };
 }
 
 async function get_categories() {
@@ -158,7 +153,7 @@ async function get_recent_changes(args: { days?: number; limit?: number }) {
     orderBy: { updatedAt: 'desc' },
     take: limit,
   });
-  return { days, count: pages.length, pages: pages.map(summarizePage) };
+  return { days, count: pages.length, pages: pages.map(page => summarizePage(page)) };
 }
 
 async function get_full_corpus() {

@@ -8,7 +8,7 @@ import { slugify } from '@/lib/utils';
 import { isValidTagPath, isAuthorOnlyPath, isLockedPage, canEditAuthorOnlyPage, getMetadataKeys } from '@/lib/tags';
 import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, type BlockChange } from '@/lib/versioning';
-import { parsePath, AUTHOR_SELECT, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
+import { parsePath, orderByIds, searchPageIds, AUTHOR_SELECT, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
 import { validateBlocks } from '@/lib/block-utils';
 import { blocksToMdx } from '@/lib/mdx';
 import type { WikiPageInput } from '@/types';
@@ -61,21 +61,10 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       if (tagPath) where.tagPath = tagPath;
 
       if (search) {
-        // Title-prefix matches rank ahead of mere substring matches; the homepage
-        // row (empty slug) is chrome, not content. Split queries keep pagination exact.
-        where.slug = { not: '' };
-        const prefix: Prisma.PageWhereInput = { ...where, title: { startsWith: search, mode: 'insensitive' } };
-        const rest: Prisma.PageWhereInput = { ...where, title: { contains: search, mode: 'insensitive' }, NOT: { title: { startsWith: search, mode: 'insensitive' } } };
-        const [prefixTotal, restTotal] = await Promise.all([prisma.page.count({ where: prefix }), prisma.page.count({ where: rest })]);
-        const skip = (page - 1) * pageSize;
-        const prefixSkip = Math.min(skip, prefixTotal);
-        const prefixTake = Math.max(0, Math.min(pageSize, prefixTotal - prefixSkip));
-        const restTake = pageSize - prefixTake;
-        const [prefixPages, restPages] = await Promise.all([
-          prefixTake ? prisma.page.findMany({ where: prefix, select: PAGE_LIST_SELECT, orderBy: { title: 'asc' }, skip: prefixSkip, take: prefixTake }) : [],
-          restTake > 0 ? prisma.page.findMany({ where: rest, select: PAGE_LIST_SELECT, orderBy: { updatedAt: 'desc' }, skip: Math.max(0, skip - prefixTotal), take: restTake }) : [],
-        ]);
-        return cachedJson(paginatedResponse([...prefixPages, ...restPages], prefixTotal + restTotal, page, pageSize));
+        // Titles rank ahead of body prose; the homepage row (empty slug) is chrome, not content.
+        const { ids, total } = await searchPageIds(search, { tagPath, skip: (page - 1) * pageSize, take: pageSize });
+        const matches = ids.length ? await prisma.page.findMany({ where: { id: { in: ids } }, select: PAGE_LIST_SELECT }) : [];
+        return cachedJson(paginatedResponse(orderByIds(matches, ids), total, page, pageSize));
       }
 
       const orderBy = sort === 'title' ? { title: 'asc' as const } : { updatedAt: 'desc' as const };

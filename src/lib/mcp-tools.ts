@@ -38,7 +38,7 @@ export const TOOLS: McpTool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'Search term (matched against page titles)' },
+        query: { type: 'string', description: 'Search term (matched against page titles and body text)' },
         tagPath: { type: 'string', description: 'Limit results to a tag path (e.g. "contents/tech/core-concepts")' },
         page: { type: 'number', description: 'Page number (default 1)' },
         pageSize: { type: 'number', description: 'Results per page (default 20, max 50)' },

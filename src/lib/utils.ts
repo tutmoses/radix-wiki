@@ -45,17 +45,66 @@ export function userProfileSlug(displayName: string | null | undefined, radixAdd
 }
 
 // ========== CONTENT SNIPPET ==========
+
+const ENTITIES: Record<string, string> = {
+  nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", mdash: '—', ndash: '–',
+};
+
+/** Collapse stored HTML to display text: tags out, common entities in, whitespace normalised. */
+function toPlainText(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&(nbsp|amp|lt|gt|quot|#39|mdash|ndash);/g, (_, name) => ENTITIES[name] ?? ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Every `text` value at any block depth — mirrors the `$.**.text` that search matches on. */
+function collectText(node: unknown, out: string[] = []): string[] {
+  if (Array.isArray(node)) { for (const item of node) collectText(item, out); return out; }
+  if (node && typeof node === 'object') {
+    for (const [key, value] of Object.entries(node)) {
+      if (key === 'text' && typeof value === 'string') out.push(value);
+      else collectText(value, out);
+    }
+  }
+  return out;
+}
+
 /** Extract plain text snippet from page content blocks (skips infobox, strips HTML, truncates) */
 export function getContentSnippet(content: unknown, maxLen = 150): string {
   if (!Array.isArray(content)) return '';
   for (const block of content) {
     if (block?.type === 'content' && typeof block.text === 'string') {
-      const text = block.text.replace(/<h[1-6][^>]*>.*?<\/h[1-6]>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      const text = toPlainText(block.text.replace(/<h[1-6][^>]*>.*?<\/h[1-6]>/gi, ''));
       if (!text) continue;
       return text.length > maxLen ? text.slice(0, maxLen).trimEnd() + '…' : text;
     }
   }
   return '';
+}
+
+/**
+ * Snippet centred on the first occurrence of `query` anywhere in the page, so a search
+ * result can show why it matched. Falls back to the page opening when the match is in
+ * the title alone.
+ */
+export function getMatchSnippet(content: unknown, query: string, maxLen = 200): string {
+  const term = query.trim();
+  if (!term || !Array.isArray(content)) return getContentSnippet(content, maxLen);
+
+  const text = toPlainText(collectText(content).join(' '));
+  const at = text.toLowerCase().indexOf(term.toLowerCase());
+  if (at === -1) return getContentSnippet(content, maxLen);
+
+  // Keep ~a line of lead-in before the hit, starting at a word boundary.
+  let start = Math.max(0, at - 60);
+  if (start > 0) {
+    const boundary = text.indexOf(' ', start);
+    if (boundary > -1 && boundary < at) start = boundary + 1;
+  }
+  const end = Math.min(text.length, start + maxLen);
+  return `${start > 0 ? '…' : ''}${text.slice(start, end).trimEnd()}${end < text.length ? '…' : ''}`;
 }
 
 // ========== GENERATIVE BANNER ==========

@@ -8,7 +8,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, FileCode, Bell, Webhook, Database, MoreVertical, Quote, Link2, Check, Eye, EyeOff } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth, useClickOutside, usePagePath, useFetch } from '@/hooks';
-import { cn, shortenAddress, formatRelativeTime } from '@/lib/utils';
+import { cn, shortenAddress, formatRelativeTime, getMatchSnippet } from '@/lib/utils';
+import Highlight from '@/components/Highlight';
 import { Button, Dropdown } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiPage, WikiNotification } from '@/types';
@@ -100,6 +101,23 @@ function UserMenuDropdown({ onClose, onLogout }: { onClose: () => void; onLogout
         <LogOut size={16} />Disconnect
       </button>
     </Dropdown>
+  );
+}
+
+// ===== Search =====
+// One row shape for both the desktop dropdown and the mobile panel. The snippet is
+// the passage the query matched, so a body-text hit doesn't read as an unrelated title.
+function SearchResultRow({ page, query, onSelect }: { page: WikiPage; query: string; onSelect: (page: WikiPage) => void }) {
+  const snippet = getMatchSnippet(page.content, query, 120);
+  return (
+    <button type="button" onClick={() => onSelect(page)} className="search-result">
+      <FileText size={16} className="text-accent shrink-0 mt-0.5" />
+      <div className="min-w-0 flex-1">
+        <div className="font-medium truncate"><Highlight text={page.title} query={query} /></div>
+        <div className="text-small text-text-muted truncate">/{page.tagPath}/{page.slug}</div>
+        {snippet && <p className="text-small text-text-muted line-clamp-1 mt-0.5"><Highlight text={snippet} query={query} /></p>}
+      </div>
+    </button>
   );
 }
 
@@ -321,13 +339,7 @@ export function Header() {
             {searchOpen && searchResults.length > 0 && (
               <div className="search-results">
                 {searchResults.map(page => (
-                  <button key={page.id} type="button" onClick={() => handleSearchSelect(page)} className="search-result">
-                    <FileText size={16} className="text-accent shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium truncate">{page.title}</div>
-                      <div className="text-small text-text-muted truncate">/{page.tagPath}/{page.slug}</div>
-                    </div>
-                  </button>
+                  <SearchResultRow key={page.id} page={page} query={searchQuery.trim()} onSelect={handleSearchSelect} />
                 ))}
                 <button type="button" onClick={goToSearchPage} className="search-result search-result-all">
                   See all results for &ldquo;{searchQuery.trim()}&rdquo;
@@ -412,13 +424,7 @@ export function Header() {
               {searchResults.length > 0 && (
                 <div className="search-results">
                   {searchResults.map(page => (
-                    <button key={page.id} onClick={() => handleSearchSelect(page)} className="search-result">
-                      <FileText size={16} className="text-accent shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium truncate">{page.title}</div>
-                        <div className="text-small text-text-muted truncate">/{page.tagPath}/{page.slug}</div>
-                      </div>
-                    </button>
+                    <SearchResultRow key={page.id} page={page} query={searchQuery.trim()} onSelect={handleSearchSelect} />
                   ))}
                 </div>
               )}
