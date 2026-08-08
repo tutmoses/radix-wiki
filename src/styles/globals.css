@@ -334,11 +334,11 @@
   .search-icon-left { @apply absolute left-3 top-1/2 -translate-y-1/2 text-text-muted; }
   .search-icon-right { @apply absolute right-3 top-1/2 -translate-y-1/2 text-text-muted animate-spin; }
   .search-results { @apply absolute top-full left-0 right-0 mt-2 bg-surface-1 border border-border rounded-lg shadow overflow-hidden z-50; }
-  .search-result { @apply w-full flex items-start gap-2 p-3 hover:bg-surface-2 transition-colors text-left; }
+  .search-result { @apply block w-full p-3 hover:bg-surface-2 transition-colors text-left; }
   .search-mark { @apply bg-accent/25 text-text rounded-sm px-0.5; }
-  .search-result-all { @apply justify-center text-small text-accent font-medium border-t border-border-muted hover:text-accent-hover; }
+  .search-result-all { @apply text-center text-small text-accent font-medium border-t border-border-muted hover:text-accent-hover; }
   .search-empty { @apply absolute top-full left-0 right-0 mt-2 bg-surface-1 border border-border rounded-lg shadow p-4 text-center text-text-muted z-50; }
-  .search-page-result { @apply flex items-start gap-3 p-3 bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5 hover:shadow; }
+  .search-page-result { @apply block p-3 bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5 hover:shadow; }
 
   /* ===== SIDEBAR ===== */
   .sidebar { @apply sticky top-[var(--header-height)] h-[calc(100dvh-var(--header-height))] bg-surface-0 border-r border-border-muted shrink-0 overflow-hidden transition-all duration-200; }

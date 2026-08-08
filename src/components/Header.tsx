@@ -5,7 +5,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
-import { Search, Menu, X, Loader2, LogOut, ChevronDown, FileText, Edit, History, User, FileCode, Bell, Webhook, Database, MoreVertical, Quote, Link2, Check, Eye, EyeOff } from 'lucide-react';
+import { Search, Menu, X, Loader2, LogOut, ChevronDown, Edit, History, User, FileCode, Bell, Webhook, Database, MoreVertical, Quote, Link2, Check, Eye, EyeOff } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth, useClickOutside, usePagePath, useFetch } from '@/hooks';
 import { cn, shortenAddress, formatRelativeTime, getMatchSnippet } from '@/lib/utils';
@@ -111,12 +111,9 @@ function SearchResultRow({ page, query, onSelect }: { page: WikiPage; query: str
   const snippet = getMatchSnippet(page.content, query, 120);
   return (
     <button type="button" onClick={() => onSelect(page)} className="search-result">
-      <FileText size={16} className="text-accent shrink-0 mt-0.5" />
-      <div className="min-w-0 flex-1">
-        <div className="font-medium truncate"><Highlight text={page.title} query={query} /></div>
-        <div className="text-small text-text-muted truncate">/{page.tagPath}/{page.slug}</div>
-        {snippet && <p className="text-small text-text-muted line-clamp-1 mt-0.5"><Highlight text={snippet} query={query} /></p>}
-      </div>
+      <div className="font-medium truncate"><Highlight text={page.title} query={query} /></div>
+      <div className="text-small text-text-muted truncate">/{page.tagPath}/{page.slug}</div>
+      {snippet && <p className="text-small text-text-muted line-clamp-1 mt-0.5"><Highlight text={snippet} query={query} /></p>}
     </button>
   );
 }
