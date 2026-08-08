@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { BASE_URL, getContentSnippet } from '@/lib/utils';
+import { ogImageUrl } from '@/lib/og';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,8 +40,7 @@ export async function GET() {
       const url = `${BASE_URL}/blog/${p.slug}`;
       const description = clampWords((p.metadata as Record<string, string> | null)?.excerpt || getContentSnippet(p.content));
       // Branded 1200x630 card from the existing OG endpoint so every post has an image
-      const ogParams = new URLSearchParams({ title: p.title, description, tagPath: 'blog' });
-      if (p.bannerImage) ogParams.set('banner', p.bannerImage);
+      const image = ogImageUrl({ title: p.title, description, tagPath: 'blog', banner: p.bannerImage });
       return [
         '    <item>',
         `      <title>${esc(p.title)}</title>`,
@@ -48,7 +48,7 @@ export async function GET() {
         `      <guid isPermaLink="true">${esc(url)}</guid>`,
         `      <description>${esc(description)}</description>`,
         `      <pubDate>${p.date.toUTCString()}</pubDate>`,
-        `      <enclosure url="${esc(`${BASE_URL}/og?${ogParams}`)}" type="image/png" />`,
+        `      <enclosure url="${esc(image)}" type="image/png" />`,
         '    </item>',
       ].join('\n');
     });

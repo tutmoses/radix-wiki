@@ -11,6 +11,7 @@ import { Footer } from '@/components/Footer';
 import { Toast } from '@/components/Toast';
 
 import { BASE_URL } from '@/lib/utils';
+import { ogMetadata, SITE_NAME } from '@/lib/og';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -24,6 +25,11 @@ const PLAUSIBLE_DOMAIN = (() => {
   try { return new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki').hostname; }
   catch { return 'radix.wiki'; }
 })();
+
+// Default card for URLs that declare none of their own. Next *replaces* rather than
+// merges these objects, so every page that sets one restates them via ogMetadata().
+// `alternates` is deliberately not inherited — canonical belongs to each URL.
+const SITE_CARD = ogMetadata({ title: SITE_NAME, description: SITE_DESCRIPTION, url: BASE_URL });
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
@@ -51,23 +57,8 @@ export const metadata: Metadata = {
     icon: '/favicon.ico',
     apple: '/logo.png',
   },
-  openGraph: {
-    title: 'RADIX Wiki',
-    description: SITE_DESCRIPTION,
-    type: 'website',
-    siteName: 'RADIX Wiki',
-    locale: 'en_US',
-    url: BASE_URL,
-    images: [{ url: `${BASE_URL}/og`, width: 1200, height: 630, alt: 'RADIX Wiki' }],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    site: '@RadixWiki',
-    creator: '@RadixWiki',
-    title: 'RADIX Wiki',
-    description: SITE_DESCRIPTION,
-    images: [`${BASE_URL}/og`],
-  },
+  openGraph: SITE_CARD.openGraph,
+  twitter: SITE_CARD.twitter,
 };
 
 const SITE_JSON_LD = JSON.stringify([

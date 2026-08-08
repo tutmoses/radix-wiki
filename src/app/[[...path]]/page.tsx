@@ -27,6 +27,7 @@ import ValidatorsView from '@/components/charts/ValidatorsView';
 import TokensView from '@/components/charts/TokensView';
 import TokenDetailView from '@/components/charts/TokenDetailView';
 import { BASE_URL, getContentSnippet } from '@/lib/utils';
+import { ogMetadata, ogImageUrl } from '@/lib/og';
 import { articleType, aboutEntity, articleLearningProps } from '@/lib/entity-ld';
 import { getTokenDetail } from '@/lib/radix/tokens';
 import type { Block } from '@/types/blocks';
@@ -73,13 +74,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const baseDesc = `${fullName}. Live price, supply, holders, and trading volume on the Radix network.`;
     const extraDesc = token.description ? ` ${token.description.replace(/\s+/g, ' ').trim()}` : '';
     const description = (baseDesc + extraDesc).slice(0, 160);
-    const ogUrl = `${BASE_URL}/og?title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}`;
-    return {
-      title, description,
-      alternates: { canonical },
-      openGraph: { title, description, type: 'article', images: [{ url: ogUrl, width: 1200, height: 630 }] },
-      twitter: { card: 'summary_large_image', title, images: [ogUrl] },
-    };
+    return { title, description, ...ogMetadata({ title, description, url: canonical, type: 'article' }) };
   }
 
   // Search results — noindex (thin, query-dependent)
@@ -102,25 +97,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
-  // Static pages with fixed metadata
-  const STATIC_META: Record<string, { title: string; description: string }> = {
+  // Static pages with fixed metadata. `path` is the URL where the parsed type
+  // doesn't spell it (charts-validators lives at /charts/validators).
+  const STATIC_META: Record<string, { title: string; description: string; path?: string }> = {
     leaderboard: { title: 'Leaderboard', description: 'Top RADIX.wiki contributors ranked by contribution points.' },
     welcome: { title: 'Welcome', description: 'Get started with RADIX Wiki — connect your Radix wallet and begin contributing to the decentralized knowledge base.' },
     rewards: { title: 'Rewards', description: 'Track contributor rewards and XRD airdrop eligibility on RADIX Wiki.' },
     charts: { title: 'Charts', description: 'Live Radix network statistics, validator directory, and ecosystem token analytics — successor to RadixCharts.' },
-    'charts-validators': { title: 'Validators', description: 'Sortable directory of all Radix validators with stake, fee, and ownership data.' },
-    'charts-tokens': { title: 'Tokens', description: 'Top tokens on Radix ranked by total value locked, with price, volume, and 24h change.' },
+    'charts-validators': { title: 'Validators', description: 'Sortable directory of all Radix validators with stake, fee, and ownership data.', path: 'charts/validators' },
+    'charts-tokens': { title: 'Tokens', description: 'Top tokens on Radix ranked by total value locked, with price, volume, and 24h change.', path: 'charts/tokens' },
   };
 
   const staticMeta = STATIC_META[parsed.type];
   if (staticMeta) {
-    const ogUrl = `${BASE_URL}/og?title=${encodeURIComponent(staticMeta.title)}&description=${encodeURIComponent(staticMeta.description)}`;
-    return {
-      title: staticMeta.title, description: staticMeta.description,
-      alternates: { canonical: `${BASE_URL}/${parsed.type}` },
-      openGraph: { title: staticMeta.title, description: staticMeta.description, type: 'article', images: [{ url: ogUrl, width: 1200, height: 630 }] },
-      twitter: { card: 'summary_large_image', title: staticMeta.title, images: [ogUrl] },
-    };
+    const { path: staticPath, ...meta } = staticMeta;
+    return { ...meta, ...ogMetadata({ ...meta, url: `${BASE_URL}/${staticPath ?? parsed.type}` }) };
   }
 
   // Category pages — unique title + description from tag hierarchy
@@ -131,13 +122,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const parentPath = tagSegments.slice(0, -1).join(' › ');
     const categoryDescription = tag?.description
       || `${categoryName} on RADIX Wiki${parentPath ? ` (${parentPath})` : ''} — browse community-maintained pages covering ${categoryName.toLowerCase()} in the Radix DLT ecosystem.`;
-    const categoryUrl = `${BASE_URL}/${parsed.tagPath}`;
-    const ogUrl = `${BASE_URL}/og?title=${encodeURIComponent(categoryName)}&description=${encodeURIComponent(categoryDescription)}`;
     return {
       title: categoryName, description: categoryDescription,
-      alternates: { canonical: categoryUrl },
-      openGraph: { title: categoryName, description: categoryDescription, type: 'website', images: [{ url: ogUrl, width: 1200, height: 630 }] },
-      twitter: { card: 'summary_large_image', title: categoryName, images: [ogUrl] },
+      ...ogMetadata({
+        title: categoryName, description: categoryDescription,
+        url: `${BASE_URL}/${parsed.tagPath}`, tagPath: parsed.tagPath,
+      }),
     };
   }
 
@@ -156,13 +146,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (parsed.type === 'homepage') {
     const title = 'Radix Wiki: XRD, Scrypto & the Radix DLT Crypto Ecosystem';
     const description = 'The community-maintained wiki for Radix DLT – XRD, the Radix Engine, Scrypto smart contracts, Cerberus consensus, validators, staking, and the DeFi ecosystem.';
-    const ogUrl = `${BASE_URL}/og?title=${encodeURIComponent('RADIX Wiki')}&description=${encodeURIComponent(description)}`;
     return {
       title: { absolute: title },
       description,
-      alternates: { canonical: BASE_URL },
-      openGraph: { title, description, type: 'website', url: BASE_URL, images: [{ url: ogUrl, width: 1200, height: 630 }] },
-      twitter: { card: 'summary_large_image', site: '@RadixWiki', creator: '@RadixWiki', title, description, images: [ogUrl] },
+      // The card headline stays the brand, not the keyword-length document title.
+      ...ogMetadata({ title, description, url: BASE_URL, imageTitle: 'RADIX Wiki' }),
     };
   }
 
@@ -195,23 +183,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       : 'RADIX Wiki — community-maintained knowledge base for Radix DLT, the layer-1 blockchain with linear scalability and asset-oriented smart contracts.');
   const segments = path?.length ? path.join('/') : '';
   const canonical = segments ? `${BASE_URL}/${segments}` : BASE_URL;
-  const ogParams = new URLSearchParams({ title, description, tagPath: page?.tagPath || '' });
-  if (page?.bannerImage) ogParams.set('banner', page.bannerImage);
-  const ogUrl = `${BASE_URL}/og?${ogParams}`;
 
   return {
     title,
     description,
-    alternates: { canonical },
-    openGraph: {
-      title, description, type: 'article',
-      images: [{ url: ogUrl, width: 1200, height: 630 }],
-      ...(page?.createdAt && { publishedTime: new Date(page.createdAt).toISOString() }),
-      ...(page?.updatedAt && { modifiedTime: new Date(page.updatedAt).toISOString() }),
-      ...(sectionName && { section: sectionName }),
-      ...(page?.tagPath && { tags: page.tagPath.split('/') }),
-    },
-    twitter: { card: 'summary_large_image', title, description, images: [ogUrl] },
+    ...ogMetadata({
+      title, description, url: canonical, type: 'article',
+      tagPath: page?.tagPath, banner: page?.bannerImage,
+      article: {
+        ...(page?.createdAt && { publishedTime: new Date(page.createdAt).toISOString() }),
+        ...(page?.updatedAt && { modifiedTime: new Date(page.updatedAt).toISOString() }),
+        ...(sectionName && { section: sectionName }),
+        ...(page?.tagPath && { tags: page.tagPath.split('/') }),
+      },
+    }),
   };
 }
 
@@ -280,8 +265,7 @@ function articleLd(page: WikiPage, url: string) {
   const about = aboutEntity(page.tagPath, page.title, page.metadata);
   // Google recommends an image on every article; pages without a banner get the
   // same generated card the OG tags already use, rather than no image at all.
-  const image = page.bannerImage
-    || `${BASE_URL}/og?title=${encodeURIComponent(page.title)}&tagPath=${encodeURIComponent(page.tagPath ?? '')}`;
+  const image = page.bannerImage || ogImageUrl({ title: page.title, tagPath: page.tagPath });
   return {
     '@type': articleType(page.tagPath),
     mainEntityOfPage: { '@type': 'WebPage', '@id': url },
