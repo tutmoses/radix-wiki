@@ -11,7 +11,6 @@ interface BreadcrumbsProps {
 export function Breadcrumbs({ path, suffix }: BreadcrumbsProps) {
   return (
     <nav className="breadcrumbs">
-      <Link href="/" className="breadcrumb-link">Home</Link>
       {path.map((segment, i) => {
         const href = '/' + path.slice(0, i + 1).join('/');
         const tag = findTagByPath(path.slice(0, i + 1));
@@ -19,7 +18,7 @@ export function Breadcrumbs({ path, suffix }: BreadcrumbsProps) {
         const isLast = i === path.length - 1 && !suffix;
         return (
           <span key={href} className="row">
-            <span>/</span>
+            {i > 0 && <span>/</span>}
             {isLast ? <span className="breadcrumb-current">{label}</span>
               : <Link href={href} className="breadcrumb-link">{label}</Link>}
           </span>

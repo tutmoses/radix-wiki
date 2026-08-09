@@ -46,14 +46,17 @@
   html { font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
   body { @apply bg-surface-0 text-text text-base min-h-screen; }
 
-  h1, h2, h3, h4 { &:first-child { @apply mt-0; } }
-  h1 { @apply text-h1 font-bold mt-8 mb-4; }
-  h2 { @apply text-h2 font-semibold mt-8 mb-4 border-b-2 border-border scroll-mt-[calc(var(--header-height)+1rem)]; }
-  h3 { @apply text-h3 font-normal mt-6 mb-4 scroll-mt-[calc(var(--header-height)+1rem)]; }
-  h4 { @apply text-h4 font-light mt-4 mb-4 scroll-mt-[calc(var(--header-height)+1rem)]; }
+  /* One flow rhythm for every block-level element. Individual rules below carry
+     only their top margin and type; nothing restates the bottom gap. */
+  :is(h1, h2, h3, h4, p, ul, ol, blockquote, pre, table, figure, hr) { @apply mb-4 last:mb-0; }
 
-  p { @apply mb-4 last:mb-0; }
-  ul, ol { @apply mb-4 pl-8; :is(ul, ol) { @apply mt-1 mb-0; } }
+  h1, h2, h3, h4 { &:first-child { @apply mt-0; } }
+  h1 { @apply text-h1 font-bold mt-8; }
+  h2 { @apply text-h2 font-semibold mt-8 border-b-2 border-border scroll-mt-[calc(var(--header-height)+1rem)]; }
+  h3 { @apply text-h3 font-normal mt-6 scroll-mt-[calc(var(--header-height)+1rem)]; }
+  h4 { @apply text-h4 font-light mt-4 scroll-mt-[calc(var(--header-height)+1rem)]; }
+
+  ul, ol { @apply pl-8; :is(ul, ol) { @apply mt-1 mb-0; } }
   ul { list-style-type: disc; }
   ol { list-style-type: decimal; }
   li { @apply mb-1 last:mb-0; }
@@ -74,8 +77,8 @@
   tr:hover td { @apply bg-white/5; }
 
   /* Canonical table-overflow policy (STRUCTURE.md D8): wide prose tables scroll on
-     mobile instead of breaking layout. Scoped to .prose-content so infobox
-     key-value tables keep wrapping. */
+     mobile instead of breaking layout. Infobox tables opt back out below — they
+     are key-value pairs, and a sideways scroll to read a value is not reading. */
   @media (max-width: 639px) {
     .prose-content table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
   }
@@ -542,8 +545,20 @@
     @apply bg-surface-1 border border-border-muted rounded-lg overflow-hidden p-4;
     width: 100%;
     overflow-wrap: anywhere;
-    table { table-layout: fixed; width: 100%; }
-    th { @apply bg-surface-2; }
+    container-type: inline-size;
+    table { table-layout: fixed; width: 100%; display: table; white-space: normal; }
+    /* Labels are short and values are the reading, so an even split wastes the
+       rail. 42% is the floor that still fits "Published:" on one line. */
+    th { @apply bg-surface-2; width: 42%; }
+
+    /* Between 768px and ~1150px the 1fr rail is only 130–260px wide, and two
+       columns in that leaves every label breaking mid-word ("Publi/shed:"). Below
+       the width a table can hold, the label sits above its value instead. */
+    @container (max-width: 17rem) {
+      :is(th, td) { display: block; width: auto; }
+      th { border-bottom: 0; }
+      td { border-top: 0; }
+    }
 
     @media (min-width: 768px) {
       position: sticky;
