@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, ArrowRight, Save, Plus, Upload, X, Image as ImageIcon, ArrowDownAZ, CalendarPlus, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Save, Plus, Upload, X, Image as ImageIcon, ArrowDownAZ, CalendarPlus, RefreshCw, SlidersHorizontal } from 'lucide-react';
 import { BlockRenderer, findInfobox, infoboxHasContent, InfoboxSidebar } from '@/components/BlockRenderer';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
@@ -190,62 +190,89 @@ function CategoryHero({ description, mainArticle, subcategories }: { description
   );
 }
 
-// ========== CATEGORY SUMMARY ==========
-function CategorySummary({ tag, tagPath, total, shown }: { tag: TagNode | null; tagPath: string[]; total: number; shown: number }) {
-  const categoryName = tag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagPath[tagPath.length - 1] || 'this section';
-  if (!total) return null;
-  return (
-    <div className="category-summary stack-sm">
-      <p className="text-text-muted text-small">
-        {shown === total
-          ? <>The following <strong>{total}</strong> page{total === 1 ? ' is' : 's are'} in {categoryName}.</>
-          : <>Showing <strong>{shown}</strong> of {total} pages in {categoryName}.</>}
-      </p>
-    </div>
-  );
-}
-
-// ========== CATEGORY FILTERS ==========
-function CategoryFilters({ tagPath, sort, facets, filters, letters, letter }: {
-  tagPath: string; sort: SortOrder; facets: Facet[]; filters: FacetFilters; letters: FacetValue[]; letter?: string;
+// ========== CATEGORY RAIL (facets + A–Z index) ==========
+/**
+ * The same links an article's infobox already carries — `Status:`, `Category:` —
+ * shown for the whole set, in the same column of the page. As three wrapped rows
+ * of pills above the grid they were ~50 tap targets and a screen of chrome before
+ * the first card; as a rail they read as a vertical list of choices with counts
+ * and the grid starts at the top. Below `md` the rail is collapsed behind one
+ * button, so a phone gets the pages first.
+ */
+function CategoryRail({ tagPath, sort, facets, filters, letters, letter, open }: {
+  tagPath: string; sort: SortOrder; facets: Facet[]; filters: FacetFilters; letters: FacetValue[]; letter?: string; open: boolean;
 }) {
-  if (!facets.length && !letters.length) return null;
   return (
-    <div className="category-filters">
+    <nav className={cn('category-rail', open && 'category-rail-open')} aria-label="Filter this category">
+      {/* The index leads: it is two lines against the facets' twenty, and a rail
+          tall enough to scroll would otherwise bury the one control that is the
+          whole point of a 142-page category. */}
+      {letters.length > 0 && (
+        <div className="facet-group">
+          <span className="facet-group-label">Index</span>
+          <div className="alpha-index">
+            <Link href={categoryHref(tagPath, { sort, filters })} className={cn('alpha-letter', !letter && 'alpha-letter-active')}>All</Link>
+            {letters.map(({ value, count }) => (
+              <Link
+                key={value}
+                href={categoryHref(tagPath, { sort, filters, letter: letter === value ? undefined : value })}
+                className={cn('alpha-letter', letter === value && 'alpha-letter-active')}
+                title={`${count} page${count === 1 ? '' : 's'}`}
+              >
+                {value}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
       {facets.map(facet => (
-        <div key={facet.key} className="facet-row">
-          <span className="facet-label">{facet.label}</span>
+        <div key={facet.key} className="facet-group">
+          <span className="facet-group-label">{facet.label}</span>
           {facet.values.map(({ value, count }) => {
             const active = filters[facet.key] === value;
             return (
               <Link
                 key={value}
                 href={categoryHref(tagPath, { sort, filters: toggleFilter(filters, facet.key, value), letter })}
-                className={cn('facet-chip', active && 'facet-chip-active')}
-                aria-pressed={active}
+                className={cn('facet-option', active && 'facet-option-active')}
+                aria-current={active ? 'true' : undefined}
+                title={value}
               >
-                {value}<span className="facet-count">{count}</span>
+                <span className="truncate">{value}</span>
+                <span className="facet-option-count">{count}</span>
               </Link>
             );
           })}
         </div>
       ))}
-      {letters.length > 0 && (
-        <div className="facet-row">
-          <span className="facet-label">Index</span>
-          <Link href={categoryHref(tagPath, { sort, filters })} className={cn('facet-chip', !letter && 'facet-chip-active')}>All</Link>
-          {letters.map(({ value, count }) => (
-            <Link
-              key={value}
-              href={categoryHref(tagPath, { sort, filters, letter: letter === value ? undefined : value })}
-              className={cn('facet-chip', letter === value && 'facet-chip-active')}
-              title={`${count} page${count === 1 ? '' : 's'}`}
-            >
-              {value}
-            </Link>
-          ))}
-        </div>
-      )}
+    </nav>
+  );
+}
+
+// ========== CATEGORY RESULTS BAR ==========
+/** One line above the grid: how much of the category you are looking at, and the two controls that change it. */
+function ResultsBar({ tag, tagPath, total, shown, sort, filters, letter, hasRail, filtersOpen, onToggleFilters }: {
+  tag: TagNode | null; tagPath: string; total: number; shown: number; sort: SortOrder;
+  filters: FacetFilters; letter?: string; hasRail: boolean; filtersOpen: boolean; onToggleFilters: () => void;
+}) {
+  const categoryName = tag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagPath.split('/').at(-1) || 'this section';
+  const narrowed = Object.keys(filters).length + (letter ? 1 : 0);
+  return (
+    <div className="results-bar">
+      <p className="results-count">
+        {shown === total
+          ? <>The following <strong>{total}</strong> page{total === 1 ? ' is' : 's are'} in {categoryName}.</>
+          : <>Showing <strong>{shown}</strong> of {total} pages in {categoryName}.</>}
+        {narrowed > 0 && <> <Link href={categoryHref(tagPath, { sort })} className="link">Clear</Link></>}
+      </p>
+      <div className="row">
+        {hasRail && (
+          <button type="button" className={cn('filter-toggle', narrowed > 0 && 'filter-toggle-active')} onClick={onToggleFilters} aria-expanded={filtersOpen}>
+            <SlidersHorizontal size={14} />Filters{narrowed > 0 && ` · ${narrowed}`}
+          </button>
+        )}
+        <SortToggle sort={sort} tagPath={tagPath} filters={filters} letter={letter} />
+      </div>
     </div>
   );
 }
@@ -348,9 +375,11 @@ export function CategoryView({ tagPath, pages, sort, total, facets, filters, let
   const pathStr = tagPath.join('/');
   const [newSlug, setNewSlug] = useState('');
   const [showCreate, setShowCreate] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const tag = findTagByPath(tagPath);
   const canCreatePages = isAuthenticated;
   const isContainer = total === 0 && subcategories.length > 0;
+  const hasRail = facets.length > 0 || letters.length > 0;
 
   return (
     <div className="stack">
@@ -370,52 +399,58 @@ export function CategoryView({ tagPath, pages, sort, total, facets, filters, let
         )}
       </div>
       <CategoryHero description={tag?.description} mainArticle={mainArticle} subcategories={subcategories} />
-      <CategorySummary tag={tag} tagPath={tagPath} total={total} shown={pages.length} />
-      <CategoryFilters tagPath={pathStr} sort={sort} facets={facets} filters={filters} letters={letters} letter={letter} />
       {/* A container category (Tech, Contents) holds only subcategories — sorting and an
           "empty" notice are both noise there; the subcategory cards are the whole page. */}
       {isContainer ? null : <>
-      <div className="center">
-        <SortToggle sort={sort} tagPath={pathStr} filters={filters} letter={letter} />
-      </div>
-      {pages.length > 0 ? (
-        <div className="category-grid">
-          {pages.map(p => (
-            <Link key={p.id} href={`/${p.tagPath}/${p.slug}`}>
-              <Card interactive className="h-full overflow-hidden p-0!">
-                <div className="page-card-thumb">
-                  {p.bannerImage ? (
-                    <Image src={p.bannerImage} alt={p.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
-                  ) : (
-                    <Image src={generateBannerSvg(p.title, p.tagPath)} alt={p.title} fill className="object-cover" unoptimized />
-                  )}
-                </div>
-                <div className="page-card-body">
-                  <div className="spread">
-                    <h3 className="m-0!">{p.title}</h3>
-                    {p.metadata?.status && <span>{p.metadata.status}</span>}
-                  </div>
-                  {(() => { const snippet = getContentSnippet(p.content); return snippet && <p className="text-text-muted text-small line-clamp-2">{snippet}</p>; })()}
-                </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      ) : (
-        <Card className="empty-state">
-          {total > 0 ? (
-            <>
-              <p className="text-text-muted">No pages match these filters.</p>
-              <Link href={categoryHref(pathStr, { sort })} className="link mt-2 inline-block">Clear filters</Link>
-            </>
+      <ResultsBar
+        tag={tag} tagPath={pathStr} total={total} shown={pages.length} sort={sort} filters={filters} letter={letter}
+        hasRail={hasRail} filtersOpen={showFilters} onToggleFilters={() => setShowFilters(v => !v)}
+      />
+      <div className={cn(hasRail && 'category-with-rail')}>
+        <div className="category-results">
+          {pages.length > 0 ? (
+            <div className="category-grid">
+              {pages.map(p => (
+                <Link key={p.id} href={`/${p.tagPath}/${p.slug}`}>
+                  <Card interactive className="h-full overflow-hidden p-0!">
+                    <div className="page-card-thumb">
+                      {p.bannerImage ? (
+                        <Image src={p.bannerImage} alt={p.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
+                      ) : (
+                        <Image src={generateBannerSvg(p.title, p.tagPath)} alt={p.title} fill className="object-cover" unoptimized />
+                      )}
+                    </div>
+                    <div className="page-card-body">
+                      <div className="spread">
+                        <h3 className="m-0!">{p.title}</h3>
+                        {p.metadata?.status && <span>{p.metadata.status}</span>}
+                      </div>
+                      {(() => { const snippet = getContentSnippet(p.content); return snippet && <p className="text-text-muted text-small line-clamp-2">{snippet}</p>; })()}
+                    </div>
+                  </Card>
+                </Link>
+              ))}
+            </div>
           ) : (
-            <>
-              <p className="text-text-muted">No pages in this category yet.</p>
-              {canCreatePages && <small className="mt-2 block">Click "New Page" above to create one.</small>}
-            </>
+            <Card className="empty-state">
+              {total > 0 ? (
+                <>
+                  <p className="text-text-muted">No pages match these filters.</p>
+                  <Link href={categoryHref(pathStr, { sort })} className="link mt-2 inline-block">Clear filters</Link>
+                </>
+              ) : (
+                <>
+                  <p className="text-text-muted">No pages in this category yet.</p>
+                  {canCreatePages && <small className="mt-2 block">Click "New Page" above to create one.</small>}
+                </>
+              )}
+            </Card>
           )}
-        </Card>
-      )}
+        </div>
+        {hasRail && (
+          <CategoryRail tagPath={pathStr} sort={sort} facets={facets} filters={filters} letters={letters} letter={letter} open={showFilters} />
+        )}
+      </div>
       </>}
     </div>
   );

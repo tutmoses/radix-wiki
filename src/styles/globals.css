@@ -396,16 +396,57 @@
   .category-main-article { @apply text-text-muted; }
   .subcategory-meta { @apply mt-auto pt-2 text-text-muted text-xs; }
 
-  /* ===== CATEGORY SUMMARY ===== */
-  .category-summary { @apply pb-4 border-b border-border-muted; }
+  /* ===== CATEGORY RESULTS BAR ===== */
+  .results-bar { @apply flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-border-muted; }
+  .results-count { @apply m-0 text-text-muted text-small; }
+  .filter-toggle { @apply md:hidden inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border-muted bg-surface-1 text-small text-text-muted transition-colors hover:border-accent hover:text-text; }
+  .filter-toggle-active { @apply border-accent text-text; }
 
-  /* ===== CATEGORY FILTERS (facets + A–Z index) ===== */
-  .category-filters { @apply flex flex-col gap-2 pb-4 border-b border-border-muted; }
-  .facet-row { @apply flex items-center flex-wrap gap-1.5; }
-  .facet-label { @apply text-text-muted text-xs font-medium uppercase tracking-wide w-20 shrink-0; }
-  .facet-chip { @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border-muted bg-surface-1 text-small text-text-muted no-underline transition-colors hover:border-accent hover:text-text; }
-  .facet-chip-active { @apply bg-accent border-accent text-text-inverted; }
-  .facet-count { @apply text-xs opacity-70 tabular-nums; }
+  /* ===== CATEGORY RAIL (facets + A–Z index) =====
+     Mirrors the article infobox: same column, same sticky behaviour, so the axis
+     an article links out on is the axis the category is browsed by. Collapsed
+     behind one button below `md`, where a rail would just be the old wall of
+     chips again. */
+  .category-with-rail {
+    @apply flex flex-col gap-6;
+
+    @media (min-width: 768px) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 15rem;
+      grid-template-areas: "content rail";
+      > * { min-width: 0; }
+      > .category-results { grid-area: content; }
+      > .category-rail { grid-area: rail; order: 0; }
+    }
+  }
+
+  .category-rail {
+    @apply hidden flex-col gap-5 p-4 bg-surface-1 border border-border-muted rounded-lg;
+    order: -1; /* Opened on a phone it belongs above the grid, not below it. */
+
+    @media (min-width: 768px) {
+      @apply flex;
+      position: sticky;
+      top: calc(var(--header-height) + 1.5rem);
+      align-self: start;
+      max-height: calc(100dvh - var(--header-height) - 3rem);
+      overflow-y: auto;
+    }
+  }
+  .category-rail-open { @apply flex; }
+
+  /* The rail takes 15rem off the grid, so the card columns step up one breakpoint
+     later than they do on a full-width category. */
+  .category-with-rail .category-grid { @apply grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3; }
+
+  .facet-group { @apply flex flex-col gap-0.5; }
+  .facet-group-label { @apply mb-1 text-text-muted text-xs font-medium uppercase tracking-wide; }
+  .facet-option { @apply flex items-center justify-between gap-2 -mx-1.5 px-1.5 py-1 rounded text-small text-text-muted no-underline transition-colors hover:bg-surface-2 hover:text-text; }
+  .facet-option-active { @apply bg-accent-muted text-text font-medium; }
+  .facet-option-count { @apply text-xs tabular-nums opacity-70; }
+  .alpha-index { @apply flex flex-wrap gap-x-2 gap-y-1 text-small; }
+  .alpha-letter { @apply text-text-muted no-underline transition-colors hover:text-accent; }
+  .alpha-letter-active { @apply text-accent font-semibold; }
 
   /* ===== MAINTENANCE QUEUES ===== */
   .maintenance-queue { @apply flex flex-col gap-2 pt-6 border-t border-border-muted; }
