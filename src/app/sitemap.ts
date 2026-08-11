@@ -61,6 +61,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly' as const,
       priority: 0.5,
     })),
+    // Hub articles (empty slug) are omitted here: their URL is the category's own,
+    // already emitted above.
     ...pages
       .filter(p => p.tagPath && p.slug && isValidTagPath(p.tagPath.split('/')))
       .map(p => ({

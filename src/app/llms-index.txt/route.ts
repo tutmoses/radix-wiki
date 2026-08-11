@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
   const pages = await prisma.page.findMany({
     select: { title: true, tagPath: true, slug: true, content: true },
-    where: { tagPath: { not: '' }, slug: { not: '' } },
+    where: { tagPath: { not: '' } },
     orderBy: { updatedAt: 'desc' },
   });
 

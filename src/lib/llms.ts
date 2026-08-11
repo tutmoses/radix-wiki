@@ -7,7 +7,7 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { TAG_HIERARCHY, type TagNode } from '@/lib/tags';
-import { BASE_URL, getContentSnippet } from '@/lib/utils';
+import { BASE_URL, getContentSnippet, pagePath } from '@/lib/utils';
 
 export function collectCategories(nodes: TagNode[], parent = ''): { path: string; name: string }[] {
   return nodes.filter(n => !n.hidden).flatMap(n => {
@@ -35,7 +35,7 @@ export function cleanSnippet(s: string): string {
 /** One markdown bullet for a page: linked title plus cleaned excerpt */
 export function pageLine(p: { title: string; tagPath: string | null; slug: string | null; content: unknown }): string {
   const e = cleanSnippet(getContentSnippet(p.content));
-  return `- [${p.title}](${BASE_URL}/${p.tagPath}/${p.slug})${e ? `: ${e}` : ''}`;
+  return `- [${p.title}](${BASE_URL}${pagePath(p.tagPath ?? '', p.slug ?? '')})${e ? `: ${e}` : ''}`;
 }
 
 /** Corpus-wide ETag + Last-Modified from page count and newest update. */

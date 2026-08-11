@@ -3,6 +3,7 @@
 import { createHmac, randomBytes } from 'crypto';
 import { prisma } from '@/lib/prisma/client';
 import { deliverTelegram } from '@/lib/telegram';
+import { pagePath } from '@/lib/utils';
 
 export type WebhookEvent = 'page.created' | 'page.updated' | 'page.deleted' | 'comment.created';
 
@@ -63,7 +64,7 @@ async function _deliver(
   if (matching.length === 0) return;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
-  const pageUrl = page.tagPath ? `${appUrl}/${page.tagPath}/${page.slug}` : appUrl;
+  const pageUrl = page.tagPath ? `${appUrl}${pagePath(page.tagPath, page.slug)}` : appUrl;
 
   const payload: WebhookPayload = {
     event,

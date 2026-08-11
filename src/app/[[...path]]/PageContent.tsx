@@ -14,7 +14,7 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { LinkPreview } from '@/components/LinkPreview';
 import { Badge, Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
-import { cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet, userProfileSlug, shortenAddress } from '@/lib/utils';
+import { cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet, pagePath, userProfileSlug, shortenAddress } from '@/lib/utils';
 import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder, type TagNode } from '@/lib/tags';
 import { categoryHref, toggleFilter, type Facet, type FacetFilters, type FacetValue, type SharedFacet } from '@/lib/taxonomy';
 import { createBlock } from '@/lib/block-utils';
@@ -68,7 +68,7 @@ function PageMeta({ page }: { page: WikiPage }) {
       )}
       <span>Last updated {formatRelativeTime(page.updatedAt)}</span>
       <span className="font-mono">v{page.version}</span>
-      <Link href={`/${page.tagPath}/${page.slug}/history`} className="link">
+      <Link href={`${pagePath(page.tagPath, page.slug)}/history`} className="link">
         {revisions} revision{revisions === 1 ? '' : 's'}
       </Link>
       {page.lastVerifiedAt && <span>Verified {formatDate(page.lastVerifiedAt)}</span>}
@@ -364,44 +364,40 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   );
 }
 
-// ========== CATEGORY VIEW ==========
-export function CategoryView({ tagPath, pages, sort, total, facets, filters, letters, letter, subcategories, mainArticle }: {
-  tagPath: string[]; pages: WikiPage[]; sort: SortOrder; total: number;
-  facets: Facet[]; filters: FacetFilters; letters: FacetValue[]; letter?: string;
-  subcategories: SubcategorySummary[]; mainArticle: PageRef | null;
-}) {
+// ========== CATEGORY LISTING ==========
+function NewPageControl({ tagPath }: { tagPath: string }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const pathStr = tagPath.join('/');
   const [newSlug, setNewSlug] = useState('');
   const [showCreate, setShowCreate] = useState(false);
+  if (!isAuthenticated) return null;
+  return (
+    <div className="row">
+      {showCreate ? (
+        <>
+          <Input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="page-slug" className="w-48" onKeyDown={e => e.key === 'Enter' && newSlug.trim() && router.push(`/${tagPath}/${slugify(newSlug)}`)} autoFocus />
+          <Button size="sm" onClick={() => { const s = slugify(newSlug); if (s) router.push(`/${tagPath}/${s}`); }} disabled={!newSlug.trim()}>Go</Button>
+          <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
+        </>
+      ) : <Button size="sm" onClick={() => setShowCreate(true)}><Plus size={16} />New Page</Button>}
+    </div>
+  );
+}
+
+/** The pages in a category: count bar, grid, filter rail. Stands alone, or runs under the category's hub article. */
+function CategoryListing({ tagPath, pages, sort, total, facets, filters, letters, letter, heading }: {
+  tagPath: string[]; pages: WikiPage[]; sort: SortOrder; total: number;
+  facets: Facet[]; filters: FacetFilters; letters: FacetValue[]; letter?: string; heading?: ReactNode;
+}) {
+  const { isAuthenticated } = useAuth();
   const [showFilters, setShowFilters] = useState(false);
+  const pathStr = tagPath.join('/');
   const tag = findTagByPath(tagPath);
-  const canCreatePages = isAuthenticated;
-  const isContainer = total === 0 && subcategories.length > 0;
   const hasRail = facets.length > 0 || letters.length > 0;
 
   return (
     <div className="stack">
-      <Breadcrumbs path={tagPath} />
-      <div className="spread">
-        <h1>{tag?.name || tagPath[tagPath.length - 1]}</h1>
-        {canCreatePages && (
-          <div className="row">
-            {showCreate ? (
-              <>
-                <Input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="page-slug" className="w-48" onKeyDown={e => e.key === 'Enter' && newSlug.trim() && router.push(`/${pathStr}/${slugify(newSlug)}`)} autoFocus />
-                <Button size="sm" onClick={() => { const s = slugify(newSlug); if (s) router.push(`/${pathStr}/${s}`); }} disabled={!newSlug.trim()}>Go</Button>
-                <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
-              </>
-            ) : <Button size="sm" onClick={() => setShowCreate(true)}><Plus size={16} />New Page</Button>}
-          </div>
-        )}
-      </div>
-      <CategoryHero description={tag?.description} mainArticle={mainArticle} subcategories={subcategories} />
-      {/* A container category (Tech, Contents) holds only subcategories — sorting and an
-          "empty" notice are both noise there; the subcategory cards are the whole page. */}
-      {isContainer ? null : <>
+      {heading}
       <ResultsBar
         tag={tag} tagPath={pathStr} total={total} shown={pages.length} sort={sort} filters={filters} letter={letter}
         hasRail={hasRail} filtersOpen={showFilters} onToggleFilters={() => setShowFilters(v => !v)}
@@ -411,7 +407,7 @@ export function CategoryView({ tagPath, pages, sort, total, facets, filters, let
           {pages.length > 0 ? (
             <div className="category-grid">
               {pages.map(p => (
-                <Link key={p.id} href={`/${p.tagPath}/${p.slug}`}>
+                <Link key={p.id} href={pagePath(p.tagPath, p.slug)}>
                   <Card interactive className="h-full overflow-hidden p-0!">
                     <div className="page-card-thumb">
                       {p.bannerImage ? (
@@ -441,7 +437,7 @@ export function CategoryView({ tagPath, pages, sort, total, facets, filters, let
               ) : (
                 <>
                   <p className="text-text-muted">No pages in this category yet.</p>
-                  {canCreatePages && <small className="mt-2 block">Click "New Page" above to create one.</small>}
+                  {isAuthenticated && <small className="mt-2 block">Click "New Page" above to create one.</small>}
                 </>
               )}
             </Card>
@@ -451,7 +447,61 @@ export function CategoryView({ tagPath, pages, sort, total, facets, filters, let
           <CategoryRail tagPath={pathStr} sort={sort} facets={facets} filters={filters} letters={letters} letter={letter} open={showFilters} />
         )}
       </div>
-      </>}
+    </div>
+  );
+}
+
+// ========== CATEGORY VIEW ==========
+export function CategoryView({ tagPath, pages, sort, total, facets, filters, letters, letter, subcategories, mainArticle, hub }: {
+  tagPath: string[]; pages: WikiPage[]; sort: SortOrder; total: number;
+  facets: Facet[]; filters: FacetFilters; letters: FacetValue[]; letter?: string;
+  subcategories: SubcategorySummary[]; mainArticle: PageRef | null; hub: WikiPage | null;
+}) {
+  const pathStr = tagPath.join('/');
+  const tag = findTagByPath(tagPath);
+  // A container category (Tech, Contents) holds only subcategories — sorting and an
+  // "empty" notice are both noise there; the subcategory cards are the whole page.
+  const isContainer = total === 0 && subcategories.length > 0;
+  const categoryName = tag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagPath.at(-1) || 'this category';
+
+  // The hub article owns the page — banner, title, infobox — and the listing
+  // becomes its last section, the way a Wikipedia article carries its category.
+  if (hub) {
+    return (
+      <PageViewContent
+        page={hub}
+        related={{ pages: [], sharedFacet: null }}
+        series={null}
+        listing={isContainer ? null : (
+          <CategoryListing
+            tagPath={tagPath} pages={pages} sort={sort} total={total}
+            facets={facets} filters={filters} letters={letters} letter={letter}
+            heading={
+              <div className="spread">
+                <h2 id="pages-in-this-category" className="m-0!">Pages in {categoryName}</h2>
+                <NewPageControl tagPath={pathStr} />
+              </div>
+            }
+          />
+        )}
+      />
+    );
+  }
+
+  return (
+    <div className="stack">
+      <Breadcrumbs path={tagPath} />
+      <div className="spread">
+        <h1>{tag?.name || tagPath[tagPath.length - 1]}</h1>
+        <NewPageControl tagPath={pathStr} />
+      </div>
+      <CategoryHero description={tag?.description} mainArticle={mainArticle} subcategories={subcategories} />
+      {isContainer ? null : (
+        <CategoryListing
+          tagPath={tagPath} pages={pages} sort={sort} total={total}
+          facets={facets} filters={filters} letters={letters} letter={letter}
+        />
+      )}
     </div>
   );
 }
@@ -492,7 +542,7 @@ function SeeAlso({ pages, tagPath, sharedFacet }: { pages: RelatedPage[]; tagPat
 }
 
 // ========== PAGE VIEW (Read-only) ==========
-function PageViewContent({ page, related, series }: { page: WikiPage; related: RelatedPages; series: PageRef | null }) {
+function PageViewContent({ page, related, series, listing }: { page: WikiPage; related: RelatedPages; series: PageRef | null; listing?: ReactNode }) {
   const { isAuthenticated } = useAuth();
   // Contributor stats belong only on a member's own profile — not on curated
   // articles that happen to live under /community (e.g. Dan Hughes).
@@ -506,23 +556,31 @@ function PageViewContent({ page, related, series }: { page: WikiPage; related: R
   const fresh = hasOutdatedBanner ? null : freshnessBanner(page);
   const mainBlocks = [...(fresh ? [fresh] : []), ...blocks.filter(b => b.type !== 'infobox')];
 
-  const main = (
-    <div className="page-main-content stack">
-      <BlockRenderer content={mainBlocks} />
+  // Everything after the prose. On a hub it moves below the listing, so the page
+  // reads article → the pages in it → provenance and discussion.
+  const tail = (
+    <>
       <SeeAlso pages={related.pages} tagPath={page.tagPath} sharedFacet={related.sharedFacet} />
       {isOwnProfile && <UserStats authorId={page.authorId} />}
       <PageMeta page={page} />
       <Discussion pageId={page.id} tagPath={page.tagPath} />
       {isAuthenticated && (
-        <Link href={`/${page.tagPath}/${page.slug}/edit`} className="edit-cta">Something missing? Edit this page →</Link>
+        <Link href={`${pagePath(page.tagPath, page.slug)}/edit`} className="edit-cta">Something missing? Edit this page →</Link>
       )}
+    </>
+  );
+
+  const main = (
+    <div className="page-main-content stack">
+      <BlockRenderer content={mainBlocks} />
+      {!listing && tail}
     </div>
   );
 
   return (
     <article className="stack">
       <Banner src={page.bannerImage} title={page.title} tagPath={page.tagPath}>
-        <Breadcrumbs path={[...page.tagPath.split('/'), page.slug]} />
+        <Breadcrumbs path={[...page.tagPath.split('/'), page.slug].filter(Boolean)} />
         <h1 id={slugify(page.title)} className="m-0!">{page.title}</h1>
       </Banner>
       {showInfobox ? (
@@ -531,6 +589,9 @@ function PageViewContent({ page, related, series }: { page: WikiPage; related: R
           <InfoboxSidebar block={infobox ?? { id: '__infobox__', type: 'infobox', blocks: [] }} metadata={page.metadata} tagPath={page.tagPath} series={series} />
         </div>
       ) : main}
+      {/* Full width, not nested in the article column: a card grid and a facet
+          rail don't fit beside an infobox. */}
+      {listing && <>{listing}<div className="stack">{tail}</div></>}
       <LinkPreview />
     </article>
   );
@@ -540,7 +601,7 @@ function PageViewContent({ page, related, series }: { page: WikiPage; related: R
 export function PageView({ page, tagPath, slug, isEditMode, related = { pages: [], sharedFacet: null }, series = null }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; related?: RelatedPages; series?: PageRef | null }) {
   const { isAuthenticated } = useAuth();
 
-  const viewPath = `/${tagPath}/${slug}`;
+  const viewPath = pagePath(tagPath, slug);
 
   if (isEditMode && !isAuthenticated) return <StatusCard status="authRequired" backHref={viewPath} />;
   if (!page) return <LazyPageEditor tagPath={tagPath} slug={slug} />;

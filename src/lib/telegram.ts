@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma/client';
 import type { WebhookEvent } from '@/lib/webhooks';
+import { pagePath } from '@/lib/utils';
 
 const BOT_TOKEN = process.env.TELEGRAM_SUB_BOT_TOKEN;
 
@@ -33,7 +34,7 @@ function formatMessage(
   comment?: { id: string; content: string } | null,
 ): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
-  const pageUrl = page.tagPath ? `${appUrl}/${page.tagPath}/${page.slug}` : appUrl;
+  const pageUrl = page.tagPath ? `${appUrl}${pagePath(page.tagPath, page.slug)}` : appUrl;
   const actorName = actor?.displayName || actor?.address?.slice(0, 16) || 'Someone';
 
   const icons: Record<WebhookEvent, string> = {

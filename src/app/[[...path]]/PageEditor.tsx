@@ -10,7 +10,7 @@ import { ArrowLeft, Save, Trash2, Link2, X } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Button, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
-import { slugify } from '@/lib/utils';
+import { pagePath, slugify } from '@/lib/utils';
 import { findInfobox } from '@/components/BlockRenderer';
 import { isAuthorOnlyPath, isLockedPage, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, XRD_NOT_A_FEE, type MetadataKeyDefinition } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
@@ -281,7 +281,10 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const router = useRouter();
   const { user } = useAuth();
   const isCreating = !page;
-  const viewPath = `/${tagPath}/${slug}`;
+  const viewPath = pagePath(tagPath, slug);
+  // A category's hub article lives at the empty slug and is reached by its
+  // category's own URL, so there is no slug to edit and no rename to offer.
+  const isHub = !isCreating && !slug;
   const [title, setTitle] = useState('');
   const [content, setContent] = useState<Block[]>([]);
   const [bannerImage, setBannerImage] = useState<string | null>(null);
@@ -345,9 +348,10 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
     setSaveError(null);
     setIsSaving(true);
     try {
-      const exists = page || (await fetch(`/api/wiki/${tagPath}/${slug}`).then(r => r.ok));
+      const apiPath = `/api/wiki${pagePath(tagPath, slug)}`;
+      const exists = page || (await fetch(apiPath).then(r => r.ok));
       const method = exists ? 'PUT' : 'POST';
-      const endpoint = exists ? `/api/wiki/${tagPath}/${slug}` : '/api/wiki';
+      const endpoint = exists ? apiPath : '/api/wiki';
       const newSlug = slugify(editSlug);
       const body = exists
         ? { title, content, bannerImage, metadata, newSlug, editorIds, revisionMessage: revisionMessage.trim() || undefined }
@@ -356,7 +360,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
       const data = await res.json();
       if (res.ok) {
         if (data.isFirstContribution) useStore.getState().showToast('Your first contribution! Welcome to the wiki.');
-        window.location.href = `/${data.tagPath}/${data.slug}`;
+        window.location.href = pagePath(data.tagPath, data.slug);
       } else { setSaveError(data.error || 'Failed to save.'); setIsSaving(false); }
     } catch { setSaveError('Failed to save.'); setIsSaving(false); }
   };
@@ -391,7 +395,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
 
   return (
     <article className="stack">
-      <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix={isCreating ? 'Create' : 'Edit'} />
+      <Breadcrumbs path={[...tagPath.split('/'), slug].filter(Boolean)} suffix={isCreating ? 'Create' : 'Edit'} />
       <header className="stack pb-6 border-b border-border">
         <div className="spread">
           <Link href={backHref} className="row link-muted"><ArrowLeft size={16} /><span>{isCreating ? 'Back to Category' : 'Back to Page'}</span></Link>
@@ -400,14 +404,16 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
         {gate && !gate.allowed ? (
           <div data-callout="warning"><p>{gate.error}</p></div>
         ) : gate === null ? (
-          <div data-callout="info"><p>{isCreating ? 'Creating a new page at' : 'Editing the page at'} <code>/{tagPath}/{slug}</code> requires holding <strong>{getXrdRequired(isCreating ? 'create' : 'edit', tagPath).toLocaleString()} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
+          <div data-callout="info"><p>{isCreating ? 'Creating a new page at' : 'Editing the page at'} <code>{viewPath}</code> requires holding <strong>{getXrdRequired(isCreating ? 'create' : 'edit', tagPath).toLocaleString()} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
         ) : null}
         {saveError && <div data-callout="error"><p>{saveError}</p></div>}
         <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
         <div className="slug-editor">
           <Link2 size={14} />
-          <span>/{tagPath}/</span>
-          <input type="text" value={editSlug} onChange={e => setEditSlug(e.target.value.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-'))} onBlur={() => setEditSlug(slugify(editSlug))} placeholder="page-slug" />
+          {isHub ? <span>/{tagPath}</span> : <>
+            <span>/{tagPath}/</span>
+            <input type="text" value={editSlug} onChange={e => setEditSlug(e.target.value.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-'))} onBlur={() => setEditSlug(slugify(editSlug))} placeholder="page-slug" />
+          </>}
         </div>
         {!isCreating && (
           <Input value={revisionMessage} onChange={e => setRevisionMessage(e.target.value)} placeholder="Edit summary — what changed and why (optional)" maxLength={200} />

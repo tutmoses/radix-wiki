@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { BASE_URL, getContentSnippet, getMatchSnippet } from '@/lib/utils';
+import { BASE_URL, getContentSnippet, getMatchSnippet, pagePath } from '@/lib/utils';
 import { orderByIds, searchPageIds } from '@/lib/wiki';
 import { extractText } from '@/lib/content';
 import { TAG_HIERARCHY, getMetadataKeys, type TagNode } from '@/lib/tags';
@@ -38,7 +38,7 @@ const FULL_SELECT = { ...SUMMARY_SELECT, version: true } as const;
 const IDEAS_SELECT = { title: true, tagPath: true, slug: true, metadata: true, updatedAt: true } as const;
 
 function pageUrl(tagPath: string, slug: string) {
-  return `${BASE_URL}/${tagPath}/${slug}`;
+  return `${BASE_URL}${pagePath(tagPath, slug)}`;
 }
 
 /** `query` swaps the opening-line snippet for the passage that matched. */
@@ -159,7 +159,7 @@ async function get_recent_changes(args: { days?: number; limit?: number }) {
 async function get_full_corpus() {
   const pages = await prisma.page.findMany({
     select: FULL_SELECT,
-    where: { tagPath: { not: '' }, slug: { not: '' } },
+    where: { tagPath: { not: '' } },
     orderBy: { updatedAt: 'desc' },
   });
   const sections = pages.map(p => {
@@ -272,7 +272,7 @@ async function create_page(args: Record<string, unknown>, auth: string | null) {
 
 async function edit_page(args: Record<string, unknown>, auth: string | null) {
   const { tagPath, slug, content, title, revisionMessage, metadata } = args;
-  const result = await forwardWrite(`/api/wiki/${tagPath}/${slug}`, 'PUT', { content, title, revisionMessage, metadata }, auth);
+  const result = await forwardWrite(`/api/wiki${pagePath(tagPath as string, (slug as string) ?? '')}`, 'PUT', { content, title, revisionMessage, metadata }, auth);
   if ('error' in result) return result;
   return {
     edited: true,

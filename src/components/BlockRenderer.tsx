@@ -7,7 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, FileText, User, Copy, Check, AlertTriangle, Megaphone, CalendarClock, type LucideIcon } from 'lucide-react';
 import QRCode from 'qrcode';
-import { cn, formatRelativeTime, formatDate, generateBannerSvg, getContentSnippet } from '@/lib/utils';
+import { cn, formatRelativeTime, formatDate, generateBannerSvg, getContentSnippet, pagePath } from '@/lib/utils';
 import { findTagByPath } from '@/lib/tags';
 import { processHtml } from '@/lib/html';
 import { usePages, useFetch } from '@/hooks';
@@ -43,7 +43,7 @@ function addCopyButton(pre: Element) {
 // ========== PAGE CARD ==========
 const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; compact?: boolean }) {
   const leafTag = findTagByPath(page.tagPath.split('/'));
-  const href = `/${page.tagPath}/${page.slug}`;
+  const href = pagePath(page.tagPath, page.slug);
 
   if (compact) {
     return (

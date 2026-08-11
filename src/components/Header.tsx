@@ -8,7 +8,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Search, Menu, X, Loader2, LogOut, ChevronDown, Edit, History, User, FileCode, Bell, Webhook, Database, MoreVertical, Quote, Link2, Check, Eye, EyeOff } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth, useClickOutside, usePagePath, useFetch } from '@/hooks';
-import { cn, shortenAddress, formatRelativeTime, getMatchSnippet } from '@/lib/utils';
+import { cn, shortenAddress, formatRelativeTime, getMatchSnippet, pagePath } from '@/lib/utils';
 import Highlight from '@/components/Highlight';
 import { Button, Dropdown } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -75,7 +75,7 @@ function NotificationDropdown({ onClose, initialTab }: { onClose: () => void; in
             <div className="notification-list">
               {notifications.map(n => (
                 <button key={n.id} className={cn('notification-item', !n.read && 'notification-unread')}
-                  onClick={() => { markNotificationsRead([n.id]); router.push(`/${n.page.tagPath}/${n.page.slug}`); onClose(); }}>
+                  onClick={() => { markNotificationsRead([n.id]); router.push(pagePath(n.page.tagPath, n.page.slug)); onClose(); }}>
                   <UserAvatar radixAddress={n.actor.radixAddress} avatarUrl={n.actor.avatarUrl} size="sm" />
                   <div className="min-w-0 flex-1">
                     <div className="text-small truncate">{notificationText(n)}</div>
@@ -307,7 +307,7 @@ export function Header() {
     return () => clearTimeout(timer);
   }, [searchQuery, performSearch]);
 
-  const handleSearchSelect = (page: WikiPage) => { setSearchQuery(''); setSearchResults([]); setSearchOpen(false); setShowSearch(false); router.push(`/${page.tagPath}/${page.slug}`); };
+  const handleSearchSelect = (page: WikiPage) => { setSearchQuery(''); setSearchResults([]); setSearchOpen(false); setShowSearch(false); router.push(pagePath(page.tagPath, page.slug)); };
 
   const handleLogout = async () => {
     setShowUserMenu(false);

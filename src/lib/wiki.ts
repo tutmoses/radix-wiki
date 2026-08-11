@@ -79,8 +79,10 @@ export function parsePath(segments: string[] = [], mode: 'client' | 'api' = 'cli
     return { ...base, type: suffix, suffix };
   }
 
-  // Check full path as tag (handles tags like 'history' that collide with suffixes)
-  if (mode === 'client' && isValidTagPath(segments)) {
+  // Check full path as tag (handles tags like 'history' that collide with suffixes).
+  // The empty slug is the category's own hub article, the way `''/''` is the
+  // homepage — so the API resolves it here too, and PUT lands on the hub row.
+  if (isValidTagPath(segments)) {
     return { ...base, type: 'category', tagPath: segments.join('/') };
   }
 
@@ -124,6 +126,18 @@ export const getPage = cached('getPage',
   },
 );
 
+/**
+ * A category's own article, stored at the empty slug — the same slot the homepage
+ * occupies for the root. The category URL renders it above the listing, so the
+ * topic and the pages under it are one page rather than an article plus a pointer.
+ */
+export const getCategoryHub = cached('getCategoryHub',
+  async (tagPath: string): Promise<WikiPage | null> => {
+    if (!tagPath) return null;
+    return prisma.page.findUnique({ where: { tagPath_slug: { tagPath, slug: '' } }, include: PAGE_INCLUDE }) as Promise<WikiPage | null>;
+  },
+);
+
 export const getEcosystemPageByAsset = cached('getEcosystemPageByAsset',
   async (resourceAddress: string): Promise<{ tagPath: string; slug: string; title: string } | null> => {
     return prisma.page.findFirst({
@@ -145,7 +159,8 @@ export const getCategoryPages = cached('getCategoryPages',
     const resolvedSort = sort ?? getSortOrder(tagPath.split('/'));
     const hasDateMeta = resolvedSort !== 'title' && getMetadataKeys(tagPath.split('/')).some(k => k.key === 'date' && k.type === 'date');
     const pages = await prisma.page.findMany({
-      where: { tagPath },
+      // The hub article heads the category page; it is not one of the cards in it.
+      where: { tagPath, slug: { not: '' } },
       select: CATEGORY_SELECT,
       orderBy: sortOrderBy[resolvedSort],
       take: limit,
@@ -165,7 +180,7 @@ export const getDescendantPages = cached('getDescendantPages',
   async (tagPath: string, sort?: SortOrder, limit = 200): Promise<WikiPage[]> => {
     const resolvedSort = sort ?? getSortOrder(tagPath.split('/'));
     return prisma.page.findMany({
-      where: { tagPath: { startsWith: `${tagPath}/` } },
+      where: { tagPath: { startsWith: `${tagPath}/` }, slug: { not: '' } },
       select: CATEGORY_SELECT,
       orderBy: sortOrderBy[resolvedSort],
       take: limit,
@@ -175,7 +190,7 @@ export const getDescendantPages = cached('getDescendantPages',
 
 /** Pages per tag path, for the "44 pages · 3 subcategories" line on subcategory cards. */
 export const getTagCounts = cached('getTagCounts', async (): Promise<Record<string, number>> => {
-  const rows = await prisma.page.groupBy({ by: ['tagPath'], _count: { _all: true } });
+  const rows = await prisma.page.groupBy({ by: ['tagPath'], where: { slug: { not: '' } }, _count: { _all: true } });
   return Object.fromEntries(rows.map(r => [r.tagPath, r._count._all]));
 });
 
@@ -285,7 +300,7 @@ export async function searchPageIds(
       SELECT id, title, updated_at,
              CASE WHEN title ILIKE ${`${term}%`} THEN 0 WHEN title ILIKE ${like} THEN 1 ELSE 2 END AS rank
         FROM pages
-       WHERE slug <> ''
+       WHERE tag_path <> ''
          AND (${tagPath}::text IS NULL OR tag_path = ${tagPath})
          AND (title ILIKE ${like}
               OR (tag_path <> ALL(${HIDDEN_TAG_PATHS}::text[])

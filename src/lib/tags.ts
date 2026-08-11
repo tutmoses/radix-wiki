@@ -66,7 +66,11 @@ export const TAG_HIERARCHY: TagNode[] = [
         name: 'History / Events',
         slug: 'history',
         sort: 'newest',
-        mainArticle: 'contents/history/history-of-radix',
+        // No `mainArticle`: History of Radix is this category's hub article (the
+        // empty slug), not a topic its pages are part of. It traces the protocol's
+        // lineage and says nothing about the workshops and hackathons filed here,
+        // so inheriting it down the trail put "Part of a series on History of
+        // Radix" on 18 event pages it does not cover.
         description: 'A chronological record of Radix milestones — conferences, hackathons, mainnet upgrades, and pivotal community moments.',
         metadataKeys: [
           { key: 'attendees', label: 'Attendees:', type: 'text'},

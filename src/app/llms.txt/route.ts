@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
   const [recent, counts] = await Promise.all([
     prisma.page.findMany({
       select: { title: true, tagPath: true, slug: true, content: true },
-      where: { tagPath: { not: '' }, slug: { not: '' } },
+      where: { tagPath: { not: '' } },
       orderBy: { updatedAt: 'desc' },
       take: RECENT_LIMIT,
     }),

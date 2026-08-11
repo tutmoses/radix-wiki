@@ -1,5 +1,6 @@
 // src/lib/mdx.ts - Convert wiki blocks to MDX format
 
+import { pagePath } from '@/lib/utils';
 import type { Block, AtomicBlock, ContentBlock, ColumnsBlock, InfoboxBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, ReferencesBlock, BannerBlock } from '@/types/blocks';
 
 const BANNER_LABELS: Record<BannerBlock['variant'], string> = {
@@ -179,7 +180,7 @@ export function blocksToMdx(page: PageData): string {
   // Build frontmatter
   const frontmatter: Record<string, string | undefined> = {
     title: page.title,
-    path: `/${page.tagPath}/${page.slug}`,
+    path: pagePath(page.tagPath ?? '', page.slug ?? ''),
   };
   if (page.bannerImage) frontmatter.bannerImage = page.bannerImage;
   if (page.version) frontmatter.version = page.version;

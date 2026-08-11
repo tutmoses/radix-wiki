@@ -10,7 +10,7 @@ import { Button, Badge } from '@/components/ui';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { useAuth } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
-import { formatDate, cn } from '@/lib/utils';
+import { formatDate, cn, pagePath } from '@/lib/utils';
 import { stripHtml } from '@/lib/content';
 import type { BlockChange } from '@/lib/versioning';
 
@@ -135,13 +135,13 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const apiBase = isHomepage ? '/api/wiki' : `/api/wiki/${tagPath}/${slug}`;
-  const viewPath = isHomepage ? '/' : `/${tagPath}/${slug}`;
+  const apiBase = isHomepage ? '/api/wiki' : `/api/wiki${pagePath(tagPath, slug)}`;
+  const viewPath = isHomepage ? '/' : pagePath(tagPath, slug);
 
   if (!data) {
     return (
       <div className="stack">
-        {!isHomepage && <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix="History" />}
+        {!isHomepage && <Breadcrumbs path={[...tagPath.split('/'), slug].filter(Boolean)} suffix="History" />}
         <div className="surface p-12 text-center"><p className="text-error">Page not found</p></div>
       </div>
     );
@@ -160,7 +160,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
 
   return (
     <div className="stack">
-      {!isHomepage && <Breadcrumbs path={[...tagPath.split('/'), slug]} suffix="History" />}
+      {!isHomepage && <Breadcrumbs path={[...tagPath.split('/'), slug].filter(Boolean)} suffix="History" />}
       <div className="spread">
         <h1 className="m-0!">{isHomepage ? 'Homepage' : 'Page'} History</h1>
         <Link href={viewPath}><Button variant="secondary" size="sm"><ArrowLeft size={16} />Back</Button></Link>

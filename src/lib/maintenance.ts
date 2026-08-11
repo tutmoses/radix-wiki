@@ -10,6 +10,7 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { cached } from '@/lib/wiki';
+import { pagePath } from '@/lib/utils';
 import { isStale, daysSince } from '@/lib/freshness';
 import { getMetadataKeys } from '@/lib/tags';
 
@@ -25,7 +26,7 @@ type Row = {
   content: unknown; metadata: unknown; updatedAt: Date; lastVerifiedAt: Date | null;
 };
 
-const href = (p: Row) => `/${p.tagPath}/${p.slug}`;
+const href = (p: Row) => pagePath(p.tagPath, p.slug);
 
 export const getMaintenanceQueues = cached('getMaintenanceQueues', async (): Promise<MaintenanceQueue[]> => {
   const pages = await prisma.page.findMany({

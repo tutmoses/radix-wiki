@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, Loader2 } from 'lucide-react';
-import { getMatchSnippet } from '@/lib/utils';
+import { getMatchSnippet, pagePath } from '@/lib/utils';
 import Highlight from '@/components/Highlight';
 import type { WikiPage } from '@/types';
 
@@ -85,7 +85,7 @@ export default function SearchView({ query: initialQuery }: { query: string }) {
             const snippet = getMatchSnippet(page.content, searched, 220);
             return (
               <li key={page.id}>
-                <Link href={`/${page.tagPath}/${page.slug}`} className="search-page-result">
+                <Link href={pagePath(page.tagPath, page.slug)} className="search-page-result">
                   <div className="font-medium"><Highlight text={page.title} query={searched} /></div>
                   <div className="text-small text-text-muted truncate">/{page.tagPath}/{page.slug}</div>
                   {snippet && <p className="text-small text-text-muted line-clamp-2 mt-1"><Highlight text={snippet} query={searched} /></p>}

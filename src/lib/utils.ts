@@ -38,6 +38,15 @@ export function shortenAddress(address: string, chars: number = 6): string {
   return address.length <= chars * 2 ? address : `${address.slice(0, chars)}...${address.slice(-chars)}`;
 }
 
+/**
+ * A page's URL path. Two rows carry an empty slug — the homepage and a category's
+ * hub article — and both live at the path their tag path already names, so the
+ * segments are joined rather than interpolated with a slash that has nothing after it.
+ */
+export function pagePath(tagPath: string, slug: string): string {
+  return `/${[tagPath, slug].filter(Boolean).join('/')}`;
+}
+
 export function userProfileSlug(displayName: string | null | undefined, radixAddress: string): string {
   return displayName
     ? displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')

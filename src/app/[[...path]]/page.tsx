@@ -3,7 +3,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { notFound, redirect } from 'next/navigation';
-import { parsePath, getHomepage, getPage, getCategoryPages, getDescendantPages, getTagCounts, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getEcosystemPageByAsset } from '@/lib/wiki';
+import { parsePath, getHomepage, getPage, getCategoryHub, getCategoryPages, getDescendantPages, getTagCounts, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getEcosystemPageByAsset } from '@/lib/wiki';
 import { getMaintenanceQueues } from '@/lib/maintenance';
 import { getSession } from '@/lib/auth';
 import type { RelatedPages, SubcategorySummary } from './PageContent';
@@ -114,19 +114,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { ...meta, ...ogMetadata({ ...meta, url: `${BASE_URL}/${staticPath ?? parsed.type}` }) };
   }
 
-  // Category pages — unique title + description from tag hierarchy
+  // Category pages — unique title + description from the hub article if there is
+  // one, else from the tag hierarchy.
   if (parsed.type === 'category') {
     const tagSegments = parsed.tagPath.split('/');
     const tag = findTagByPath(tagSegments);
+    const hub = await getCategoryHub(parsed.tagPath);
     const categoryName = tag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagSegments.at(-1)?.replace(/-/g, ' ') || 'Category';
     const parentPath = tagSegments.slice(0, -1).join(' › ');
-    const categoryDescription = tag?.description
+    const hubExcerpt = (hub?.metadata as Record<string, string> | null)?.excerpt;
+    const title = hub?.title || categoryName;
+    const description = hubExcerpt || tag?.description
       || `${categoryName} on RADIX Wiki${parentPath ? ` (${parentPath})` : ''} — browse community-maintained pages covering ${categoryName.toLowerCase()} in the Radix DLT ecosystem.`;
     return {
-      title: categoryName, description: categoryDescription,
+      title, description,
       ...ogMetadata({
-        title: categoryName, description: categoryDescription,
+        title, description,
         url: `${BASE_URL}/${parsed.tagPath}`, tagPath: parsed.tagPath,
+        banner: hub?.bannerImage,
       }),
     };
   }
@@ -382,6 +387,13 @@ export default async function DynamicPage({ params, searchParams }: Props) {
     const categoryName = tag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagSegments.at(-1)?.replace(/-/g, ' ') || 'Category';
     const categoryUrl = `${BASE_URL}/${parsed.tagPath}`;
 
+    // `/<category>/edit` edits the hub article where one exists; categories
+    // without a hub keep falling through to the listing.
+    if (parsed.suffix === 'edit') {
+      const hub = await getCategoryHub(parsed.tagPath);
+      if (hub) return <PageView page={hub} tagPath={parsed.tagPath} slug="" isEditMode />;
+    }
+
     if (isIdeasPath(parsed.tagPath)) {
       const defaultSort = getSortOrder(tagSegments);
       const ideasSort = (sortParam && VALID_SORTS.has(sortParam) ? sortParam : defaultSort) as SortOrder;
@@ -422,16 +434,21 @@ export default async function DynamicPage({ params, searchParams }: Props) {
         subs: (child.children ?? []).filter(c => !c.hidden).length,
       };
     });
-    const mainArticle = tag?.mainArticle ? await getPageRef(tag.mainArticle) : null;
+    // A hub article heads its own category, so the pointer to a main article
+    // elsewhere is only for the categories that don't have one.
+    const hub = await withProcessedContent(await getCategoryHub(parsed.tagPath));
+    const mainArticle = !hub && tag?.mainArticle ? await getPageRef(tag.mainArticle) : null;
 
     return (
       <>
+        {hub && <JsonLd data={articleLd(hub, categoryUrl)} />}
         <JsonLd data={collectionLd(categoryName, categoryUrl, pages, tag?.description)} />
         <JsonLd data={breadcrumbLd(tagSegments)} />
         <CategoryView
           tagPath={tagSegments} pages={pages} sort={sort} total={all.length}
           facets={buildFacets(parsed.tagPath, all, filters, letter)} filters={filters}
           letters={letters} letter={letter} subcategories={subcategories} mainArticle={mainArticle}
+          hub={hub}
         />
       </>
     );
