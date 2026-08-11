@@ -1,16 +1,26 @@
 import { NextResponse, type NextRequest, type NextFetchEvent } from 'next/server';
 
+// Applebot-Extended is deliberately absent: it never fetches pages — it is a
+// robots.txt-only token that Applebot checks before using crawled data for AI.
 const AI_BOTS: Record<string, string> = {
   'GPTBot': 'GPTBot',
   'ChatGPT-User': 'ChatGPT',
+  'OAI-SearchBot': 'OAISearchBot',
   'ClaudeBot': 'ClaudeBot',
   'Claude-Web': 'ClaudeBot',
+  'Claude-User': 'ClaudeUser',
+  'Claude-SearchBot': 'ClaudeSearchBot',
   'PerplexityBot': 'PerplexityBot',
+  'Perplexity-User': 'PerplexityUser',
   'Amazonbot': 'Amazonbot',
   'Google-Extended': 'GoogleExtended',
   'Bytespider': 'Bytespider',
   'CCBot': 'CCBot',
   'cohere-ai': 'CohereBot',
+  'Meta-ExternalAgent': 'MetaExternalAgent',
+  'Meta-ExternalFetcher': 'MetaExternalFetcher',
+  'MistralAI-User': 'MistralAI',
+  'DuckAssistBot': 'DuckAssistBot',
 };
 
 const PLAUSIBLE_DOMAIN = (() => {

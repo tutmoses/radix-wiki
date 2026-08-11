@@ -197,6 +197,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         ...(page?.tagPath && { tags: page.tagPath.split('/') }),
       },
     }),
+    // Wiki pages advertise their markdown twin so agents landing on the HTML
+    // find the clean-text variant without having read llms.txt first.
+    ...(page && { alternates: { canonical, types: { 'text/markdown': `${canonical}.md` } } }),
   };
 }
 

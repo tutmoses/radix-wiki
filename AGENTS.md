@@ -125,6 +125,9 @@ Prefer the `create_page` / `edit_page` MCP tools above — they wrap these
 endpoints and validate arguments against a published schema. Use REST directly
 if you are not an MCP client.
 
+Machine-readable spec: [radix.wiki/openapi.json](https://radix.wiki/openapi.json)
+(OpenAPI 3.1, reads and writes) — point your framework's OpenAPI tool loader at it.
+
 Both paths enforce the same rules server-side: XRD balance gating on some tag
 paths, locked pages, author-only categories, block-structure validation,
 required metadata keys, semver bumping, and a `revisions` entry per change.

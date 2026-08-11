@@ -1,22 +1,17 @@
-import { NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { BASE_URL, getContentSnippet } from '@/lib/utils';
 import { extractText } from '@/lib/content';
+import { cleanSnippet, corpusValidators, notModified, textHeaders } from '@/lib/llms';
 import type { Block } from '@/types/blocks';
 
 export const dynamic = 'force-dynamic';
 
-function cleanExcerpt(s: string): string {
-  return s
-    .replace(/\(https?:\/\/[^)]*\)/g, '')
-    .replace(/https?:\/\/\S+/g, '')
-    .replace(/\(\s*\)/g, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim()
-    .slice(0, 160);
-}
+export async function GET(request: NextRequest) {
+  const { etag, lastModified } = await corpusValidators();
+  const cached = notModified(request, etag, lastModified);
+  if (cached) return cached;
 
-export async function GET() {
   const pages = await prisma.page.findMany({
     select: { title: true, tagPath: true, slug: true, content: true, updatedAt: true },
     orderBy: { updatedAt: 'desc' },
@@ -28,7 +23,7 @@ export async function GET() {
       const url = `${BASE_URL}/${p.tagPath}/${p.slug}`;
       const body = extractText((p.content as unknown as Block[]) || []);
       const snippet = getContentSnippet(p.content);
-      return `## ${p.title}\n\nURL: ${url}\nUpdated: ${p.updatedAt.toISOString().split('T')[0]}\n${snippet ? `Summary: ${cleanExcerpt(snippet)}\n` : ''}\n${body}`;
+      return `## ${p.title}\n\nURL: ${url}\nUpdated: ${p.updatedAt.toISOString().split('T')[0]}\n${snippet ? `Summary: ${cleanSnippet(snippet)}\n` : ''}\n${body}`;
     });
 
   const text = [
@@ -44,10 +39,5 @@ export async function GET() {
     ...sections,
   ].join('\n\n');
 
-  return new NextResponse(text, {
-    headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-    },
-  });
+  return new NextResponse(text, { headers: textHeaders(etag, lastModified) });
 }

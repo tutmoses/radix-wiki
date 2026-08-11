@@ -1,33 +1,20 @@
-import { NextResponse } from 'next/server';
+// src/app/llms.txt/route.ts — the compact agent-facing map of the wiki.
+//
+// Kept deliberately small (llms.txt is a map, not the territory): preamble,
+// recently updated pages, per-section counts, and category links. The
+// exhaustive per-page listing lives at /llms-index.txt; the full corpus text
+// at /llms-full.txt.
+
+import { type NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { TAG_HIERARCHY, type TagNode } from '@/lib/tags';
+import { TAG_HIERARCHY } from '@/lib/tags';
 import { CHARTS_PAGES } from '@/lib/static-pages';
-import { BASE_URL, getContentSnippet } from '@/lib/utils';
+import { BASE_URL } from '@/lib/utils';
+import { collectCategories, SECTION_NAMES, pageLine, corpusValidators, notModified, textHeaders } from '@/lib/llms';
 
 export const dynamic = 'force-dynamic';
 
-function collectCategories(nodes: TagNode[], parent = ''): { path: string; name: string }[] {
-  return nodes.filter(n => !n.hidden).flatMap(n => {
-    const path = parent ? `${parent}/${n.slug}` : n.slug;
-    return [{ path, name: n.name }, ...(n.children ? collectCategories(n.children, path) : [])];
-  });
-}
-
-/** Build a display-name lookup from top-level TAG_HIERARCHY slugs */
-const SECTION_NAMES = new Map(
-  TAG_HIERARCHY.filter(n => !n.hidden && n.slug).map(n => [n.slug, n.name.replace(/^\S+\s/, '')]),  // strip emoji prefix
-);
-
-/** Strip URLs, parenthesised URLs, and clean up whitespace from snippets */
-function cleanSnippet(s: string): string {
-  return s
-    .replace(/\(https?:\/\/[^)]*\)/g, '')
-    .replace(/https?:\/\/\S+/g, '')
-    .replace(/\(\s*\)/g, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim()
-    .slice(0, 160);
-}
+const RECENT_LIMIT = 30;
 
 const PREAMBLE = `# RADIX Wiki — The Knowledge Base for Radix DLT
 
@@ -35,9 +22,11 @@ const PREAMBLE = `# RADIX Wiki — The Knowledge Base for Radix DLT
 > layer-1 blockchain architected for linear scalability and asset-oriented
 > smart contracts. Contributors earn points that may be considered in any future $EMOON airdrop.
 >
+> Complete page index: ${BASE_URL}/llms-index.txt
 > Full content export: ${BASE_URL}/llms-full.txt
 > MCP endpoint: ${BASE_URL}/api/mcp (server card: ${BASE_URL}/api/mcp/server-card)
-> Agent discovery: ${BASE_URL}/.well-known/agent.json
+> OpenAPI spec for the REST API: ${BASE_URL}/openapi.json
+> Agent discovery: ${BASE_URL}/.well-known/agent-card.json
 > Agent API reference: ${BASE_URL}/AGENTS.md
 > Individual pages in markdown: append .md to any page URL
 
@@ -138,47 +127,50 @@ AI agents can authenticate via ROLA (Ed25519 keypair) and read/write wiki
 content programmatically. No browser or wallet extension required.
 
 - MCP server (Model Context Protocol): POST ${BASE_URL}/api/mcp — call tools/list for the live tool set. Reads are open; create_page and edit_page take a ROLA bearer token.
+- OpenAPI 3.1 spec for the REST API: ${BASE_URL}/openapi.json
 - Agent API reference: ${BASE_URL}/AGENTS.md — ROLA signing spec, request bodies, and prerequisites
-- Challenge endpoint: ${BASE_URL}/api/auth/challenge
+- Challenge endpoint: ${BASE_URL}/api/auth/challenge`;
 
-## Optional
+export async function GET(request: NextRequest) {
+  const { etag, lastModified } = await corpusValidators();
+  const cached = notModified(request, etag, lastModified);
+  if (cached) return cached;
 
-### Find Us
+  const [recent, counts] = await Promise.all([
+    prisma.page.findMany({
+      select: { title: true, tagPath: true, slug: true, content: true },
+      where: { tagPath: { not: '' }, slug: { not: '' } },
+      orderBy: { updatedAt: 'desc' },
+      take: RECENT_LIMIT,
+    }),
+    prisma.page.groupBy({ by: ['tagPath'], _count: true, where: { tagPath: { not: '' } } }),
+  ]);
 
-- Website: ${BASE_URL}
-- Twitter: https://twitter.com/RadixWiki`;
-
-export async function GET() {
-  const pages = await prisma.page.findMany({
-    select: { title: true, tagPath: true, slug: true, content: true },
-    orderBy: { updatedAt: 'desc' },
-  });
+  // Roll tag-path counts up to top-level sections
+  const sectionCounts = new Map<string, number>();
+  for (const c of counts) {
+    const top = c.tagPath.split('/')[0]!;
+    sectionCounts.set(top, (sectionCounts.get(top) || 0) + c._count);
+  }
+  const sectionLines = [...sectionCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([slug, n]) => `- [${SECTION_NAMES.get(slug) || slug}](${BASE_URL}/${slug}): ${n} pages`);
 
   const categories = collectCategories(TAG_HIERARCHY);
-  const validPages = pages.filter(p => p.tagPath && p.slug);
-  const fmt = (p: typeof validPages[number]) => {
-    const e = cleanSnippet(getContentSnippet(p.content));
-    return `- [${p.title}](${BASE_URL}/${p.tagPath}/${p.slug})${e ? `: ${e}` : ''}`;
-  };
-
-  // Group pages by top-level tag path
-  const grouped = new Map<string, typeof validPages>();
-  for (const p of validPages) {
-    const topSlug = p.tagPath!.split('/')[0]!;
-    if (!grouped.has(topSlug)) grouped.set(topSlug, []);
-    grouped.get(topSlug)!.push(p);
-  }
-
-  const sectionLines: string[] = [];
-  for (const [slug, group] of grouped) {
-    const name = SECTION_NAMES.get(slug) || slug;
-    sectionLines.push(`## ${name}`, '', ...group.map(fmt), '');
-  }
 
   const lines = [
     PREAMBLE,
     '',
+    '## Recently Updated Pages',
+    '',
+    `The ${RECENT_LIMIT} most recently updated pages. Every page, grouped by section: ${BASE_URL}/llms-index.txt`,
+    '',
+    ...recent.map(pageLine),
+    '',
+    '## Sections',
+    '',
     ...sectionLines,
+    '',
     '## Live Data',
     '',
     ...CHARTS_PAGES.map(p => `- [${p.title}](${BASE_URL}/${p.path}): ${p.description}`),
@@ -188,10 +180,5 @@ export async function GET() {
     ...categories.map(c => `- [${c.name}](${BASE_URL}/${c.path})`),
   ];
 
-  return new NextResponse(lines.join('\n'), {
-    headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-    },
-  });
+  return new NextResponse(lines.join('\n'), { headers: textHeaders(etag, lastModified) });
 }
