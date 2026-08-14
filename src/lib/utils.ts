@@ -2,6 +2,7 @@
 
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { decodeEntities } from '@/lib/content';
 
 export const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 
@@ -47,6 +48,12 @@ export function pagePath(tagPath: string, slug: string): string {
   return `/${[tagPath, slug].filter(Boolean).join('/')}`;
 }
 
+/** The one absolute URL for a page. Every export that advertises a page URL
+ *  (llms.txt family, MCP rows, sitemap, blog.xml) goes through here. */
+export function pageUrl(tagPath: string, slug: string): string {
+  return `${BASE_URL}${pagePath(tagPath, slug)}`;
+}
+
 export function userProfileSlug(displayName: string | null | undefined, radixAddress: string): string {
   return displayName
     ? displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -55,15 +62,9 @@ export function userProfileSlug(displayName: string | null | undefined, radixAdd
 
 // ========== CONTENT SNIPPET ==========
 
-const ENTITIES: Record<string, string> = {
-  nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", mdash: '—', ndash: '–',
-};
-
-/** Collapse stored HTML to display text: tags out, common entities in, whitespace normalised. */
+/** Collapse stored HTML to display text: tags out, entities decoded, whitespace normalised. */
 function toPlainText(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&(nbsp|amp|lt|gt|quot|#39|mdash|ndash);/g, (_, name) => ENTITIES[name] ?? ' ')
+  return decodeEntities(html.replace(/<[^>]+>/g, ' '))
     .replace(/\s+/g, ' ')
     .trim();
 }

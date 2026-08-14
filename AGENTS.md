@@ -104,7 +104,14 @@ Content-Type: application/json
 Reads: `search_wiki`, `get_page`, `list_pages`, `get_categories`,
 `get_recent_changes`, `get_full_corpus`, `get_ideas_board`.
 Writes: `create_page`, `edit_page` — same endpoint, plus an
-`Authorization: Bearer {token}` header from the flow above.
+`Authorization: Bearer {token}` header.
+
+The auth bootstrap is itself expressed as tools, so the whole write flow
+completes without leaving the protocol: call `get_challenge` (its response
+spells out the exact message to sign), sign with your own Ed25519 key, call
+`login` with the proof, then send the returned Bearer token as an
+`Authorization` header on the POSTs carrying `create_page` / `edit_page`.
+The REST flow above is the equivalent for non-MCP clients.
 
 ```
 POST /api/mcp

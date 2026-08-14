@@ -4,7 +4,7 @@ import type { MetadataRoute } from 'next';
 import { prisma } from '@/lib/prisma/client';
 import { TAG_HIERARCHY, isValidTagPath, type TagNode } from '@/lib/tags';
 import { CHARTS_PAGES } from '@/lib/static-pages';
-import { BASE_URL } from '@/lib/utils';
+import { BASE_URL, pageUrl } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
@@ -43,6 +43,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     { url: BASE_URL, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
+    // The plain-text agent surface. Only the text indexes belong here — the
+    // .md twins would be duplicate content beside their canonical pages.
+    { url: `${BASE_URL}/llms.txt`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.5 },
+    { url: `${BASE_URL}/llms-index.txt`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.4 },
+    { url: `${BASE_URL}/llms-full.txt`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.4 },
     ...categoryPaths.map(path => ({
       url: `${BASE_URL}/${path}`,
       lastModified: catModified.get(path) ?? new Date(),
@@ -66,7 +71,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...pages
       .filter(p => p.tagPath && p.slug && isValidTagPath(p.tagPath.split('/')))
       .map(p => ({
-        url: `${BASE_URL}/${p.tagPath}/${p.slug}`,
+        url: pageUrl(p.tagPath, p.slug),
         lastModified: p.updatedAt,
         changeFrequency: 'weekly' as const,
         priority: pagePriority(p.tagPath),

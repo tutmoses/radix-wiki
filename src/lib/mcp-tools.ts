@@ -4,15 +4,16 @@
 // the MCP server (`api/mcp` → tools/list) and by the A2A agent card
 // (`.well-known/agent.json` → skills), so the two can never disagree.
 //
-// Read tools are public. Write tools require a ROLA bearer token — the
-// challenge-sign-verify bootstrap is the one thing that cannot be expressed as
-// a tool (you need the token before you can call one), so it lives in
-// /AGENTS.md.
+// Read tools are public. Write tools require a ROLA bearer token, and the
+// challenge-sign-verify bootstrap is itself expressed as tools: get_challenge
+// → sign with your own key → login → Bearer token on the Authorization header.
+// /AGENTS.md stays the deep reference, but the chain completes in-protocol.
 
 // server.json is the registry publish manifest and the only copy of the
 // version that an external system reads, so it owns the number. `initialize`
 // and the server card follow it rather than keeping their own.
 import serverManifest from '../../server.json';
+import type { ToolSchema } from '@/lib/mcp';
 
 /** Reported by `initialize`. `name` is the MCP server id, distinct from the
  *  registry's namespaced `serverManifest.name`. */
@@ -21,17 +22,17 @@ export const SERVER_INFO = { name: 'radix-wiki', version: serverManifest.version
 /** Registry identity, for the server card. */
 export const REGISTRY_NAME = serverManifest.name;
 
-export type McpTool = {
+export type McpToolSpec = {
   name: string;
   description: string;
-  inputSchema: { type: 'object'; properties: Record<string, unknown>; required?: string[] };
+  inputSchema: ToolSchema;
   /** Write tools require `Authorization: Bearer <ROLA JWT>`. */
   auth?: 'rola';
   /** Surfaced as an A2A skill on the agent card. */
   skill?: { id: string; tags: string[]; examples?: string[] };
 };
 
-export const TOOLS: McpTool[] = [
+export const TOOLS: McpToolSpec[] = [
   {
     name: 'search_wiki',
     description: 'Search Radix Wiki pages by keyword. Matches against titles and content. Returns titles, URLs, snippets, and update dates.',
@@ -120,6 +121,31 @@ export const TOOLS: McpTool[] = [
     },
   },
   {
+    name: 'get_challenge',
+    description:
+      'Step 1 of writing to the wiki: a single-use ROLA challenge (5-minute expiry). ' +
+      'The response spells out the exact recipe for the message your Ed25519 key must sign. ' +
+      'You always sign with your OWN key — nothing here custodies anything. Takes no parameters.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'login',
+    description:
+      'Step 2: exchange the signed ROLA proof for a 7-day Bearer token — the same verification the human wallet flow runs. ' +
+      'Send the returned token as an HTTP `Authorization: Bearer <token>` header on every later create_page / edit_page call; tool arguments never carry it.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        challenge: { type: 'string', description: 'The challenge from get_challenge' },
+        address: { type: 'string', description: 'Your account address (virtual account of the signing key; its public key must be an on-ledger owner_keys entry)' },
+        publicKey: { type: 'string', description: 'Ed25519 public key, hex' },
+        signature: { type: 'string', description: 'Signature over the ROLA message, hex' },
+        curve: { type: 'string', enum: ['curve25519', 'secp256k1'], description: 'Signing curve (Ed25519 = "curve25519")' },
+      },
+      required: ['challenge', 'address', 'publicKey', 'signature', 'curve'],
+    },
+  },
+  {
     name: 'create_page',
     description: 'Create a new Radix Wiki page. Requires a ROLA bearer token — see https://radix.wiki/AGENTS.md for the challenge-sign-verify flow. Call get_categories first for a valid tagPath. Some paths are balance-gated (blog needs 50,000 XRD). Earns contribution points.',
     auth: 'rola',
@@ -168,6 +194,3 @@ export const TOOLS: McpTool[] = [
     },
   },
 ];
-
-/** The MCP wire shape — `tools/list` must not carry our annotation fields. */
-export const MCP_MANIFEST = TOOLS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema }));

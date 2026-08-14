@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { BASE_URL, getContentSnippet, pagePath } from '@/lib/utils';
+import { BASE_URL, getContentSnippet, pageUrl } from '@/lib/utils';
 import { extractText } from '@/lib/content';
 import { cleanSnippet, corpusValidators, notModified, textHeaders } from '@/lib/llms';
 import type { Block } from '@/types/blocks';
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   const sections = pages
     .filter(p => p.tagPath)
     .map(p => {
-      const url = `${BASE_URL}${pagePath(p.tagPath, p.slug)}`;
+      const url = pageUrl(p.tagPath, p.slug);
       const body = extractText((p.content as unknown as Block[]) || []);
       const snippet = getContentSnippet(p.content);
       return `## ${p.title}\n\nURL: ${url}\nUpdated: ${p.updatedAt.toISOString().split('T')[0]}\n${snippet ? `Summary: ${cleanSnippet(snippet)}\n` : ''}\n${body}`;
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     ``,
     `> License: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)`,
     `> Attribution: "Source: RADIX.wiki (${BASE_URL}), CC BY 4.0"`,
-    `> Full license text: ${BASE_URL}/LICENSE`,
+    `> Full license text: https://creativecommons.org/licenses/by/4.0/legalcode`,
     ``,
     ...sections,
   ].join('\n\n');

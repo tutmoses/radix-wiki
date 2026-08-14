@@ -6,16 +6,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, Loader2 } from 'lucide-react';
-import { getMatchSnippet, pagePath } from '@/lib/utils';
+import { pagePath } from '@/lib/utils';
 import Highlight from '@/components/Highlight';
-import type { WikiPage } from '@/types';
+import type { PageSummary } from '@/lib/wiki';
 
 const PAGE_SIZE = 25;
 
 export default function SearchView({ query: initialQuery }: { query: string }) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
-  const [results, setResults] = useState<WikiPage[]>([]);
+  const [results, setResults] = useState<PageSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [isSearching, setIsSearching] = useState(false);
@@ -29,7 +29,7 @@ export default function SearchView({ query: initialQuery }: { query: string }) {
     if (!trimmed) { setResults([]); setTotal(0); setSearched(''); return; }
     setIsSearching(true);
     try {
-      const res = await fetch(`/api/wiki?${new URLSearchParams({ search: trimmed, page: String(p), pageSize: String(PAGE_SIZE) })}`);
+      const res = await fetch(`/api/wiki?${new URLSearchParams({ q: trimmed, page: String(p), pageSize: String(PAGE_SIZE) })}`);
       if (res.ok) {
         const data = await res.json();
         setResults(data.items || []);
@@ -81,18 +81,15 @@ export default function SearchView({ query: initialQuery }: { query: string }) {
 
       {results.length > 0 && (
         <ul className="stack-sm list-none pl-0">
-          {results.map(page => {
-            const snippet = getMatchSnippet(page.content, searched, 220);
-            return (
-              <li key={page.id}>
-                <Link href={pagePath(page.tagPath, page.slug)} className="search-page-result">
-                  <div className="font-medium"><Highlight text={page.title} query={searched} /></div>
-                  <div className="text-small text-text-muted truncate">/{page.tagPath}/{page.slug}</div>
-                  {snippet && <p className="text-small text-text-muted line-clamp-2 mt-1"><Highlight text={snippet} query={searched} /></p>}
-                </Link>
-              </li>
-            );
-          })}
+          {results.map(page => (
+            <li key={page.url}>
+              <Link href={pagePath(page.tagPath, page.slug)} className="search-page-result">
+                <div className="font-medium"><Highlight text={page.title} query={searched} /></div>
+                <div className="text-small text-text-muted truncate">{pagePath(page.tagPath, page.slug)}</div>
+                {page.snippet && <p className="text-small text-text-muted line-clamp-2 mt-1"><Highlight text={page.snippet} query={searched} /></p>}
+              </Link>
+            </li>
+          ))}
         </ul>
       )}
 

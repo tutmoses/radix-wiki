@@ -8,7 +8,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Search, Menu, X, Loader2, LogOut, ChevronDown, Edit, History, User, FileCode, Bell, Webhook, Database, MoreVertical, Quote, Link2, Check, Eye, EyeOff } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth, useClickOutside, usePagePath, useFetch } from '@/hooks';
-import { cn, shortenAddress, formatRelativeTime, getMatchSnippet, pagePath } from '@/lib/utils';
+import { cn, shortenAddress, formatRelativeTime, pagePath } from '@/lib/utils';
+import type { PageSummary } from '@/lib/wiki';
 import Highlight from '@/components/Highlight';
 import { Button, Dropdown } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -106,14 +107,14 @@ function UserMenuDropdown({ onClose, onLogout }: { onClose: () => void; onLogout
 
 // ===== Search =====
 // One row shape for both the desktop dropdown and the mobile panel. The snippet is
-// the passage the query matched, so a body-text hit doesn't read as an unrelated title.
-function SearchResultRow({ page, query, onSelect }: { page: WikiPage; query: string; onSelect: (page: WikiPage) => void }) {
-  const snippet = getMatchSnippet(page.content, query, 120);
+// the passage the query matched (computed server-side by the shared summarizer),
+// so a body-text hit doesn't read as an unrelated title.
+function SearchResultRow({ page, query, onSelect }: { page: PageSummary; query: string; onSelect: (page: PageSummary) => void }) {
   return (
     <button type="button" onClick={() => onSelect(page)} className="search-result">
       <div className="font-medium truncate"><Highlight text={page.title} query={query} /></div>
-      <div className="text-small text-text-muted truncate">/{page.tagPath}/{page.slug}</div>
-      {snippet && <p className="text-small text-text-muted line-clamp-1 mt-0.5"><Highlight text={snippet} query={query} /></p>}
+      <div className="text-small text-text-muted truncate">{pagePath(page.tagPath, page.slug)}</div>
+      {page.snippet && <p className="text-small text-text-muted line-clamp-1 mt-0.5"><Highlight text={page.snippet} query={query} /></p>}
     </button>
   );
 }
@@ -239,7 +240,7 @@ export function Header() {
   })();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<WikiPage[]>([]);
+  const [searchResults, setSearchResults] = useState<PageSummary[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const clearSearchResults = useCallback(() => { setSearchResults([]); setSearchOpen(false); }, []);
@@ -296,7 +297,7 @@ export function Header() {
     if (!query.trim()) { setSearchResults([]); return; }
     setIsSearching(true);
     try {
-      const res = await fetch(`/api/wiki?${new URLSearchParams({ search: query, pageSize: '5' })}`);
+      const res = await fetch(`/api/wiki?${new URLSearchParams({ q: query, pageSize: '5' })}`);
       if (res.ok) setSearchResults((await res.json()).items || []);
     } catch (e) { console.error('Search failed:', e); }
     finally { setIsSearching(false); }
@@ -307,7 +308,7 @@ export function Header() {
     return () => clearTimeout(timer);
   }, [searchQuery, performSearch]);
 
-  const handleSearchSelect = (page: WikiPage) => { setSearchQuery(''); setSearchResults([]); setSearchOpen(false); setShowSearch(false); router.push(pagePath(page.tagPath, page.slug)); };
+  const handleSearchSelect = (page: PageSummary) => { setSearchQuery(''); setSearchResults([]); setSearchOpen(false); setShowSearch(false); router.push(pagePath(page.tagPath, page.slug)); };
 
   const handleLogout = async () => {
     setShowUserMenu(false);
@@ -336,7 +337,7 @@ export function Header() {
             {searchOpen && searchResults.length > 0 && (
               <div className="search-results">
                 {searchResults.map(page => (
-                  <SearchResultRow key={page.id} page={page} query={searchQuery.trim()} onSelect={handleSearchSelect} />
+                  <SearchResultRow key={page.url} page={page} query={searchQuery.trim()} onSelect={handleSearchSelect} />
                 ))}
                 <button type="button" onClick={goToSearchPage} className="search-result search-result-all">
                   See all results for &ldquo;{searchQuery.trim()}&rdquo;
@@ -421,7 +422,7 @@ export function Header() {
               {searchResults.length > 0 && (
                 <div className="search-results">
                   {searchResults.map(page => (
-                    <SearchResultRow key={page.id} page={page} query={searchQuery.trim()} onSelect={handleSearchSelect} />
+                    <SearchResultRow key={page.url} page={page} query={searchQuery.trim()} onSelect={handleSearchSelect} />
                   ))}
                 </div>
               )}

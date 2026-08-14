@@ -115,7 +115,11 @@ const nextConfig: NextConfig = {
         // /AGENTS.md into the wiki API and 404. The agent API reference is a
         // real document, not a wiki page rendered as markdown.
         { source: '/AGENTS.md', destination: '/agents-md' },
-        { source: '/:path*.md', destination: '/api/wiki/:path*?format=text' },
+        // The `.md` rides through to the destination instead of being traded
+        // for a `?format=text`: Next drops a query string written into a
+        // rewrite destination (a client-supplied one survives, one authored
+        // here does not), so the extension has to be what carries the intent.
+        { source: '/:path*.md', destination: '/api/wiki/:path*.md' },
       ],
       afterFiles: [
         { source: '/js/script.js', destination: 'https://plausible.io/js/pa-5NRG8r4xW19fPk-6FUmFm.js' },

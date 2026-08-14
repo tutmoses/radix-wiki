@@ -2,13 +2,13 @@
 
 import { NextResponse } from 'next/server';
 import { BASE_URL } from '@/lib/utils';
-import { TOOLS } from '@/lib/mcp-tools';
+import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 
 const AGENT_CARD = {
   name: 'Radix Wiki',
   description: 'Community-maintained knowledge base for Radix DLT — the layer-1 blockchain with linear scalability and asset-oriented smart contracts.',
   url: BASE_URL,
-  version: '1.0.0',
+  version: SERVER_INFO.version,
   capabilities: {
     streaming: false,
     pushNotifications: false,

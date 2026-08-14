@@ -11,6 +11,7 @@ import { Footer } from '@/components/Footer';
 import { Toast } from '@/components/Toast';
 
 import { BASE_URL } from '@/lib/utils';
+import { PLAUSIBLE_DOMAIN } from '@/lib/track';
 import { ogMetadata, SITE_NAME } from '@/lib/og';
 
 const inter = Inter({
@@ -20,11 +21,6 @@ const inter = Inter({
 });
 
 const SITE_DESCRIPTION = 'Community-maintained knowledge base for Radix DLT — the layer-1 blockchain with linear scalability and asset-oriented smart contracts.';
-
-const PLAUSIBLE_DOMAIN = (() => {
-  try { return new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki').hostname; }
-  catch { return 'radix.wiki'; }
-})();
 
 // Default card for URLs that declare none of their own. Next *replaces* rather than
 // merges these objects, so every page that sets one restates them via ogMetadata().
@@ -102,7 +98,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             the prose documentation. No registered rel for MCP exists yet, and no
             MCP discovery standard is ratified — see /api/mcp/server-card. */}
         <link rel="service-desc" type="application/json" href="/api/mcp" title="MCP endpoint" />
-        <link rel="service-meta" type="application/json" href="/.well-known/agent.json" />
+        <link rel="service-meta" type="application/json" href="/.well-known/agent-card.json" />
         <link rel="service-doc" type="text/markdown" href="/AGENTS.md" title="Agent API reference" />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>

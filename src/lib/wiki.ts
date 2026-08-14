@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
+import { getContentSnippet, getMatchSnippet, pageUrl } from '@/lib/utils';
 import { isValidTagPath, getSortOrder, getMetadataKeys, HIDDEN_TAG_PATHS, type SortOrder } from '@/lib/tags';
 import type { WikiPage, IdeasPage } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, RssFeedBlock, ColumnsBlock } from '@/types/blocks';
@@ -270,6 +271,27 @@ export const getPageHistory = cached('getPageHistory',
 );
 
 // ========== SEARCH ==========
+
+/** The row shape every agent-facing listing returns (MCP search_wiki /
+ *  list_pages / get_recent_changes and the plain-GET /api/wiki?q= twin). */
+export const SUMMARY_SELECT = { title: true, tagPath: true, slug: true, content: true, updatedAt: true, metadata: true, lastVerifiedAt: true } as const;
+
+/** `query` swaps the opening-line snippet for the passage that matched. */
+export function summarizePage(p: { title: string; tagPath: string; slug: string; content: unknown; updatedAt: Date; metadata?: unknown; lastVerifiedAt?: Date | null }, query?: string) {
+  const meta = (p.metadata ?? null) as Record<string, unknown> | null;
+  return {
+    title: p.title,
+    url: pageUrl(p.tagPath, p.slug),
+    tagPath: p.tagPath,
+    slug: p.slug,
+    snippet: query ? getMatchSnippet(p.content, query) : getContentSnippet(p.content),
+    updatedAt: p.updatedAt.toISOString().split('T')[0],
+    ...(p.lastVerifiedAt ? { lastVerified: p.lastVerifiedAt.toISOString().split('T')[0] } : {}),
+    ...(meta && Object.keys(meta).length ? { metadata: meta } : {}),
+  };
+}
+
+export type PageSummary = ReturnType<typeof summarizePage>;
 
 /** Re-order rows to match a ranked id list, dropping ids that no longer resolve. */
 export function orderByIds<T extends { id: string }>(rows: T[], ids: string[]): T[] {

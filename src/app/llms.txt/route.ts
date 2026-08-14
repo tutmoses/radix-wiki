@@ -118,7 +118,7 @@ Attribution at the dataset or system level is sufficient — per-output
 citation is encouraged but not required.
 
 - Recommended attribution: "Source: RADIX.wiki (${BASE_URL}), CC BY 4.0"
-- Full license text: ${BASE_URL}/LICENSE
+- Full license text: https://creativecommons.org/licenses/by/4.0/legalcode
 - SPDX identifier: CC-BY-4.0
 
 ## Build on the Wiki — Agent API

@@ -4,13 +4,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
-import { slugify } from '@/lib/utils';
+import { slugify, pageUrl } from '@/lib/utils';
 import { isValidTagPath, isAuthorOnlyPath, isLockedPage, canEditAuthorOnlyPage, getMetadataKeys } from '@/lib/tags';
 import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, type BlockChange } from '@/lib/versioning';
-import { parsePath, orderByIds, searchPageIds, AUTHOR_SELECT, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
+import { parsePath, orderByIds, searchPageIds, summarizePage, resolveBlockData, AUTHOR_SELECT, PAGE_INCLUDE, PAGE_LIST_SELECT, SUMMARY_SELECT } from '@/lib/wiki';
 import { validateBlocks } from '@/lib/block-utils';
 import { blocksToMdx } from '@/lib/mdx';
+import { pageToMarkdown } from '@/lib/markdown';
 import type { WikiPageInput } from '@/types';
 import type { Block } from '@/types/blocks';
 import { deliverWebhooks } from '@/lib/webhooks';
@@ -20,7 +21,13 @@ type PathParams = { path?: string[] };
 
 
 export async function GET(request: NextRequest, context: RouteContext<PathParams>) {
-  const { path } = await context.params;
+  const { path: rawPath } = await context.params;
+  // A trailing `.md` on the last segment is the markdown request — that is
+  // what the public `/:path*.md` rewrite forwards (Next drops a query string
+  // written into a rewrite destination, so the extension carries the intent).
+  const last = rawPath?.[rawPath.length - 1];
+  const mdSuffix = Boolean(last?.endsWith('.md'));
+  const path = mdSuffix && rawPath ? [...rawPath.slice(0, -1), last!.slice(0, -3)] : rawPath;
   const parsed = parsePath(path, 'api');
 
   // Handle MDX export outside handleRoute (returns raw Response)
@@ -51,20 +58,21 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     const { searchParams } = new URL(request.url);
 
     // List mode
-    if (!path?.length && (searchParams.has('page') || searchParams.has('pageSize') || searchParams.has('search') || searchParams.has('tagPath') || searchParams.has('sort'))) {
+    if (!path?.length && (searchParams.has('page') || searchParams.has('pageSize') || searchParams.has('q') || searchParams.has('tagPath') || searchParams.has('sort'))) {
       const { page, pageSize } = parsePagination(searchParams);
-      const search = searchParams.get('search') || '';
+      const q = searchParams.get('q')?.trim() || '';
       const tagPath = searchParams.get('tagPath');
       const sort = searchParams.get('sort') || 'updatedAt';
 
       const where: Prisma.PageWhereInput = {};
       if (tagPath) where.tagPath = tagPath;
 
-      if (search) {
-        // Titles rank ahead of body prose; the homepage row (empty slug) is chrome, not content.
-        const { ids, total } = await searchPageIds(search, { tagPath, skip: (page - 1) * pageSize, take: pageSize });
-        const matches = ids.length ? await prisma.page.findMany({ where: { id: { in: ids } }, select: PAGE_LIST_SELECT }) : [];
-        return cachedJson(paginatedResponse(orderByIds(matches, ids), total, page, pageSize));
+      if (q) {
+        // The GET-only twin of MCP search_wiki: identical ranking (titles ahead
+        // of body prose) and row-identical results via the same summarizer.
+        const { ids, total } = await searchPageIds(q, { tagPath, skip: (page - 1) * pageSize, take: pageSize });
+        const matches = ids.length ? await prisma.page.findMany({ where: { id: { in: ids } }, select: { id: true, ...SUMMARY_SELECT } }) : [];
+        return cachedJson(paginatedResponse(orderByIds(matches, ids).map(p => summarizePage(p, q)), total, page, pageSize));
       }
 
       const orderBy = sort === 'title' ? { title: 'asc' as const } : { updatedAt: 'desc' as const };
@@ -137,19 +145,29 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       return res;
     }
 
-    // Agent-friendly text format: Accept: text/markdown or ?format=text
+    // Agent-friendly text format: the `.md` twin, Accept negotiation, or an
+    // explicit ?format=text. Real markdown, no component tags — dynamic
+    // blocks are resolved so page lists render as link lists.
     const accept = request.headers.get('accept') || '';
-    if (accept.includes('text/markdown') || accept.includes('text/plain') || searchParams.get('format') === 'text') {
-      const md = blocksToMdx(page);
+    if (mdSuffix || accept.includes('text/markdown') || accept.includes('text/plain') || searchParams.get('format') === 'text') {
+      const md = pageToMarkdown({
+        title: page.title,
+        url: pageUrl(page.tagPath, page.slug),
+        content: await resolveBlockData((page.content as unknown as Block[]) || []),
+        version: page.version,
+        updatedAt: page.updatedAt,
+        lastVerifiedAt: page.lastVerifiedAt,
+      });
       return new NextResponse(md, {
         headers: {
           'Content-Type': 'text/markdown; charset=utf-8',
           'Cache-Control': CACHE.medium['Cache-Control'],
+          'Last-Modified': page.updatedAt.toUTCString(),
         },
       });
     }
 
-    return cachedJson(page);
+    return cachedJson(page, { ...CACHE.short, 'Last-Modified': page.updatedAt.toUTCString() });
   }, 'Failed to fetch');
 }
 

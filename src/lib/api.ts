@@ -52,6 +52,51 @@ export function cachedJson<T>(data: T, headers: Record<string, string> = CACHE.s
   return NextResponse.json(data, { status, headers });
 }
 
+// ---- rate limiting ----
+// Token bucket per IP, in-memory. Survives across requests within a single
+// serverless instance; on cold start the bucket resets. Fine as a
+// defense-in-depth bar for anonymous routes.
+type Bucket = { tokens: number; updatedAt: number };
+const buckets = new Map<string, Bucket>();
+const MAX_BUCKETS = 10_000;
+
+/** Per-IP gate for anonymous route handlers. Returns a ready-to-return 429
+ *  when the caller is over budget, or null to proceed. `capacity` is the peak
+ *  burst; `refillPerSec` the sustained rate. */
+export function checkRateLimit(
+  request: NextRequest,
+  prefix: string,
+  opts: { capacity: number; refillPerSec: number },
+): NextResponse | null {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anon';
+  const key = `${prefix}:${ip}`;
+  const now = Date.now();
+  const existing = buckets.get(key);
+
+  // Evict oldest if the map grows unbounded — prevents memory pressure under
+  // high-cardinality keying (e.g. one bucket per attacker IP).
+  if (!existing && buckets.size >= MAX_BUCKETS) {
+    const oldest = buckets.keys().next().value;
+    if (oldest !== undefined) buckets.delete(oldest);
+  }
+
+  const bucket: Bucket = existing ?? { tokens: opts.capacity, updatedAt: now };
+  bucket.tokens = Math.min(opts.capacity, bucket.tokens + ((now - bucket.updatedAt) / 1000) * opts.refillPerSec);
+  bucket.updatedAt = now;
+  buckets.set(key, bucket);
+
+  if (bucket.tokens < 1) {
+    const retryAfterSec = Math.ceil((1 - bucket.tokens) / opts.refillPerSec);
+    return NextResponse.json(
+      { error: `Too many requests. Try again in ${retryAfterSec}s.` },
+      { status: 429, headers: { 'Retry-After': String(retryAfterSec) } },
+    );
+  }
+
+  bucket.tokens -= 1;
+  return null;
+}
+
 export async function handleRoute(fn: () => Promise<NextResponse>, errorMsg = 'Internal server error'): Promise<NextResponse> {
   try {
     return await fn();

@@ -1,99 +1,15 @@
-// src/lib/mdx.ts - Convert wiki blocks to MDX format
+// src/lib/mdx.ts - Convert wiki blocks to MDX format (the /mdx download export
+// and the on-chain ledger backup). The `.md` twin of a page is NOT this — it
+// is real markdown with no component tags, from src/lib/markdown.ts.
 
 import { pagePath } from '@/lib/utils';
-import type { Block, AtomicBlock, ContentBlock, ColumnsBlock, InfoboxBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, ReferencesBlock, BannerBlock } from '@/types/blocks';
+import { htmlToMarkdown } from '@/lib/markdown';
+import type { Block, AtomicBlock, ContentBlock, ColumnsBlock, InfoboxBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, BannerBlock } from '@/types/blocks';
 
 const BANNER_LABELS: Record<BannerBlock['variant'], string> = {
   stub: 'Stub', unsourced: 'Needs citations', outdated: 'May be outdated',
   promotional: 'Written like an advertisement', cleanup: 'Needs cleanup', coi: 'Conflict of interest',
 };
-
-function htmlToMarkdown(html: string): string {
-  if (!html?.trim()) return '';
-
-  return html
-    // Headers
-    .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
-    .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
-    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n')
-    .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n')
-    // Bold/italic
-    .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
-    .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
-    .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
-    .replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
-    // Code
-    .replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`')
-    .replace(/<pre[^>]*><code[^>]*class="language-(\w+)"[^>]*>([\s\S]*?)<\/code><\/pre>/gi, '\n```$1\n$2\n```\n')
-    .replace(/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, '\n```\n$1\n```\n')
-    // Links
-    .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
-    // Images
-    .replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*\/?>/gi, '![$2]($1)')
-    .replace(/<img[^>]*alt="([^"]*)"[^>]*src="([^"]*)"[^>]*\/?>/gi, '![$1]($2)')
-    .replace(/<img[^>]*src="([^"]*)"[^>]*\/?>/gi, '![]($1)')
-    // Lists
-    .replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, (_, content) =>
-      content.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, '- $1\n')
-    )
-    .replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (_, content) => {
-      let i = 0;
-      return content.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, () => `${++i}. $1\n`);
-    })
-    // Blockquote
-    .replace(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi, (_, content) =>
-      content.split('\n').map((line: string) => `> ${line}`).join('\n') + '\n'
-    )
-    // Paragraphs and breaks
-    .replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '$1\n\n')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<hr\s*\/?>/gi, '\n---\n')
-    // Tables
-    .replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_, content) => {
-      const rows: string[] = [];
-      const headerMatch = content.match(/<thead[^>]*>([\s\S]*?)<\/thead>/i);
-      const bodyMatch = content.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
-
-      const extractCells = (row: string, tag: string) => {
-        const cells: string[] = [];
-        const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'gi');
-        let match;
-        while ((match = regex.exec(row))) {
-          cells.push(match[1]!.replace(/<[^>]*>/g, '').trim());
-        }
-        return cells;
-      };
-
-      if (headerMatch) {
-        const headerCells = extractCells(headerMatch[1], 'th');
-        if (headerCells.length) {
-          rows.push(`| ${headerCells.join(' | ')} |`);
-          rows.push(`| ${headerCells.map(() => '---').join(' | ')} |`);
-        }
-      }
-
-      const body = bodyMatch ? bodyMatch[1] : content;
-      const rowMatches = body.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
-      for (const row of rowMatches) {
-        const cells = extractCells(row, 'td');
-        if (cells.length) rows.push(`| ${cells.join(' | ')} |`);
-      }
-
-      return rows.length ? '\n' + rows.join('\n') + '\n\n' : '';
-    })
-    // Strip remaining tags
-    .replace(/<[^>]*>/g, '')
-    // Decode entities
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    // Clean up whitespace
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
 
 function convertContentBlock(block: ContentBlock): string {
   return htmlToMarkdown(block.text);

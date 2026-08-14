@@ -1,60 +1,56 @@
-// src/app/api/mcp/route.ts — Radix Wiki MCP server (Streamable HTTP transport)
-// Protocol: https://modelcontextprotocol.io/specification/2025-03-26
+// src/app/api/mcp/route.ts — Radix Wiki MCP server (Streamable HTTP transport).
+// The protocol edges (CORS, GET→405, −32700, bare 202, batch cap, teaching
+// arg validation) live in src/lib/mcp.ts; the tool manifest in
+// src/lib/mcp-tools.ts; this file wires handlers onto that manifest.
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { BASE_URL, getContentSnippet, getMatchSnippet, pagePath } from '@/lib/utils';
-import { orderByIds, searchPageIds } from '@/lib/wiki';
+import { BASE_URL, pageUrl, getContentSnippet, pagePath } from '@/lib/utils';
+import { orderByIds, searchPageIds, summarizePage, SUMMARY_SELECT } from '@/lib/wiki';
 import { extractText } from '@/lib/content';
 import { TAG_HIERARCHY, getMetadataKeys, type TagNode } from '@/lib/tags';
-import { MCP_MANIFEST, SERVER_INFO } from '@/lib/mcp-tools';
+import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
+import { RADIX_CONFIG } from '@/lib/radix/config';
+import { checkRateLimit } from '@/lib/api';
+import { mcpResponse, mcpOptions, mcpGet, withMcpCors, McpToolError, type McpServerConfig, type McpResource } from '@/lib/mcp';
 import type { Block } from '@/types/blocks';
 
 export const dynamic = 'force-dynamic';
 
-const PROTOCOL_VERSION = '2025-03-26';
+const INSTRUCTIONS = [
+  'Community-maintained knowledge base for Radix DLT, the layer-1 with linear scalability and asset-oriented smart contracts.',
+  'Usual sequence: get_categories to orient, search_wiki or list_pages to locate, then get_page to read. Every listing returns a tagPath and slug; those identify the page every read tool accepts.',
+  'Reads are open and never authenticate. Rate limit: 60 requests per minute per IP, shared across all methods.',
+  'Writing without leaving the protocol: get_challenge → sign the ROLA message with your own Ed25519 key → login (returns a Bearer token) → create_page / edit_page with that token as an HTTP `Authorization: Bearer <token>` header on the POSTs carrying the calls.',
+  `Deep reference (ROLA signing spec, REST equivalents, content model): ${BASE_URL}/AGENTS.md (also served at ${BASE_URL}/agents-md). Any page URL + ".md" is its markdown twin.`,
+].join('\n');
 
 // ========== RESOURCES ==========
 
-const RESOURCES = [
+const RESOURCES: McpResource[] = [
   {
     uri: 'radix-wiki://llms.txt',
     name: 'RADIX Wiki LLM Briefing',
     description: 'Narrative briefing document with investment thesis, technical overview, and page index.',
     mimeType: 'text/plain',
+    read: async () => {
+      const res = await fetch(`${BASE_URL}/llms.txt`);
+      return res.ok ? res.text() : null;
+    },
   },
   {
     uri: 'radix-wiki://categories',
     name: 'Wiki Categories',
     description: 'Tag hierarchy with descriptions and page counts.',
     mimeType: 'application/json',
+    read: async () => JSON.stringify(await get_categories(), null, 2),
   },
 ];
 
 // ========== DB SELECT SHAPES ==========
 
-const SUMMARY_SELECT = { title: true, tagPath: true, slug: true, content: true, updatedAt: true, metadata: true, lastVerifiedAt: true } as const;
 const FULL_SELECT = { ...SUMMARY_SELECT, version: true } as const;
 const IDEAS_SELECT = { title: true, tagPath: true, slug: true, metadata: true, updatedAt: true } as const;
-
-function pageUrl(tagPath: string, slug: string) {
-  return `${BASE_URL}${pagePath(tagPath, slug)}`;
-}
-
-/** `query` swaps the opening-line snippet for the passage that matched. */
-function summarizePage(p: { title: string; tagPath: string; slug: string; content: unknown; updatedAt: Date; metadata?: unknown; lastVerifiedAt?: Date | null }, query?: string) {
-  const meta = (p.metadata ?? null) as Record<string, unknown> | null;
-  return {
-    title: p.title,
-    url: pageUrl(p.tagPath, p.slug),
-    tagPath: p.tagPath,
-    slug: p.slug,
-    snippet: query ? getMatchSnippet(p.content, query) : getContentSnippet(p.content),
-    updatedAt: p.updatedAt.toISOString().split('T')[0],
-    ...(p.lastVerifiedAt ? { lastVerified: p.lastVerifiedAt.toISOString().split('T')[0] } : {}),
-    ...(meta && Object.keys(meta).length ? { metadata: meta } : {}),
-  };
-}
 
 // ========== IDEAS BOARD HELPERS ==========
 
@@ -77,13 +73,6 @@ function workingGroupFromTitle(title: string): string | null {
 
 // ========== TAG HIERARCHY HELPERS ==========
 
-function collectCategoryPaths(nodes: TagNode[], parent = ''): string[] {
-  return nodes.filter(n => !n.hidden && n.slug).flatMap(n => {
-    const path = parent ? `${parent}/${n.slug}` : n.slug;
-    return [path, ...(n.children ? collectCategoryPaths(n.children, path) : [])];
-  });
-}
-
 function buildCategoryTree(nodes: TagNode[], counts: Map<string, number>, parent = ''): object[] {
   return nodes.filter(n => !n.hidden && n.slug).map(n => {
     const path = parent ? `${parent}/${n.slug}` : n.slug;
@@ -98,7 +87,7 @@ function buildCategoryTree(nodes: TagNode[], counts: Map<string, number>, parent
   });
 }
 
-// ========== TOOL HANDLERS ==========
+// ========== READ HANDLERS ==========
 
 async function search_wiki(args: { query: string; tagPath?: string; page?: number; pageSize?: number }) {
   const { query, tagPath, page = 1, pageSize = 20 } = args;
@@ -115,7 +104,11 @@ async function get_page(args: { tagPath: string; slug: string }) {
     where: { tagPath_slug: { tagPath: args.tagPath, slug: args.slug } },
     select: FULL_SELECT,
   });
-  if (!p) return null;
+  if (!p) {
+    throw new McpToolError(
+      `No page at tagPath "${args.tagPath}", slug "${args.slug}". Find valid paths with search_wiki, list_pages, or get_categories.`,
+    );
+  }
   return {
     ...summarizePage(p),
     version: p.version,
@@ -136,7 +129,6 @@ async function list_pages(args: { tagPath?: string; sort?: string; page?: number
 }
 
 async function get_categories() {
-  const paths = collectCategoryPaths(TAG_HIERARCHY);
   const counts = await prisma.page.groupBy({ by: ['tagPath'], _count: true });
   const countMap = new Map(counts.map(c => [c.tagPath, c._count]));
   return { categories: buildCategoryTree(TAG_HIERARCHY, countMap), totalPages: counts.reduce((s, c) => s + c._count, 0) };
@@ -215,21 +207,56 @@ async function get_ideas_board(args: { category?: string; workingGroup?: string 
   return { board: 'ideas', url: `${BASE_URL}/ideas`, totalCards: cards.length, columns };
 }
 
-// ========== RESOURCE HANDLERS ==========
+// ========== AUTH BOOTSTRAP HANDLERS ==========
+//
+// The challenge→sign→token chain as tools, forwarding to the same REST auth
+// endpoints the wallet flow uses, so an agent never has to leave the protocol.
+// Auth rides the HTTP layer, not the tool arguments: `login` returns a Bearer
+// token, and the client sends it as an `Authorization` header on the POSTs
+// that carry subsequent write calls (the CORS allow-list already names it).
 
-async function readResource(uri: string): Promise<string | null> {
-  switch (uri) {
-    case 'radix-wiki://llms.txt': {
-      const res = await fetch(`${BASE_URL}/llms.txt`);
-      return res.ok ? res.text() : null;
-    }
-    case 'radix-wiki://categories': {
-      const data = await get_categories();
-      return JSON.stringify(data, null, 2);
-    }
-    default:
-      return null;
+async function get_challenge() {
+  const res = await fetch(`${BASE_URL}/api/auth/challenge`);
+  const data = await res.json().catch(() => null) as { challenge?: string; expiresAt?: string; error?: string } | null;
+  if (!res.ok || !data?.challenge) throw new McpToolError(data?.error || `Challenge request failed (${res.status})`);
+  return {
+    challenge: data.challenge,
+    expiresAt: data.expiresAt,
+    sign: {
+      message: `blake2b-256 of: "R" (ascii) + challenge (hex-decoded) + one length byte of "${RADIX_CONFIG.dAppDefinitionAddress}" + that address (utf-8) + "${BASE_URL}" (utf-8)`,
+      curve: 'curve25519 (Ed25519); sign the 32-byte hash, hex-encode the signature',
+      address: 'your virtual account address derived from the public key — the key must be an on-ledger owner_keys entry for that account',
+      then: 'Call login with { challenge, address, publicKey, signature, curve }.',
+    },
+  };
+}
+
+async function login(args: Record<string, unknown>) {
+  const res = await fetch(`${BASE_URL}/api/auth`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      accounts: [{ address: args.address }],
+      signedChallenge: {
+        challenge: args.challenge,
+        address: args.address,
+        proof: { publicKey: args.publicKey, signature: args.signature, curve: args.curve },
+      },
+    }),
+  });
+  const data = await res.json().catch(() => null) as Record<string, unknown> | null;
+  if (!res.ok || !data?.token) {
+    throw new McpToolError((data?.error as string) || `Login failed (${res.status})`, {
+      hint: 'Challenges are single-use and expire after 5 minutes — call get_challenge again. The signing recipe is in its response; the public key must be an on-ledger owner_keys entry for the account.',
+    });
   }
+  return {
+    token: data.token,
+    tokenType: 'Bearer',
+    expiresAt: data.expiresAt,
+    radixAddress: data.radixAddress,
+    note: 'Send as an HTTP `Authorization: Bearer <token>` header on the POSTs carrying create_page / edit_page calls.',
+  };
 }
 
 // ========== WRITE HANDLERS ==========
@@ -240,11 +267,12 @@ async function readResource(uri: string): Promise<string | null> {
 // one handler that already owns them. Nothing about the write path is
 // reimplemented here — this is a transport, not a second implementation.
 
-type WriteResult = { error: string } | Record<string, unknown>;
-
-async function forwardWrite(path: string, method: 'POST' | 'PUT', body: unknown, auth: string | null): Promise<WriteResult> {
+async function forwardWrite(path: string, method: 'POST' | 'PUT', body: unknown, auth: string | null): Promise<Record<string, unknown>> {
   if (!auth) {
-    return { error: 'Authentication required. Obtain a ROLA bearer token first — see ' + `${BASE_URL}/AGENTS.md` + ' — then resend this call with an Authorization: Bearer <token> header.' };
+    throw new McpToolError(
+      'Not authenticated. Call get_challenge, sign the ROLA message with your own key, call login, then resend this call with the returned token as an HTTP `Authorization: Bearer <token>` header.',
+      { flow: ['get_challenge', 'login', 'create_page / edit_page'], reference: `${BASE_URL}/AGENTS.md` },
+    );
   }
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
@@ -252,14 +280,13 @@ async function forwardWrite(path: string, method: 'POST' | 'PUT', body: unknown,
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => null) as Record<string, unknown> | null;
-  if (!res.ok) return { error: (data?.error as string) || `Request failed (${res.status})` };
+  if (!res.ok) throw new McpToolError((data?.error as string) || `Request failed (${res.status})`);
   return data ?? {};
 }
 
 async function create_page(args: Record<string, unknown>, auth: string | null) {
   const { tagPath, title, content, metadata, slug, bannerImage } = args;
   const result = await forwardWrite('/api/wiki', 'POST', { tagPath, title, content, metadata, slug, bannerImage }, auth);
-  if ('error' in result) return result;
   return {
     created: true,
     url: pageUrl(result.tagPath as string, result.slug as string),
@@ -273,7 +300,6 @@ async function create_page(args: Record<string, unknown>, auth: string | null) {
 async function edit_page(args: Record<string, unknown>, auth: string | null) {
   const { tagPath, slug, content, title, revisionMessage, metadata } = args;
   const result = await forwardWrite(`/api/wiki${pagePath(tagPath as string, (slug as string) ?? '')}`, 'PUT', { content, title, revisionMessage, metadata }, auth);
-  if ('error' in result) return result;
   return {
     edited: true,
     url: pageUrl(result.tagPath as string, result.slug as string),
@@ -281,79 +307,41 @@ async function edit_page(args: Record<string, unknown>, auth: string | null) {
   };
 }
 
-// ========== JSON-RPC DISPATCH ==========
+// ========== WIRING ==========
 
-type RpcRequest = { jsonrpc: '2.0'; id: string | number | null; method: string; params?: unknown };
+type Handler = (args: Record<string, unknown>) => Promise<unknown>;
 
-async function handleRpc(req: RpcRequest, auth: string | null): Promise<object | null> {
-  const { id, method, params } = req;
-  const p = (params ?? {}) as Record<string, unknown>;
-
-  try {
-    switch (method) {
-      case 'initialize':
-        return { jsonrpc: '2.0', id, result: { protocolVersion: PROTOCOL_VERSION, capabilities: { tools: {}, resources: {} }, serverInfo: SERVER_INFO } };
-
-      case 'notifications/initialized':
-        return null; // notifications have no response
-
-      case 'ping':
-        return { jsonrpc: '2.0', id, result: {} };
-
-      case 'tools/list':
-        return { jsonrpc: '2.0', id, result: { tools: MCP_MANIFEST } };
-
-      case 'resources/list':
-        return { jsonrpc: '2.0', id, result: { resources: RESOURCES } };
-
-      case 'resources/read': {
-        const { uri } = p as { uri: string };
-        const content = await readResource(uri);
-        if (!content) return { jsonrpc: '2.0', id, error: { code: -32602, message: `Unknown resource: ${uri}` } };
-        const mimeType = RESOURCES.find(r => r.uri === uri)?.mimeType || 'text/plain';
-        return { jsonrpc: '2.0', id, result: { contents: [{ uri, mimeType, text: content }] } };
-      }
-
-      case 'tools/call': {
-        const { name, arguments: args = {} } = p as { name: string; arguments?: Record<string, unknown> };
-        let data: unknown;
-
-        switch (name) {
-          case 'search_wiki':       data = await search_wiki(args as Parameters<typeof search_wiki>[0]);             break;
-          case 'get_page':          data = await get_page(args as Parameters<typeof get_page>[0]);                   break;
-          case 'list_pages':        data = await list_pages(args as Parameters<typeof list_pages>[0]);               break;
-          case 'get_categories':    data = await get_categories();                                                   break;
-          case 'get_recent_changes': data = await get_recent_changes(args as Parameters<typeof get_recent_changes>[0]); break;
-          case 'get_full_corpus':   data = await get_full_corpus();                                                  break;
-          case 'get_ideas_board':   data = await get_ideas_board(args as Parameters<typeof get_ideas_board>[0]);       break;
-          case 'create_page':       data = await create_page(args, auth);                                            break;
-          case 'edit_page':         data = await edit_page(args, auth);                                              break;
-          default: return { jsonrpc: '2.0', id, error: { code: -32601, message: `Unknown tool: ${name}` } };
-        }
-
-        if (data === null) {
-          return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: 'Not found.' }], isError: true } };
-        }
-        if (typeof data === 'object' && data !== null && 'error' in data) {
-          return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: String((data as { error: unknown }).error) }], isError: true } };
-        }
-        const text = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-        return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text }] } };
-      }
-
-      default:
-        return { jsonrpc: '2.0', id, error: { code: -32601, message: `Method not found: ${method}` } };
-    }
-  } catch (err) {
-    console.error('[MCP]', method, err);
-    return { jsonrpc: '2.0', id, error: { code: -32603, message: 'Internal error' } };
-  }
+function serverConfig(auth: string | null): McpServerConfig {
+  const handlers: Record<string, Handler> = {
+    search_wiki: args => search_wiki(args as Parameters<typeof search_wiki>[0]),
+    get_page: args => get_page(args as Parameters<typeof get_page>[0]),
+    list_pages: args => list_pages(args as Parameters<typeof list_pages>[0]),
+    get_categories,
+    get_recent_changes: args => get_recent_changes(args as Parameters<typeof get_recent_changes>[0]),
+    get_full_corpus,
+    get_ideas_board: args => get_ideas_board(args as Parameters<typeof get_ideas_board>[0]),
+    get_challenge,
+    login,
+    create_page: args => create_page(args, auth),
+    edit_page: args => edit_page(args, auth),
+  };
+  return {
+    serverInfo: SERVER_INFO,
+    instructions: INSTRUCTIONS,
+    tools: TOOLS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema, handler: handlers[name]! })),
+    resources: RESOURCES,
+  };
 }
 
+export const OPTIONS = mcpOptions;
+export const GET = mcpGet;
+
 export async function POST(request: NextRequest) {
-  const body = await request.json() as RpcRequest | RpcRequest[];
-  const isBatch = Array.isArray(body);
-  const auth = request.headers.get('Authorization');
-  const responses = (await Promise.all((isBatch ? body : [body]).map(r => handleRpc(r, auth)))).filter(Boolean);
-  return NextResponse.json(isBatch ? responses : (responses[0] ?? null));
+  // Anonymous and `force-dynamic`, so every call is a fresh query. Budget
+  // generously — an agent legitimately fans out across pages in a burst — but
+  // not unboundedly. Stated in the initialize instructions above.
+  const capped = checkRateLimit(request, 'mcp', { capacity: 60, refillPerSec: 1 });
+  if (capped) return withMcpCors(capped);
+
+  return mcpResponse(request, serverConfig(request.headers.get('Authorization')));
 }

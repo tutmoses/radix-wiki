@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { BASE_URL, getContentSnippet } from '@/lib/utils';
+import { BASE_URL, getContentSnippet, pageUrl } from '@/lib/utils';
 import { ogImageUrl } from '@/lib/og';
 
 export const dynamic = 'force-dynamic';
@@ -37,7 +37,7 @@ export async function GET() {
     .sort((a, b) => b.date.getTime() - a.date.getTime())
     .slice(0, FEED_LIMIT)
     .map(p => {
-      const url = `${BASE_URL}/blog/${p.slug}`;
+      const url = pageUrl('blog', p.slug);
       const description = clampWords((p.metadata as Record<string, string> | null)?.excerpt || getContentSnippet(p.content));
       // Branded 1200x630 card from the existing OG endpoint so every post has an image
       const image = ogImageUrl({ title: p.title, description, tagPath: 'blog', banner: p.bannerImage });
@@ -61,6 +61,9 @@ export async function GET() {
     `    <link>${BASE_URL}/blog</link>`,
     '    <description>Community blog of RADIX.wiki — the knowledge base for Radix DLT.</description>',
     '    <language>en</language>',
+    // Channel-level licence, so the CC BY grant travels with the feed the same
+    // way it travels with the plain-text exports.
+    '    <copyright>Creative Commons Attribution 4.0 International (CC-BY-4.0): https://creativecommons.org/licenses/by/4.0/</copyright>',
     `    <atom:link href="${BASE_URL}/blog.xml" rel="self" type="application/rss+xml" />`,
     `    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>`,
     ...items,

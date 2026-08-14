@@ -171,14 +171,14 @@ const SPEC = {
       get: {
         summary: 'List or search pages',
         parameters: [
-          { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Keyword search over titles and body text (titles rank first)' },
+          { name: 'q', in: 'query', schema: { type: 'string' }, description: 'Keyword search over titles and body text (titles rank first). Returns the same result rows as the MCP search_wiki tool.' },
           { name: 'tagPath', in: 'query', schema: { type: 'string' }, description: 'Limit to one tag path' },
           { name: 'sort', in: 'query', schema: { type: 'string', enum: ['updatedAt', 'title'] } },
           { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
           { name: 'pageSize', in: 'query', schema: { type: 'integer', default: 20 } },
         ],
         responses: {
-          '200': { description: 'Paginated page summaries', content: { 'application/json': { schema: { $ref: '#/components/schemas/PaginatedPages' } } } },
+          '200': { description: 'Paginated results: full page rows for listings; with `q`, summary rows (title, url, tagPath, slug, snippet, updatedAt) identical to MCP search_wiki', content: { 'application/json': { schema: { $ref: '#/components/schemas/PaginatedPages' } } } },
         },
       },
       post: {
