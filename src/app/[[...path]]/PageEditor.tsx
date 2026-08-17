@@ -81,7 +81,7 @@ function parseAssignee(raw: string): string {
 
 function UserPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [query, setQuery] = useState(() => parseAssignee(value));
-  const [results, setResults] = useState<{ id: string; displayName: string | null; radixAddress: string }[]>([]);
+  const [results, setResults] = useState<{ id: string; displayName: string | null; shortAddress: string }[]>([]);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -114,9 +114,9 @@ function UserPicker({ value, onChange }: { value: string; onChange: (v: string) 
       {open && visibleResults.length > 0 && (
         <div className="user-picker-dropdown">
           {visibleResults.map(u => (
-            <button key={u.id} className="user-picker-option" onClick={() => { const name = u.displayName || u.radixAddress.slice(0, 12) + '...'; setQuery(name); onChange(JSON.stringify({ id: u.id, name, address: u.radixAddress })); setOpen(false); }}>
+            <button key={u.id} className="user-picker-option" onClick={() => { const name = u.displayName || u.shortAddress; setQuery(name); onChange(JSON.stringify({ id: u.id, name, address: u.shortAddress })); setOpen(false); }}>
               <span className="font-medium">{u.displayName || 'Anonymous'}</span>
-              <span className="text-text-muted text-xs">{u.radixAddress.slice(0, 12)}...</span>
+              <span className="text-text-muted text-xs">{u.shortAddress}</span>
             </button>
           ))}
         </div>
@@ -211,12 +211,12 @@ function MetadataFields({ metadataKeys, metadata, onChange, invalidKeys = [] }: 
 
 // ========== EDITOR WHITELIST ==========
 function EditorWhitelist({ editors, onAdd, onRemove }: {
-  editors: { id: string; displayName: string | null; radixAddress: string }[];
-  onAdd: (user: { id: string; displayName: string | null; radixAddress: string }) => void;
+  editors: { id: string; displayName: string | null; shortAddress: string }[];
+  onAdd: (user: { id: string; displayName: string | null; shortAddress: string }) => void;
   onRemove: (id: string) => void;
 }) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<{ id: string; displayName: string | null; radixAddress: string }[]>([]);
+  const [results, setResults] = useState<{ id: string; displayName: string | null; shortAddress: string }[]>([]);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -225,7 +225,7 @@ function EditorWhitelist({ editors, onAdd, onRemove }: {
     const controller = new AbortController();
     fetch(`/api/users/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
       .then(r => r.json())
-      .then((users: { id: string; displayName: string | null; radixAddress: string }[]) =>
+      .then((users: { id: string; displayName: string | null; shortAddress: string }[]) =>
         setResults(users.filter(u => !editors.some(e => e.id === u.id))))
       .catch(() => {});
     return () => controller.abort();
@@ -248,7 +248,7 @@ function EditorWhitelist({ editors, onAdd, onRemove }: {
         <div className="flex flex-wrap gap-2">
           {editors.map(u => (
             <span key={u.id} className="badge row gap-1">
-              {u.displayName || u.radixAddress.slice(0, 12) + '...'}
+              {u.displayName || u.shortAddress}
               <button onClick={() => onRemove(u.id)} className="icon-btn" style={{ padding: 0, width: 16, height: 16 }}><X size={12} /></button>
             </span>
           ))}
@@ -266,7 +266,7 @@ function EditorWhitelist({ editors, onAdd, onRemove }: {
             {visibleResults.map(u => (
               <button key={u.id} className="user-picker-option" onClick={() => { onAdd(u); setQuery(''); setOpen(false); }}>
                 <span className="font-medium">{u.displayName || 'Anonymous'}</span>
-                <span className="text-text-muted text-xs">{u.radixAddress.slice(0, 12)}...</span>
+                <span className="text-text-muted text-xs">{u.shortAddress}</span>
               </button>
             ))}
           </div>
@@ -291,7 +291,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const [metadata, setMetadata] = useState<PageMetadata>({});
   const [editSlug, setEditSlug] = useState(slug);
   const [editorIds, setEditorIds] = useState<string[]>([]);
-  const [editors, setEditors] = useState<{ id: string; displayName: string | null; radixAddress: string }[]>([]);
+  const [editors, setEditors] = useState<{ id: string; displayName: string | null; shortAddress: string }[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);

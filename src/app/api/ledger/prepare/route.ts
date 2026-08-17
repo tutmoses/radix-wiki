@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
         slug: true, tagPath: true, title: true, content: true,
         version: true, updatedAt: true, createdAt: true,
         bannerImage: true,
-        author: { select: { displayName: true, radixAddress: true } },
+        author: { select: { displayName: true, shortAddress: true } },
       },
     });
     if (!page) return errors.notFound('Page not found');

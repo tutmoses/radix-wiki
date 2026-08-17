@@ -14,7 +14,7 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { LinkPreview } from '@/components/LinkPreview';
 import { Badge, Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
-import { cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet, pagePath, userProfileSlug, shortenAddress } from '@/lib/utils';
+import { cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet, pagePath } from '@/lib/utils';
 import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder, type TagNode } from '@/lib/tags';
 import { categoryHref, toggleFilter, type Facet, type FacetFilters, type FacetValue, type SharedFacet } from '@/lib/taxonomy';
 import { createBlock } from '@/lib/block-utils';
@@ -62,8 +62,8 @@ function PageMeta({ page }: { page: WikiPage }) {
     <div className="page-meta">
       {page.author && (
         <span className="row">
-          <UserAvatar radixAddress={page.author.radixAddress} avatarUrl={page.author.avatarUrl} size="sm" />
-          <span className="truncate">{page.author.displayName || shortenAddress(page.author.radixAddress)}</span>
+          <UserAvatar seed={page.author.id} avatarUrl={page.author.avatarUrl} size="sm" />
+          <span className="truncate">{page.author.displayName || page.author.shortAddress}</span>
         </span>
       )}
       <span>Last updated {formatRelativeTime(page.updatedAt)}</span>
@@ -544,10 +544,11 @@ function SeeAlso({ pages, tagPath, sharedFacet }: { pages: RelatedPage[]; tagPat
 // ========== PAGE VIEW (Read-only) ==========
 function PageViewContent({ page, related, series, listing }: { page: WikiPage; related: RelatedPages; series: PageRef | null; listing?: ReactNode }) {
   const { isAuthenticated } = useAuth();
-  // Contributor stats belong only on a member's own profile — not on curated
-  // articles that happen to live under /community (e.g. Dan Hughes).
-  const isOwnProfile = page.tagPath === 'community' && !!page.author &&
-    page.slug === userProfileSlug(page.author.displayName, page.author.radixAddress);
+  // Contributor stats belong to the page's *subject* — the explicit
+  // metadata.subjectUserId pointer set on profile pages (community bios,
+  // project accounts) — never inferred from authorship, since curated bios
+  // are usually written by someone else.
+  const subjectUserId = page.metadata?.subjectUserId;
   const blocks = (page.content as unknown as Block[]) || [];
   const infobox = findInfobox(blocks);
   const showInfobox = infoboxHasContent(infobox, page.metadata, page.tagPath);
@@ -561,7 +562,7 @@ function PageViewContent({ page, related, series, listing }: { page: WikiPage; r
   const tail = (
     <>
       <SeeAlso pages={related.pages} tagPath={page.tagPath} sharedFacet={related.sharedFacet} />
-      {isOwnProfile && <UserStats authorId={page.authorId} />}
+      {subjectUserId && <UserStats userId={subjectUserId} />}
       <PageMeta page={page} />
       <Discussion pageId={page.id} tagPath={page.tagPath} />
       {isAuthenticated && (

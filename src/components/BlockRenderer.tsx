@@ -12,7 +12,6 @@ import { findTagByPath } from '@/lib/tags';
 import { processHtml } from '@/lib/html';
 import { usePages, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
-import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiPage, PageMetadata } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock, LinkGridBlock, TipJarBlock, ReferencesBlock, BannerBlock, BannerVariant } from '@/types/blocks';
 import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';

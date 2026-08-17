@@ -37,8 +37,9 @@ export interface SignedChallenge {
   };
 }
 
-// Wiki types - derive from Prisma
-export type WikiAuthor = Pick<User, 'id' | 'displayName' | 'radixAddress' | 'avatarUrl'>;
+// Wiki types - derive from Prisma. `shortAddress` is the computed display-safe
+// truncation from the Prisma client extension; full addresses never reach clients.
+export type WikiAuthor = Pick<User, 'id' | 'displayName' | 'avatarUrl'> & { shortAddress: string };
 
 export type PageMetadata = Record<string, string>;
 

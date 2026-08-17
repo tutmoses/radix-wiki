@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma/client';
 import type { WebhookEvent } from '@/lib/webhooks';
-import { pagePath } from '@/lib/utils';
+import { pagePath, shortenAddress } from '@/lib/utils';
 
 const BOT_TOKEN = process.env.TELEGRAM_SUB_BOT_TOKEN;
 
@@ -120,7 +120,7 @@ async function _deliverTelegram(
   // Deduplicate by chatId — a user may have multiple matching subs (page + section)
   const uniqueChats = [...new Set(matching.map((l) => l.chatId))];
 
-  const actorForFormat = actor ? { displayName: actor.displayName, address: actor.radixAddress } : null;
+  const actorForFormat = actor ? { displayName: actor.displayName, address: shortenAddress(actor.radixAddress) } : null;
   const text = formatMessage(event, page, revision, actorForFormat, comment);
 
   await Promise.allSettled(

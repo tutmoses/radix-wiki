@@ -22,7 +22,6 @@ export async function GET(_request: Request, context: RouteContext<PathParams>) 
         select: {
           id: true,
           displayName: true,
-          radixAddress: true,
           avatarUrl: true,
           createdAt: true,
           _count: { select: { pages: true } },
@@ -63,6 +62,6 @@ export async function GET(_request: Request, context: RouteContext<PathParams>) 
     const breakdown = computePoints(input);
     const points = totalPoints(input);
 
-    return json({ userId: user.id, displayName: user.displayName, radixAddress: user.radixAddress, avatarUrl: user.avatarUrl, memberSince: user.createdAt, stats, score, points, breakdown });
+    return json({ userId: user.id, displayName: user.displayName, avatarUrl: user.avatarUrl, memberSince: user.createdAt, stats, score, points, breakdown });
   }, 'Failed to fetch user stats');
 }

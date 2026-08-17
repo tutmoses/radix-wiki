@@ -3,7 +3,7 @@
 import { createHmac, randomBytes } from 'crypto';
 import { prisma } from '@/lib/prisma/client';
 import { deliverTelegram } from '@/lib/telegram';
-import { pagePath } from '@/lib/utils';
+import { pagePath, shortenAddress } from '@/lib/utils';
 
 export type WebhookEvent = 'page.created' | 'page.updated' | 'page.deleted' | 'comment.created';
 
@@ -77,7 +77,8 @@ async function _deliver(
       url: pageUrl,
     },
     ...(revision && { revision }),
-    ...(actor && { actor: { displayName: actor.displayName, address: actor.radixAddress } }),
+    // External subscribers get the same truncated address the site shows.
+    ...(actor && { actor: { displayName: actor.displayName, address: shortenAddress(actor.radixAddress) } }),
     ...(comment && { comment }),
   };
 

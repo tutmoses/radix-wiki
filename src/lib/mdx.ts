@@ -84,7 +84,7 @@ interface PageData {
   slug: string;
   bannerImage?: string | null;
   version?: string;
-  author?: { displayName?: string | null; radixAddress: string } | null;
+  author?: { displayName?: string | null; shortAddress: string } | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
   content: unknown;
@@ -101,7 +101,7 @@ export function blocksToMdx(page: PageData): string {
   if (page.bannerImage) frontmatter.bannerImage = page.bannerImage;
   if (page.version) frontmatter.version = page.version;
   if (page.author) {
-    frontmatter.author = page.author.displayName || page.author.radixAddress;
+    frontmatter.author = page.author.displayName || page.author.shortAddress;
   }
   if (page.createdAt) {
     frontmatter.createdAt = new Date(page.createdAt).toISOString();

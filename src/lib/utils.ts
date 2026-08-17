@@ -54,12 +54,6 @@ export function pageUrl(tagPath: string, slug: string): string {
   return `${BASE_URL}${pagePath(tagPath, slug)}`;
 }
 
-export function userProfileSlug(displayName: string | null | undefined, radixAddress: string): string {
-  return displayName
-    ? displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-    : radixAddress.slice(-16).toLowerCase();
-}
-
 // ========== CONTENT SNIPPET ==========
 
 /** Collapse stored HTML to display text: tags out, entities decoded, whitespace normalised. */

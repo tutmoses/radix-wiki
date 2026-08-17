@@ -25,7 +25,7 @@ function AssigneeChip({ raw }: { raw?: string }) {
   if (!assignee) return null;
   return (
     <span className="assignee-chip">
-      {assignee.address ? <UserAvatar radixAddress={assignee.address} size="sm" /> : null}
+      {assignee.address ? <UserAvatar seed={assignee.address} size="sm" /> : null}
       <span>{assignee.name}</span>
     </span>
   );

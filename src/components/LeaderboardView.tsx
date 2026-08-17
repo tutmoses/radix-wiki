@@ -10,8 +10,9 @@ import Link from 'next/link';
 interface LeaderboardEntry {
   id: string;
   displayName: string | null;
-  radixAddress: string;
+  shortAddress: string;
   avatarUrl: string | null;
+  profilePath: string | null;
   pages: number;
   edits: number;
   contributions: number;
@@ -71,10 +72,17 @@ export default function LeaderboardView() {
               <tr key={entry.id} id={`u-${entry.id}`} className="border-b border-surface-2 last:border-0 target:bg-surface-2">
                 <td className="p-3"><RankBadge rank={i + 1} /></td>
                 <td className="p-3">
-                  <Link href={`/leaderboard#u-${entry.id}`} className="row">
-                    <UserAvatar radixAddress={entry.radixAddress} avatarUrl={entry.avatarUrl} size="sm" />
-                    <span className="font-medium truncate">{entry.displayName || entry.radixAddress.slice(0, 12) + '...'}</span>
-                  </Link>
+                  {entry.profilePath ? (
+                    <Link href={entry.profilePath} className="row">
+                      <UserAvatar seed={entry.id} avatarUrl={entry.avatarUrl} size="sm" />
+                      <span className="font-medium truncate">{entry.displayName || entry.shortAddress}</span>
+                    </Link>
+                  ) : (
+                    <span className="row">
+                      <UserAvatar seed={entry.id} avatarUrl={entry.avatarUrl} size="sm" />
+                      <span className="font-medium truncate">{entry.displayName || entry.shortAddress}</span>
+                    </span>
+                  )}
                 </td>
                 <td className="p-3 text-center hidden-mobile">{entry.pages}</td>
                 <td className="p-3 text-center hidden-mobile">{entry.edits}</td>

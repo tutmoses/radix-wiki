@@ -22,7 +22,7 @@ interface RevisionData {
   changes: BlockChange[] | null;
   message?: string | null;
   createdAt: Date;
-  author?: { id: string; displayName?: string | null; radixAddress: string; avatarUrl?: string | null };
+  author?: { id: string; displayName?: string | null; shortAddress: string; avatarUrl?: string | null };
 }
 
 export type HistoryData = { currentVersion: string; revisions: RevisionData[] } | null;
@@ -205,8 +205,8 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                       <td className="py-2 px-3 truncate max-w-32">
                         {rev.author ? (
                           <Link href={`/leaderboard#u-${rev.author.id}`} className="row text-text-muted hover:text-accent">
-                            <UserAvatar radixAddress={rev.author.radixAddress} avatarUrl={rev.author.avatarUrl} size="sm" />
-                            {rev.author.displayName || rev.author.radixAddress.slice(0, 12) + '…'}
+                            <UserAvatar seed={rev.author.id} avatarUrl={rev.author.avatarUrl} size="sm" />
+                            {rev.author.displayName || rev.author.shortAddress}
                           </Link>
                         ) : '—'}
                       </td>

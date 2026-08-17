@@ -10,7 +10,6 @@ import { UserAvatar } from '@/components/UserAvatar';
 interface UserStatsData {
   userId: string;
   displayName: string | null;
-  radixAddress: string;
   avatarUrl: string | null;
   memberSince: string;
   stats: {
@@ -73,8 +72,8 @@ function ScoreRing({ score, points }: { score: number; points: number }) {
   );
 }
 
-export function UserStats({ authorId }: { authorId: string }) {
-  const { data, isLoading } = useFetch<UserStatsData>(`/api/users/${authorId}/stats`);
+export function UserStats({ userId }: { userId: string }) {
+  const { data, isLoading } = useFetch<UserStatsData>(`/api/users/${userId}/stats`);
 
   if (isLoading) {
     return (
@@ -92,7 +91,7 @@ export function UserStats({ authorId }: { authorId: string }) {
   return (
     <section className="section-divider stack-sm">
       <div className="center">
-        <UserAvatar radixAddress={data.radixAddress} avatarUrl={data.avatarUrl} size="lg" />
+        <UserAvatar seed={data.userId} avatarUrl={data.avatarUrl} size="lg" />
       </div>
       <h3 className="text-text-muted">Contribution Points</h3>
       <div className="stat-grid">

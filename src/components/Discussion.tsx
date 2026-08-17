@@ -70,8 +70,8 @@ function CommentThread({ comment, depth, onReply, onDelete, currentUserId }: {
     <div className={cn('stack-sm', depth > 0 && 'comment-thread')}>
       <div className="stack-xs">
         <div className="row text-small">
-          {comment.author && <UserAvatar radixAddress={comment.author.radixAddress} avatarUrl={comment.author.avatarUrl} size="sm" />}
-          <span className="font-medium">{comment.author?.displayName || comment.author?.radixAddress?.slice(0, 12) + '...'}</span>
+          {comment.author && <UserAvatar seed={comment.author.id} avatarUrl={comment.author.avatarUrl} size="sm" />}
+          <span className="font-medium">{comment.author?.displayName || comment.author?.shortAddress || 'Unknown'}</span>
           <span className="text-text-muted">·</span>
           <span className="text-text-muted">{formatRelativeTime(comment.createdAt)}</span>
           {hasReplies && (

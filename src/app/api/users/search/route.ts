@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       if (!idList.length) return json([]);
       const users = await prisma.user.findMany({
         where: { id: { in: idList } },
-        select: { id: true, displayName: true, radixAddress: true, avatarUrl: true },
+        select: { id: true, displayName: true, shortAddress: true, avatarUrl: true },
       });
       return json(users);
     }
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
           { radixAddress: { startsWith: q, mode: 'insensitive' } },
         ],
       },
-      select: { id: true, displayName: true, radixAddress: true, avatarUrl: true },
+      select: { id: true, displayName: true, shortAddress: true, avatarUrl: true },
       take: 10,
     });
 

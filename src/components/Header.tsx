@@ -77,7 +77,7 @@ function NotificationDropdown({ onClose, initialTab }: { onClose: () => void; in
               {notifications.map(n => (
                 <button key={n.id} className={cn('notification-item', !n.read && 'notification-unread')}
                   onClick={() => { markNotificationsRead([n.id]); router.push(pagePath(n.page.tagPath, n.page.slug)); onClose(); }}>
-                  <UserAvatar radixAddress={n.actor.radixAddress} avatarUrl={n.actor.avatarUrl} size="sm" />
+                  <UserAvatar seed={n.actor.id} avatarUrl={n.actor.avatarUrl} size="sm" />
                   <div className="min-w-0 flex-1">
                     <div className="text-small truncate">{notificationText(n)}</div>
                     <div className="text-xs text-text-muted">{formatRelativeTime(n.createdAt)}</div>
@@ -394,7 +394,7 @@ export function Header() {
               ) : showAsConnected ? (
                 <>
                   <button onClick={() => setShowUserMenu(!showUserMenu)} className="user-pill" aria-expanded={showUserMenu} aria-label="User menu">
-                    <UserAvatar radixAddress={user?.radixAddress || walletData?.accounts?.[0]?.address || ''} size="sm" />
+                    <UserAvatar seed={user?.id || walletData?.accounts?.[0]?.address || ''} size="sm" />
                     <span className="font-medium hidden sm:inline">{displayName}</span>
                     <ChevronDown size={14} className={cn('transition-transform', showUserMenu && 'rotate-180')} />
                   </button>

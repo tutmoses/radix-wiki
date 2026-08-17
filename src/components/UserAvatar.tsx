@@ -7,8 +7,10 @@ import { cn, generateIdenticon } from '@/lib/utils';
 type AvatarSize = 'sm' | 'md' | 'lg';
 const AVATAR_PX: Record<AvatarSize, number> = { sm: 20, md: 28, lg: 40 };
 
-export function UserAvatar({ radixAddress, avatarUrl, size = 'sm', className }: {
-  radixAddress: string;
+export function UserAvatar({ seed, avatarUrl, size = 'sm', className }: {
+  /** Identicon seed — the user id where one exists, so the same user renders the
+   *  same avatar everywhere without shipping their wallet address. */
+  seed: string;
   avatarUrl?: string | null;
   size?: AvatarSize;
   className?: string;
@@ -18,7 +20,7 @@ export function UserAvatar({ radixAddress, avatarUrl, size = 'sm', className }: 
     return <Image src={avatarUrl} alt="User avatar" width={px} height={px} className={cn('user-avatar', `user-avatar-${size}`, className)} unoptimized />;
   }
 
-  const { cells, fg, bg } = generateIdenticon(radixAddress);
+  const { cells, fg, bg } = generateIdenticon(seed);
 
   return (
     <svg viewBox="0 0 5 5" xmlns="http://www.w3.org/2000/svg" shapeRendering="crispEdges" className={cn('user-avatar', `user-avatar-${size}`, className)}>

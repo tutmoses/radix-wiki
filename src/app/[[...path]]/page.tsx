@@ -284,15 +284,11 @@ function articleLd(page: WikiPage, url: string) {
     dateModified: page.updatedAt,
     wordCount: countWords(page.content),
     ...(section && { articleSection: section }),
+    // Name only — the wiki doesn't publish the displayName↔wallet mapping, so no
+    // address identifier or explorer URL in structured data.
     author: {
       '@type': 'Person',
       name: page.author?.displayName || 'Anonymous',
-      ...(page.author?.radixAddress && {
-        identifier: page.author.radixAddress,
-        // A contributor has no profile page on the wiki, so the canonical URL for
-        // their identity is their Radix account on the network's own explorer.
-        url: `https://dashboard.radixdlt.com/account/${page.author.radixAddress}`,
-      }),
     },
     publisher: { '@type': 'Organization', name: 'RADIX Wiki', url: BASE_URL, logo: { '@type': 'ImageObject', url: `${BASE_URL}/logo.png` } },
     image,

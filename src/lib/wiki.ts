@@ -10,7 +10,7 @@ import type { Block, RecentPagesBlock, PageListBlock, RssFeedBlock, ColumnsBlock
 import { computeRevisionDiff } from '@/lib/versioning';
 
 // ========== PRISMA QUERY FRAGMENTS ==========
-export const AUTHOR_SELECT = { select: { id: true, displayName: true, radixAddress: true, avatarUrl: true } } as const;
+export const AUTHOR_SELECT = { select: { id: true, displayName: true, shortAddress: true, avatarUrl: true } } as const;
 export const PAGE_INCLUDE = { author: AUTHOR_SELECT, _count: { select: { revisions: true } } } as const;
 export const CATEGORY_SELECT = {
   id: true, slug: true, title: true, content: true, bannerImage: true,
@@ -23,9 +23,16 @@ export const PAGE_LIST_SELECT = {
 } as const;
 const CACHE_OPTS = { tags: ['wiki'], revalidate: 60 };
 
+/** A cache hit returns plain JSON, but a miss returns Prisma's live objects — whose
+ *  computed-field results (author.shortAddress) are proxies carrying symbol
+ *  properties the RSC boundary rejects. Flattening before caching gives hit and
+ *  miss the identical plain shape. */
+const plain = <T>(value: T): T => value == null ? value : JSON.parse(JSON.stringify(value));
+
 /** Shorthand for cache(unstable_cache(fn, [key], CACHE_OPTS)) */
 export function cached<T extends (...args: any[]) => Promise<any>>(key: string, fn: T): T {
-  return cache(unstable_cache(fn, [key], CACHE_OPTS)) as T;
+  const wrapped = async (...args: Parameters<T>) => plain(await fn(...args));
+  return cache(unstable_cache(wrapped as T, [key], CACHE_OPTS)) as T;
 }
 
 // ========== UNIFIED PATH PARSING ==========
@@ -341,18 +348,18 @@ export async function searchPageIds(
 // ========== BLOCK DATA RESOLUTION ==========
 
 const getRecentPages = unstable_cache(
-  async (tagPath: string | undefined, limit: number) => prisma.page.findMany({
+  async (tagPath: string | undefined, limit: number) => plain(await prisma.page.findMany({
     where: tagPath ? { tagPath } : undefined,
     select: PAGE_LIST_SELECT,
     orderBy: { updatedAt: 'desc' },
     take: limit,
-  }), ['getRecentPages'], CACHE_OPTS,
+  })), ['getRecentPages'], CACHE_OPTS,
 );
 
 const getPagesByIds = unstable_cache(
   async (ids: string[]) => {
     if (!ids.length) return [];
-    const pages = await prisma.page.findMany({ where: { id: { in: ids } }, select: PAGE_LIST_SELECT });
+    const pages = plain(await prisma.page.findMany({ where: { id: { in: ids } }, select: PAGE_LIST_SELECT }));
     return orderByIds(pages, ids);
   }, ['getPagesByIds'], CACHE_OPTS,
 );

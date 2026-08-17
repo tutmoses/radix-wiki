@@ -36,6 +36,8 @@ interface EditorRow {
   radix_address: string;
   avatar_url: string | null;
   created_at: Date;
+  subject_tag_path: string | null;
+  subject_slug: string | null;
   page_count: bigint;
   edit_slots: bigint;
   unique_pages: bigint;
@@ -47,6 +49,9 @@ export interface EditorScore {
   displayName: string | null;
   radixAddress: string;
   avatarUrl: string | null;
+  /** The wiki page about this contributor (community bio or ecosystem project),
+   *  linked by the page's `metadata.subjectUserId` pointer. */
+  subjectPage: { tagPath: string; slug: string } | null;
   pages: number;
   edits: number;
   contributions: number;
@@ -63,11 +68,16 @@ export const getEditorScores = unstable_cache(
         u.radix_address,
         u.avatar_url,
         u.created_at,
+        sp.tag_path AS subject_tag_path,
+        sp.slug AS subject_slug,
         (SELECT COUNT(*) FROM pages p WHERE p.author_id = u.id) AS page_count,
         COALESCE(r.edit_slots, 0) AS edit_slots,
         COALESCE(r.unique_pages, 0) AS unique_pages,
         COALESCE(c.comment_slots, 0) AS comment_slots
       FROM users u
+      LEFT JOIN LATERAL (
+        SELECT tag_path, slug FROM pages WHERE metadata->>'subjectUserId' = u.id LIMIT 1
+      ) sp ON true
       LEFT JOIN LATERAL (
         SELECT
           COUNT(DISTINCT page_id || ':' || EXTRACT(EPOCH FROM date_trunc('hour', created_at))::BIGINT) AS edit_slots,
@@ -93,6 +103,9 @@ export const getEditorScores = unstable_cache(
         displayName: u.display_name,
         radixAddress: u.radix_address,
         avatarUrl: u.avatar_url,
+        // An empty slug is a valid subject page (category hub), so presence is
+        // keyed on tag_path rather than slug truthiness.
+        subjectPage: u.subject_tag_path !== null ? { tagPath: u.subject_tag_path, slug: u.subject_slug ?? '' } : null,
         pages, edits, contributions, comments, points,
       };
     }).sort((a, b) => b.points - a.points);
