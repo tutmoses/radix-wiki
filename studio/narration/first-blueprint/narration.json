@@ -1,0 +1,113 @@
+{
+  "video": "first-blueprint",
+  "title": "Your First Blueprint",
+  "page": "developers/getting-started/02-first-blueprint",
+  "voice": {
+    "name": "Raina",
+    "voice_id": "1c3a4775-9afb-52c1-a2bf-b6543231a9a1",
+    "voice_type": "preset",
+    "model": "seed_audio"
+  },
+  "generated": "2026-08-18",
+  "totalSeconds": 113.356,
+  "_note": "Durations are measured, not estimated: the storyboard times every screen action against these. spoken[] is the lexicon-substituted text actually sent to seed_audio; line[] is what captions and the page show.",
+  "beats": [
+    {
+      "id": "01",
+      "action": "title card, host",
+      "line": "A vending machine either holds gumballs or it holds a promise about gumballs. Most smart contract platforms build the second kind. Scrypto builds the first.",
+      "audio": "beat-01.wav",
+      "seconds": 9.982,
+      "wpm": 150
+    },
+    {
+      "id": "02",
+      "action": "terminal: scrypto new-package gumball_machine",
+      "line": "Start with a package. That is the unit Scrypto deploys: one folder, with one or more blueprints inside it.",
+      "audio": "beat-02.wav",
+      "seconds": 8.432,
+      "wpm": 135
+    },
+    {
+      "id": "03",
+      "action": "terminal: ls -A gumball_machine",
+      "line": "Six things land on disk. Open rust-toolchain.toml first, because it pins the Rust channel this package compiles with, and the pin depends on which radix-clis version generated the file.",
+      "audio": "beat-03.wav",
+      "seconds": 12.443,
+      "wpm": 140
+    },
+    {
+      "id": "04",
+      "action": "terminal: cat gumball_machine/Cargo.toml",
+      "line": "The manifest names one dependency that matters. Scrypto itself, version 1.3.1.",
+      "audio": "beat-04.wav",
+      "seconds": 7.8,
+      "wpm": 85
+    },
+    {
+      "id": "05",
+      "action": "editor: type src/lib.rs",
+      "line": "Now the blueprint. Read it as a class the Radix Engine can load: a struct saying what the component owns, and an impl saying what it does.",
+      "spoken": "Now the blueprint. Read it as a class the Raddix Engine can load: a struct saying what the component owns, and an impl saying what it does.",
+      "audio": "beat-05.wav",
+      "seconds": 10.225,
+      "wpm": 158
+    },
+    {
+      "id": "06",
+      "action": "editor: focusLines struct/vaults",
+      "line": "Two vaults. A vault is permanent storage the engine controls, and it holds real resources rather than a number standing in for them.",
+      "audio": "beat-06.wav",
+      "seconds": 8.931,
+      "wpm": 155
+    },
+    {
+      "id": "07",
+      "action": "editor: focusLines ResourceBuilder",
+      "line": "ResourceBuilder mints a hundred gumballs once, at instantiation. They drop straight into a vault, and the component owns them from that moment.",
+      "audio": "beat-07.wav",
+      "seconds": 9.505,
+      "wpm": 139
+    },
+    {
+      "id": "08",
+      "action": "editor: pull back, whole file",
+      "line": "Now look for the balance mapping. You will not find one. buy_gumball moves whole resources between containers, and the engine rejects any transaction that leaves a resource unaccounted for.",
+      "audio": "beat-08.wav",
+      "seconds": 13.015,
+      "wpm": 134
+    },
+    {
+      "id": "09",
+      "action": "terminal: scrypto build",
+      "line": "One command compiles the package.",
+      "audio": "beat-09.wav",
+      "seconds": 2.09,
+      "wpm": 144
+    },
+    {
+      "id": "10",
+      "action": "terminal: build output scrolling",
+      "line": "Scrypto compiles to WebAssembly, so every validator runs the same bytes and reaches the same answer. On macOS this step needs a wasm-capable clang, and Apple's ships without one.",
+      "audio": "beat-10.wav",
+      "seconds": 14.729,
+      "wpm": 118
+    },
+    {
+      "id": "11",
+      "action": "terminal: Finished release profile",
+      "line": "Under a minute, and the package is built.",
+      "audio": "beat-11.wav",
+      "seconds": 2.816,
+      "wpm": 170
+    },
+    {
+      "id": "12",
+      "action": "outro, host",
+      "line": "You have a component that holds its own inventory. Publish it to Stokenet next: the same package, on a public network. A machine that holds its stock, not a ledger that remembers it.",
+      "audio": "beat-12.wav",
+      "seconds": 13.389,
+      "wpm": 148
+    }
+  ]
+}

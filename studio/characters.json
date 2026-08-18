@@ -1,0 +1,40 @@
+{
+  "_comment": "Chosen brand characters for radix.wiki walkthroughs. The job_id is the durable handle: pass it as an `image` reference to nano_banana_pro for every later shot to hold the same face/figure across framings, instead of paying 40 credits for a trained soul_id. Regenerating from the prompt alone will NOT give the same person.",
+  "presenter": {
+    "role": "photoreal, lip-synced intro and outro",
+    "job_id": "c14212b1-3402-4f06-8b05-35bf3eaf77ab",
+    "file": "assets/characters/presenter.png",
+    "model": "nano_banana_pro",
+    "aspect_ratio": "16:9",
+    "chosen": "2026-08-18",
+    "note": "Busier lower third than the rejected variant - check caption legibility over the sweater before cutting.",
+    "prompt": "Photoreal medium close-up portrait of a woman in her early thirties, calm and composed, looking directly into the camera with a neutral, credible expression. Short dark hair, minimal makeup, plain charcoal crew-neck sweater. Dark slate studio background in desaturated blue-grey, with a subtle warm coral rim light from the left edge. Even soft key light on the face, shallow depth of field, natural skin texture with no retouching gloss. Documentary interview framing: head and shoulders, centred, with generous empty space across the lower third of the frame. Photographic, not illustrated. No text, no captions, no subtitles, no lettering, no logos, no on-screen graphics."
+  },
+  "host": {
+    "role": "stylised, carries the body of the walkthrough",
+    "job_id": "57c2d23b-4f65-4825-9713-2e7b7eb386b2",
+    "file": "assets/characters/host.png",
+    "model": "nano_banana_pro",
+    "aspect_ratio": "16:9",
+    "chosen": "2026-08-18",
+    "prompt": "Flat vector editorial illustration of a calm female figure, head and shoulders, front-facing, composed and attentive expression. Geometric minimal style with clean confident shapes and no gradients. Strictly limited palette: coral pink, pale cream, soft blush, on a flat dark slate blue-grey background. Wearing over-ear headphones, suggestion of a collared top. Modern technical-documentation brand character, restrained and adult, not cute, not cartoonish, not a mascot with exaggerated features. Centred with generous empty space around the figure. No text, no lettering, no captions, no logos."
+  },
+  "voice": {
+    "role": "narration for every walkthrough",
+    "model": "seed_audio",
+    "voice_type": "preset",
+    "voice_id": "1c3a4775-9afb-52c1-a2bf-b6543231a9a1",
+    "name": "Raina",
+    "note": "Settled by ear from the audition page. Do not reopen on catalogue metadata: list_voices exposes no age or accent, so any such argument is a guess. Chloe (e9cfbbf0-4476-46be-b396-596eb774b165) stays excluded as Caper's voice.",
+    "chosen": "2026-08-18",
+    "params": {
+      "format": "wav",
+      "sample_rate": 44100
+    },
+    "lexicon": {
+      "_how": "Written form -> spoken form. Substitute ONLY in the text sent to seed_audio. The script, the captions and the on-screen text keep the written form. Confirmed by ear, never guessed.",
+      "Radix": "Raddix"
+    },
+    "_lexicon_note": "Raina says RAY-dix for 'Radix'; the word takes a short a, as in radish. Doubling the consonant forces the short vowel. Applies to every radix.wiki video and to any Caper narration that names Radix, so promote this map to radix-studio if a second brand starts using it."
+  }
+}

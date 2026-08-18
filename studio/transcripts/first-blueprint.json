@@ -1,0 +1,55 @@
+{
+  "recipe": "first-blueprint",
+  "title": "Your First Blueprint",
+  "page": "developers/getting-started/02-first-blueprint",
+  "capturedAt": "2026-08-18T20:22:37.004Z",
+  "toolchain": {
+    "scrypto": "scrypto 1.4.0-dev",
+    "resim": "resim 1.4.0-dev",
+    "rustc": "rustc 1.94.1 (e408947bf 2026-03-25)",
+    "cargo": "cargo 1.94.1 (29ea6fb6a 2026-03-24)"
+  },
+  "steps": [
+    {
+      "cmd": "scrypto new-package gumball_machine",
+      "cwd": ".",
+      "exitCode": 0,
+      "seconds": 0.07,
+      "stdout": ""
+    },
+    {
+      "cmd": "ls -A gumball_machine",
+      "cwd": ".",
+      "exitCode": 0,
+      "seconds": 0.01,
+      "stdout": ".gitignore\nCargo.lock\nCargo.toml\nrust-toolchain.toml\nsrc\ntests\n"
+    },
+    {
+      "cmd": "sed -i '' 's/1.4.0-dev/1.3.1/g' gumball_machine/Cargo.toml && rm -f gumball_machine/Cargo.lock",
+      "cwd": ".",
+      "exitCode": 0,
+      "seconds": 0.01,
+      "stdout": "",
+      "hidden": true,
+      "why": "local CLI is 1.4.0-dev (unpublished); the tutorial prescribes radix-clis@1.3.1"
+    },
+    {
+      "cmd": "cat gumball_machine/Cargo.toml",
+      "cwd": ".",
+      "exitCode": 0,
+      "seconds": 0.01,
+      "stdout": "[package]\nname = \"gumball_machine\"\nversion = \"1.0.0\"\nedition = \"2021\"\n\n[dependencies]\nscrypto = { version = \"1.3.1\" }\n\n[dev-dependencies]\nscrypto-test = { version = \"1.3.1\" }\n\n[profile.release]\nopt-level = 'z'        # Optimize for size.\nlto = true             # Enable Link Time Optimization.\ncodegen-units = 1      # Reduce number of codegen units to increase optimizations.\npanic = 'abort'        # Abort on panic.\nstrip = true           # Strip the symbols.\noverflow-checks = true # Panic in the case of an overflow.\n\n[features]\ndefault = []\n\n[lib]\ncrate-type = [\"cdylib\", \"lib\"]\n\n[workspace]\n# Set the package crate as its own empty workspace, to hide it from any potential ancestor workspace\n# Remove this [workspace] section if you intend the package to be part of a Cargo workspace"
+    },
+    {
+      "cmd": "scrypto build",
+      "cwd": "gumball_machine",
+      "exitCode": 0,
+      "seconds": 57.36,
+      "stdout": "    Updating crates.io index\n     Locking 234 packages to latest compatible versions\n      Adding generic-array v0.14.7 (available: v0.14.9)\n      Adding regex v1.9.3 (available: v1.13.1)\n   Compiling compiler_builtins v0.1.160 (/Users/libertant/.rustup/toolchains/1.92.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/compiler-builtins/compiler-builtins)\n   Compiling core v0.0.0 (/Users/libertant/.rustup/toolchains/1.92.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/core)\n   Compiling libc v0.2.177\n   Compiling std v0.0.0 (/Users/libertant/.rustup/toolchains/1.92.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/std)\n   Compiling proc-macro2 v1.0.107\n   Compiling unicode-ident v1.0.24\n   Compiling quote v1.0.47\n   Compiling version_check v0.9.5\n   Compiling serde_core v1.0.229\n   Compiling generic-array v0.14.7\n   Compiling autocfg v1.5.1\n   Compiling num-traits v0.2.19\n   Compiling syn v1.0.109\n   Compiling semver v1.0.28\n   Compiling libc v0.2.189\n   Compiling rustc_version v0.4.1\n   Compiling hashbrown v0.17.1\n   Compiling equivalent v1.0.2\n   Compiling typenum v1.20.1\n   Compiling syn v2.0.119\n   Compiling curve25519-dalek v4.1.3\n   Compiling find-msvc-tools v0.1.11\n   Compiling either v1.17.0\n   Compiling shlex v2.0.1\n   Compiling indexmap v2.14.0\n   Compiling itertools v0.10.5\n   Compiling cc v1.4.3\n   Compiling rustversion v1.0.23\n   Compiling const-sha1 v0.3.0\n   Compiling crypto-common v0.1.7\n   Compiling block-buffer v0.10.4\n   Compiling paste v1.0.15\n   Compiling subtle v2.6.1\n   Compiling digest v0.10.7\n   Compiling syn v3.0.3\n   Compiling serde v1.0.229\n   Compiling heck v0.4.1\n   Compiling blst v0.3.17\n   Compiling cpufeatures v0.2.17\n   Compiling cfg-if v1.0.4\n   Compiling zmij v1.0.23\n   Compiling num_cpus v1.17.0\n   Compiling signature v2.2.0\n   Compiling ed25519 v2.2.3\n   Compiling threadpool v1.8.1\n   Compiling sha2 v0.10.9\n   Compiling sbor-derive-common v1.3.1\n   Compiling keccak v0.1.6\n   Compiling num-integer v0.1.47\n   Compiling lazy_static v1.5.0\n   Compiling serde_json v1.0.151\n   Compiling bnum v0.11.0\n   Compiling num-bigint v0.4.8\n   Compiling serde_derive v1.0.229\n   Compiling sha3 v0.10.9\n   Compiling sbor-derive v1.3.1\n   Compiling strum_macros v0.24.3\n   Compiling radix-sbor-derive v1.3.1\n   Compiling blake2 v0.10.6\n   Compiling zeroize_derive v1.5.0\n   Compiling preinterpret v0.2.1\n   Compiling bech32 v0.9.1\n   Compiling zeroize v1.9.0\n   Compiling strum v0.24.1\n   Compiling regex-syntax v0.7.5\n   Compiling ed25519-dalek v2.2.0\n   Compiling bitflags v1.3.2\n   Compiling memchr v2.8.3\n   Compiling itoa v1.0.18\n   Compiling regex-automata v0.3.9\n   Compiling hex v0.4.3\n   Compiling radix-rust v1.3.1\n   Compiling rustc-std-workspace-core v1.99.0 (/Users/libertant/.rustup/toolchains/1.92.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/rustc-std-workspace-core)\n   Compiling alloc v0.0.0 (/Users/libertant/.rustup/toolchains/1.92.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/alloc)\n   Compiling cfg-if v1.0.1\n   Compiling unwind v0.0.0 (/Users/libertant/.rustup/toolchains/1.92.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/unwind)\n   Compiling dlmalloc v0.2.10\n   Compiling rustc-demangle v0.1.26\n   Compiling panic_abort v0.0.0 (/Users/libertant/.rustup/toolchains/1.92.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/panic_abort)\n   Compiling sbor v1.3.1\n   Compiling regex v1.9.3\n   Compiling rustc-std-workspace-alloc v1.99.0 (/Users/libertant/.rustup/toolchains/1.92.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/rustc-std-workspace-alloc)\n   Compiling panic_unwind v0.0.0 (/Users/libertant/.rustup/toolchains/1.92.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/panic_unwind)\n   Compiling std_detect v0.1.5 (/Users/libertant/.rustup/toolchains/1.92.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/std_detect)\n   Compiling hashbrown v0.15.5\n   Compiling radix-common v1.3.1\n   Compiling rustc-std-workspace-std v1.99.0 (/Users/libertant/.rustup/toolchains/1.92.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/rustc-std-workspace-std)\n   Compiling rustc-literal-escaper v0.0.5\n   Compiling proc_macro v0.0.0 (/Users/libertant/.rustup/toolchains/1.92.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/proc_macro)\n   Compiling radix-blueprint-schema-init v1.3.1\n   Compiling radix-common-derive v1.3.1\n   Compiling scrypto-derive v1.3.1\n   Compiling radix-engine-interface v1.3.1\n   Compiling scrypto v1.3.1\n   Compiling gumball_machine v1.0.0 (~/gumball_machine)\n    Finished `release` profile [optimized] target(s) in 52.85s\n   Compiling scrypto-derive v1.3.1\n   Compiling scrypto v1.3.1\n   Compiling gumball_machine v1.0.0 (~/gumball_machine)\n    Finished `release` profile [optimized] target(s) in 3.54s\n",
+      "env": {
+        "CC_wasm32_unknown_unknown": "/opt/homebrew/opt/llvm/bin/clang",
+        "AR_wasm32_unknown_unknown": "/opt/homebrew/opt/llvm/bin/llvm-ar"
+      }
+    }
+  ]
+}
