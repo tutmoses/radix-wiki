@@ -10,7 +10,10 @@ export interface NetworkStats {
   totalStake: number;
   xrdSupply: number;
   validatorCount: number;
+  /** The consensus active set — the validators actually validating this epoch. */
   activeValidatorCount: number;
+  /** The wider set that has registered and holds stake. Always larger than the active set. */
+  registeredValidatorCount: number;
   currentEpoch: number;
   ledgerStateVersion: number;
   network: string;
@@ -28,7 +31,10 @@ const _getNetworkStats = unstable_cache(
     ]);
 
     const totalStake = validators.reduce((sum, v) => sum + v.totalStake, 0);
-    const activeValidatorCount = validators.filter(v => v.isRegistered && v.totalStake > 0).length;
+    // Registered-and-staked is not the active set: Radix validates with the top 100 by
+    // stake, and the chart labelled the wider number "Active validators" for both.
+    const activeValidatorCount = validators.filter(v => v.isActive).length;
+    const registeredValidatorCount = validators.filter(v => v.isRegistered && v.totalStake > 0).length;
     const xrdItem = xrdEntity?.items?.[0];
     const xrdSupply = parseFloat(xrdItem?.details?.total_supply ?? '0');
 
@@ -37,13 +43,14 @@ const _getNetworkStats = unstable_cache(
       xrdSupply: isFinite(xrdSupply) ? xrdSupply : 0,
       validatorCount: validators.length,
       activeValidatorCount,
+      registeredValidatorCount,
       currentEpoch: status?.ledger_state?.epoch ?? 0,
       ledgerStateVersion: status?.ledger_state?.state_version ?? 0,
       network: status?.ledger_state?.network ?? 'mainnet',
       lastUpdated: new Date().toISOString(),
     };
   },
-  ['radix-network-stats-v3'],
+  ['radix-network-stats-v4'],
   { revalidate: 300, tags: ['charts'] },
 );
 

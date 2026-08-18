@@ -32,7 +32,9 @@ export default async function ChartsOverview() {
         <div className="stat-card">
           <Server size={18} className="text-text-muted" />
           <span className="stat-value">{stats.activeValidatorCount}</span>
-          <span className="text-small text-text-muted">Active validators</span>
+          <span className="text-small text-text-muted">
+            Active validators, of {stats.registeredValidatorCount} registered
+          </span>
         </div>
         <div className="stat-card">
           <Coins size={18} className="text-text-muted" />

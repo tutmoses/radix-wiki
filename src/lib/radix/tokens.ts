@@ -25,6 +25,11 @@ export interface TokenDetail extends TokenSummary {
   dashboardUrl: string;
 }
 
+function num(value: unknown): number {
+  const n = parseFloat(String(value ?? '0'));
+  return isFinite(n) ? n : 0;
+}
+
 function readMetadata(metadata: any, key: string): string | undefined {
   if (!metadata?.items) return undefined;
   const item = metadata.items.find((i: any) => i.key === key);
@@ -74,7 +79,9 @@ async function _fetchTopTokens(limit: number): Promise<TokenSummary[]> {
     const items: any[] = Array.isArray(data?.data) ? data.data : Array.isArray(data?.tokens) ? data.tokens : Array.isArray(data) ? data : [];
     return items
       .map(parseOciToken)
-      .filter((t): t is TokenSummary => t !== null && t.price > 0);
+      // A quoted price with no trading behind it is a stale artifact, not a price. This
+      // is what put xLINK at $670bn (and a $6.5tn market cap) atop the table on zero volume.
+      .filter((t): t is TokenSummary => t !== null && t.price > 0 && (t.volume24h ?? 0) > 0);
   } catch (err) {
     console.error('[top-tokens] error', err);
     return [];
@@ -152,4 +159,44 @@ function _getTokenDetailRaw(address: string): Promise<TokenDetail | null> {
 
 export const getTokenDetail = cache(
   unstable_cache(_getTokenDetailRaw, ['radix-token-detail'], { revalidate: 60, tags: ['charts'] }),
+);
+
+export interface DexStats {
+  /** Ociswap only — CaviarNine, DefiPlaza, Surge and Astrolescent are not in these figures. */
+  volume7dXrd: number;
+  swaps7d: number;
+  tvlXrd: number;
+  newPools7d: number;
+}
+
+async function _fetchDexStats(): Promise<DexStats | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetch('https://api.ociswap.com/statistics', {
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      console.error(`[dex-stats] OciSwap ${res.status}`);
+      return null;
+    }
+    const d = await res.json();
+    // XRD-denominated throughout: the native unit needs no price oracle to be true later.
+    return {
+      volume7dXrd: num(d?.volume?.xrd?.['7d']),
+      swaps7d: num(d?.event_counts?.swap?.['7d']),
+      tvlXrd: num(d?.total_value_locked?.xrd?.now),
+      newPools7d: num(d?.event_counts?.instantiate_pool?.['7d']),
+    };
+  } catch (err) {
+    console.error('[dex-stats] error', err);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export const getDexStats = cache(
+  unstable_cache(_fetchDexStats, ['radix-dex-stats-v1'], { revalidate: 300, tags: ['charts'] }),
 );
