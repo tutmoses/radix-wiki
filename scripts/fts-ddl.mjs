@@ -5,20 +5,29 @@
 //
 // Two facts about this column that are not obvious and cost real time:
 //
-//   1. `prisma db push` DROPS it if it is not declared in schema.prisma.
-//      Verified with `prisma migrate diff`: an undeclared column produces
-//      `ALTER TABLE "pages" DROP COLUMN "search_tsv"`. Hence the
-//      `Unsupported("tsvector")?` field in the schema — it exists purely so push
-//      leaves the column alone.
-//   2. Push must never CREATE it either. Prisma emits a PLAIN
+//   1. `prisma db push` DROPS the column if it is not declared in schema.prisma
+//      (`ALTER TABLE "pages" DROP COLUMN "search_tsv"`), and DROPS THE INDEX if
+//      that is not declared either. Hence both the `Unsupported("tsvector")?`
+//      field and the `@@index([searchTsv], type: Gin)` line in the schema.
+//   2. Push must never CREATE the column either. Prisma emits a PLAIN
 //      `ADD COLUMN "search_tsv" tsvector` with no generation expression, which
-//      stays empty forever and fails silently — search simply returns nothing
-//      and nothing errors. Prisma cannot express `GENERATED ALWAYS AS`, so the
-//      column has to be made here first.
+//      stays empty forever and fails silently. Prisma cannot express
+//      `GENERATED ALWAYS AS`, so the column has to be made here first.
+//   3. With both declared, `migrate diff` still emits one statement:
+//      `ALTER COLUMN "search_tsv" DROP DEFAULT` — Prisma reads the generation
+//      expression as a default and wants it gone. Postgres REFUSES it
+//      (SQLSTATE 42601, "is a generated column"), so push fails loudly rather
+//      than silently breaking the column. Verified on a scratch table. That
+//      error is the expected outcome, not a problem to fix.
 //
-// Connection: DDL cannot run through PgBouncer on :6543. The pooler's :5432 is
-// session mode and works. `db.<ref>.supabase.co` is IPv6-only and unreachable
-// from a normal dev machine (EHOSTUNREACH), so do not reach for it.
+// Connection: BOTH ports run DDL fine — an earlier note here claimed PgBouncer
+// on :6543 could not, and that was wrong (CREATE/DROP TABLE both succeed on
+// 6543). What genuinely needs :5432 is PRISMA INTROSPECTION:
+// `prisma migrate diff --from-config-datasource` hangs forever on 6543 and
+// returns immediately on 5432. `db.<ref>.supabase.co` is IPv6-only and returns
+// EHOSTUNREACH from a dev machine. Always set connectionTimeoutMillis —
+// without it a bad route HANGS instead of erroring.
+
 import pg from 'pg';
 import { config } from 'dotenv';
 config();

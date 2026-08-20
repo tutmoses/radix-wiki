@@ -62,6 +62,9 @@ model Page {
   @@index([tagPath])
   @@index([tagPath, createdAt])
   @@index([tagPath, updatedAt])
+  /// Declared so `db push` does not drop it. Without this line `migrate diff` emits
+  /// `DROP INDEX pages_search_tsv_idx`, which push would happily execute.
+  @@index([searchTsv], type: Gin, map: "pages_search_tsv_idx")
   @@map("pages")
 }
 
