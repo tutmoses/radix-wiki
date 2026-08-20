@@ -92,11 +92,11 @@ function buildCategoryTree(nodes: TagNode[], counts: Map<string, number>, parent
 async function search_wiki(args: { query: string; tagPath?: string; page?: number; pageSize?: number }) {
   const { query, tagPath, page = 1, pageSize = 20 } = args;
   const size = Math.min(pageSize, 50);
-  const { ids, total } = await searchPageIds(query, { tagPath, skip: (page - 1) * size, take: size });
+  const { ids, total, headlines } = await searchPageIds(query, { tagPath, skip: (page - 1) * size, take: size });
   const results = ids.length
     ? await prisma.page.findMany({ where: { id: { in: ids } }, select: { id: true, ...SUMMARY_SELECT } })
     : [];
-  return { total, page, pageSize: size, pages: orderByIds(results, ids).map(p => summarizePage(p, query)) };
+  return { total, page, pageSize: size, pages: orderByIds(results, ids).map(p => summarizePage(p, query, headlines.get(p.id))) };
 }
 
 async function get_page(args: { tagPath: string; slug: string }) {

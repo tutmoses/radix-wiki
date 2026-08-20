@@ -70,9 +70,9 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       if (q) {
         // The GET-only twin of MCP search_wiki: identical ranking (titles ahead
         // of body prose) and row-identical results via the same summarizer.
-        const { ids, total } = await searchPageIds(q, { tagPath, skip: (page - 1) * pageSize, take: pageSize });
+        const { ids, total, headlines } = await searchPageIds(q, { tagPath, skip: (page - 1) * pageSize, take: pageSize });
         const matches = ids.length ? await prisma.page.findMany({ where: { id: { in: ids } }, select: { id: true, ...SUMMARY_SELECT } }) : [];
-        return cachedJson(paginatedResponse(orderByIds(matches, ids).map(p => summarizePage(p, q)), total, page, pageSize));
+        return cachedJson(paginatedResponse(orderByIds(matches, ids).map(p => summarizePage(p, q, headlines.get(p.id))), total, page, pageSize));
       }
 
       const orderBy = sort === 'title' ? { title: 'asc' as const } : { updatedAt: 'desc' as const };

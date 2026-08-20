@@ -22,7 +22,11 @@ Thumbs.db
 *.csv
 
 # Seed scripts
-/scripts/
+/scripts/*
+# ...except the full-text DDL: schema.prisma points at it, and without it a fresh
+# database has no search_tsv column, so the search's full-text tier silently
+# returns nothing. Infrastructure, not a seed script.
+!/scripts/fts-ddl.mjs
 CLAUDE.md
 
 # Debug

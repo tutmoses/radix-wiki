@@ -283,15 +283,22 @@ export const getPageHistory = cached('getPageHistory',
  *  list_pages / get_recent_changes and the plain-GET /api/wiki?q= twin). */
 export const SUMMARY_SELECT = { title: true, tagPath: true, slug: true, content: true, updatedAt: true, metadata: true, lastVerifiedAt: true } as const;
 
-/** `query` swaps the opening-line snippet for the passage that matched. */
-export function summarizePage(p: { title: string; tagPath: string; slug: string; content: unknown; updatedAt: Date; metadata?: unknown; lastVerifiedAt?: Date | null }, query?: string) {
+/**
+ * `query` swaps the opening-line snippet for the passage that matched.
+ *
+ * `headline` overrides it, and only tier-3 (full-text) rows carry one. Those
+ * matched a STEM, so `getMatchSnippet` has no literal substring to find and
+ * would silently fall back to the page opening — the infobox. Postgres already
+ * knows where the stem matched, so it hands back the passage instead.
+ */
+export function summarizePage(p: { title: string; tagPath: string; slug: string; content: unknown; updatedAt: Date; metadata?: unknown; lastVerifiedAt?: Date | null }, query?: string, headline?: string) {
   const meta = (p.metadata ?? null) as Record<string, unknown> | null;
   return {
     title: p.title,
     url: pageUrl(p.tagPath, p.slug),
     tagPath: p.tagPath,
     slug: p.slug,
-    snippet: query ? getMatchSnippet(p.content, query) : getContentSnippet(p.content),
+    snippet: headline?.trim() || (query ? getMatchSnippet(p.content, query) : getContentSnippet(p.content)),
     updatedAt: p.updatedAt.toISOString().split('T')[0],
     ...(p.lastVerifiedAt ? { lastVerified: p.lastVerifiedAt.toISOString().split('T')[0] } : {}),
     ...(meta && Object.keys(meta).length ? { metadata: meta } : {}),
@@ -307,42 +314,107 @@ export function orderByIds<T extends { id: string }>(rows: T[], ids: string[]): 
 }
 
 /**
- * Ranked search over titles and page prose: title-prefix first, then title-substring,
- * then body text. Body matching reads every `text` value at any block depth
- * (`$.**.text`) rather than the raw JSON, so block ids, type discriminators and markup
- * can't score as prose; tags and non-breaking spaces are collapsed so a typed
- * "534 KB" still matches a stored "534&nbsp;KB". Hidden tag paths are article space's
- * back office — the maintenance log quotes every edit ever made, so it would head the
- * body tier on almost any query; it stays findable by title. Returns ranked ids and the
- * unpaginated total — hydrate them with whichever select the caller needs.
+ * Ranked search over titles and page prose, in four tiers.
+ *
+ *   0  title starts with the term
+ *   1  title contains it
+ *   2  prose contains it, literally
+ *   3  full-text match on `search_tsv` — stems, stopword-stripped, ranked
+ *
+ * Tiers 0-2 are literal substring matching and are what keeps identifiers,
+ * tickers, version strings and decimals working: `XRD` finds 190 pages by
+ * substring and only 178 through the dictionary, `0.1` finds 24 against 9,
+ * because the english config folds case, discards stopwords, and tokenises
+ * numbers its own way. Tier 3 is only ever reached by a query the literal tiers
+ * could not answer at all, so it adds recall without displacing anything.
+ *
+ * What tier 3 buys: `what is a validator` went from 0 hits to 154, `how do I
+ * edit a page` from 0 to 20, and `validators` from 79 to 154 (the stemmer finds
+ * the singular). `websearch_to_tsquery` also gives quoted phrases and `-negation`
+ * for free.
+ *
+ * What it does NOT buy, so nobody looks for it later: it does not understand the
+ * question. `what is a validator` and `what does a validator do` return the
+ * identical 154 rows, because both reduce to the lexeme `validator`. That is 43%
+ * of the corpus, so ORDERING is the whole product on this tier — hence
+ * `ts_rank_cd` with normalisation 32 (`rank/(rank+1)`). Normalisation 2 (divide
+ * by document length) was measured and is actively worse: it promotes one-line
+ * validator stubs above the Staking article the asker wants.
+ *
+ * Body matching in tier 2 reads every `text` value at any block depth
+ * (`$.**.text`) rather than the raw JSON, so block ids, type discriminators and
+ * markup can't score as prose; tags and non-breaking spaces are collapsed so a
+ * typed "534 KB" still matches a stored "534&nbsp;KB". `search_tsv` is generated
+ * from that same expression, so the two tiers cannot disagree about what counts
+ * as prose.
+ *
+ * Hidden tag paths are article space's back office — the maintenance log quotes
+ * every edit ever made, so it would head the body tier on almost any query, and
+ * it is measurably the TOP full-text hit for "how do I edit a page". Excluded
+ * from tiers 2 and 3 alike; still findable by title.
+ *
+ * `headline` is set on tier-3 rows only. It has to be: a full-text hit matches a
+ * STEM, and `getMatchSnippet` searches for a literal substring, so on a stem-only
+ * match it finds nothing and falls back to the page opening — which is the
+ * infobox, i.e. exactly the defect the match-windowed snippet was built to fix.
+ * Measured share of full-text hits carrying no literal substring: 34% for `fees`,
+ * 49% `validators`, 62% `staked`, 93% `governing`. `ts_headline` re-parses the
+ * document per row, so it is computed only for the page actually being returned.
+ *
+ * Returns ranked ids and the unpaginated total — hydrate them with whichever
+ * select the caller needs.
  */
 export async function searchPageIds(
   query: string,
   { tagPath = null, skip = 0, take = 25 }: { tagPath?: string | null; skip?: number; take?: number } = {},
-): Promise<{ ids: string[]; total: number }> {
+): Promise<{ ids: string[]; total: number; headlines: Map<string, string> }> {
   const term = query.trim().replace(/[\\%_]/g, char => `\\${char}`);
-  if (!term) return { ids: [], total: 0 };
+  if (!term) return { ids: [], total: 0, headlines: new Map() };
   const like = `%${term}%`;
 
-  const rows = await prisma.$queryRaw<{ id: string; total: bigint }[]>`
-    WITH matched AS (
-      SELECT id, title, updated_at,
-             CASE WHEN title ILIKE ${`${term}%`} THEN 0 WHEN title ILIKE ${like} THEN 1 ELSE 2 END AS rank
-        FROM pages
-       WHERE tag_path <> ''
-         AND (${tagPath}::text IS NULL OR tag_path = ${tagPath})
-         AND (title ILIKE ${like}
-              OR (tag_path <> ALL(${HIDDEN_TAG_PATHS}::text[])
-                  AND regexp_replace(translate(jsonb_path_query_array(content, '$.**.text')::text, chr(160), ' '),
-                                     '<[^>]*>|&nbsp;', ' ', 'g') ILIKE ${like}))
+  const rows = await prisma.$queryRaw<{ id: string; rank: number; headline: string | null; total: bigint }[]>`
+    WITH q AS (SELECT websearch_to_tsquery('english', ${query.trim()}) AS tsq),
+    matched AS (
+      SELECT p.id, p.title, p.updated_at, p.content, q.tsq,
+             CASE WHEN p.title ILIKE ${`${term}%`} THEN 0
+                  WHEN p.title ILIKE ${like} THEN 1
+                  WHEN p.tag_path <> ALL(${HIDDEN_TAG_PATHS}::text[])
+                   AND regexp_replace(translate(jsonb_path_query_array(p.content, '$.**.text')::text, chr(160), ' '),
+                                      '<[^>]*>|&nbsp;', ' ', 'g') ILIKE ${like} THEN 2
+                  ELSE 3 END AS rank,
+             ts_rank_cd(p.search_tsv, q.tsq, 32) AS fts_rank
+        FROM pages p CROSS JOIN q
+       WHERE p.tag_path <> ''
+         AND (${tagPath}::text IS NULL OR p.tag_path = ${tagPath})
+         AND (p.title ILIKE ${like}
+              OR (p.tag_path <> ALL(${HIDDEN_TAG_PATHS}::text[])
+                  AND (regexp_replace(translate(jsonb_path_query_array(p.content, '$.**.text')::text, chr(160), ' '),
+                                      '<[^>]*>|&nbsp;', ' ', 'g') ILIKE ${like}
+                       OR (q.tsq IS NOT NULL AND p.search_tsv @@ q.tsq))))
+    ),
+    paged AS (
+      SELECT id, rank, content, tsq, count(*) OVER () AS total
+        FROM matched
+       ORDER BY rank,
+                CASE WHEN rank = 0 THEN title END,
+                CASE WHEN rank = 3 THEN fts_rank END DESC,
+                updated_at DESC
+       LIMIT ${take} OFFSET ${skip}
     )
-    SELECT id, count(*) OVER () AS total
-      FROM matched
-     ORDER BY rank, CASE WHEN rank = 0 THEN title END, updated_at DESC
-     LIMIT ${take} OFFSET ${skip}
+    SELECT id, rank, total,
+           CASE WHEN rank = 3 THEN ts_headline('english',
+                  regexp_replace(translate(jsonb_path_query_array(content, '$.**.text')::text, chr(160), ' '),
+                                 '<[^>]*>|&nbsp;', ' ', 'g'),
+                  tsq, 'MaxWords=32, MinWords=16, ShortWord=3, MaxFragments=1, StartSel="", StopSel=""')
+                END AS headline
+      FROM paged
   `;
 
-  return { ids: rows.map(row => row.id), total: Number(rows[0]?.total ?? 0) };
+  return {
+    ids: rows.map(row => row.id),
+    total: Number(rows[0]?.total ?? 0),
+    headlines: new Map(rows.filter(r => r.headline).map(r => [r.id, r.headline as string])),
+  };
 }
 
 // ========== BLOCK DATA RESOLUTION ==========

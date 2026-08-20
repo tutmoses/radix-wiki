@@ -47,6 +47,13 @@ model Page {
   notifications Notification[]
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
+  /// Full-text index over title (weight A) + block prose (weight B), maintained by
+  /// Postgres as GENERATED ALWAYS ... STORED. Declared here ONLY so `prisma db push`
+  /// leaves it alone — `migrate diff` emits `DROP COLUMN search_tsv` the moment it is
+  /// undeclared. Never let push CREATE it either: Prisma writes a plain `tsvector`
+  /// column with no generation expression, which stays empty forever and fails silently.
+  /// The column is created by hand; see scripts/fts-ddl.mjs. Read only via $queryRaw.
+  searchTsv   Unsupported("tsvector")? @map("search_tsv")
 
   @@unique([tagPath, slug])
   @@index([slug])
