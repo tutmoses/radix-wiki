@@ -4,6 +4,7 @@ import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { getContentSnippet, getMatchSnippet, pageUrl } from '@/lib/utils';
+import { decodeEntities } from '@/lib/content';
 import { isValidTagPath, getSortOrder, getMetadataKeys, HIDDEN_TAG_PATHS, type SortOrder } from '@/lib/tags';
 import type { WikiPage, IdeasPage } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, RssFeedBlock, ColumnsBlock } from '@/types/blocks';
@@ -298,7 +299,13 @@ export function summarizePage(p: { title: string; tagPath: string; slug: string;
     url: pageUrl(p.tagPath, p.slug),
     tagPath: p.tagPath,
     slug: p.slug,
-    snippet: headline?.trim() || (query ? getMatchSnippet(p.content, query) : getContentSnippet(p.content)),
+    // `ts_headline` runs on the same prose expression `search_tsv` is built from,
+    // which strips tags and `&nbsp;` but leaves every other entity encoded, so a raw
+    // headline reads back "docs &middot; Related". Decode here rather than in the SQL:
+    // that expression has to stay byte-identical to the generated column's, or the
+    // literal and full-text tiers disagree about what counts as prose.
+    snippet: (headline ? decodeEntities(headline).trim() : '')
+      || (query ? getMatchSnippet(p.content, query) : getContentSnippet(p.content)),
     updatedAt: p.updatedAt.toISOString().split('T')[0],
     ...(p.lastVerifiedAt ? { lastVerified: p.lastVerifiedAt.toISOString().split('T')[0] } : {}),
     ...(meta && Object.keys(meta).length ? { metadata: meta } : {}),
