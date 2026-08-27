@@ -19,7 +19,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { execSync, spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, realpathSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -90,6 +90,17 @@ console.log("│ toolchain:", JSON.stringify(tool, null, 2).replace(/\n/g, "\n�
 const root = realpathSync(mkdtempSync(join(tmpdir(), `radixwiki-capture-${name}-`)));
 console.log(`│ scratch: ${root}`);
 
+// Scrub absolute paths before anything reaches a transcript: these transcripts
+// are filmed and published, and cargo prints rustup toolchain paths under $HOME
+// for every std crate it compiles, which would put the operator's username in a
+// public video. The scratch root goes first - it lives under /private/var, not
+// $HOME, so the two substitutions do not overlap.
+const HOME = realpathSync(homedir());
+const scrub = (t) =>
+  t.replace(new RegExp(root, "g"), "~")
+   .replace(new RegExp(HOME, "g"), "~")
+   .replace(new RegExp(homedir(), "g"), "~");
+
 const steps = [];
 let failed = false;
 for (const step of recipe.steps) {
@@ -110,7 +121,7 @@ for (const step of recipe.steps) {
   console.log(`│   → exit ${exitCode} · ${seconds}s · ${stdout.split("\n").length} lines`);
   steps.push({
     cmd: step.cmd, cwd: step.cwd, exitCode, seconds,
-    stdout: stdout.replace(new RegExp(root, "g"), "~"),
+    stdout: scrub(stdout),
     ...(step.hidden ? { hidden: true, why: step.why } : {}),
     ...(step.env ? { env: step.env } : {}),
   });

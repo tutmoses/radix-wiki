@@ -8,9 +8,18 @@
     "voice_type": "preset",
     "model": "seed_audio"
   },
-  "generated": "2026-08-18",
-  "totalSeconds": 113.356,
-  "_note": "Durations are measured, not estimated: the storyboard times every screen action against these. spoken[] is the lexicon-substituted text actually sent to seed_audio; line[] is what captions and the page show.",
+  "agenda": {
+    "title": "Your First Blueprint",
+    "items": [
+      "Create a package and read what Scrypto scaffolds",
+      "Write a blueprint that owns its own inventory",
+      "Compile it to WebAssembly, ready for Stokenet"
+    ],
+    "_why": "A viewer who cannot tell in ten seconds whether a video covers their problem leaves. The scene-setting hook in beat 01 does not tell them; this does."
+  },
+  "generated": "2026-08-19",
+  "totalSeconds": 125.431,
+  "_note": "Durations are measured, not estimated. spoken[] is the lexicon-substituted text sent to seed_audio; line[] is what captions and the page show.",
   "beats": [
     {
       "id": "01",
@@ -19,6 +28,14 @@
       "audio": "beat-01.wav",
       "seconds": 9.982,
       "wpm": 150
+    },
+    {
+      "id": "01b",
+      "action": "agenda card: what this video covers",
+      "line": "In this video we will build a gumball machine. You will create a package, write a blueprint that holds its own stock in vaults, and compile it to WebAssembly, ready to publish.",
+      "audio": "beat-01b.wav",
+      "seconds": 12.075,
+      "wpm": 159
     },
     {
       "id": "02",

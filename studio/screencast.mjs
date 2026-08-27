@@ -14,10 +14,10 @@
 //  at the offsets it planned, so browser latency cannot drift the voice off the
 //  picture. A storyboard that returns no cues simply renders silent.
 // ═══════════════════════════════════════════════════════════════════════════
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { Director, CodeScene, stitch, muxNarration } from "radix-studio";
+import { Director, CodeScene, stitch, muxNarration, composePresenter } from "radix-studio";
 import config from "./studio.config.mjs";
 
 const studioDir = dirname(new URL(import.meta.url).pathname);
@@ -64,6 +64,17 @@ if (cues.length && !process.argv.includes("--silent")) {
   log(`narration: ${cues.length} lines, first at ${cues[0].at.toFixed(2)}s, last at ${cues.at(-1).at.toFixed(2)}s`);
 } else {
   log("no narration muxed (silent)");
+}
+
+// The presenter corner frame, if the storyboard asked for one and the clip exists.
+// Composited AFTER narration so the master already carries the voice: the clip's
+// own audio is discarded, since the same line is already on the master's track.
+const pip = result?.presenter;
+if (pip && existsSync(join(studioDir, pip.clip))) {
+  composePresenter(outFile, join(studioDir, pip.clip),
+    { at: pip.at, size: pip.size ?? 300, corner: pip.corner ?? "br", accent: config.brand.accent }, io);
+} else if (pip) {
+  log(`presenter clip not found, skipping corner frame: ${pip.clip}`);
 }
 
 banner("done");

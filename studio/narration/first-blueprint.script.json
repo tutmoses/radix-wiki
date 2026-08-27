@@ -19,6 +19,11 @@
       "line": "A vending machine either holds gumballs or it holds a promise about gumballs. Most smart contract platforms build the second kind. Scrypto builds the first."
     },
     {
+      "id": "01b",
+      "action": "agenda card: what this video covers",
+      "line": "In this video we will build a gumball machine. You will create a package, write a blueprint that holds its own stock in vaults, and compile it to WebAssembly, ready to publish."
+    },
+    {
       "id": "02",
       "action": "terminal: scrypto new-package gumball_machine",
       "line": "Start with a package. That is the unit Scrypto deploys: one folder, with one or more blueprints inside it."
@@ -73,5 +78,14 @@
       "action": "outro, host",
       "line": "You have a component that holds its own inventory. Publish it to Stokenet next: the same package, on a public network. A machine that holds its stock, not a ledger that remembers it."
     }
-  ]
+  ],
+  "agenda": {
+    "title": "Your First Blueprint",
+    "items": [
+      "Create a package and read what Scrypto scaffolds",
+      "Write a blueprint that owns its own inventory",
+      "Compile it to WebAssembly, ready for Stokenet"
+    ],
+    "_why": "A viewer who cannot tell in ten seconds whether a video covers their problem leaves. The scene-setting hook in beat 01 does not tell them; this does."
+  }
 }

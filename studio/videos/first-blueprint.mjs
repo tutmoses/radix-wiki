@@ -62,6 +62,12 @@ export default async function makeFirstBlueprint({ director, log }) {
     mark("01");
     await s.titleCard({ sub: "Your First Blueprint", hold: hold("01") });
 
+    // The roadmap, before any command runs. A viewer who cannot tell inside ten
+    // seconds whether this video covers their problem leaves; the vending-machine
+    // hook above sets the idea but does not tell them what they will end up with.
+    mark("01b");
+    await s.agenda(nar.agenda.title, nar.agenda.items, { hold: hold("01b") - 700 });
+
     // ── 02–04 · the package, on the shell side only ─────────────────────────
     await s.openWorkspace({
       title: "gumball_machine",
@@ -126,5 +132,17 @@ export default async function makeFirstBlueprint({ director, log }) {
     await s.outro("Publish it to Stokenet next. \u2013 radix.wiki", hold("12"));
   });
 
-  return { cues };
+  // The narrator's corner frame, pinned to the MEASURED cue of the beat she is
+  // speaking, so the picture-in-picture starts on the same frame her voice does.
+  // The clip is silent: beat 01b's wav is already on the master's narration track.
+  const introCue = cues.find((c) => c.id === "01b");
+  return {
+    cues,
+    presenter: introCue && {
+      clip: "assets/presenter/first-blueprint-intro.mp4",
+      at: introCue.at,
+      size: 300,
+      corner: "br",
+    },
+  };
 }
