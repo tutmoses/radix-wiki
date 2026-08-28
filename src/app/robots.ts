@@ -2,7 +2,12 @@ import type { MetadataRoute } from 'next';
 import { BASE_URL } from '@/lib/utils';
 
 export default function robots(): MetadataRoute.Robots {
-  const aiAllow = ['/', '/api/mcp', '/api/wiki/', '/llms.txt', '/llms-index.txt', '/llms-full.txt', '/openapi.json'];
+  // `/api/wiki/*/mdx$` is the markdown twin of a page, and it has to out-specify the
+  // `/*/*/mdx$` disallow below, which matches it too (`*` spans `/`). Precedence is by
+  // pattern length, and `/api/wiki/` beat that disallow by a single character — a
+  // one-char margin deciding whether agents can read the twins at all. Naming the twin
+  // route outright settles it at 16 characters against 9.
+  const aiAllow = ['/', '/api/mcp', '/api/wiki/', '/api/wiki/*/mdx$', '/llms.txt', '/llms-index.txt', '/llms-full.txt', '/openapi.json'];
   // The /edit, /history and /mdx VIEWS of a wiki page should not be indexed.
   //
   // Two properties of robots.txt matching decide the shape of these patterns: a
