@@ -65,7 +65,7 @@ const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; com
         </div>
         <div className="page-card-body">
           <span className="page-card-title">{page.title}</span>
-          {(() => { const snippet = getContentSnippet(page.content); return snippet && <p className="page-card-snippet">{snippet}</p>; })()}
+          {(() => { const snippet = page.snippet ?? getContentSnippet(page.content); return snippet && <p className="page-card-snippet">{snippet}</p>; })()}
           <div className="page-card-meta">
             <small className="row text-text-muted"><Clock size={12} />{formatRelativeTime(page.updatedAt)}</small>
             {leafTag && <Badge variant="secondary" className="truncate max-w-full">{leafTag.name}</Badge>}

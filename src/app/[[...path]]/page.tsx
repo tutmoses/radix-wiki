@@ -26,7 +26,7 @@ import ChartsOverview from '@/components/charts/ChartsOverview';
 import ValidatorsView from '@/components/charts/ValidatorsView';
 import TokensView from '@/components/charts/TokensView';
 import TokenDetailView from '@/components/charts/TokenDetailView';
-import { BASE_URL, getContentSnippet } from '@/lib/utils';
+import { BASE_URL, clampSnippet, getContentSnippet } from '@/lib/utils';
 import { ogMetadata, ogImageUrl } from '@/lib/og';
 import { articleType, aboutEntity, articleLearningProps } from '@/lib/entity-ld';
 import { getTokenDetail } from '@/lib/radix/tokens';
@@ -208,14 +208,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-async function withProcessedContent<T extends { content: unknown }>(page: T | null): Promise<T | null> {
+/** Keys that generator scripts park in `metadata` and nothing in the app ever reads.
+ *  `state` is the wiki-maintenance-log sweep's own store — backlog, run history,
+ *  per-source records — and it had grown past half a megabyte. Every prop of a client
+ *  component is serialized into the page's RSC payload, so a reader was downloading
+ *  the entire run history in order to look at the ten rows the page renders.
+ *  Stripped on the display path only; the edit path keeps the raw row, so a save
+ *  round-trips the state intact. */
+const NON_RENDER_METADATA = ['state'];
+
+async function withProcessedContent<T extends { content: unknown; metadata?: unknown }>(page: T | null): Promise<T | null> {
   if (!page || !Array.isArray(page.content)) return page;
   let content = page.content as Block[];
   content = await resolveBlockData(content);
   if (hasCodeBlocksInContent(content)) content = await highlightBlocks(content);
   // Normalise HTML server-side so SSR output has demoted h1s, alt attrs, and correct link attributes
   content = processBlocks(content);
-  return { ...page, content };
+  const metadata = page.metadata && typeof page.metadata === 'object'
+    ? Object.fromEntries(Object.entries(page.metadata as Record<string, unknown>).filter(([k]) => !NON_RENDER_METADATA.includes(k)))
+    : page.metadata;
+  return { ...page, content, metadata };
 }
 
 function countWords(blocks: unknown): number {
@@ -467,7 +479,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
     const siblings = (await getCategoryPages(parsed.tagPath)).filter(p => p.slug !== parsed.slug);
     const ranked = rankRelated(page, siblings, parsed.tagPath);
     related = {
-      pages: ranked.pages.map(p => ({ id: p.id, title: p.title, slug: p.slug, tagPath: p.tagPath, snippet: getContentSnippet(p.content, 100) })),
+      pages: ranked.pages.map(p => ({ id: p.id, title: p.title, slug: p.slug, tagPath: p.tagPath, snippet: clampSnippet(p.snippet, 100) })),
       sharedFacet: ranked.sharedFacet,
     };
   }

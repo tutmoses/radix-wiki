@@ -30,6 +30,14 @@ const CACHE_OPTS = { tags: ['wiki'], revalidate: 60 };
  *  miss the identical plain shape. */
 const plain = <T>(value: T): T => value == null ? value : JSON.parse(JSON.stringify(value));
 
+/** A card needs one line of the article, not the article. Every listing below selects
+ *  `content` (there is no snippet column to select instead) and then trades it for that
+ *  line here, before the row reaches a cache entry or the RSC payload — a page of 200
+ *  cards was otherwise shipping 200 full block arrays to the browser, and the homepage
+ *  was carrying the whole maintenance log inside its "recently updated" strip. */
+const listRow = <T extends { content?: unknown }>(page: T): T =>
+  ({ ...page, content: null, snippet: getContentSnippet(page.content) });
+
 /** Shorthand for cache(unstable_cache(fn, [key], CACHE_OPTS)) */
 export function cached<T extends (...args: any[]) => Promise<any>>(key: string, fn: T): T {
   const wrapped = async (...args: Parameters<T>) => plain(await fn(...args));
@@ -173,7 +181,7 @@ export const getCategoryPages = cached('getCategoryPages',
       select: CATEGORY_SELECT,
       orderBy: sortOrderBy[resolvedSort],
       take: limit,
-    }) as unknown as WikiPage[];
+    }).then(rows => rows.map(listRow)) as unknown as WikiPage[];
     if (!hasDateMeta) return pages;
     const dir = resolvedSort === 'oldest' ? 1 : -1;
     return pages.sort((a, b) => {
@@ -193,7 +201,7 @@ export const getDescendantPages = cached('getDescendantPages',
       select: CATEGORY_SELECT,
       orderBy: sortOrderBy[resolvedSort],
       take: limit,
-    }) as unknown as WikiPage[];
+    }).then(rows => rows.map(listRow)) as unknown as WikiPage[];
   },
 );
 
@@ -432,13 +440,13 @@ const getRecentPages = unstable_cache(
     select: PAGE_LIST_SELECT,
     orderBy: { updatedAt: 'desc' },
     take: limit,
-  })), ['getRecentPages'], CACHE_OPTS,
+  })).map(listRow), ['getRecentPages'], CACHE_OPTS,
 );
 
 const getPagesByIds = unstable_cache(
   async (ids: string[]) => {
     if (!ids.length) return [];
-    const pages = plain(await prisma.page.findMany({ where: { id: { in: ids } }, select: PAGE_LIST_SELECT }));
+    const pages = plain(await prisma.page.findMany({ where: { id: { in: ids } }, select: PAGE_LIST_SELECT })).map(listRow);
     return orderByIds(pages, ids);
   }, ['getPagesByIds'], CACHE_OPTS,
 );

@@ -50,6 +50,8 @@ export type WikiPage = Omit<Page, 'content' | 'metadata'> & {
   version: string;
   author?: WikiAuthor;
   _count?: { revisions: number };
+  /** Set on list rows, where it stands in for `content` (which they null out). */
+  snippet?: string | null;
 };
 
 export type WikiPageInput = {

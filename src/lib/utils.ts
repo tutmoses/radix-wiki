@@ -88,6 +88,15 @@ export function getContentSnippet(content: unknown, maxLen = 150): string {
   return '';
 }
 
+/** Shorten a snippet a list row already carries. List rows ship one 150-char snippet
+ *  instead of their article, so the callers that used to ask getContentSnippet for a
+ *  tighter cut (the related-pages rail wants 100) re-cut that string rather than the
+ *  content it no longer has. */
+export function clampSnippet(snippet: string | null | undefined, maxLen: number): string {
+  if (!snippet) return '';
+  return snippet.length > maxLen ? snippet.slice(0, maxLen).trimEnd() + '…' : snippet;
+}
+
 /**
  * Snippet centred on the first occurrence of `query` anywhere in the page, so a search
  * result can show why it matched. Falls back to the page opening when the match is in
