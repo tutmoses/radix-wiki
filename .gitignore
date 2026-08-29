@@ -21,12 +21,18 @@
 Thumbs.db
 *.csv
 
-# Seed scripts
-/scripts/*
-# ...except the full-text DDL: schema.prisma points at it, and without it a fresh
-# database has no search_tsv column, so the search's full-text tier silently
-# returns nothing. Infrastructure, not a seed script.
-!/scripts/fts-ddl.mjs
+# Scripts
+# These are tracked. `/scripts/*` used to ignore the lot as throwaway seeds, but
+# they stopped being that: wiki-sweep retains every sweep-*.mjs precisely so a
+# past run's reasoning stays readable, update-*/fix-* carry the same record for
+# one-off corrections, and the DB tooling those runs are written against
+# (maintenance-log, check-links, mark-verified, seed-utils) is infrastructure.
+# Ignored, they lived on one machine's disk with no history behind them.
+# Every one of them reads its credentials from process.env; none is hardcoded.
+# Only their byproducts stay out, since those are not source: generated data
+# manifests, and .backups/, which holds gzipped DB dumps (8.5 MB at run 320).
+/scripts/*.json
+/scripts/.backups/
 CLAUDE.md
 
 # Debug
