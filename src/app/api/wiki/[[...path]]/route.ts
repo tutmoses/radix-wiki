@@ -5,7 +5,8 @@ import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
 import { slugify, pageUrl } from '@/lib/utils';
-import { isValidTagPath, isAuthorOnlyPath, isLockedPage, canEditAuthorOnlyPage, getMetadataKeys } from '@/lib/tags';
+import { isValidTagPath, isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys } from '@/lib/tags';
+import { requireBalance } from '@/lib/radix/balance';
 import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, type BlockChange } from '@/lib/versioning';
 import { parsePath, orderByIds, searchPageIds, summarizePage, resolveBlockData, AUTHOR_SELECT, PAGE_INCLUDE, PAGE_LIST_SELECT, SUMMARY_SELECT } from '@/lib/wiki';
@@ -424,8 +425,15 @@ export async function DELETE(request: NextRequest, context: RouteContext<PathPar
 
     const existing = await prisma.page.findUnique({ where: { tagPath_slug: { tagPath: parsed.tagPath, slug: parsed.slug } } });
     if (!existing) return errors.notFound('Page not found');
-    if (existing.authorId !== auth.session.userId) return errors.forbidden();
     if (isLockedPage(existing.tagPath, existing.slug)) return errors.forbidden('This page is locked and cannot be deleted');
+
+    // Authors delete their own pages. On a shared board the card belongs to the
+    // board, so anyone who clears the bar to edit it may also delete it.
+    if (existing.authorId !== auth.session.userId) {
+      if (!isSharedPath(existing.tagPath)) return errors.forbidden();
+      const check = await requireBalance(auth.session, { type: 'edit', tagPath: existing.tagPath });
+      if (!check.ok) return check.response;
+    }
 
     await prisma.page.delete({ where: { id: existing.id } });
     revalidateTag('wiki', { expire: 0 });

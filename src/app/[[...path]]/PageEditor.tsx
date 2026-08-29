@@ -12,7 +12,7 @@ import { Button, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
 import { pagePath, slugify } from '@/lib/utils';
 import { findInfobox } from '@/components/BlockRenderer';
-import { isAuthorOnlyPath, isLockedPage, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, XRD_NOT_A_FEE, type MetadataKeyDefinition } from '@/lib/tags';
+import { isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, XRD_NOT_A_FEE, type MetadataKeyDefinition } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
 import { Banner } from './PageContent';
 import type { WikiPage, PageMetadata } from '@/types';
@@ -385,6 +385,9 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   }
 
   const canSave = (isCreating ? !!title.trim() : true) && (gate ? gate.allowed : true);
+  // On a shared board the card is the board's, not its filer's: whoever passes
+  // the edit gate can delete it too.
+  const canDelete = !isCreating && (isAuthor || (isSharedPath(tagPath) && gate?.allowed === true));
   const backHref = isCreating ? `/${tagPath}` : viewPath;
   const saveLabel = isCreating ? (isSaving ? 'Creating...' : 'Create Page') : (isSaving ? 'Saving...' : 'Save Changes');
 
@@ -436,7 +439,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
           <InfoboxEditor block={infobox} onChange={updateInfobox} />
         </aside>
       </div>
-      {isAuthor && !isCreating && (
+      {canDelete && (
         <div className="section-divider">
           <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isDeleting} className="text-error hover:bg-error/10">
             <Trash2 size={16} />{isDeleting ? 'Deleting...' : 'Delete Page'}

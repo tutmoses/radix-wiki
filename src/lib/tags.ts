@@ -151,7 +151,7 @@ export const TAG_HIERARCHY: TagNode[] = [
       { key: 'category', label: 'Category:', type: 'select', options: ['⚙️ Protocol', '🌐 Ecosystem', '🛠️ Tooling', '🫂 Community', '⚖️ Governance'] },
       { key: 'assignee', label: 'Assignee:', type: 'user' },
     ],
-    xrd: { create: 10_000, comment: 10_000 },
+    xrd: { create: 10_000, edit: 10_000, comment: 10_000 },
   },
   {
     name: '⚖️ Policy',
@@ -166,8 +166,18 @@ export const GLOBAL_METADATA_KEYS: MetadataKeyDefinition[] = [
 ];
 
 const AUTHOR_ONLY_PATHS = new Set(['blog']);
+// Ideas are shared work items on a board, not authored articles: whoever files a
+// card does not own it, so any editor may retire one the way any editor may move it.
+const SHARED_PATHS = new Set(['ideas']);
 const LOCKED_PAGES = new Set(['ecosystem/radix-namespace','ecosystem/xrd-domains']);
 export const isLockedPage = (tagPath: string, slug: string): boolean => LOCKED_PAGES.has(`${tagPath}/${slug}`);
+
+/** A path is under `paths` when it is one of them or nested beneath one. */
+const isUnder = (paths: Set<string>, tagPath: string): boolean =>
+  paths.has(tagPath) || [...paths].some(p => tagPath.startsWith(p + '/'));
+
+/** Pages here belong to the board, not to their author — any editor can delete them. */
+export const isSharedPath = (tagPath: string): boolean => isUnder(SHARED_PATHS, tagPath);
 
 interface TagPathContext {
   node: TagNode | null;
@@ -211,7 +221,7 @@ function resolveTagPath(pathSegments: string[], hierarchy: TagNode[] = TAG_HIERA
     current = node.children || [];
   }
 
-  const isAuthorOnly = AUTHOR_ONLY_PATHS.has(key) || [...AUTHOR_ONLY_PATHS].some(p => key.startsWith(p + '/'));
+  const isAuthorOnly = isUnder(AUTHOR_ONLY_PATHS, key);
   metadataKeys.push(...GLOBAL_METADATA_KEYS);
   const result: TagPathContext = { node, isValid: pathSegments.length > 0, isAuthorOnly, sort, mainArticle, xrdRequirements: requirements, metadataKeys };
   resolveCache.set(key, result);
