@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, ArrowRight, Save, Plus, Upload, X, Image as ImageIcon, ArrowDownAZ, CalendarPlus, RefreshCw, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Save, Plus, Upload, X, Image as ImageIcon, ArrowDownAZ, CalendarPlus, RefreshCw, Rss, SlidersHorizontal } from 'lucide-react';
 import { BlockRenderer, findInfobox, infoboxHasContent, InfoboxSidebar } from '@/components/BlockRenderer';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
@@ -163,6 +163,33 @@ export interface PageRef { title: string; href: string }
 function subcategoryMeta({ pages, subs }: SubcategorySummary): string {
   return [pages && `${pages} page${pages === 1 ? '' : 's'}`, subs && `${subs} subcategor${subs === 1 ? 'y' : 'ies'}`]
     .filter(Boolean).join(' · ');
+}
+
+/**
+ * Feeds a category actually publishes. Browser auto-discovery was the only way to
+ * reach these, which is no way at all for a reader who wants the weekly by mail
+ * or in a reader. Blog-only for now because it is the only tag path with a feed.
+ */
+const CATEGORY_FEEDS: Record<string, { href: string; label: string }[]> = {
+  blog: [
+    { href: '/week-in-review.xml', label: 'Week in Review' },
+    { href: '/blog.xml', label: 'All posts' },
+  ],
+};
+
+function SubscribeRow({ tagPath }: { tagPath: string }) {
+  const feeds = CATEGORY_FEEDS[tagPath];
+  if (!feeds) return null;
+  return (
+    <div className="subscribe-row">
+      <span className="subscribe-label">Subscribe:</span>
+      {feeds.map(feed => (
+        <a key={feed.href} href={feed.href} className="subscribe-link">
+          <Rss size={13} aria-hidden />{feed.label}
+        </a>
+      ))}
+    </div>
+  );
 }
 
 function CategoryHero({ description, mainArticle, subcategories }: { description?: string; mainArticle: PageRef | null; subcategories: SubcategorySummary[] }) {
@@ -479,7 +506,10 @@ export function CategoryView({ tagPath, pages, sort, total, facets, filters, let
             heading={
               <div className="spread">
                 <h2 id="pages-in-this-category" className="m-0!">Pages in {categoryName}</h2>
-                <NewPageControl tagPath={pathStr} />
+                <div className="row-md">
+                  <SubscribeRow tagPath={pathStr} />
+                  <NewPageControl tagPath={pathStr} />
+                </div>
               </div>
             }
           />
@@ -493,7 +523,10 @@ export function CategoryView({ tagPath, pages, sort, total, facets, filters, let
       <Breadcrumbs path={tagPath} />
       <div className="spread">
         <h1>{tag?.name || tagPath[tagPath.length - 1]}</h1>
-        <NewPageControl tagPath={pathStr} />
+        <div className="row-md">
+          <SubscribeRow tagPath={pathStr} />
+          <NewPageControl tagPath={pathStr} />
+        </div>
       </div>
       <CategoryHero description={tag?.description} mainArticle={mainArticle} subcategories={subcategories} />
       {isContainer ? null : (

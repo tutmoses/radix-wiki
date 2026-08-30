@@ -74,6 +74,41 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/**
+ * An issue announcement, not a page-changed ping. Subscribers to `blog` were being
+ * told "Page Updated: Radix Week in Review" with no excerpt and no reason to open
+ * it; a publication announcement leads with what the issue says.
+ */
+export function formatAnnouncement(a: {
+  title: string; url: string; excerpt?: string; kicker?: string; footer?: string;
+}): string {
+  const lines = [
+    a.kicker ? `<b>${escapeHtml(a.kicker)}</b>` : null,
+    `📰 <b>${escapeHtml(a.title)}</b>`,
+    a.excerpt ? `\n${escapeHtml(a.excerpt)}` : null,
+    a.footer ? `\n<i>${escapeHtml(a.footer)}</i>` : null,
+    `\n🔗 ${a.url}`,
+  ];
+  return lines.filter(Boolean).join('\n');
+}
+
+/**
+ * Push one message to explicitly configured chats. Community channels are not
+ * subscribers and never opt in through the bot, so the destinations are an env
+ * allowlist and the bot has to already be a member with permission to post.
+ */
+export async function broadcast(chatIds: string[], text: string): Promise<{ chatId: string; ok: boolean }[]> {
+  if (!BOT_TOKEN) return chatIds.map(chatId => ({ chatId, ok: false }));
+  return Promise.all(chatIds.map(async chatId => ({ chatId, ok: await sendMessage(chatId, text) })));
+}
+
+/** Destinations for `broadcast`, comma-separated. Unset means the site announces
+ *  to its own subscribers only, which is the safe default. */
+export function broadcastChatIds(): string[] {
+  return (process.env.TELEGRAM_BROADCAST_CHAT_IDS || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+}
+
 /** Check if a subscription matches the given page */
 function matchesSubscription(
   sub: { tagPath: string; pageSlug: string },

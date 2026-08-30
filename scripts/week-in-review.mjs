@@ -51,15 +51,40 @@ function weekLabel(iso) {
 
 const NAV_MARK = 'Radix Week in Review series:';
 const LEGACY_FOOTER = /is a knowledge and community hub/i;
+const FEED_PATH = '/week-in-review.xml';
+
+/** An issue number is a recap's chronological rank among its siblings, so #1 is the
+ *  oldest and a published number never moves. src/lib/week-in-review.ts and
+ *  src/app/week-in-review.xml/route.ts derive it the same way. */
+const issueLabel = (n) => `Issue #${n}`;
+
+/** The scored record, mirroring `scoreline()` in src/lib/week-in-review.ts. Kept off
+ *  the individual recaps on purpose: it moves as claims resolve, and stamping it on
+ *  every recap would rewrite all of them each sync for a number one click away. */
+function scoreline(state) {
+  const preds = (state && state.predictions) || [];
+  const hit = preds.filter((p) => p.status === 'hit').length;
+  const miss = preds.filter((p) => p.status === 'miss').length;
+  const open = preds.filter((p) => p.status === 'open').length;
+  const scored = hit + miss;
+  if (!scored && !open) return 'Predictions are scored against the ledger as they come due.';
+  if (!scored) return `${open} prediction${open === 1 ? '' : 's'} open, none scored yet.`;
+  const rate = Math.round((hit / scored) * 100);
+  return `${hit} of ${scored} predictions hit (${rate}%)${open ? `, ${open} still open` : ''}.`;
+}
 
 /** Foot nav for one recap. Carries the previous week's excerpt, so an unchained
  *  page is visible to a reader rather than only to a link checker. */
-function navHtml(prev, next) {
+function navHtml(prev, next, issue) {
   const parts = [];
   if (prev) parts.push(`<a href="/blog/${prev.slug}" rel="noopener">← Previous: ${esc(prev.label)}</a>`);
   if (next) parts.push(`<a href="/blog/${next.slug}" rel="noopener">Next: ${esc(next.label)} →</a>`);
   parts.push(`<a href="/blog/${INDEX_SLUG}" rel="noopener">All recaps</a>`);
-  const nav = `<hr><p><strong>${NAV_MARK}</strong> ${parts.join(' \u00b7 ')}</p>`;
+  // The feed was reachable only by browser auto-discovery, which is no route at all
+  // for a reader who wants the series in a reader or forwarded to their mail.
+  parts.push(`<a href="${FEED_PATH}" rel="noopener">Subscribe</a>`);
+  const mark = issue ? `${NAV_MARK.slice(0, -1)}, ${issueLabel(issue)}:` : NAV_MARK;
+  const nav = `<hr><p><strong>${mark}</strong> ${parts.join(' \u00b7 ')}</p>`;
   // The serial-continuity line the competitor opens with. It belongs at the foot: the
   // Essay preset needs the opening to land on the week, not on a summary of last week.
   const previously = prev?.excerpt ? `<p><em>Previously:</em> ${esc(prev.excerpt)}</p>` : '';
@@ -116,26 +141,44 @@ function renderIndex(state, recaps) {
 
   const voided = preds.filter((p) => p.status === 'void');
 
-  const recapRows = [...recaps].reverse().map((r) => {
+  // Newest first, each recap carrying the issue number it was published under.
+  const numbered = recaps.map((r, i) => ({ ...r, issue: i + 1 })).reverse();
+
+  const recapRow = (r) => {
     const html = JSON.stringify(r.content || []);
     const internal = (html.match(/href=\\?"\/(?!\/)/g) || []).length;
     const outbound = (html.match(/href=\\?"https?:/g) || []).length;
     return row([
-      `<a href="/blog/${r.slug}" rel="noopener">${esc(r.label)}</a>`,
+      `<a href="/blog/${r.slug}" rel="noopener">#${r.issue}</a>`,
+      esc(r.label),
       esc(r.title.replace(/^Radix Week in Review:\s*/, '')),
       esc((state.throughlines || {})[r.slug] || r.excerpt || ''),
       `${internal} / ${outbound}`,
     ]);
-  });
+  };
+
+  // Grouped by the month a week ended in. A flat table of one row per week stops
+  // scanning at about twenty; months give the archive a shape that keeps growing.
+  const months = [];
+  for (const r of numbered) {
+    const d = new Date(`${r.date}T00:00:00Z`);
+    const key = `${MONTH[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+    const group = months.find((m) => m.key === key);
+    if (group) group.rows.push(recapRow(r));
+    else months.push({ key, rows: [recapRow(r)] });
+  }
+  const recapHeads = ['#', 'Week', 'Title', 'What it was about', 'Links (wiki / out)'];
 
   return [
     { id: uid(), type: 'infobox', blocks: [{ id: uid(), type: 'content', text:
       `<table><tbody>` +
+      `<tr><th>Latest</th><td>${recaps.length ? esc(issueLabel(recaps.length)) : '\u2014'}</td></tr>` +
       `<tr><th>Recaps</th><td>${recaps.length}</td></tr>` +
       `<tr><th>Open predictions</th><td>${open.length}</td></tr>` +
       `<tr><th>Resolved</th><td>${done.length}</td></tr>` +
       `<tr><th>Hit rate</th><td>${rate}</td></tr>` +
       `<tr><th>Tracking since</th><td>${esc(since)}</td></tr>` +
+      `<tr><th>Feed</th><td><a href="${FEED_PATH}" rel="noopener">RSS</a></td></tr>` +
       `</tbody></table>` }] },
     { id: uid(), type: 'content', text:
       `<p>Every week the Radix Week in Review records what the ecosystem said would happen, ` +
@@ -159,8 +202,10 @@ function renderIndex(state, recaps) {
         : '') },
     { id: uid(), type: 'content', text:
       `<h2>Every recap</h2>` +
-      (recapRows.length
-        ? table(['Week', 'Title', 'What it was about', 'Links (wiki / out)'], recapRows)
+      `<p>${esc(scoreline(state))} The series is published every Sunday and carried in full by ` +
+      `<a href="${FEED_PATH}" rel="noopener">its own feed</a>.</p>` +
+      (months.length
+        ? months.map((m) => `<h3>${esc(m.key)}</h3>${table(recapHeads, m.rows)}`).join('')
         : '<p>None yet.</p>') },
   ];
 }
@@ -211,9 +256,11 @@ async function sync(client, stateOverride) {
     const r = recaps[i];
     const prev = recaps[i - 1];
     const next = recaps[i + 1];
+    // recaps[i] is issue i+1, so its neighbours are issues i and i+2.
     const html = navHtml(
-      prev && { slug: prev.slug, label: prev.label, excerpt: prev.excerpt },
-      next && { slug: next.slug, label: next.label },
+      prev && { slug: prev.slug, label: `${issueLabel(i)}, ${prev.label}`, excerpt: prev.excerpt },
+      next && { slug: next.slug, label: `${issueLabel(i + 2)}, ${next.label}` },
+      i + 1,
     );
     if (/\u00a0/.test(html.replace(/&nbsp;/g, ''))) throw new Error(`literal U+00A0 in nav for ${r.slug}`);
 

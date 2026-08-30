@@ -48,6 +48,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/llms.txt`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.5 },
     { url: `${BASE_URL}/llms-index.txt`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.4 },
     { url: `${BASE_URL}/llms-full.txt`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.4 },
+    // The feeds are the only syndication surface the site has. Leaving them out of
+    // the sitemap left browser auto-discovery as the sole route to them.
+    { url: `${BASE_URL}/blog.xml`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.5 },
+    { url: `${BASE_URL}/week-in-review.xml`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.6 },
     ...categoryPaths.map(path => ({
       url: `${BASE_URL}/${path}`,
       lastModified: catModified.get(path) ?? new Date(),

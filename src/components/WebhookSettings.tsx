@@ -139,7 +139,11 @@ function TelegramSection() {
       body: JSON.stringify({
         tagPath: context.tagPath,
         ...(context.slug && { pageSlug: context.slug }),
-        events: ['page.updated', 'comment.created'],
+        // A section subscriber wants the new pages most of all; without
+        // `page.created` a subscription to `blog` never delivered an issue.
+        events: context.slug
+          ? ['page.updated', 'comment.created']
+          : ['page.created', 'page.updated', 'comment.created'],
       }),
     });
     if (res.ok) {

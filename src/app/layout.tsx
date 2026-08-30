@@ -93,6 +93,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Kept here rather than in `alternates.types`: pages set `alternates.canonical`,
             which replaces the whole object and would drop the feed link from every page. */}
         <link rel="alternate" type="application/rss+xml" href="/blog.xml" title="RADIX Wiki Blog" />
+        <link rel="alternate" type="application/rss+xml" href="/week-in-review.xml" title="Radix Week in Review" />
         {/* IANA link relations, machine-readable first: the MCP endpoint is the
             service description, the agent card is general metadata, AGENTS.md is
             the prose documentation. No registered rel for MCP exists yet, and no

@@ -396,6 +396,11 @@
   .category-main-article { @apply text-text-muted; }
   .subcategory-meta { @apply mt-auto pt-2 text-text-muted text-xs; }
 
+  /* ===== SUBSCRIBE ROW ===== */
+  .subscribe-row { @apply flex items-center flex-wrap gap-2 text-small; }
+  .subscribe-label { @apply text-text-muted; }
+  .subscribe-link { @apply inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface-1 border border-border-muted rounded-full transition-colors hover:border-accent hover:text-accent; }
+
   /* ===== CATEGORY RESULTS BAR ===== */
   .results-bar { @apply flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-border-muted; }
   .results-count { @apply m-0 text-text-muted text-small; }
@@ -467,6 +472,18 @@
   .stat-grid { @apply grid grid-cols-2 sm:grid-cols-5 gap-3; }
   .stat-card { @apply flex flex-col gap-1 items-center p-3 bg-surface-1 rounded-lg; }
   .stat-value { @apply text-h4 font-semibold; }
+  .stat-suffix { @apply ml-0.5 text-small font-normal text-text-muted; }
+  .stat-label { @apply text-text-muted text-xs text-center; }
+  /* Column overrides for the `stats` block; source order beats the base rule. */
+  .stat-grid-2 { @apply sm:grid-cols-2; }
+  .stat-grid-3 { @apply sm:grid-cols-3; }
+  .stat-grid-4 { @apply sm:grid-cols-4; }
+
+  /* ===== PULL QUOTE (testimonial block) ===== */
+  .pull-quote { @apply flex flex-col gap-2 my-6 pl-5 border-l-4 border-accent; }
+  .pull-quote-body { @apply m-0 p-0 border-0 not-italic text-lg text-text; }
+  .pull-quote-attr { @apply flex flex-wrap items-center gap-2 text-text-muted text-small; }
+  .pull-quote-role { @apply px-2 py-0.5 bg-surface-1 rounded-full text-xs; }
 
   /* ===== SCORE RING ===== */
   .score-ring { @apply flex flex-col gap-4 items-center p-4 bg-surface-1 rounded-xl; }

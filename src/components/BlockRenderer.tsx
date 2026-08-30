@@ -13,7 +13,7 @@ import { processHtml } from '@/lib/html';
 import { usePages, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
 import type { WikiPage, PageMetadata } from '@/types';
-import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock, LinkGridBlock, TipJarBlock, ReferencesBlock, BannerBlock, BannerVariant } from '@/types/blocks';
+import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock, LinkGridBlock, TipJarBlock, ReferencesBlock, BannerBlock, BannerVariant, StatsBlock, TestimonialBlock } from '@/types/blocks';
 import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
 import { categoryHref, facetKeys } from '@/lib/taxonomy';
 import { TokenChart } from '@/components/charts/TokenChart';
@@ -443,8 +443,41 @@ function ReferencesBlockView({ block }: { block: ReferencesBlock }) {
   );
 }
 
+/** A row of measured figures. The Week in Review carries one every issue, so the
+ *  numbers are a block the editor can hold rather than a hand-built table. */
+function StatsBlockView({ block }: { block: StatsBlock }) {
+  const items = block.items || [];
+  if (!items.length) return null;
+  return (
+    <div className={cn('stat-grid', `stat-grid-${block.columns || 4}`)}>
+      {items.map(item => (
+        <div key={item.id} className="stat-card">
+          <span className="stat-value">{item.value}{item.suffix && <span className="stat-suffix">{item.suffix}</span>}</span>
+          <span className="stat-label">{item.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** One quotation, attributed. Quoting a person is the cheapest way a recap can
+ *  carry a voice that is not its own, and it was being typed as plain prose. */
+function TestimonialBlockView({ block }: { block: TestimonialBlock }) {
+  if (!block.quote?.trim()) return null;
+  return (
+    <figure className="pull-quote">
+      <blockquote className="pull-quote-body">{block.quote}</blockquote>
+      <figcaption className="pull-quote-attr">
+        {block.author}{block.role && <span className="pull-quote-role">{block.role}</span>}
+      </figcaption>
+    </figure>
+  );
+}
+
 function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
   switch (block.type) {
+    case 'stats': return <StatsBlockView block={block} />;
+    case 'testimonial': return <TestimonialBlockView block={block} />;
     case 'content': return <ContentBlockView html={block.text} />;
     case 'recentPages': return <RecentPagesBlockView block={block} />;
     case 'pageList': return <PageListBlockView block={block} />;

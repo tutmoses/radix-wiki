@@ -94,7 +94,7 @@ function statCard(x, y, w, label, value, wow, sub) {
 }
 
 /** Build the figure for one snapshot (with an optional comparable prior + series). */
-function wirFigure(snap, prior, series) {
+function wirFigure(snap, prior, series, dev, devPrior) {
   const W = 920, L = 48, R = W - 48, w = R - L;
   const gapDays = prior ? Math.round((new Date(snap.week) - new Date(prior.week)) / 86400000) : 0;
   const d = (now, was, o = {}) => delta(now, was, { ...o, gapDays });
@@ -193,8 +193,37 @@ function wirFigure(snap, prior, series) {
     yC = ry + 12;
   }
 
+  // ---- the repositories, when dev-snapshot.mjs has a reading for this week
+  if (dev) {
+    yC += 26;
+    b += sectionLabel(L, yC, 'THE WEEK IN THE REPOSITORIES');
+    const dy = yC + 18;
+    const dcw = (w - 3 * gap) / 4;
+    const dd = (now, was) => (devPrior && was ? d(now, was) : '');
+    b += statCard(L, dy, dcw, 'COMMITS', fmt(dev.commits), dd(dev.commits, devPrior?.commits),
+      `${dev.contributors} contributor${dev.contributors === 1 ? '' : 's'}`);
+    // Line totals come from a sample of the week's commits, so they are a floor.
+    b += statCard(L + dcw + gap, dy, dcw, 'LINES CHANGED',
+      `${dev.partial ? '≥' : ''}${compact(dev.additions + dev.deletions)}`, '',
+      `+${compact(dev.additions)} / -${compact(dev.deletions)}`);
+    const busiest = Object.values(dev.repos || {}).length
+      ? [...dev.repos].filter((r) => !r.error).sort((a2, b2) => b2.commits - a2.commits)[0]
+      : null;
+    b += statCard(L + 2 * (dcw + gap), dy, dcw, 'BUSIEST REPOSITORY',
+      busiest ? busiest.label : '\u2014', '', busiest ? `${fmt(busiest.commits)} commits` : '');
+    const activeDays = Math.max(0, ...(dev.repos || []).filter((r) => !r.error).map((r) => r.activeDays || 0));
+    b += statCard(L + 3 * (dcw + gap), dy, dcw, 'DAYS WITH A COMMIT', `${activeDays} of 7`, '',
+      `${(dev.repos || []).filter((r) => !r.error && r.commits > 0).length} active repos`);
+    yC = dy + 78;
+  }
+
   const H = yC + 62;
-  const note = `Read live from the Radix Gateway at epoch ${fmt(snap.epoch)}, state version ${fmt(snap.stateVersion)}.`;
+  // The footer is one line between the left margin and the domain mark; past about
+  // 118 characters it runs under the mark. Keep both variants inside that.
+  const note = dev
+    ? `Ledger at epoch ${fmt(snap.epoch)}, state version ${fmt(snap.stateVersion)}. Repositories from GitHub, ${dev.since} to ${dev.until}.`
+    : `Read live from the Radix Gateway at epoch ${fmt(snap.epoch)}, state version ${fmt(snap.stateVersion)}.`;
+  if (note.length > 118) console.warn(`  warn: footer note is ${note.length} chars and will collide with the domain mark`);
   return { W, H, svg: frame(W, H, 'The Week on the Ledger', `WEEK ENDING ${snap.week}`, note, b) };
 }
 
@@ -235,7 +264,14 @@ async function render(client) {
   const prior = snaps[idx - 1] || null;
   const series = snaps.slice(0, idx + 1).slice(-12);
 
-  const { W, H, svg } = wirFigure(snap, prior, series);
+  // The repository reading is optional: a week with no dev capture still gets its
+  // ledger figure rather than no figure at all.
+  const devs = state?.dev || [];
+  const dev = devs.find((x) => x.week === week) || null;
+  const devPrior = dev ? devs[devs.indexOf(dev) - 1] || null : null;
+  if (!dev) console.log('  note: no repository reading for this week (node scripts/dev-snapshot.mjs capture)');
+
+  const { W, H, svg } = wirFigure(snap, prior, series, dev, devPrior);
   await renderPngs([{ file: `wir-${week}`, W, H, svg }], OUT);
   fs.writeFileSync(resolve(OUT, `wir-${week}.block.html`), figureBlockHtml(week, svg, snap));
   console.log(`wrote brand-assets/wir/wir-${week}.{svg,png,block.html}`);
