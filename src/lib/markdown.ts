@@ -13,17 +13,15 @@
 // project's and always will be.
 
 import { decodeEntities, htmlToMarkdown, inlineToMarkdown } from 'wiki-formant';
+import { markdownDocument } from 'wiki-formant/markdown';
+import { BANNER_LABELS } from '@/lib/content';
 import { BASE_URL, pageUrl } from '@/lib/utils';
 import type { Block, AtomicBlock, ReferenceItem } from '@/types/blocks';
 
-const BANNER_LABELS: Record<string, string> = {
-  stub: 'Stub',
-  unsourced: 'Needs citations',
-  outdated: 'May be outdated',
-  promotional: 'Written like an advertisement',
-  cleanup: 'Needs cleanup',
-  coi: 'Conflict of interest',
-};
+export const WIKI_LICENSE = {
+  spdx: 'CC-BY-4.0',
+  url: 'https://creativecommons.org/licenses/by/4.0/',
+} as const;
 
 const decode = decodeEntities;
 
@@ -136,6 +134,9 @@ export function blocksToMarkdown(blocks: Block[]): string {
  * A complete markdown document: YAML frontmatter + body. `last_verified` is
  * the freshness signal an agent actually needs, so it rides in the
  * frontmatter alongside the usual title/url/updated.
+ *
+ * The frontmatter itself is `wiki-formant/markdown` – this was the third
+ * hand-rolled YAML builder in the workspace and the second in this repo.
  */
 export function pageToMarkdown(page: {
   title: string;
@@ -145,17 +146,15 @@ export function pageToMarkdown(page: {
   updatedAt?: Date | null;
   lastVerifiedAt?: Date | null;
 }): string {
-  const esc = (s: string) => s.replace(/"/g, '\\"');
-  const front = [
-    '---',
-    `title: "${esc(page.title)}"`,
-    `url: "${page.url}"`,
-    ...(page.version ? [`version: "${esc(page.version)}"`] : []),
-    ...(page.updatedAt ? [`updated: ${page.updatedAt.toISOString().split('T')[0]}`] : []),
-    ...(page.lastVerifiedAt ? [`last_verified: ${page.lastVerifiedAt.toISOString().split('T')[0]}`] : []),
-    'license: CC-BY-4.0',
-    'license_url: "https://creativecommons.org/licenses/by/4.0/"',
-    '---',
-  ].join('\n');
-  return `${front}\n\n# ${page.title}\n\n${blocksToMarkdown((page.content as Block[]) ?? [])}\n`;
+  return markdownDocument(
+    {
+      title: page.title,
+      url: page.url,
+      updated: page.updatedAt,
+      lastVerified: page.lastVerifiedAt,
+      license: WIKI_LICENSE,
+      extra: { version: page.version ?? undefined },
+    },
+    blocksToMarkdown((page.content as Block[]) ?? []),
+  );
 }

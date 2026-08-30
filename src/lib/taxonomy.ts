@@ -14,7 +14,7 @@
 //   - `buildFacets`/`filterPages` keep the `letter` narrowing they always had
 //     here; caper's copy had dropped it.
 
-import { createTaxonomy, type CategoryState } from 'wiki-formant/taxonomy';
+import { createTaxonomy, defaultHref } from 'wiki-formant/taxonomy';
 import { getMetadataKeys } from '@/lib/tags';
 
 export {
@@ -29,15 +29,10 @@ export {
   type SharedFacet,
 } from 'wiki-formant/taxonomy';
 
-/** The one place the category URL contract lives. */
-export function categoryHref(tagPath: string, state: CategoryState): string {
-  const params = new URLSearchParams();
-  if (state.sort) params.set('sort', state.sort);
-  for (const [key, value] of Object.entries(state.filters ?? {})) params.set(key, value);
-  if (state.letter) params.set('letter', state.letter);
-  const query = params.toString();
-  return `/${tagPath}${query ? `?${query}` : ''}`;
-}
+// The one place the category URL contract lives. This wiki mounts its
+// categories at the root, which is exactly the shape `defaultHref` encodes –
+// the local copy was byte-identical to it.
+export const categoryHref = defaultHref;
 
 const taxonomy = createTaxonomy({
   getMetadataKeys: tagPath => getMetadataKeys(tagPath.split('/')),

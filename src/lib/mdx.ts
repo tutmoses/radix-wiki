@@ -4,12 +4,8 @@
 
 import { pagePath } from '@/lib/utils';
 import { htmlToMarkdown } from '@/lib/markdown';
-import type { Block, AtomicBlock, ContentBlock, ColumnsBlock, InfoboxBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, BannerBlock } from '@/types/blocks';
-
-const BANNER_LABELS: Record<BannerBlock['variant'], string> = {
-  stub: 'Stub', unsourced: 'Needs citations', outdated: 'May be outdated',
-  promotional: 'Written like an advertisement', cleanup: 'Needs cleanup', coi: 'Conflict of interest',
-};
+import { BANNER_LABELS } from '@/lib/content';
+import type { Block, AtomicBlock, ContentBlock, ColumnsBlock, InfoboxBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock } from '@/types/blocks';
 
 function convertContentBlock(block: ContentBlock): string {
   return htmlToMarkdown(block.text);

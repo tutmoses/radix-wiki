@@ -1,6 +1,6 @@
 // src/lib/content.ts — shared HTML-to-text extraction for LLM/MCP exports
 
-import type { Block, AtomicBlock } from '@/types/blocks';
+import type { Block, AtomicBlock, BannerBlock } from '@/types/blocks';
 
 // `decodeEntities` and its ~90-entry table now live in `wiki-formant`, shared
 // with the other wikis. Imported for stripHtml below and re-exported, because
@@ -22,7 +22,10 @@ export function stripHtml(html: string): string {
     .trim();
 }
 
-const BANNER_LABELS: Record<string, string> = {
+/** Display labels for the maintenance banners, canonical for this repo: the
+ *  prose extractor, the markdown twin and the MDX export all render the same
+ *  six strings. */
+export const BANNER_LABELS: Record<BannerBlock['variant'], string> = {
   stub: 'Stub', unsourced: 'Needs citations', outdated: 'May be outdated',
   promotional: 'Written like an advertisement', cleanup: 'Needs cleanup', coi: 'Conflict of interest',
 };
