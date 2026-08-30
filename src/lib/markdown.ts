@@ -70,12 +70,12 @@ function atomicToMarkdown(block: AtomicBlock): string {
 
     case 'recentPages':
       return block.resolvedPages?.length
-        ? pageLinks(block.resolvedPages as ResolvedPage[])
+        ? pageLinks(block.resolvedPages)
         : `_Dynamic page list — live at ${block.tagPath ? `${BASE_URL}/${block.tagPath}` : BASE_URL}_`;
 
     case 'pageList':
       return block.resolvedPages?.length
-        ? pageLinks(block.resolvedPages as ResolvedPage[])
+        ? pageLinks(block.resolvedPages)
         : '_Curated page list — rendered on the live page._';
 
     case 'rssFeed':

@@ -1,12 +1,17 @@
 // src/types/blocks.ts - Shared block types (12-type standard)
 
+// `resolvedPages` is filled server-side by resolveBlockData() in lib/wiki.ts and
+// read by PageCard, so it is a full page row, not a narrowed ref. It was `any[]`,
+// which cost markdown.ts a cast and BlockRenderer two `(p: any)` annotations.
+import type { WikiPage } from '@/types';
+
 export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice' | 'infobox' | 'rssFeed' | 'codeTabs' | 'store' | 'footer' | 'stats' | 'testimonial' | 'linkGrid' | 'tipJar' | 'references' | 'banner';
 
 interface BaseBlock { id: string; type: BlockType; }
 
 export interface ContentBlock extends BaseBlock { type: 'content'; text: string; }
-export interface RecentPagesBlock extends BaseBlock { type: 'recentPages'; tagPath?: string; limit: number; resolvedPages?: any[]; }
-export interface PageListBlock extends BaseBlock { type: 'pageList'; pageIds: string[]; resolvedPages?: any[]; }
+export interface RecentPagesBlock extends BaseBlock { type: 'recentPages'; tagPath?: string; limit: number; resolvedPages?: WikiPage[]; }
+export interface PageListBlock extends BaseBlock { type: 'pageList'; pageIds: string[]; resolvedPages?: WikiPage[]; }
 export interface AssetPriceBlock extends BaseBlock { type: 'assetPrice'; resourceAddress?: string; showChange?: boolean; showChart?: boolean; chartTimeframe?: '24h' | '7d' | '30d'; }
 export interface RssFeedBlock extends BaseBlock { type: 'rssFeed'; url: string; limit?: number; resolvedItems?: { title: string; link: string; image?: string; source: string; date?: string; description?: string }[]; }
 export interface CodeTab { label: string; language: string; code: string; }

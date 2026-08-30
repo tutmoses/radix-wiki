@@ -72,5 +72,8 @@ console.error(`check-classes: ${dead.size} className token(s) style nothing:\n`)
 for (const [tok, at] of [...dead].sort((a, b) => b[1].length - a[1].length)) {
   console.error(`  ${tok.padEnd(24)} ${String(at.length).padStart(3)}x  ${at.slice(0, 4).join(', ')}${at.length > 4 ? ', …' : ''}`);
 }
-console.error('\nEither define it in src/styles/globals.css or delete the usage.');
+// Derived, not hardcoded: this script is copied verbatim into the sibling
+// projects and their globals.css does not sit at the same path.
+const globals = walk(SRC_DIR, '.css').find(f => f.endsWith('globals.css')) ?? 'your globals.css';
+console.error(`\nEither define it in ${globals} or delete the usage.`);
 process.exit(WARN_ONLY ? 0 : 1);

@@ -82,7 +82,7 @@ function RecentPagesBlockView({ block }: { block: RecentPagesBlock }) {
   const display = pages.length ? pages : block.resolvedPages || [];
   if (isLoading && !display.length) return <div className="recent-pages-grid">{Array.from({ length: Math.min(block.limit, 3) }, (_, i) => <div key={i} className="h-32 skeleton" />)}</div>;
   if (!display.length) return <p className="text-text-muted">No pages found.</p>;
-  return <div className="recent-pages-grid">{display.map((p: any) => <PageCard key={p.id} page={p} />)}</div>;
+  return <div className="recent-pages-grid">{display.map(p => <PageCard key={p.id} page={p} />)}</div>;
 }
 
 function PageListFetcher({ block }: { block: PageListBlock }) {
@@ -96,7 +96,7 @@ function PageListBlockView({ block }: { block: PageListBlock }) {
   if (!block.resolvedPages) return <PageListFetcher block={block} />;
   const pages = block.resolvedPages;
   if (!pages.length) return <p className="text-text-muted">No pages selected.</p>;
-  return <div className="row-md flex-wrap">{pages.map((p: any) => <PageCard key={p.id} page={p} compact />)}</div>;
+  return <div className="row-md flex-wrap">{pages.map(p => <PageCard key={p.id} page={p} compact />)}</div>;
 }
 
 type PriceData = { price: number; change24h?: number; symbol?: string; name?: string };
@@ -320,7 +320,6 @@ const ContentBlockView = memo(function ContentBlockView({ html }: { html: string
     window.addEventListener('message', handleMessage);
 
     if (/\$\$|\\\(|\\\[/.test(html)) {
-      // @ts-expect-error -- CSS module import has no types
       import('katex/dist/katex.min.css').then(() => import('katex/contrib/auto-render')).then(({ default: render }) => {
         render(el, {
           delimiters: [
