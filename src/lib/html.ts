@@ -1,5 +1,6 @@
 // src/lib/html.ts — HTML post-processing for wiki content rendering
 
+import { injectHeadingIds } from 'wiki-formant/headings';
 import { slugify } from '@/lib/utils';
 import type { Block, AtomicBlock } from '@/types/blocks';
 
@@ -69,20 +70,18 @@ function normaliseAnchor(attrs: string, inner: string, citedRefs?: Set<number>):
 /** Process HTML content for display: heading IDs + anchors, link normalization, alt attrs, external link attributes. */
 export function processHtml(html: string, citedRefs?: Set<number>): string {
   if (!html.trim()) return html;
-  return html
-    // Demote h1 in content to h2 (page title is the only h1)
-    .replace(/<h1(\s[^>]*)?>([\s\S]*?)<\/h1>/gi, '<h2$1>$2</h2>')
-    // Add IDs + a hover permalink anchor to headings (glyph is CSS, so the anchor
-    // stays empty and never leaks into TOC labels or heading text extraction).
-    .replace(/<(h[2-4])([^>]*)>([\s\S]*?)<\/\1>/gi, (match, tag, attrs, content) => {
-      if (content.includes('heading-anchor')) return match;
-      const existingId = getAttr(attrs, 'id');
-      const id = existingId || slugify(stripTags(content));
-      if (!id) return match;
-      const attrsWithId = existingId ? attrs : `${attrs} id="${id}"`;
-      const anchor = `<a class="heading-anchor" href="#${id}" aria-label="Permalink to this section" tabindex="-1"></a>`;
-      return `<${tag}${attrsWithId}>${content}${anchor}</${tag}>`;
-    })
+  // Demote h1 in content to h2 (page title is the only h1), then IDs + a hover
+  // permalink anchor on what's left. The heading routine is
+  // `wiki-formant/headings`, shared with caper, which had written out the same
+  // one. `slugify` is passed rather than defaulted because it is the rule this
+  // wiki's published anchors were minted under, and an id is a URL. What the
+  // shared version adds is deduping: two headings with the same text used to
+  // mint the same id twice here, and every link to the second landed on the first.
+  const withHeadings = injectHeadingIds(
+    html.replace(/<h1(\s[^>]*)?>([\s\S]*?)<\/h1>/gi, '<h2$1>$2</h2>'),
+    { slug: slugify },
+  );
+  return withHeadings
     // Add alt="" to <img> tags that don't have one (decorative fallback keeps crawlers happy)
     .replace(/<img\b([^>]*)>/gi, (match, attrs) => {
       if (/\salt\s*=/i.test(attrs)) return match;
