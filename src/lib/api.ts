@@ -1,6 +1,7 @@
 // src/lib/api.ts - Shared API utilities
 
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit, clientKey, retryMessage, type RateLimitOptions } from 'wiki-formant/rate-limit';
 import { getSession } from '@/lib/auth';
 import { requireBalance, type BalanceAction } from '@/lib/radix/balance';
 import type { AuthSession } from '@/types';
@@ -48,12 +49,9 @@ export function cachedJson<T>(data: T, headers: Record<string, string> = CACHE.s
 }
 
 // ---- rate limiting ----
-// Token bucket per IP, in-memory. Survives across requests within a single
-// serverless instance; on cold start the bucket resets. Fine as a
-// defense-in-depth bar for anonymous routes.
-type Bucket = { tokens: number; updatedAt: number };
-const buckets = new Map<string, Bucket>();
-const MAX_BUCKETS = 10_000;
+// The bucket itself is `wiki-formant/rate-limit`, shared with the other agent
+// surfaces — this was the third copy of it in the workspace. What stays here is
+// the Next binding: reading the request headers and shaping the 429.
 
 /** Per-IP gate for anonymous route handlers. Returns a ready-to-return 429
  *  when the caller is over budget, or null to proceed. `capacity` is the peak
@@ -61,35 +59,14 @@ const MAX_BUCKETS = 10_000;
 export function checkRateLimit(
   request: NextRequest,
   prefix: string,
-  opts: { capacity: number; refillPerSec: number },
+  opts: RateLimitOptions,
 ): NextResponse | null {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anon';
-  const key = `${prefix}:${ip}`;
-  const now = Date.now();
-  const existing = buckets.get(key);
-
-  // Evict oldest if the map grows unbounded — prevents memory pressure under
-  // high-cardinality keying (e.g. one bucket per attacker IP).
-  if (!existing && buckets.size >= MAX_BUCKETS) {
-    const oldest = buckets.keys().next().value;
-    if (oldest !== undefined) buckets.delete(oldest);
-  }
-
-  const bucket: Bucket = existing ?? { tokens: opts.capacity, updatedAt: now };
-  bucket.tokens = Math.min(opts.capacity, bucket.tokens + ((now - bucket.updatedAt) / 1000) * opts.refillPerSec);
-  bucket.updatedAt = now;
-  buckets.set(key, bucket);
-
-  if (bucket.tokens < 1) {
-    const retryAfterSec = Math.ceil((1 - bucket.tokens) / opts.refillPerSec);
-    return NextResponse.json(
-      { error: `Too many requests. Try again in ${retryAfterSec}s.` },
-      { status: 429, headers: { 'Retry-After': String(retryAfterSec) } },
-    );
-  }
-
-  bucket.tokens -= 1;
-  return null;
+  const limit = rateLimit(clientKey(prefix, request.headers), opts);
+  if (limit.ok) return null;
+  return NextResponse.json(
+    { error: retryMessage(limit.retryAfterSec) },
+    { status: 429, headers: { 'Retry-After': String(limit.retryAfterSec) } },
+  );
 }
 
 export async function handleRoute(fn: () => Promise<NextResponse>, errorMsg = 'Internal server error'): Promise<NextResponse> {
