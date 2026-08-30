@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui';
 import type { WikiPage, PageMetadata } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock, LinkGridBlock, TipJarBlock, ReferencesBlock, BannerBlock, BannerVariant, StatsBlock, TestimonialBlock } from '@/types/blocks';
 import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
-import { categoryHref, facetKeys } from '@/lib/taxonomy';
+import { metadataRows } from '@/lib/taxonomy';
 import { TokenChart } from '@/components/charts/TokenChart';
 import { formatPriceSubscript } from '@/components/charts/format';
 
@@ -230,23 +230,25 @@ function formatMetadataValue(value: string, type: string): string {
   return value;
 }
 
+// Which keys appear, in what order, and which of them link is `metadataRows` —
+// the shared derivation, so this table and caper's cannot drift apart again. A
+// row carries an `href` exactly when its key is a facet the category view
+// already filters and counts, which is what makes the row the way into that set
+// (Wikipedia's linked infobox fields) off the one URL contract every facet chip
+// is built from. `resource_address` keys are dropped here rather than there:
+// they are not a table row on this wiki at all, they are the AssetPrice widgets
+// above the table.
 function buildMetadataBlock(metadata: PageMetadata, tagPath: string): ContentBlock | null {
-  const keys = getMetadataKeys(tagPath.split('/'));
-  if (!keys.length || !metadata) return null;
-  const entries = keys.filter(k => metadata[k.key]?.trim() && k.type !== 'resource_address');
-  if (!entries.length) return null;
-  // A `select` value is precisely a facet the category view already filters and
-  // counts, so the row is the way into that set — Wikipedia's linked infobox
-  // fields, reusing the one URL contract every facet chip is built from.
-  const facets = new Set(facetKeys(tagPath).map(k => k.key));
-  const rows = entries.map(({ key, label, type }) => {
-    const value = metadata[key]!;
-    const cell = facets.has(key)
-      ? `<a href="${categoryHref(tagPath, { filters: { [key]: value.trim() } })}" class="link">${value}</a>`
-      : formatMetadataValue(value, type);
-    return `<tr><th>${label}</th><td>${cell}</td></tr>`;
-  }).join('');
-  return { id: '__metadata__', type: 'content', text: `<table>${rows}</table>` };
+  if (!metadata) return null;
+  const rows = metadataRows(tagPath, { metadata })
+    .filter(row => row.type !== 'resource_address')
+    .map(row => {
+      const cell = row.href
+        ? `<a href="${row.href}" class="link">${row.value}</a>`
+        : formatMetadataValue(row.value, row.type);
+      return `<tr><th>${row.label}</th><td>${cell}</td></tr>`;
+    }).join('');
+  return rows ? { id: '__metadata__', type: 'content', text: `<table>${rows}</table>` } : null;
 }
 
 function getResourceAddressEntries(metadata: PageMetadata, tagPath: string): { key: string; label: string; value: string }[] {

@@ -46,4 +46,5 @@ export const {
   buildFacets,
   alphaIndex,
   rankRelated,
+  metadataRows,
 } = taxonomy;
