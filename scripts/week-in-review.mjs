@@ -49,7 +49,11 @@ function weekLabel(iso) {
   return `${MONTH[sm]} ${sd}${EN}${ed}, ${ey}`;
 }
 
-const NAV_MARK = 'Radix Week in Review series:';
+// Sentinel for finding an existing nav block. Colon-free on purpose: the visible
+// label gained an issue number ("…series, Issue #9:"), and a sentinel carrying the
+// old trailing colon stopped matching what sync itself had just written, so every
+// run appended a second nav instead of rewriting the first.
+const NAV_MARK = 'Radix Week in Review series';
 const LEGACY_FOOTER = /is a knowledge and community hub/i;
 const FEED_PATH = '/week-in-review.xml';
 
@@ -83,7 +87,7 @@ function navHtml(prev, next, issue) {
   // The feed was reachable only by browser auto-discovery, which is no route at all
   // for a reader who wants the series in a reader or forwarded to their mail.
   parts.push(`<a href="${FEED_PATH}" rel="noopener">Subscribe</a>`);
-  const mark = issue ? `${NAV_MARK.slice(0, -1)}, ${issueLabel(issue)}:` : NAV_MARK;
+  const mark = issue ? `${NAV_MARK}, ${issueLabel(issue)}:` : `${NAV_MARK}:`;
   const nav = `<hr><p><strong>${mark}</strong> ${parts.join(' \u00b7 ')}</p>`;
   // The serial-continuity line the competitor opens with. It belongs at the foot: the
   // Essay preset needs the opening to land on the week, not on a summary of last week.
@@ -267,12 +271,18 @@ async function sync(client, stateOverride) {
     if (isLockedPage(TAG, r.slug)) { console.warn(`  SKIP ${r.slug} — locked`); continue; }
 
     const blocks = JSON.parse(JSON.stringify(r.content || []));
-    const at = blocks.findIndex((b) => typeof b.text === 'string' && b.text.includes(NAV_MARK));
+    const navAt = blocks.reduce((acc, b, i) =>
+      (typeof b.text === 'string' && b.text.includes(NAV_MARK) ? [...acc, i] : acc), []);
+    const at = navAt.length ? navAt[0] : -1;
+    // A page should carry exactly one nav. Drop any extra, newest first so the
+    // earlier indices stay valid.
+    const dupes = navAt.slice(1);
+    for (const i of [...dupes].reverse()) blocks.splice(i, 1);
     let action;
     if (at >= 0) {
-      if (blocks[at].text === html) { ok++; console.log(`  ${r.slug}  nav ok`); continue; }
+      if (!dupes.length && blocks[at].text === html) { ok++; console.log(`  ${r.slug}  nav ok`); continue; }
       blocks[at] = { ...blocks[at], text: html };
-      action = 'nav rewritten';
+      action = dupes.length ? `nav rewritten, ${dupes.length} duplicate(s) removed` : 'nav rewritten';
     } else {
       // Three older recaps carry a legacy site-footer block; the nav belongs above it.
       const footer = blocks.findIndex((b) => typeof b.text === 'string' && LEGACY_FOOTER.test(b.text));
@@ -280,6 +290,12 @@ async function sync(client, stateOverride) {
       blocks.splice(pos, 0, { id: uid(), type: 'content', text: html });
       action = footer >= 0 ? 'nav added (above legacy footer)' : 'nav added';
     }
+
+    // The index counts each recap's links straight out of its content, and
+    // loadRecaps read that content before this loop rewrote it. Hand the new
+    // blocks forward or the index renders last run's counts and needs a second
+    // pass to settle.
+    r.content = blocks;
 
     const [maj, min, pat] = String(r.version || '1.0.0').split('.');
     const version = `${maj}.${min}.${Number(pat) + 1}`;
