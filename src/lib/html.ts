@@ -1,107 +1,44 @@
-// src/lib/html.ts — HTML post-processing for wiki content rendering
+// src/lib/html.ts — HTML post-processing for wiki content rendering.
+//
+// The two routines this used to spell out — heading ids and anchor
+// normalisation — are `wiki-formant/headings` and `wiki-formant/links`, shared
+// with caper, which had written out the same ones. What stays here is this
+// wiki's own decisions: which slug rule its published anchors were minted
+// under, its own host, and the h1 demotion.
 
 import { injectHeadingIds } from 'wiki-formant/headings';
+import { normaliseLinks } from 'wiki-formant/links';
 import { slugify } from '@/lib/utils';
 import type { Block, AtomicBlock } from '@/types/blocks';
 
-const stripTags = (s: string) => s.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').trim();
-
-/** Extract an attribute value from an anchor attribute string (e.g. ` rel="nofollow" href="/x"`). */
-function getAttr(attrs: string, name: string): string | null {
-  const m = attrs.match(new RegExp(`\\s${name}\\s*=\\s*"([^"]*)"`, 'i'));
-  return m ? m[1] ?? null : null;
-}
-
-/** Remove an attribute from an attribute string. */
-function removeAttr(attrs: string, name: string): string {
-  return attrs.replace(new RegExp(`\\s${name}\\s*=\\s*"[^"]*"`, 'gi'), '');
-}
-
-/** Derive a sensible visible label for an empty anchor from its href. */
-function fallbackAnchorText(href: string): string {
-  if (href.startsWith('#')) return href.slice(1).replace(/-/g, ' ') || 'section';
-  if (href.startsWith('/')) {
-    const last = href.split('/').filter(Boolean).pop();
-    return last ? last.replace(/-/g, ' ') : 'page';
-  }
-  try {
-    const u = new URL(href);
-    return u.hostname.replace(/^www\./, '') || href;
-  } catch {
-    return href;
-  }
-}
-
-/** Normalise one anchor tag: fix internal/external links, fix empty anchor text, wire citation back-links. */
-function normaliseAnchor(attrs: string, inner: string, citedRefs?: Set<number>): string {
-  // Leave injected heading anchors untouched — their glyph comes from CSS, so the
-  // empty-anchor label synthesis below must not fill them with text.
-  if (/\bheading-anchor\b/.test(attrs)) return `<a${attrs}>${inner}</a>`;
-
-  const rawHref = getAttr(attrs, 'href');
-  if (rawHref == null) return `<a${attrs}>${inner}</a>`;
-
-  // Rewrite absolute radix.wiki links (http or https) to relative paths
-  const href = rawHref.replace(/^https?:\/\/(?:www\.)?radix\.wiki(\/.*)?$/i, (_, path) => path || '/');
-  const isInternal = href.startsWith('/') || href.startsWith('#');
-  let cleanedAttrs = removeAttr(attrs, 'href');
-  cleanedAttrs = removeAttr(cleanedAttrs, 'rel');
-  cleanedAttrs = removeAttr(cleanedAttrs, 'target');
-
-  // Inline citation `[n]` → `#ref-n`: tag the first occurrence with `id="cite-n"`
-  // so the matching reference can carry a `^` back-link to it.
-  const refMatch = citedRefs ? href.match(/^#ref-(\d+)$/) : null;
-  if (refMatch && !/\bid\s*=/.test(cleanedAttrs)) {
-    const n = Number(refMatch[1]);
-    if (!citedRefs!.has(n)) { citedRefs!.add(n); cleanedAttrs = ` id="cite-${n}"${cleanedAttrs}`; }
-  }
-
-  // If the anchor has no visible text, synthesise a label from the href so search
-  // engines and assistive tech aren't faced with an empty link.
-  const visible = stripTags(inner);
-  const safeInner = visible ? inner : fallbackAnchorText(href);
-
-  if (isInternal) {
-    return `<a href="${href}"${cleanedAttrs}>${safeInner}</a>`;
-  }
-  return `<a href="${href}"${cleanedAttrs} target="_blank" rel="noopener">${safeInner}</a>`;
-}
-
-/** Process HTML content for display: heading IDs + anchors, link normalization, alt attrs, external link attributes. */
+/** Process HTML content for display: heading ids + anchors, link normalisation, alt attrs. */
 export function processHtml(html: string, citedRefs?: Set<number>): string {
   if (!html.trim()) return html;
-  // Demote h1 in content to h2 (page title is the only h1), then IDs + a hover
-  // permalink anchor on what's left. The heading routine is
-  // `wiki-formant/headings`, shared with caper, which had written out the same
-  // one. `slugify` is passed rather than defaulted because it is the rule this
-  // wiki's published anchors were minted under, and an id is a URL. What the
-  // shared version adds is deduping: two headings with the same text used to
-  // mint the same id twice here, and every link to the second landed on the first.
+
+  // Demote h1 in content to h2 (the page title is the only h1), then ids and a
+  // hover permalink anchor on what is left. `slugify` is passed rather than
+  // defaulted because it is the rule this wiki's published anchors were minted
+  // under, and an id is a URL.
   const withHeadings = injectHeadingIds(
     html.replace(/<h1(\s[^>]*)?>([\s\S]*?)<\/h1>/gi, '<h2$1>$2</h2>'),
     { slug: slugify },
   );
-  return withHeadings
-    // Add alt="" to <img> tags that don't have one (decorative fallback keeps crawlers happy)
-    .replace(/<img\b([^>]*)>/gi, (match, attrs) => {
-      if (/\salt\s*=/i.test(attrs)) return match;
-      return `<img${attrs} alt="">`;
-    })
-    // Normalise every anchor including its inner text (attribute-order agnostic).
-    // Note: this regex does not handle nested <a>, which is invalid HTML anyway.
-    .replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, (_match, attrs, inner) => normaliseAnchor(attrs, inner, citedRefs));
+
+  const withAlts = withHeadings.replace(/<img\b([^>]*)>/gi, (match, attrs) =>
+    /\salt\s*=/i.test(attrs) ? match : `<img${attrs} alt="">`,
+  );
+
+  return normaliseLinks(withAlts, { selfHost: 'radix.wiki', citedRefs });
 }
 
 /** Apply processHtml to every content block recursively (for SSR normalisation). */
 export function processBlocks(blocks: Block[]): Block[] {
-  // Shared across content blocks so citation `id="cite-n"` targets are unique doc-wide.
+  // Shared across content blocks so citation `id="cite-n"` targets are unique
+  // doc-wide.
   const citedRefs = new Set<number>();
-  const mapAtomic = (b: AtomicBlock): AtomicBlock => {
-    if (b.type === 'content' && typeof b.text === 'string') {
-      return { ...b, text: processHtml(b.text, citedRefs) };
-    }
-    return b;
-  };
+  const mapAtomic = (b: AtomicBlock): AtomicBlock =>
+    b.type === 'content' && typeof b.text === 'string' ? { ...b, text: processHtml(b.text, citedRefs) } : b;
+
   return blocks.map((block): Block => {
     if (block.type === 'content') return mapAtomic(block) as Block;
     if (block.type === 'infobox') return { ...block, blocks: block.blocks.map(mapAtomic) };

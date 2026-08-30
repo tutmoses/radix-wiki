@@ -55,7 +55,8 @@ export const getMaintenanceQueues = cached('getMaintenanceQueues', async (): Pro
   }
 
   const orphaned = pages.filter(p => !linkedPaths.has(href(p)) && !linkedIds.has(p.id));
-  const outdated = pages.filter(p => isStale(p));
+  const nowMs = Date.now();
+  const outdated = pages.filter(p => isStale(p, nowMs));
   const unsourced = pages.filter(p => !external.get(p.id));
   const incomplete = pages.flatMap(p => {
     const meta = (p.metadata ?? {}) as Record<string, string>;
@@ -68,7 +69,7 @@ export const getMaintenanceQueues = cached('getMaintenanceQueues', async (): Pro
       key: 'outdated',
       title: 'Outdated',
       description: 'Last verified more than 180 days ago. Re-check the facts against current sources, then stamp the page with scripts/mark-verified.mjs.',
-      items: outdated.map(p => ({ title: p.title, href: href(p), tagPath: p.tagPath, detail: `${daysSince(p.lastVerifiedAt ?? p.updatedAt)} days` })),
+      items: outdated.map(p => ({ title: p.title, href: href(p), tagPath: p.tagPath, detail: `${daysSince(p.lastVerifiedAt ?? p.updatedAt, nowMs)} days` })),
     },
     {
       key: 'orphaned',

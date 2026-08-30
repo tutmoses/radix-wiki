@@ -1,50 +1,39 @@
-// src/lib/content.ts — shared HTML-to-text extraction for LLM/MCP exports
+// src/lib/content.ts — a page as plain prose, for LLM and MCP exports.
+//
+// stripHtml, the banner labels and the leaf bodies are `wiki-formant/text`,
+// shared with caper, which had the same ones character for character. What
+// stays here is the dispatch: a switch over this repo's block union, where a
+// new block type is a compile error until it is handled.
 
-import type { Block, AtomicBlock, BannerBlock } from '@/types/blocks';
+import { renderBlockTree } from 'wiki-formant/blocks';
+import { bannerToText, codeTabsToText, referencesToText, stripHtml } from 'wiki-formant/text';
+import type { Block, AtomicBlock } from '@/types/blocks';
 
-// `decodeEntities` and its ~90-entry table now live in `wiki-formant`, shared
-// with the other wikis. Imported for stripHtml below and re-exported, because
-// extractText, the markdown twin and snippet extraction all reach for it
-// through this module.
-import { decodeEntities } from 'wiki-formant';
-export { decodeEntities };
+export { decodeEntities } from 'wiki-formant';
+export { stripHtml };
+export { BANNER_LABELS } from 'wiki-formant/text';
 
-export function stripHtml(html: string): string {
-  return decodeEntities(
-    html
-      .replace(/<a[^>]+href="([^"]*)"[^>]*>(.*?)<\/a>/gi, ' $2 ($1) ')
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/(?:p|h[1-6]|li|tr|th|td|div)>/gi, '\n')
-      .replace(/<(?:li)>/gi, '- ')
-      .replace(/<[^>]+>/g, ''),
-  )
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+import { BANNER_LABELS } from 'wiki-formant/text';
+
+function atomicText(block: Block | AtomicBlock): string {
+  switch (block.type) {
+    case 'content': return stripHtml(block.text);
+    case 'codeTabs': return codeTabsToText(block.tabs);
+    case 'banner': return bannerToText(BANNER_LABELS[block.variant] ?? block.variant, block.text);
+    case 'references': return referencesToText(block.items);
+    default: return '';
+  }
 }
 
-/** Display labels for the maintenance banners, canonical for this repo: the
- *  prose extractor, the markdown twin and the MDX export all render the same
- *  six strings. */
-export const BANNER_LABELS: Record<BannerBlock['variant'], string> = {
-  stub: 'Stub', unsourced: 'Needs citations', outdated: 'May be outdated',
-  promotional: 'Written like an advertisement', cleanup: 'Needs cleanup', coi: 'Conflict of interest',
-};
-
-function extractAtomicText(block: AtomicBlock): string {
-  if (block.type === 'content') return stripHtml(block.text);
-  if (block.type === 'codeTabs') return block.tabs.map(t => `[${t.label}]\n${t.code}`).join('\n');
-  if (block.type === 'banner') return `[Notice: ${BANNER_LABELS[block.variant] ?? block.variant}]${block.text ? ' ' + stripHtml(block.text) : ''}`;
-  if (block.type === 'references') return block.items.length ? `References:\n${block.items.map((it, i) => `${i + 1}. ${stripHtml(it.text)}${it.url ? ` (${it.url})` : ''}`).join('\n')}` : '';
-  return '';
-}
-
+/** The page as prose. Containers flatten in document order. */
 export function extractText(blocks: Block[]): string {
-  return blocks.map(b => {
-    if (b.type === 'content') return stripHtml(b.text);
-    if (b.type === 'infobox') return b.blocks.map(extractAtomicText).filter(Boolean).join('\n');
-    if (b.type === 'columns') return b.columns.map(col => col.blocks.map(extractAtomicText).filter(Boolean).join('\n')).join('\n');
-    if (b.type === 'codeTabs') return b.tabs.map(t => `[${t.label}]\n${t.code}`).join('\n');
-    if (b.type === 'banner' || b.type === 'references') return extractAtomicText(b);
-    return '';
-  }).filter(Boolean).join('\n\n');
+  return renderBlockTree<Block | AtomicBlock>(blocks, {
+    atomic: atomicText,
+    containers: b =>
+      b.type === 'infobox' ? [b.blocks]
+      : b.type === 'columns' ? b.columns.map(col => col.blocks)
+      : null,
+    // Prose, not typesetting: a single newline inside a container.
+    groupSeparator: '\n',
+  });
 }

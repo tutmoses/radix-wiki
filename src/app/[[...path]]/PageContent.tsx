@@ -479,10 +479,12 @@ function CategoryListing({ tagPath, pages, sort, total, facets, filters, letters
 }
 
 // ========== CATEGORY VIEW ==========
-export function CategoryView({ tagPath, pages, sort, total, facets, filters, letters, letter, subcategories, mainArticle, hub }: {
+export function CategoryView({ tagPath, pages, sort, total, facets, filters, letters, letter, subcategories, mainArticle, hub, nowMs }: {
   tagPath: string[]; pages: WikiPage[]; sort: SortOrder; total: number;
   facets: Facet[]; filters: FacetFilters; letters: FacetValue[]; letter?: string;
   subcategories: SubcategorySummary[]; mainArticle: PageRef | null; hub: WikiPage | null;
+  /** Server clock, so a hub's freshness notice cannot differ between SSR and hydration. */
+  nowMs: number;
 }) {
   const pathStr = tagPath.join('/');
   const tag = findTagByPath(tagPath);
@@ -499,6 +501,7 @@ export function CategoryView({ tagPath, pages, sort, total, facets, filters, let
         page={hub}
         related={{ pages: [], sharedFacet: null }}
         series={null}
+        nowMs={nowMs}
         listing={isContainer ? null : (
           <CategoryListing
             tagPath={tagPath} pages={pages} sort={sort} total={total}
@@ -575,7 +578,7 @@ function SeeAlso({ pages, tagPath, sharedFacet }: { pages: RelatedPage[]; tagPat
 }
 
 // ========== PAGE VIEW (Read-only) ==========
-function PageViewContent({ page, related, series, listing }: { page: WikiPage; related: RelatedPages; series: PageRef | null; listing?: ReactNode }) {
+function PageViewContent({ page, related, series, listing, nowMs }: { page: WikiPage; related: RelatedPages; series: PageRef | null; listing?: ReactNode; nowMs: number }) {
   const { isAuthenticated } = useAuth();
   // Contributor stats belong to the page's *subject* — the explicit
   // metadata.subjectUserId pointer set on profile pages (community bios,
@@ -587,7 +590,7 @@ function PageViewContent({ page, related, series, listing }: { page: WikiPage; r
   const showInfobox = infoboxHasContent(infobox, page.metadata, page.tagPath);
   // The synthetic freshness notice defers to an author-placed outdated banner.
   const hasOutdatedBanner = blocks.some(b => b.type === 'banner' && b.variant === 'outdated');
-  const fresh = hasOutdatedBanner ? null : freshnessBanner(page);
+  const fresh = hasOutdatedBanner ? null : freshnessBanner(page, nowMs);
   const mainBlocks = [...(fresh ? [fresh] : []), ...blocks.filter(b => b.type !== 'infobox')];
 
   // Everything after the prose. On a hub it moves below the listing, so the page
@@ -632,12 +635,12 @@ function PageViewContent({ page, related, series, listing }: { page: WikiPage; r
 }
 
 // ========== PAGE VIEW WRAPPER ==========
-export function PageView({ page, tagPath, slug, isEditMode, related = { pages: [], sharedFacet: null }, series = null }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; related?: RelatedPages; series?: PageRef | null }) {
+export function PageView({ page, tagPath, slug, isEditMode, related = { pages: [], sharedFacet: null }, series = null, nowMs }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; related?: RelatedPages; series?: PageRef | null; /** Server clock, so the freshness notice cannot differ between SSR and hydration. */ nowMs: number }) {
   const { isAuthenticated } = useAuth();
 
   const viewPath = pagePath(tagPath, slug);
 
   if (isEditMode && !isAuthenticated) return <StatusCard status="authRequired" backHref={viewPath} />;
   if (!page) return <LazyPageEditor tagPath={tagPath} slug={slug} />;
-  return isEditMode ? <LazyPageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} related={related} series={series} />;
+  return isEditMode ? <LazyPageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} related={related} series={series} nowMs={nowMs} />;
 }

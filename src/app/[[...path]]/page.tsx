@@ -348,6 +348,10 @@ function breadcrumbLd(path: string[], leafTitle?: string) {
 const VALID_SORTS = new Set<string>(['title', 'newest', 'oldest', 'recent']);
 
 export default async function DynamicPage({ params, searchParams }: Props) {
+  // Read the clock once, here on the server, and hand it to the views. The
+  // freshness notice used to call Date.now() inside a 'use client' render, so a
+  // page near the staleness boundary could disagree between SSR and hydration.
+  const nowMs = Date.now();
   const { path } = await params;
   const query = await searchParams;
   const str = (v: string | string[] | undefined) => (typeof v === 'string' ? v : undefined);
@@ -399,7 +403,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
     // without a hub keep falling through to the listing.
     if (parsed.suffix === 'edit') {
       const hub = await getCategoryHub(parsed.tagPath);
-      if (hub) return <PageView page={hub} tagPath={parsed.tagPath} slug="" isEditMode />;
+      if (hub) return <PageView page={hub} tagPath={parsed.tagPath} slug="" isEditMode nowMs={nowMs} />;
     }
 
     if (isIdeasPath(parsed.tagPath)) {
@@ -456,7 +460,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
           tagPath={tagSegments} pages={pages} sort={sort} total={all.length}
           facets={buildFacets(parsed.tagPath, all, filters, letter)} filters={filters}
           letters={letters} letter={letter} subcategories={subcategories} mainArticle={mainArticle}
-          hub={hub}
+          hub={hub} nowMs={nowMs}
         />
       </>
     );
@@ -492,7 +496,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
     <>
       {page && <JsonLd data={articleLd(page, pageUrl)} />}
       <JsonLd data={breadcrumbLd(pathSegments, page?.title)} />
-      <PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} related={related} series={series} />
+      <PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} related={related} series={series} nowMs={nowMs} />
     </>
   );
 }
