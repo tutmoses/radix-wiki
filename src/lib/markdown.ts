@@ -8,15 +8,26 @@
 // widgets render their resolved rows when the caller has resolved them
 // (resolveBlockData), and otherwise a one-line note with the live URL.
 //
-// The HTML→markdown half is `wiki-formant/markdown`, shared with the other
-// wikis. What stays here is the block tree, because the block TYPE SET is this
-// project's and always will be.
+// The HTML→markdown half is `wiki-formant/markdown` and the case bodies the
+// wikis share are `wiki-formant/blocks`. What stays here is the DISPATCH,
+// because the block type set is this project's and always will be – and a
+// switch over the union means a new block type is a compile error until it is
+// handled, rather than silently rendering as nothing.
 
 import { decodeEntities, htmlToMarkdown, inlineToMarkdown } from 'wiki-formant';
 import { markdownDocument } from 'wiki-formant/markdown';
+import {
+  renderBlockTree,
+  codeTabsToMarkdown,
+  bannerToMarkdown,
+  referencesToMarkdown,
+  statsToMarkdown,
+  linkGridToMarkdown,
+  linkList,
+} from 'wiki-formant/blocks';
 import { BANNER_LABELS } from '@/lib/content';
 import { BASE_URL, pageUrl } from '@/lib/utils';
-import type { Block, AtomicBlock, ReferenceItem } from '@/types/blocks';
+import type { Block, AtomicBlock } from '@/types/blocks';
 
 export const WIKI_LICENSE = {
   spdx: 'CC-BY-4.0',
@@ -32,13 +43,10 @@ const inline = inlineToMarkdown;
 // Re-exported: src/lib/mdx.ts converts authored HTML through this module.
 export { htmlToMarkdown };
 
-const refLine = (r: ReferenceItem, i: number) =>
-  `${i + 1}. ${inline(r.text)}${r.url ? ` — ${r.url}` : ''}`;
-
 type ResolvedPage = { title: string; tagPath: string; slug: string };
 
 const pageLinks = (pages: ResolvedPage[]) =>
-  pages.map(p => `- [${p.title}](${pageUrl(p.tagPath, p.slug)})`).join('\n');
+  linkList(pages.map(p => ({ label: p.title, href: pageUrl(p.tagPath, p.slug) })));
 
 function atomicToMarkdown(block: AtomicBlock): string {
   switch (block.type) {
@@ -46,35 +54,19 @@ function atomicToMarkdown(block: AtomicBlock): string {
       return htmlToMarkdown(block.text);
 
     case 'codeTabs':
-      return block.tabs
-        .map(t => `**${t.label}**\n\n\`\`\`${t.language || ''}\n${decode(t.code.replace(/<[^>]+>/g, '')).trim()}\n\`\`\``)
-        .join('\n\n');
+      return codeTabsToMarkdown(block.tabs);
 
     case 'banner':
-      return `> **[${BANNER_LABELS[block.variant] ?? block.variant}]**${block.text ? ` ${inline(block.text)}` : ''}`;
+      return bannerToMarkdown(BANNER_LABELS[block.variant] ?? block.variant, block.text);
 
     case 'references':
-      return block.items.length
-        ? `### ${block.title || 'References'}\n\n${block.items.map(refLine).join('\n')}`
-        : '';
+      return referencesToMarkdown(block.items, block.title || 'References');
 
     case 'stats':
-      return block.items.length
-        ? block.items.map(s => `- **${s.value}${s.suffix ?? ''}** — ${s.label}`).join('\n')
-        : '';
+      return statsToMarkdown(block.items);
 
-    case 'linkGrid': {
-      const intro = block.intro ? `${inline(block.intro)}\n\n` : '';
-      const groups = block.groups.map(g =>
-        [
-          `### ${g.heading}`,
-          ...(g.description ? ['', htmlToMarkdown(g.description)] : []),
-          '',
-          ...g.links.map(l => `- [${l.label}](${l.href})`),
-        ].join('\n'),
-      );
-      return `${intro}${groups.join('\n\n')}`;
-    }
+    case 'linkGrid':
+      return linkGridToMarkdown(block.groups, block.intro);
 
     case 'recentPages':
       return block.resolvedPages?.length
@@ -88,7 +80,7 @@ function atomicToMarkdown(block: AtomicBlock): string {
 
     case 'rssFeed':
       return block.resolvedItems?.length
-        ? block.resolvedItems.map(i => `- [${i.title}](${i.link})`).join('\n')
+        ? linkList(block.resolvedItems.map(i => ({ label: i.title, href: i.link })))
         : `_Live feed: ${block.url}_`;
 
     case 'assetPrice':
@@ -113,21 +105,11 @@ function atomicToMarkdown(block: AtomicBlock): string {
 
 /** The whole block tree as markdown. Containers flatten in document order. */
 export function blocksToMarkdown(blocks: Block[]): string {
-  return blocks
-    .map(b => {
-      if (b.type === 'infobox') return b.blocks.map(atomicToMarkdown).filter(Boolean).join('\n\n');
-      if (b.type === 'columns') {
-        return b.columns
-          .map(c => c.blocks.map(atomicToMarkdown).filter(Boolean).join('\n\n'))
-          .filter(Boolean)
-          .join('\n\n');
-      }
-      return atomicToMarkdown(b);
-    })
-    .filter(Boolean)
-    .join('\n\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  return renderBlockTree<Block>(blocks, {
+    atomic: b => (b.type === 'infobox' || b.type === 'columns' ? '' : atomicToMarkdown(b)),
+    containers: b =>
+      b.type === 'infobox' ? [b.blocks] : b.type === 'columns' ? b.columns.map(c => c.blocks) : null,
+  });
 }
 
 /**
