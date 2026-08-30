@@ -1,7 +1,9 @@
 // src/app/api/mcp/route.ts — Radix Wiki MCP server (Streamable HTTP transport).
 // The protocol edges (CORS, GET→405, −32700, bare 202, batch cap, teaching
-// arg validation) live in src/lib/mcp.ts; the tool manifest in
-// src/lib/mcp-tools.ts; this file wires handlers onto that manifest.
+// arg validation) live in `wiki-formant/mcp`, shared with the other wikis; the
+// tool manifest in src/lib/mcp-tools.ts; this file wires handlers onto that
+// manifest and supplies what is this wiki's — the rate limit, the docs pointer
+// and the analytics hook.
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
@@ -12,7 +14,8 @@ import { TAG_HIERARCHY, getMetadataKeys, type TagNode } from '@/lib/tags';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 import { RADIX_CONFIG } from '@/lib/radix/config';
 import { checkRateLimit } from '@/lib/api';
-import { mcpResponse, mcpOptions, mcpGet, withMcpCors, McpToolError, type McpServerConfig, type McpResource } from '@/lib/mcp';
+import { trackMcpCall } from '@/lib/track';
+import { mcpResponse, mcpOptions, mcpGet, withMcpCors, McpToolError, type McpServerConfig, type McpResource } from 'wiki-formant/mcp';
 import type { Block } from '@/types/blocks';
 
 export const dynamic = 'force-dynamic';
@@ -330,11 +333,13 @@ function serverConfig(auth: string | null): McpServerConfig {
     instructions: INSTRUCTIONS,
     tools: TOOLS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema, handler: handlers[name]! })),
     resources: RESOURCES,
+    docsUrl: `${BASE_URL}/AGENTS.md`,
+    onCall: (req, body) => trackMcpCall(req, SERVER_INFO.name, body),
   };
 }
 
 export const OPTIONS = mcpOptions;
-export const GET = mcpGet;
+export const GET = () => mcpGet(`${BASE_URL}/AGENTS.md`);
 
 export async function POST(request: NextRequest) {
   // Anonymous and `force-dynamic`, so every call is a fresh query. Budget

@@ -30,16 +30,11 @@ export async function requireAuth(request?: NextRequest, action?: BalanceAction)
   return { session };
 }
 
-export function parsePagination(searchParams: URLSearchParams, defaults?: { pageSize?: number }) {
-  return {
-    page: Math.max(1, parseInt(searchParams.get('page') || '1', 10)),
-    pageSize: Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || String(defaults?.pageSize ?? 20), 10))),
-  };
-}
-
-export function paginatedResponse<T>(items: T[], total: number, page: number, pageSize: number) {
-  return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
-}
+// The clamp and the `{items,total,page,pageSize,totalPages}` shape are a client
+// contract, so they live in `wiki-formant/pagination` rather than being re-typed
+// per repo — which is how one sibling dropped `totalPages` and another redid the
+// offset by hand in raw SQL. Re-exported so every route handler here is unchanged.
+export { parsePagination, paginatedResponse } from 'wiki-formant/pagination';
 
 export const CACHE = {
   short: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },

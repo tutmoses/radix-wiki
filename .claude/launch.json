@@ -4,10 +4,27 @@
     {
       "name": "next-dev",
       "runtimeExecutable": "/Users/libertant/.nvm/versions/node/v25.1.0/bin/npx",
-      "env": { "PATH": "/Users/libertant/.nvm/versions/node/v25.1.0/bin:/usr/bin:/bin" },
-      "runtimeArgs": ["next", "dev"],
+      "env": {
+        "PATH": "/Users/libertant/.nvm/versions/node/v25.1.0/bin:/usr/bin:/bin"
+      },
+      "runtimeArgs": [
+        "next",
+        "dev"
+      ],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "radix-wiki-prod",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "start",
+        "--",
+        "--port",
+        "3738"
+      ],
+      "port": 3738
     }
   ]
 }

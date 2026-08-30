@@ -2,14 +2,20 @@
 
 import type { Block, BlockType } from '@/types/blocks';
 
-// Semantic version type
-interface SemVer {
-  major: number;
-  minor: number;
-  patch: number;
-}
+// The semver arithmetic is `wiki-formant/versioning`, shared with the other
+// wikis. The block diff below stays here: it walks a block tree, and the block
+// type set is this project's.
+export {
+  parseVersion,
+  formatVersion,
+  incrementVersion,
+  bump,
+  compareVersions,
+  type SemVer,
+  type ChangeType,
+} from 'wiki-formant/versioning';
 
-type ChangeType = 'major' | 'minor' | 'patch' | 'none';
+import { incrementVersion, parseVersion, type SemVer, type ChangeType } from 'wiki-formant/versioning';
 
 // Block-level change tracking
 export interface BlockChange {
@@ -28,26 +34,6 @@ export interface RevisionDiff {
   titleChanged: boolean;
   bannerChanged: boolean;
   summary: string;
-}
-
-// Parse/format version strings
-export function parseVersion(version: string | null | undefined): SemVer {
-  if (!version) return { major: 1, minor: 0, patch: 0 };
-  const [major = 1, minor = 0, patch = 0] = version.split('.').map(Number);
-  return { major: major || 1, minor: minor || 0, patch: patch || 0 };
-}
-
-export function formatVersion(version: SemVer): string {
-  return `${version.major}.${version.minor}.${version.patch}`;
-}
-
-export function incrementVersion(version: SemVer, changeType: ChangeType): SemVer {
-  switch (changeType) {
-    case 'major': return { major: version.major + 1, minor: 0, patch: 0 };
-    case 'minor': return { ...version, minor: version.minor + 1, patch: 0 };
-    case 'patch': return { ...version, patch: version.patch + 1 };
-    default: return version;
-  }
 }
 
 // Normalize blocks for comparison

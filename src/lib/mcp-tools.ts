@@ -13,7 +13,7 @@
 // version that an external system reads, so it owns the number. `initialize`
 // and the server card follow it rather than keeping their own.
 import serverManifest from '../../server.json';
-import type { ToolSchema } from '@/lib/mcp';
+import type { ToolSchema } from 'wiki-formant/mcp';
 
 /** Reported by `initialize`. `name` is the MCP server id, distinct from the
  *  registry's namespaced `serverManifest.name`. */

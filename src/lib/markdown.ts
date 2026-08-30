@@ -7,8 +7,12 @@
 // be quoted precisely instead of re-summarised. No JSX component tags: dynamic
 // widgets render their resolved rows when the caller has resolved them
 // (resolveBlockData), and otherwise a one-line note with the live URL.
+//
+// The HTML→markdown half is `wiki-formant/markdown`, shared with the other
+// wikis. What stays here is the block tree, because the block TYPE SET is this
+// project's and always will be.
 
-import { decodeEntities } from '@/lib/content';
+import { decodeEntities, htmlToMarkdown, inlineToMarkdown } from 'wiki-formant';
 import { BASE_URL, pageUrl } from '@/lib/utils';
 import type { Block, AtomicBlock, ReferenceItem } from '@/types/blocks';
 
@@ -23,78 +27,12 @@ const BANNER_LABELS: Record<string, string> = {
 
 const decode = decodeEntities;
 
-/** Inline-level HTML → markdown. Applied inside cells, list items, headings. */
-function inline(html: string): string {
-  return decode(
-    html
-      .replace(/<br\s*\/?>/gi, ' ')
-      .replace(/<(?:strong|b)\b[^>]*>(.*?)<\/(?:strong|b)>/gi, '**$1**')
-      .replace(/<(?:em|i)\b[^>]*>(.*?)<\/(?:em|i)>/gi, '_$1_')
-      .replace(/<code\b[^>]*>(.*?)<\/code>/gi, '`$1`')
-      .replace(/<a\b[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
-      .replace(/<img\b[^>]*alt="([^"]*)"[^>]*src="([^"]*)"[^>]*>/gi, '![$1]($2)')
-      .replace(/<img\b[^>]*src="([^"]*)"[^>]*>/gi, '![]($1)')
-      .replace(/<[^>]+>/g, ''),
-  )
-    .replace(/[ \t]{2,}/g, ' ')
-    .trim();
-}
+// `inline` and `htmlToMarkdown` are the shared converter now; aliased so the
+// block renderers below read unchanged.
+const inline = inlineToMarkdown;
 
-/** One `<table>` → a GFM table. Falls back to nothing when there are no rows. */
-function tableToMarkdown(html: string): string {
-  const rows = [...html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map(m =>
-    [...m[1]!.matchAll(/<(t[hd])\b[^>]*>([\s\S]*?)<\/\1>/gi)].map(c => inline(c[2]!).replace(/\|/g, '\\|')),
-  );
-  if (!rows.length) return '';
-  const width = Math.max(...rows.map(r => r.length));
-  const pad = (r: string[]) => [...r, ...Array(width - r.length).fill('')];
-  // A table whose first row is all <th> has a header; otherwise synthesise an
-  // empty one, since GFM has no headerless table form.
-  const headed = /<th\b/i.test(html.slice(0, html.indexOf('</tr>') + 1));
-  const [head, ...body] = headed ? [pad(rows[0]!), ...rows.slice(1).map(pad)] : [Array(width).fill(''), ...rows.map(pad)];
-  return [
-    `| ${head!.join(' | ')} |`,
-    `| ${Array(width).fill('---').join(' | ')} |`,
-    ...body.map(r => `| ${r.join(' | ')} |`),
-  ].join('\n');
-}
-
-/** Block-level HTML → markdown. */
-export function htmlToMarkdown(html: string): string {
-  let out = html;
-
-  // Tables first — their inner markup must not be eaten by the generic rules.
-  out = out.replace(/<table\b[^>]*>[\s\S]*?<\/table>/gi, m => `\n\n${tableToMarkdown(m)}\n\n`);
-
-  // Lists. `<ol>` numbering is computed per-list, which is why this cannot be a
-  // single regex with a `$1` backreference — inside a replace callback `$1` is
-  // a literal, not a substitution.
-  out = out.replace(/<ul\b[^>]*>([\s\S]*?)<\/ul>/gi, (_m, body: string) => {
-    const items = [...body.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)].map(i => `- ${inline(i[1]!)}`);
-    return `\n\n${items.join('\n')}\n\n`;
-  });
-  out = out.replace(/<ol\b[^>]*>([\s\S]*?)<\/ol>/gi, (_m, body: string) => {
-    const items = [...body.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)].map((i, n) => `${n + 1}. ${inline(i[1]!)}`);
-    return `\n\n${items.join('\n')}\n\n`;
-  });
-
-  out = out
-    .replace(/<pre\b[^>]*>\s*<code\b[^>]*class="language-(\w+)"[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi, (_m, lang: string, code: string) => `\n\n\`\`\`${lang}\n${decode(code).trim()}\n\`\`\`\n\n`)
-    .replace(/<pre\b[^>]*>\s*<code\b[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi, (_m, code: string) => `\n\n\`\`\`\n${decode(code).trim()}\n\`\`\`\n\n`)
-    .replace(/<pre\b[^>]*>([\s\S]*?)<\/pre>/gi, (_m, code: string) => `\n\n\`\`\`\n${decode(code).trim()}\n\`\`\`\n\n`)
-    .replace(/<blockquote\b[^>]*>([\s\S]*?)<\/blockquote>/gi, (_m, body: string) =>
-      `\n\n${inline(body).split('\n').map(l => `> ${l}`).join('\n')}\n\n`)
-    .replace(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi, (_m, level: string, body: string) =>
-      `\n\n${'#'.repeat(Number(level))} ${inline(body)}\n\n`)
-    .replace(/<hr\s*\/?>/gi, '\n\n---\n\n')
-    .replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, (_m, body: string) => `\n\n${inline(body)}\n\n`)
-    .replace(/<div\b[^>]*>([\s\S]*?)<\/div>/gi, (_m, body: string) => `\n\n${inline(body)}\n\n`);
-
-  return decode(out.replace(/<[^>]+>/g, ''))
-    .replace(/[ \t]+$/gm, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
+// Re-exported: src/lib/mdx.ts converts authored HTML through this module.
+export { htmlToMarkdown };
 
 const refLine = (r: ReferenceItem, i: number) =>
   `${i + 1}. ${inline(r.text)}${r.url ? ` — ${r.url}` : ''}`;

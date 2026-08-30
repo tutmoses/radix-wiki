@@ -39,14 +39,14 @@ export function plausibleEvent(
 // JSON-RPC envelope, so this is the only place tool names are countable.
 // Fired via after() so it never blocks the response; body is untrusted, so
 // every extraction is defensive.
-export function trackMcpCall(request: NextRequest, server: string, body: unknown) {
+export function trackMcpCall(request: Request, server: string, body: unknown) {
   const first = (Array.isArray(body) ? body[0] : body) as
     | { method?: unknown; params?: { name?: unknown } }
     | undefined;
   const method = typeof first?.method === 'string' ? first.method : 'unknown';
   const tool = typeof first?.params?.name === 'string' ? first.params.name : undefined;
   const ua = (request.headers.get('user-agent') || 'unknown').slice(0, 80);
-  const url = request.nextUrl.href;
+  const url = request.url;
   const headers = request.headers;
   after(() =>
     plausibleEvent('MCP Call', url, { server, method, ...(tool ? { tool } : {}), ua }, headers),
