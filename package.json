@@ -8,11 +8,12 @@
     "dev": "next dev",
     "build": "prisma generate && next build --turbopack",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "node scripts/check-classes.mjs && eslint",
     "test:mcp": "npx tsx scripts/_mcp-test.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "lint:classes": "node scripts/check-classes.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.2.0",

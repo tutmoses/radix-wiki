@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { Gift, Download, CheckCircle, ExternalLink } from 'lucide-react';
 import { useFetch, useAuth } from '@/hooks';
+import { Button } from '@/components/ui';
 
 interface EditorShare {
   id: string;
@@ -116,9 +117,9 @@ export default function RewardsView() {
       <div className="surface rounded-lg overflow-hidden">
         <div className="p-4 border-b border-surface-2 row justify-between">
           <h2>Editor Shares</h2>
-          <button onClick={handleDownloadCsv} className="btn btn-sm btn-secondary row gap-1" disabled={isLoading}>
+          <Button onClick={handleDownloadCsv} variant="secondary" size="sm" className="gap-1" disabled={isLoading}>
             <Download size={14} /> CSV
-          </button>
+          </Button>
         </div>
         <table className="w-full">
           <thead>
@@ -164,9 +165,9 @@ export default function RewardsView() {
             placeholder="Transaction hash..."
             className="input flex-1 font-mono text-small"
           />
-          <button onClick={handleRecordAirdrop} className="btn btn-primary" disabled={recording || !txHash.trim()}>
+          <Button onClick={handleRecordAirdrop} disabled={recording || !txHash.trim()}>
             {recording ? 'Recording...' : 'Record'}
-          </button>
+          </Button>
         </div>
         {recorded && (
           <p className="text-success row gap-1"><CheckCircle size={14} /> Airdrop recorded successfully.</p>

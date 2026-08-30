@@ -49,7 +49,7 @@ function changeSummaryText(changes: BlockChange[]): string {
 
 function ChangeSummary({ changes, changeType }: { changes: BlockChange[]; changeType: string }) {
   const summary = changeSummaryText(changes);
-  if (summary) return <span className="text-xs text-text-secondary">{summary}</span>;
+  if (summary) return <span className="text-xs text-text-muted">{summary}</span>;
   const fallback = changeType === 'major' ? 'Structural changes' : changeType === 'minor' ? 'Content updated' : changeType === 'patch' ? 'Metadata updated' : 'No changes';
   return <span className="text-xs text-text-muted">{fallback}</span>;
 }

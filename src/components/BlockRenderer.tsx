@@ -89,14 +89,14 @@ function PageListFetcher({ block }: { block: PageListBlock }) {
   const { pages, isLoading } = usePages({ type: 'byIds', pageIds: block.pageIds });
   if (isLoading) return <div className="row-md"><div className="flex-1 h-20 skeleton" /></div>;
   if (!pages.length) return <p className="text-text-muted">No pages selected.</p>;
-  return <div className="row-md wrap">{pages.map(p => <PageCard key={p.id} page={p} compact />)}</div>;
+  return <div className="row-md flex-wrap">{pages.map(p => <PageCard key={p.id} page={p} compact />)}</div>;
 }
 
 function PageListBlockView({ block }: { block: PageListBlock }) {
   if (!block.resolvedPages) return <PageListFetcher block={block} />;
   const pages = block.resolvedPages;
   if (!pages.length) return <p className="text-text-muted">No pages selected.</p>;
-  return <div className="row-md wrap">{pages.map((p: any) => <PageCard key={p.id} page={p} compact />)}</div>;
+  return <div className="row-md flex-wrap">{pages.map((p: any) => <PageCard key={p.id} page={p} compact />)}</div>;
 }
 
 type PriceData = { price: number; change24h?: number; symbol?: string; name?: string };

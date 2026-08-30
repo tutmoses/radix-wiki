@@ -308,7 +308,13 @@
   .break-anywhere { overflow-wrap: anywhere; word-break: break-word; }
 
   /* ===== LINKS ===== */
+  /* Matches the base `a` rule so a <button> can be styled as an inline link. */
+  .link { @apply text-accent no-underline cursor-pointer hover:text-accent-hover; }
   .link-muted { @apply text-text-muted hover:text-text; }
+
+  /* ===== RESPONSIVE ===== */
+  .hidden-mobile { display: none; }
+  @media (min-width: 640px) { .hidden-mobile { display: revert; } }
 
   /* ===== APP SHELL (layout.tsx) ===== */
   .app-main { @apply min-h-[calc(100dvh-var(--header-height))] flex-1 min-w-0 transition-all duration-200; }

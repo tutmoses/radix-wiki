@@ -367,7 +367,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   const mainContent = (
     <>
       <BlockRenderer content={mainBlocks} />
-      <div className="row-md justify-center wrap">
+      <div className="row-md justify-center flex-wrap">
         {!isAuthenticated && <Button size="lg" variant="primary" onClick={connect}>Connect Radix Wallet<ArrowRight size={18} /></Button>}
         <Link href="/contents"><Button variant="secondary" size="lg">Browse Content</Button></Link>
       </div>

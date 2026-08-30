@@ -336,8 +336,8 @@ function ColumnsBlockEdit({ block, onUpdate }: BlockProps<ColumnsBlock>) {
       </div>
       {showSettings && (
         <div className="toggle-group">
-          <div className="row"><span className="text-small text-text-muted">Gap:</span><div className="row wrap">{gaps.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, gap: opt })} className={(block.gap || 'md') === opt ? 'toggle-option border-accent bg-accent text-text-inverted' : 'toggle-option'}>{opt}</button>)}</div></div>
-          <div className="row"><span className="text-small text-text-muted">Align:</span><div className="row wrap">{aligns.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, align: opt })} className={(block.align || 'start') === opt ? 'toggle-option border-accent bg-accent text-text-inverted' : 'toggle-option'}>{opt}</button>)}</div></div>
+          <div className="row"><span className="text-small text-text-muted">Gap:</span><div className="row flex-wrap">{gaps.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, gap: opt })} className={(block.gap || 'md') === opt ? 'toggle-option border-accent bg-accent text-text-inverted' : 'toggle-option'}>{opt}</button>)}</div></div>
+          <div className="row"><span className="text-small text-text-muted">Align:</span><div className="row flex-wrap">{aligns.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, align: opt })} className={(block.align || 'start') === opt ? 'toggle-option border-accent bg-accent text-text-inverted' : 'toggle-option'}>{opt}</button>)}</div></div>
         </div>
       )}
       <div className={cn('flex', gapClass)}>{block.columns.map((col, i) => <ColumnEditor key={col.id} column={col} onUpdate={c => updateColumn(i, c)} onDelete={() => deleteColumn(i)} canDelete={block.columns.length > 1} />)}</div>
@@ -435,7 +435,7 @@ function BannerBlockEdit({ block, onUpdate }: BlockProps<BannerBlock>) {
     <EditWrapper icon={Info} label="Notice Banner">
       <div className="stack-sm">
         <label className="font-medium">Type</label>
-        <div className="toggle-group wrap">
+        <div className="toggle-group flex-wrap">
           {BANNER_VARIANTS.map(v => (
             <button key={v.value} type="button" onClick={() => onUpdate?.({ ...block, variant: v.value })} className={cn('toggle-option', block.variant === v.value && 'toggle-option-active')}>{v.label}</button>
           ))}

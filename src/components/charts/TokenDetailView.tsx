@@ -87,7 +87,7 @@ export default async function TokenDetailView({ address, wikiPage }: { address: 
         <span className="text-small text-text-muted">{shortenAddress(token.address)}</span>
       </div>
 
-      <div className="row-md wrap">
+      <div className="row-md flex-wrap">
         {wikiPage && (
           <Link href={`/${wikiPage.tagPath}/${wikiPage.slug}`} className="charts-section-link">
             Wiki: {wikiPage.title} <ArrowRight size={14} />
