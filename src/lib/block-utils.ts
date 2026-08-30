@@ -1,7 +1,8 @@
 // src/lib/block-utils.ts - Shared block constants and utilities
 
 import type { Block, BlockType, AtomicBlock } from '@/types/blocks';
-import { Clock, FileText, Columns, TrendingUp, Pencil, Info, Rss, Code2, ShoppingBag, PanelBottom, BarChart3, MessageSquareQuote, LayoutGrid, QrCode, ListOrdered, AlertTriangle, type LucideIcon } from 'lucide-react';
+import { createBlockValidator, duplicateBlockIds, validateLinkGroups, validateReferenceItems } from 'wiki-formant/validation';
+import { Clock, FileText, Columns, TrendingUp, Pencil, Info, Rss, Code2, BarChart3, MessageSquareQuote, LayoutGrid, QrCode, ListOrdered, AlertTriangle, type LucideIcon } from 'lucide-react';
 
 export const CODE_LANGS = ['javascript', 'typescript', 'css', 'json', 'bash', 'python', 'rust', 'sql', 'html', 'xml', 'jsx', 'tsx', 'markdown', 'yaml', 'toml'] as const;
 export const DEFAULT_LANG = 'rust';
@@ -15,8 +16,6 @@ export const BLOCK_META: Record<BlockType, { label: string; icon: LucideIcon }> 
   infobox: { label: 'Infobox', icon: Info },
   rssFeed: { label: 'RSS Feed', icon: Rss },
   codeTabs: { label: 'Code Tabs', icon: Code2 },
-  store: { label: 'Store', icon: ShoppingBag },
-  footer: { label: 'Footer', icon: PanelBottom },
   stats: { label: 'Stats', icon: BarChart3 },
   testimonial: { label: 'Testimonial', icon: MessageSquareQuote },
   linkGrid: { label: 'Link Grid', icon: LayoutGrid },
@@ -34,8 +33,6 @@ const BLOCK_DEFAULTS: Record<BlockType, () => Omit<Block, 'id'>> = {
   infobox: () => ({ type: 'infobox', blocks: [] }),
   rssFeed: () => ({ type: 'rssFeed', url: 'https://tutmoses.github.io/rss-feed/feeds.json', limit: 15 }),
   codeTabs: () => ({ type: 'codeTabs', tabs: [{ label: 'Rust', language: 'rust', code: '' }, { label: 'TypeScript', language: 'typescript', code: '' }] }),
-  store: () => ({ type: 'store', columns: 3, showPrice: true }),
-  footer: () => ({ type: 'footer', text: '', showLinks: true }),
   stats: () => ({ type: 'stats', items: [
     { id: crypto.randomUUID(), value: '100+', label: 'Customers' },
     { id: crypto.randomUUID(), value: '$1M', label: 'Revenue' },
@@ -48,105 +45,68 @@ const BLOCK_DEFAULTS: Record<BlockType, () => Omit<Block, 'id'>> = {
   banner: () => ({ type: 'banner', variant: 'stub' }),
 };
 
-// store/footer/stats/testimonial exist in the shared block-type standard (miow
-// renders them) but no page or revision here uses them, so they are neither
-// insertable nor valid. codeTabs stays valid and renderable (one live tutorial
-// uses it) but has no editor UI, so it is not insertable either.
+// Counted against the live database rather than assumed: `store` and `footer`
+// appear in no page and no revision, so they are gone entirely. `stats` (1 page,
+// 3 revisions) and `testimonial` (1 page, 5 revisions) DO have live content --
+// an earlier version of this comment called all four unused, which would have
+// broken two pages -- so they stay valid and renderable, just not insertable.
+// `tipJar` is likewise unused today but stays offered in the editor.
+// codeTabs is valid and renderable (one live tutorial) with no editor UI.
 export const INSERTABLE_BLOCKS: readonly BlockType[] = ['content', 'banner', 'columns', 'recentPages', 'pageList', 'assetPrice', 'rssFeed', 'linkGrid', 'tipJar', 'references'];
 export const ATOMIC_BLOCK_TYPES: readonly BlockType[] = ['content', 'banner', 'recentPages', 'pageList', 'assetPrice', 'rssFeed', 'codeTabs', 'linkGrid', 'tipJar', 'references'];
 
 export const createBlock = (type: BlockType): Block => ({ id: crypto.randomUUID(), ...BLOCK_DEFAULTS[type]() } as Block);
 
-export function duplicateBlock(block: Block): Block {
-  if (block.type === 'columns') {
-    return { ...block, id: crypto.randomUUID(), columns: block.columns.map(col => ({ ...col, id: crypto.randomUUID(), blocks: (col.blocks || []).map(b => ({ ...b, id: crypto.randomUUID() })) })) };
-  }
-  if (block.type === 'infobox') {
-    return { ...block, id: crypto.randomUUID(), blocks: (block.blocks || []).map(b => ({ ...b, id: crypto.randomUUID() }) as AtomicBlock) };
-  }
-  return { ...block, id: crypto.randomUUID() };
-}
+export const duplicateBlock = (block: Block): Block => duplicateBlockIds(block, () => crypto.randomUUID());
 
 // --- Block validation ---
+//
+// The walk (id/type gate, container branch, the two nested item validators) is
+// `wiki-formant/validation`, shared with caper, which had written the same one.
+// Only the switch below is this repo's — its block type set is.
+//
+// `okUrl` arrives with it: reference and link-grid URLs used to be accepted as
+// any string here, where caper already rejected non-http(s)/mailto schemes at
+// the write path. React 19 neutralises a `javascript:` href at render time, so
+// this is defence in depth rather than a fix for a live hole -- but a URL that
+// can never render safely is better rejected than stored.
 
-function isValidBlockType(type: unknown): type is BlockType {
-  return typeof type === 'string' && type in BLOCK_META;
-}
-
-function isAtomicType(type: BlockType): boolean {
-  return ATOMIC_BLOCK_TYPES.includes(type);
-}
-
-function validateAtomicBlock(block: unknown): block is AtomicBlock {
-  if (!block || typeof block !== 'object') return false;
-  const b = block as Record<string, unknown>;
-  if (typeof b.id !== 'string' || !isValidBlockType(b.type) || !isAtomicType(b.type)) return false;
-
-  switch (b.type) {
-    case 'content':
-      return typeof b.text === 'string';
-    case 'recentPages':
-      return typeof b.limit === 'number' && b.limit > 0;
-    case 'pageList':
-      return Array.isArray(b.pageIds) && b.pageIds.every((id: unknown) => typeof id === 'string');
-    case 'assetPrice':
-      return b.resourceAddress === undefined || typeof b.resourceAddress === 'string';
-    case 'rssFeed':
-      return typeof b.url === 'string';
-    case 'codeTabs':
-      return Array.isArray(b.tabs);
-    case 'tipJar':
-      return typeof b.address === 'string';
-    case 'banner':
-      return typeof b.variant === 'string';
-    case 'references':
-      return Array.isArray(b.items) && b.items.every((it: unknown) => {
-        if (!it || typeof it !== 'object') return false;
-        const item = it as Record<string, unknown>;
-        return typeof item.id === 'string' && typeof item.text === 'string' && (item.url === undefined || typeof item.url === 'string');
-      });
-    case 'linkGrid':
-      return Array.isArray(b.groups) && b.groups.every((g: unknown) => {
-        if (!g || typeof g !== 'object') return false;
-        const grp = g as Record<string, unknown>;
-        return typeof grp.id === 'string'
-          && typeof grp.heading === 'string'
-          && Array.isArray(grp.links)
-          && grp.links.every((l: unknown) => {
-            if (!l || typeof l !== 'object') return false;
-            const lnk = l as Record<string, unknown>;
-            return typeof lnk.label === 'string' && typeof lnk.href === 'string';
-          });
-      });
-    default:
-      return false;
-  }
-}
-
-function validateBlock(block: unknown): block is Block {
-  if (!block || typeof block !== 'object') return false;
-  const b = block as Record<string, unknown>;
-  if (typeof b.id !== 'string' || !isValidBlockType(b.type)) return false;
-
-  switch (b.type) {
-    case 'columns': {
-      if (!Array.isArray(b.columns)) return false;
-      return b.columns.every((col: unknown) => {
-        if (!col || typeof col !== 'object') return false;
-        const c = col as Record<string, unknown>;
-        return typeof c.id === 'string' && Array.isArray(c.blocks) && c.blocks.every(validateAtomicBlock);
-      });
+const { validateBlocks: validate } = createBlockValidator({
+  isKnownType: t => t in BLOCK_META,
+  isAtomicType: t => (ATOMIC_BLOCK_TYPES as readonly string[]).includes(t),
+  validateAtomic: b => {
+    switch (b.type) {
+      case 'content':
+        return typeof b.text === 'string';
+      case 'recentPages':
+        return typeof b.limit === 'number' && b.limit > 0;
+      case 'pageList':
+        return Array.isArray(b.pageIds) && b.pageIds.every(id => typeof id === 'string');
+      case 'assetPrice':
+        return b.resourceAddress === undefined || typeof b.resourceAddress === 'string';
+      case 'rssFeed':
+        return typeof b.url === 'string';
+      case 'codeTabs':
+        return Array.isArray(b.tabs);
+      case 'stats':
+        return Array.isArray(b.items);
+      case 'testimonial':
+        return typeof b.quote === 'string' && typeof b.author === 'string';
+      case 'tipJar':
+        return typeof b.address === 'string';
+      case 'banner':
+        return typeof b.variant === 'string';
+      case 'references':
+        return validateReferenceItems(b.items);
+      case 'linkGrid':
+        return validateLinkGroups(b.groups);
+      default:
+        return false;
     }
-    case 'infobox':
-      return Array.isArray(b.blocks) && b.blocks.every(validateAtomicBlock);
-    default:
-      return validateAtomicBlock(block);
-  }
-}
+  },
+});
 
-export function validateBlocks(content: unknown): content is Block[] {
-  return Array.isArray(content) && content.every(validateBlock);
-}
+export const validateBlocks = (content: unknown): content is Block[] => validate(content);
 
 // --- Code detection ---
 

@@ -92,12 +92,6 @@ function atomicToMarkdown(block: AtomicBlock): string {
     case 'tipJar':
       return `**${block.label || 'Tip the author'}**${block.message ? `\n\n${inline(block.message)}` : ''}${block.address ? `\n\nRadix: \`${block.address}\`` : ''}`;
 
-    case 'footer':
-      return block.text ? htmlToMarkdown(block.text) : '';
-
-    case 'store':
-      return '_Product grid — rendered on the live page._';
-
     default:
       return '';
   }

@@ -5,7 +5,7 @@
 // which cost markdown.ts a cast and BlockRenderer two `(p: any)` annotations.
 import type { WikiPage } from '@/types';
 
-export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice' | 'infobox' | 'rssFeed' | 'codeTabs' | 'store' | 'footer' | 'stats' | 'testimonial' | 'linkGrid' | 'tipJar' | 'references' | 'banner';
+export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice' | 'infobox' | 'rssFeed' | 'codeTabs' | 'stats' | 'testimonial' | 'linkGrid' | 'tipJar' | 'references' | 'banner';
 
 interface BaseBlock { id: string; type: BlockType; }
 
@@ -16,8 +16,6 @@ export interface AssetPriceBlock extends BaseBlock { type: 'assetPrice'; resourc
 export interface RssFeedBlock extends BaseBlock { type: 'rssFeed'; url: string; limit?: number; resolvedItems?: { title: string; link: string; image?: string; source: string; date?: string; description?: string }[]; }
 export interface CodeTab { label: string; language: string; code: string; }
 export interface CodeTabsBlock extends BaseBlock { type: 'codeTabs'; tabs: CodeTab[]; }
-export interface StoreBlock extends BaseBlock { type: 'store'; columns: 2 | 3 | 4; showPrice: boolean; }
-export interface FooterBlock extends BaseBlock { type: 'footer'; text?: string; showLinks?: boolean; }
 export interface StatItem { id: string; value: string; label: string; suffix?: string; }
 export interface StatsBlock extends BaseBlock { type: 'stats'; items: StatItem[]; columns: 2 | 3 | 4; }
 export interface TestimonialBlock extends BaseBlock { type: 'testimonial'; quote: string; author: string; role?: string; avatarUrl?: string; }
@@ -33,7 +31,7 @@ export type BannerVariant = 'stub' | 'unsourced' | 'outdated' | 'promotional' | 
 export interface BannerBlock extends BaseBlock { type: 'banner'; variant: BannerVariant; text?: string; }
 
 // Atomic blocks that can be nested inside containers
-export type AtomicBlock = ContentBlock | RecentPagesBlock | PageListBlock | AssetPriceBlock | RssFeedBlock | CodeTabsBlock | StoreBlock | FooterBlock | StatsBlock | TestimonialBlock | LinkGridBlock | TipJarBlock | ReferencesBlock | BannerBlock;
+export type AtomicBlock = ContentBlock | RecentPagesBlock | PageListBlock | AssetPriceBlock | RssFeedBlock | CodeTabsBlock | StatsBlock | TestimonialBlock | LinkGridBlock | TipJarBlock | ReferencesBlock | BannerBlock;
 
 export interface InfoboxBlock extends BaseBlock {
   type: 'infobox';

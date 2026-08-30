@@ -9,6 +9,7 @@ import { Clock, FileText, User, Copy, Check, AlertTriangle, Megaphone, CalendarC
 import QRCode from 'qrcode';
 import { cn, formatRelativeTime, formatDate, generateBannerSvg, getContentSnippet, pagePath } from '@/lib/utils';
 import { findTagByPath } from '@/lib/tags';
+import { safeLinkHref } from 'wiki-formant/validation';
 import { processHtml } from '@/lib/html';
 import { usePages, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
@@ -348,11 +349,13 @@ function LinkGridBlockView({ block }: { block: LinkGridBlock }) {
           <h3>{group.heading}</h3>
           {group.description && <div className="link-grid-group-description" dangerouslySetInnerHTML={{ __html: group.description }} />}
           <div className="link-grid-pills">
-            {(group.links || []).map((link, i) => (
-              /^https?:\/\//.test(link.href)
-                ? <a key={i} href={link.href} target="_blank" rel="noopener">{link.label}</a>
-                : <Link key={i} href={link.href}>{link.label}</Link>
-            ))}
+            {(group.links || []).map((link, i) => {
+              const href = safeLinkHref(link.href);
+              if (!href) return null;
+              return /^https?:\/\//.test(href)
+                ? <a key={i} href={href} target="_blank" rel="noopener">{link.label}</a>
+                : <Link key={i} href={href}>{link.label}</Link>;
+            })}
           </div>
         </section>
       ))}
@@ -436,7 +439,7 @@ function ReferencesBlockView({ block }: { block: ReferencesBlock }) {
           <li key={item.id} id={`ref-${i + 1}`} className="reference-item">
             <a href={`#cite-${i + 1}`} className="ref-backlink" aria-label="Back to citation">↑</a>{' '}
             <span dangerouslySetInnerHTML={{ __html: processHtml(item.text) }} />
-            {item.url && <> <a href={item.url} target="_blank" rel="noopener" className="reference-link" aria-label="Open source">↗</a></>}
+            {safeLinkHref(item.url) && <> <a href={safeLinkHref(item.url)!} target="_blank" rel="noopener" className="reference-link" aria-label="Open source">↗</a></>}
           </li>
         ))}
       </ol>
