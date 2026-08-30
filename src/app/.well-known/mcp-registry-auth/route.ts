@@ -1,33 +1,30 @@
-// src/app/.well-known/mcp-registry-auth/route.ts — Domain proof for the
-// official MCP registry.
+// src/app/.well-known/mcp-registry-auth/route.ts — domain proof for the
+// official MCP registry, the only pull-based discovery path in the ecosystem
+// and so the only descriptor here an agent can find without already knowing
+// this origin.
 //
-// `mcp-publisher login http --domain=radix.wiki` fetches this file and checks
-// that the public key here matches the private key signing the login, which is
-// what grants publishing rights to the `wiki.radix/*` namespace.
+// `mcp-publisher login http --domain=radix.wiki` makes the registry fetch this
+// exact path and check that the key here verifies the signature its login
+// presents. Passing grants publish rights over the reversed domain — the
+// `wiki.radix/*` namespace that server.json's name sits in.
 //
-// The key material is an env var, not a committed file: the PUBLIC half is
-// harmless to serve but pointless to keep in git, and keeping it out means the
-// PRIVATE half has an obvious home too (your keychain, never the repo).
-//
-//   openssl genpkey -algorithm Ed25519 -out key.pem
-//   openssl pkey -in key.pem -pubout -outform DER | tail -c 32 | base64
-//   → set MCP_REGISTRY_PUBLIC_KEY to that value in Vercel, redeploy
-//
-// Unset → 404 rather than a malformed record, so a missing key reads as
-// "not configured" instead of failing verification for a reason nobody can see.
+// The record itself is `wiki-formant/well-known`, shared with the other agent
+// surfaces: all three had written the same handler, differing only in the
+// domain named in this comment. Key material stays an env var — see that
+// module for why, and for how to generate one.
 
 import { NextResponse } from 'next/server';
+import { registryAuthRecord } from 'wiki-formant/well-known';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const publicKey = process.env.MCP_REGISTRY_PUBLIC_KEY;
-  if (!publicKey) return new NextResponse('Not found', { status: 404 });
+  const record = registryAuthRecord(process.env.MCP_REGISTRY_PUBLIC_KEY, process.env.MCP_REGISTRY_KEY_TYPE);
+  // Unset → 404 rather than a malformed record, so a missing key reads as
+  // "not configured" instead of failing verification for a reason nobody sees.
+  if (!record) return new NextResponse('Not found', { status: 404 });
 
-  // ed25519 unless a P-384 key was used instead (the LibreSSL-friendly path).
-  const keyType = process.env.MCP_REGISTRY_KEY_TYPE || 'ed25519';
-
-  return new NextResponse(`v=MCPv1; k=${keyType}; p=${publicKey}\n`, {
-    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
+  return new NextResponse(record.body, {
+    headers: { 'Content-Type': record.contentType, 'Cache-Control': record.cacheControl },
   });
 }

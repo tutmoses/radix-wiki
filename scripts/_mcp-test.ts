@@ -5,117 +5,39 @@
  *
  *   npm run test:mcp                # against http://localhost:3000
  *   npx tsx scripts/_mcp-test.ts https://radix.wiki
+ *
+ * The transport half — JSON-RPC client, the CORS/405/202/-32700/batch-cap
+ * assertions, version coherence, card parity, conditional GETs — is
+ * `wiki-formant/conformance`, shared with the other agent surfaces. It checks
+ * the transport, and the transport is `wiki-formant/mcp`. What stays here is
+ * this server's own fixtures: which tools it expects and what a good answer
+ * from each looks like.
  */
+import {
+  createTester,
+  transportChecks,
+  versionCoherence,
+  agentCardParity,
+  conditionalGetChecks,
+} from 'wiki-formant/conformance';
 import serverManifest from '../server.json';
 
 const BASE = process.argv[2] ?? process.env.MCP_TEST_BASE ?? 'http://localhost:3000';
-const MCP = `${BASE}/api/mcp`;
-
-type Rpc = {
-  result?: {
-    content?: Array<{ text?: string }>;
-    isError?: boolean;
-    tools?: Array<{ name: string }>;
-    resources?: Array<{ uri: string }>;
-    contents?: Array<{ text?: string }>;
-    serverInfo?: { version?: string };
-    capabilities?: Record<string, unknown>;
-    instructions?: string;
-  };
-  error?: { code: number; message: string; data?: { availableTools?: string[] } };
-};
-
-let calls = 0;
-async function rpc(method: string, params?: unknown): Promise<Rpc> {
-  calls++;
-  const res = await fetch(MCP, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: calls, method, params }),
-  });
-  if (res.status === 429) {
-    await new Promise(r => setTimeout(r, 5000));
-    return rpc(method, params);
-  }
-  return (await res.json()) as Rpc;
-}
-
-const call = async (name: string, args: Record<string, unknown> = {}) =>
-  rpc('tools/call', { name, arguments: args });
-
-function payload(r: Rpc): unknown {
-  const text = r.result?.content?.[0]?.text;
-  if (text == null) return r.error ? { _error: r.error } : r.result;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
-}
-
-const results: Array<{ tool: string; ok: boolean; note: string }> = [];
-function check(tool: string, ok: boolean, note: string) {
-  results.push({ tool, ok, note });
-  console.log(`${ok ? '  PASS' : '  FAIL'}  ${tool.padEnd(24)} ${note}`);
-}
+const t = createTester({ base: BASE, clientName: 'radix-wiki-mcp-test' });
+const { rpc, call, payload, check } = t;
+const MCP = t.endpoint;
 
 (async () => {
-  console.log(`\n=== MCP server  ${MCP} ===`);
-  const init = await rpc('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'radix-wiki-mcp-test', version: '1' } });
-  check('initialize', !!init.result?.serverInfo && !!init.result?.instructions, JSON.stringify(init.result?.serverInfo ?? init.error));
+  const init = await transportChecks(t, 'radix-wiki-mcp-test');
 
-  // ---- HTTP transport conformance ----------------------------------------
-  console.log(`\n=== transport ===`);
-  const opt = await fetch(MCP, { method: 'OPTIONS' });
-  check(
-    'OPTIONS preflight',
-    opt.status === 204 &&
-      opt.headers.get('access-control-allow-origin') === '*' &&
-      (opt.headers.get('access-control-allow-headers') ?? '').includes('Mcp-Protocol-Version'),
-    `${opt.status} ACAO=${opt.headers.get('access-control-allow-origin')}`,
-  );
+  await versionCoherence(t, serverManifest.version, {
+    card: { url: `${BASE}/.well-known/agent-card.json`, at: j => j.version },
+    legacyCard: { url: `${BASE}/.well-known/agent.json`, at: j => j.version },
+    openapi: { url: `${BASE}/openapi.json`, at: j => (j.info as { version?: string })?.version },
+    serverCard: { url: `${MCP}/server-card`, at: j => j.version },
+  }, init.result?.serverInfo?.version);
 
-  const get = await fetch(MCP);
-  check(
-    'GET→405',
-    get.status === 405 && get.headers.get('access-control-allow-origin') === '*',
-    `${get.status} Allow=${get.headers.get('allow')} ACAO=${get.headers.get('access-control-allow-origin')}`,
-  );
-
-  const notif = await fetch(MCP, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }),
-  });
-  const notifBody = await notif.text();
-  check('notification→202', notif.status === 202 && notifBody === '', `${notif.status} body="${notifBody}"`);
-
-  const bad = await fetch(MCP, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: 'not json' });
-  const badJson = (await bad.json()) as Rpc;
-  check('parse error→400', bad.status === 400 && badJson.error?.code === -32700, `${bad.status} code=${badJson.error?.code}`);
-
-  const over = await fetch(MCP, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(Array.from({ length: 21 }, (_, i) => ({ jsonrpc: '2.0', id: i, method: 'ping' }))),
-  });
-  const overJson = (await over.json()) as Rpc;
-  check('batch cap (21)', overJson.error?.code === -32600, `code=${overJson.error?.code}: ${(overJson.error?.message ?? '').slice(0, 80)}`);
-
-  const caps = init.result?.capabilities ?? {};
-  check('capabilities honest', 'tools' in caps && 'resources' in caps, JSON.stringify(caps));
-
-  const cardJson = (await (await fetch(`${BASE}/.well-known/agent-card.json`)).json()) as { version?: string };
-  const legacyCardJson = (await (await fetch(`${BASE}/.well-known/agent.json`)).json()) as { version?: string };
-  const apiV = ((await (await fetch(`${BASE}/openapi.json`)).json()) as { info?: { version?: string } }).info?.version;
-  const serverCardV = ((await (await fetch(`${MCP}/server-card`)).json()) as { version?: string }).version;
-  const initV = init.result?.serverInfo?.version;
-  check(
-    'version coherence',
-    [initV, cardJson.version, legacyCardJson.version, apiV, serverCardV].every(v => v === serverManifest.version),
-    `server.json=${serverManifest.version} init=${initV} card=${cardJson.version} legacy=${legacyCardJson.version} openapi=${apiV} serverCard=${serverCardV}`,
-  );
-  check('agent card parity', JSON.stringify(cardJson) === JSON.stringify(legacyCardJson), 'agent.json === agent-card.json');
+  await agentCardParity(t);
 
   // ---- tools ---------------------------------------------------------------
   console.log(`\n=== tools ===`);
@@ -192,18 +114,10 @@ function check(tool: string, ok: boolean, note: string) {
     check('.md is real markdown', !/<(Infobox|RecentPages|PageList|AssetPrice|Column)/.test(mdBody) && !mdBody.includes('. $1'), 'no JSX component tags, no $1 artifacts');
   }
 
-  for (const path of ['llms.txt', 'llms-index.txt', 'llms-full.txt']) {
-    const fresh = await fetch(`${BASE}/${path}`);
-    const etag = fresh.headers.get('etag');
-    const revalidated = etag ? await fetch(`${BASE}/${path}`, { headers: { 'If-None-Match': etag } }) : null;
-    check(`${path} 304`, !!etag && revalidated?.status === 304, `etag=${etag} revalidate=${revalidated?.status}`);
-  }
+  await conditionalGetChecks(t, ['llms.txt', 'llms-index.txt', 'llms-full.txt']);
 
   const sitemap = await (await fetch(`${BASE}/sitemap.xml`)).text();
   check('sitemap lists llms.txt', sitemap.includes('/llms.txt') && sitemap.includes('/llms-full.txt') && sitemap.includes('/llms-index.txt'), 'llms.txt + llms-index.txt + llms-full.txt present');
 
-  const failed = results.filter(r => !r.ok);
-  console.log(`\n──────── ${results.length - failed.length}/${results.length} passed, ${calls} JSON-RPC calls ────────`);
-  for (const f of failed) console.log(`FAILED: ${f.tool} — ${f.note}`);
-  process.exit(failed.length ? 1 : 0);
+  process.exit(t.summary());
 })();
