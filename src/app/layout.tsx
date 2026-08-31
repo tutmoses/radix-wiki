@@ -4,6 +4,8 @@ import type { Metadata } from 'next';
 import Script from 'next/script';
 import { Inter } from 'next/font/google';
 import '@/styles/globals.css';
+import { SidebarProvider } from 'wiki-formant/react';
+import { sidebarBootScript } from 'wiki-formant/sidebar';
 import { RadixProvider } from '@/components/RadixProvider';
 import { Header } from '@/components/Header';
 import { Sidebar } from '@/components/Sidebar';
@@ -85,9 +87,15 @@ const SITE_JSON_LD = JSON.stringify([
 ]);
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // suppressHydrationWarning: the sidebar boot script below stamps
+  // data-sidebar on <html> before React hydrates, so the server HTML and the
+  // client DOM differ by exactly that attribute, by design.
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Before first paint: stamp the remembered rail state on <html>, so a
+            rail the reader collapsed does not paint open and animate shut. */}
+        <script dangerouslySetInnerHTML={{ __html: sidebarBootScript('radix-wiki:sidebar', 768) }} />
         <link rel="help" type="text/plain" href="/llms.txt" />
         <link rel="alternate" type="text/plain" href="/llms-full.txt" title="Full LLM content" />
         {/* Kept here rather than in `alternates.types`: pages set `alternates.canonical`,
@@ -111,17 +119,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init({ domain: ${JSON.stringify(PLAUSIBLE_DOMAIN)}, endpoint: '/api/event' });`}
         </Script>
         <RadixProvider>
-          <div className="min-h-screen bg-surface-0">
-            <a href="#main" className="skip-link">Skip to content</a>
-            <Header />
-            <div className="flex">
-              <Sidebar />
-              <main id="main" className="app-main">
-                <div className="app-content">{children}</div>
-                <Footer />
-              </main>
+          {/* The rail and the header button that toggles it are not siblings,
+              so the collapse state spans them through this provider. */}
+          <SidebarProvider storageKey="radix-wiki:sidebar" breakpoint={768}>
+            <div className="min-h-screen bg-surface-0">
+              <a href="#main" className="skip-link">Skip to content</a>
+              <Header />
+              <div className="flex">
+                <Sidebar />
+                <main id="main" className="app-main">
+                  <div className="app-content">{children}</div>
+                  <Footer />
+                </main>
+              </div>
             </div>
-          </div>
+          </SidebarProvider>
           <Toast />
         </RadixProvider>
       </body>

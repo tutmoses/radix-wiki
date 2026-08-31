@@ -51,21 +51,7 @@ export function useFetch<T>(url: string | null | undefined, opts?: { transform?:
 
 // ========== VIEWPORT HOOK ==========
 
-const MOBILE_BREAKPOINT = 768;
 
-export function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
-    const handler = (e: MediaQueryListEvent | MediaQueryList) => setIsMobile(e.matches);
-    handler(mql);
-    mql.addEventListener('change', handler);
-    return () => mql.removeEventListener('change', handler);
-  }, []);
-
-  return isMobile;
-}
 
 // ========== PAGE PATH HOOK ==========
 
@@ -93,7 +79,6 @@ interface AppStore {
   isConnecting: boolean;
   rdtReady: boolean;
   walletData: RadixWalletData | null;
-  sidebarOpen: boolean;
   _rdtDisconnect: (() => void) | null;
   _rdtConnect: (() => void) | null;
   _rdtSendTransaction: ((manifest: string) => Promise<{ transactionIntentHash: string }>) | null;
@@ -107,8 +92,6 @@ interface AppStore {
   setConnected: (isConnected: boolean) => void;
   setWalletData: (walletData: RadixWalletData | null) => void;
   clearConnecting: () => void;
-  setSidebarOpen: (open: boolean) => void;
-  toggleSidebar: () => void;
   connect: () => void;
   logout: () => Promise<void>;
   toast: { message: string; type: 'success' | 'info' } | null;
@@ -127,7 +110,6 @@ export const useStore = create<AppStore>()((set, get) => ({
   isConnecting: false,
   rdtReady: false,
   walletData: null,
-  sidebarOpen: false,
   _rdtDisconnect: null,
   _rdtConnect: null,
   _rdtSendTransaction: null,
@@ -160,8 +142,6 @@ export const useStore = create<AppStore>()((set, get) => ({
     if (_connectTimeout) clearTimeout(_connectTimeout);
     set({ isConnecting: false, _connectTimeout: null });
   },
-  setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
-  toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   connect: () => {
     const { _rdtConnect, rdtReady, _connectTimeout } = get();
     if (_connectTimeout) clearTimeout(_connectTimeout);

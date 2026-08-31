@@ -353,6 +353,15 @@
   .sidebar { @apply sticky top-[var(--header-height)] h-[calc(100dvh-var(--header-height))] bg-surface-0 border-r border-border-muted shrink-0 overflow-hidden transition-all duration-200; }
   .sidebar-open { width: var(--sidebar-width); }
   .sidebar-closed { width: 0; }
+  /* Before the remembered state is known, skip the animation: a rail the reader
+     left closed should already be closed on first paint, not slide shut. */
+  /* The attribute is written by wiki-formant's boot script before first paint
+     and kept in sync by the hook afterwards, so it is authoritative on both
+     sides of hydration — the React class alone cannot be, since the server
+     cannot read localStorage. */
+  html[data-sidebar='closed'] .sidebar { width: 0; }
+  html[data-sidebar='open'] .sidebar { width: var(--sidebar-width); }
+  .sidebar-instant { transition: none; }
   .sidebar-scroll { @apply flex flex-col h-full overflow-y-auto w-[var(--sidebar-width)] pb-24; }
   .sidebar-label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3; }
 

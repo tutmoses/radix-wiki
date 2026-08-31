@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { Search, Menu, X, Loader2, LogOut, ChevronDown, Edit, History, User, FileCode, Bell, Webhook, Database, MoreVertical, Quote, Link2, Check, Eye, EyeOff } from 'lucide-react';
+import { useSidebar } from 'wiki-formant/react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth, useClickOutside, usePagePath, useFetch } from '@/hooks';
 import { cn, shortenAddress, formatRelativeTime, pagePath } from '@/lib/utils';
@@ -212,8 +213,8 @@ export function Header() {
   const rdtReady = useStore(s => s.rdtReady);
   const logout = useStore(s => s.logout);
   const connect = useStore(s => s.connect);
-  const sidebarOpen = useStore(s => s.sidebarOpen);
-  const toggleSidebar = useStore(s => s.toggleSidebar);
+  // Shared with the rail through wiki-formant's SidebarProvider.
+  const { open: sidebarOpen, toggle: toggleSidebar } = useSidebar();
   const isConnecting = useStore(s => s.isConnecting);
   const fetchNotifications = useStore(s => s.fetchNotifications);
   const unreadCount = useStore(s => s.unreadCount);

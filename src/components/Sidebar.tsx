@@ -5,9 +5,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Trophy, BarChart3, ChevronRight, ChevronDown, ListTree, Wrench } from 'lucide-react';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
+import { TableOfContents as SharedToc, useSidebar } from 'wiki-formant/react';
 import { cn } from '@/lib/utils';
-import { useStore, useIsMobile, usePagePath, useAuth } from '@/hooks';
+import { usePagePath, useAuth } from '@/hooks';
 import { getVisibleTags } from '@/lib/tags';
 
 function NavItem({ href, icon, label, isActive, onNavigate }: { href: string; icon: React.ReactNode; label: string; isActive?: boolean; onNavigate?: () => void }) {
@@ -18,107 +19,34 @@ function NavItem({ href, icon, label, isActive, onNavigate }: { href: string; ic
   );
 }
 
-function TableOfContents() {
-  const [headings, setHeadings] = useState<{ text: string; level: number; id: string }[]>([]);
-  const [isExpanded, setIsExpanded] = useState(true);
-  const [activeId, setActiveId] = useState('');
-
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    const updateHeadings = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        const els = document.querySelector('main')?.querySelectorAll('h1[id], h2[id], h3[id]') || [];
-        const next = Array.from(els).map(el => ({
-          text: el.textContent?.trim() || '',
-          level: parseInt(el.tagName[1]!),
-          id: el.id,
-        })).filter(h => h.text && h.id);
-        // Keep the same array reference when unchanged so the scroll-spy observer
-        // isn't torn down by unrelated DOM mutations (live price ticker, RSS feed).
-        setHeadings(prev =>
-          prev.length === next.length && prev.every((h, i) => h.id === next[i]!.id && h.text === next[i]!.text)
-            ? prev : next,
-        );
-      }, 200);
-    };
-
-    updateHeadings();
-    const observer = new MutationObserver(updateHeadings);
-    const main = document.querySelector('main');
-    if (main) observer.observe(main, { childList: true, subtree: true, characterData: false, attributes: false });
-    return () => { clearTimeout(timer); observer.disconnect(); };
-  }, []);
-
-  // Scroll-spy: highlight the section currently under the top of the viewport.
-  useEffect(() => {
-    if (!headings.length) return;
-    const order = new Map(headings.map((h, i) => [h.id, i]));
-    const visible = new Set<string>();
-    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-    const headerRem = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-height')) || 4;
-    const topOffset = Math.round(headerRem * rem + rem * 0.5);
-    const observer = new IntersectionObserver(
-      entries => {
-        for (const e of entries) {
-          if (e.isIntersecting) visible.add(e.target.id);
-          else visible.delete(e.target.id);
-        }
-        if (!visible.size) return;
-        let bestId = '';
-        let bestIdx = Infinity;
-        for (const id of visible) {
-          const idx = order.get(id) ?? Infinity;
-          if (idx < bestIdx) { bestIdx = idx; bestId = id; }
-        }
-        if (bestId) setActiveId(bestId);
-      },
-      { rootMargin: `-${topOffset}px 0px -75% 0px`, threshold: 0 },
-    );
-    headings.forEach(h => { const el = document.getElementById(h.id); if (el) observer.observe(el); });
-    return () => observer.disconnect();
-  }, [headings]);
-
-  if (!headings.length) return null;
-
-  // Until the observer reports a section, the first heading is the current one.
-  // Derived rather than seeded from the effect, which would set state on mount.
-  const currentId = activeId || headings[0]?.id;
-
-  return (
-    <div className="stack-sm">
-      <button onClick={() => setIsExpanded(!isExpanded)} className="toc-btn">
-        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+// The rail's "on this page" list is `wiki-formant/react`, shared with the other
+// wikis, which had written the same debounced MutationObserver and scroll-spy.
+// Ids are injected server-side here (lib/html.ts -> wiki-formant/headings), so
+// no `slug` is passed: an id is a URL, and one minted in the browser is not the
+// one this wiki published.
+const TableOfContents = () => (
+  <SharedToc
+    containerSelector="main"
+    offsetVar="--header-height"
+    classNames={{ root: 'stack-sm', button: 'toc-btn', label: 'toc-label', list: 'stack-xs pl-4', item: 'toc-item', itemActive: 'toc-item-active' }}
+    icon={expanded => (
+      <>
+        {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         <ListTree size={16} />
-        <span className="toc-label">On This Page</span>
-      </button>
-      {isExpanded && (
-        <nav className="stack-xs pl-4">
-          {headings.map((h, i) => (
-            <button
-              key={i}
-              onClick={() => { setActiveId(h.id); document.getElementById(h.id)?.scrollIntoView({ behavior: 'smooth' }); }}
-              className={cn('toc-item', currentId === h.id && 'toc-item-active')}
-              aria-current={currentId === h.id ? 'location' : undefined}
-              style={{ paddingLeft: `${(h.level - 1) * 0.75}rem` }}
-            >
-              {h.text}
-            </button>
-          ))}
-        </nav>
-      )}
-    </div>
-  );
-}
+      </>
+    )}
+    label="On This Page"
+  />
+);
 
 export function Sidebar() {
   const pathname = usePathname();
-  const sidebarOpen = useStore(s => s.sidebarOpen);
-  const setSidebarOpen = useStore(s => s.setSidebarOpen);
-  const isMobile = useIsMobile();
+  // Collapse state is `wiki-formant/react`, shared with the other wikis. It
+  // remembers the reader's choice and lets the viewport supply only a default —
+  // the local version reset the rail open on every resize across the breakpoint.
+  const { open: sidebarOpen, setOpen: setSidebarOpen, isMobile, ready } = useSidebar();
   const { isAuthenticated } = useAuth();
 
-  useEffect(() => setSidebarOpen(!isMobile), [isMobile, setSidebarOpen]);
   const closeMobile = useCallback(() => { if (isMobile) setSidebarOpen(false); }, [isMobile, setSidebarOpen]);
   const visibleTags = useMemo(() => getVisibleTags(), []);
 
@@ -126,7 +54,7 @@ export function Sidebar() {
   const showToc = (isHomepage || isPage) && !isEdit && !isHistory;
 
   return (
-    <aside className={cn('sidebar', sidebarOpen ? 'sidebar-open' : 'sidebar-closed')}>
+    <aside className={cn('sidebar', sidebarOpen ? 'sidebar-open' : 'sidebar-closed', !ready && 'sidebar-instant')}>
       <div className="sidebar-scroll">
         <div className="stack-sm p-4">
           <nav className="stack-sm">
