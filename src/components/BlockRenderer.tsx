@@ -14,7 +14,7 @@ import { safeLinkHref } from 'wiki-formant/validation';
 // copy-button injector there was byte-identical to the one this file held, down
 // to the SVG path data, and the Twitter origin was written out here as well as
 // twice more in the editor's node views.
-import { addCopyButtons, hydrateTweetEmbeds, onTweetResize, sizeTweetEmbeds } from 'wiki-formant/dom';
+import { activateTabGroups, addCopyButtons, hydrateTweetEmbeds, onTweetResize, sizeTweetEmbeds } from 'wiki-formant/dom';
 import { processHtml } from '@/lib/html';
 import { usePages, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
@@ -486,35 +486,7 @@ export function BlockRenderer({ content, className }: { content: Block[] | unkno
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    container.querySelectorAll('[data-tabs]:not([data-tabs-init])').forEach(tabGroup => {
-      const items = tabGroup.querySelectorAll('[data-tab-item]');
-      if (!items.length) return;
-      tabGroup.setAttribute('data-tabs-init', '');
-      const tabList = document.createElement('div');
-      tabList.className = 'tabs-list';
-      const tabPanels = document.createElement('div');
-      tabPanels.className = 'tabs-panels';
-      items.forEach((item, i) => {
-        const btn = document.createElement('button');
-        btn.className = `tab-button${i === 0 ? ' active' : ''}`;
-        btn.textContent = item.getAttribute('data-tab-title') || `Tab ${i + 1}`;
-        btn.type = 'button';
-        btn.onclick = () => {
-          tabList.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-          tabPanels.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-          btn.classList.add('active');
-          tabPanels.children[i]?.classList.add('active');
-        };
-        tabList.appendChild(btn);
-        const panel = document.createElement('div');
-        panel.className = `tab-panel${i === 0 ? ' active' : ''}`;
-        panel.innerHTML = item.innerHTML;
-        tabPanels.appendChild(panel);
-      });
-      tabGroup.innerHTML = '';
-      tabGroup.appendChild(tabList);
-      tabGroup.appendChild(tabPanels);
-    });
+    activateTabGroups(container);
     addCopyButtons(container);
   }, []);
 
