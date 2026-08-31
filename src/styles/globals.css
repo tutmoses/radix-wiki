@@ -34,6 +34,13 @@
   --header-height: 4rem;
   --sidebar-width: 18rem;
   --content-width: 72rem;
+  /* The reading measure, as a CEILING. There was none: prose was constrained
+     only by whatever sat beside it, so a page whose infobox did not render ran
+     the full column. `ch` is the advance of the digit zero, not an average
+     character — in Inter it is 1.26x wider — so 63ch renders about 80
+     characters. acuiq2's prose already measured 640px, which is what this
+     resolves to at 16px. */
+  --measure: 63ch;
   --scrollbar-thumb: var(--color-border);
   --scrollbar-thumb-hover: var(--color-border-muted);
 }
@@ -115,6 +122,10 @@
     .selectedCell { @apply bg-accent-muted; }
     &.ProseMirror-selectednode .iframe-embed { @apply outline-2 outline-accent outline-offset-2 rounded-lg; }
   }
+
+  /* Cap the reading measure on text elements only — tables, images, code and
+     embeds keep the full column. Same split caper draws. */
+  .prose-content :where(p, ul, ol, blockquote, h2, h3, h4) { max-width: var(--measure); }
 
   .prose-content {
     a[href^="/"] { @apply text-accent font-medium decoration-accent/40 underline underline-offset-2 hover:text-accent-hover hover:decoration-accent-hover/60; }
@@ -344,6 +355,9 @@
   .search-icon-right { @apply absolute right-3 top-1/2 -translate-y-1/2 text-text-muted animate-spin; }
   .search-results { @apply absolute top-full left-0 right-0 mt-2 bg-surface-1 border border-border rounded-lg shadow overflow-hidden z-50; }
   .search-result { @apply block w-full p-3 hover:bg-surface-2 transition-colors text-left; }
+  /* The keyboard highlight. Same surface as :hover so arrowing down and
+     mousing over read as one selection rather than two competing ones. */
+  .search-result-active { @apply bg-surface-2; }
   .search-mark { @apply bg-accent/25 text-text rounded-sm px-0.5; }
   .search-result-all { @apply text-center text-small text-accent font-medium border-t border-border-muted hover:text-accent-hover; }
   .search-empty { @apply absolute top-full left-0 right-0 mt-2 bg-surface-1 border border-border rounded-lg shadow p-4 text-center text-text-muted z-50; }

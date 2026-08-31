@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { Search, Menu, X, Loader2, LogOut, ChevronDown, Edit, History, User, FileCode, Bell, Webhook, Database, MoreVertical, Quote, Link2, Check, Eye, EyeOff } from 'lucide-react';
-import { useSidebar } from 'wiki-formant/react';
+import { useSidebar, useTypeahead } from 'wiki-formant/react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth, useClickOutside, usePagePath, useFetch } from '@/hooks';
 import { cn, shortenAddress, formatRelativeTime, pagePath } from '@/lib/utils';
@@ -110,14 +110,25 @@ function UserMenuDropdown({ onClose, onLogout }: { onClose: () => void; onLogout
 // One row shape for both the desktop dropdown and the mobile panel. The snippet is
 // the passage the query matched (computed server-side by the shared summarizer),
 // so a body-text hit doesn't read as an unrelated title.
-function SearchResultRow({ page, query, onSelect }: { page: PageSummary; query: string; onSelect: (page: PageSummary) => void }) {
+function SearchResultRow({ page, query, active, onSelect, onHover }: {
+  page: PageSummary; query: string; active?: boolean; onSelect: (page: PageSummary) => void; onHover?: () => void;
+}) {
   return (
-    <button type="button" onClick={() => onSelect(page)} className="search-result">
+    <button type="button" onClick={() => onSelect(page)} onMouseEnter={onHover}
+      className={cn('search-result', active && 'search-result-active')} aria-selected={active}>
       <div className="font-medium truncate"><Highlight text={page.title} query={query} /></div>
       <div className="text-small text-text-muted truncate">{pagePath(page.tagPath, page.slug)}</div>
       {page.snippet && <p className="text-small text-text-muted line-clamp-1 mt-0.5"><Highlight text={page.snippet} query={query} /></p>}
     </button>
   );
+}
+
+// Module scope, so the reference is stable: `useTypeahead` runs it from an
+// effect, and an inline arrow would re-search on every render.
+async function searchPages(q: string, signal: AbortSignal): Promise<PageSummary[]> {
+  const res = await fetch(`/api/wiki?${new URLSearchParams({ q, pageSize: '5' })}`, { signal });
+  if (!res.ok) return [];
+  return (await res.json()).items || [];
 }
 
 // ===== Page tools =====
@@ -240,11 +251,27 @@ export function Header() {
     return 'text-error';
   })();
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<PageSummary[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const clearSearchResults = useCallback(() => { setSearchResults([]); setSearchOpen(false); }, []);
+  // The search field's state machine is `wiki-formant/react`, shared with the
+  // other wikis. This surface had no keyboard navigation at all and no guard
+  // against an older response landing after a newer one — on a wiki whose
+  // search IS its primary navigation.
+  const {
+    query: searchQuery,
+    setQuery: setSearchQuery,
+    items: searchResults,
+    highlight,
+    setHighlight,
+    isSearching,
+    onKeyDown: onSearchKeyDown,
+    clearItems,
+    reset: resetSearch,
+  } = useTypeahead<PageSummary>({
+    fetch: searchPages,
+    onPick: page => handleSearchSelect(page),
+    onEscape: () => { setSearchOpen(false); setShowSearch(false); },
+  });
+  const clearSearchResults = useCallback(() => { clearItems(); setSearchOpen(false); }, [clearItems]);
   const searchRef = useClickOutside<HTMLDivElement>(clearSearchResults);
   const desktopSearchRef = useClickOutside<HTMLFormElement>(clearSearchResults);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -253,11 +280,11 @@ export function Header() {
   const goToSearchPage = useCallback(() => {
     const trimmed = searchQuery.trim();
     if (!trimmed) return;
-    setSearchResults([]);
+    clearItems();
     setSearchOpen(false);
     setShowSearch(false);
     router.push(`/search?q=${encodeURIComponent(trimmed)}`);
-  }, [searchQuery, router]);
+  }, [searchQuery, router, clearItems]);
 
   // "/" focuses search from anywhere (Wikipedia-style), unless already typing.
   useEffect(() => {
@@ -294,22 +321,20 @@ export function Header() {
     if (showSearch && searchInputRef.current) searchInputRef.current.focus();
   }, [showSearch]);
 
-  const performSearch = useCallback(async (query: string) => {
-    if (!query.trim()) { setSearchResults([]); return; }
-    setIsSearching(true);
-    try {
-      const res = await fetch(`/api/wiki?${new URLSearchParams({ q: query, pageSize: '5' })}`);
-      if (res.ok) setSearchResults((await res.json()).items || []);
-    } catch (e) { console.error('Search failed:', e); }
-    finally { setIsSearching(false); }
-  }, []);
+  // A declaration, not a const: `onPick` above is wired before this point.
+  function handleSearchSelect(page: PageSummary) {
+    resetSearch();
+    setSearchOpen(false);
+    setShowSearch(false);
+    router.push(pagePath(page.tagPath, page.slug));
+  }
 
-  useEffect(() => {
-    const timer = setTimeout(() => performSearch(searchQuery), 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery, performSearch]);
-
-  const handleSearchSelect = (page: PageSummary) => { setSearchQuery(''); setSearchResults([]); setSearchOpen(false); setShowSearch(false); router.push(pagePath(page.tagPath, page.slug)); };
+  // Enter with nothing highlighted means "search properly" rather than nothing.
+  // The desktop field is a form, so its submit handler already does this.
+  const onMobileSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !searchResults.length) { e.preventDefault(); goToSearchPage(); return; }
+    onSearchKeyDown(e);
+  };
 
   const handleLogout = async () => {
     setShowUserMenu(false);
@@ -333,12 +358,14 @@ export function Header() {
             <Search className="search-icon-left" size={18} />
             <input ref={desktopSearchInputRef} type="search" placeholder="Search the wiki... ( / )" className="input pl-10" value={searchQuery}
               onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); }}
-              onKeyDown={e => { if (e.key === 'Escape') { setSearchQuery(''); setSearchResults([]); setSearchOpen(false); } }} />
+              onKeyDown={onSearchKeyDown} role="combobox" aria-expanded={searchOpen && searchResults.length > 0}
+              aria-autocomplete="list" />
             {isSearching && <Loader2 className="search-icon-right" size={18} />}
             {searchOpen && searchResults.length > 0 && (
               <div className="search-results">
-                {searchResults.map(page => (
-                  <SearchResultRow key={page.url} page={page} query={searchQuery.trim()} onSelect={handleSearchSelect} />
+                {searchResults.map((page, i) => (
+                  <SearchResultRow key={page.url} page={page} query={searchQuery.trim()} active={i === highlight}
+                    onHover={() => setHighlight(i)} onSelect={handleSearchSelect} />
                 ))}
                 <button type="button" onClick={goToSearchPage} className="search-result search-result-all">
                   See all results for &ldquo;{searchQuery.trim()}&rdquo;
@@ -417,13 +444,15 @@ export function Header() {
               <Search className="search-icon-left" size={18} />
               <input ref={searchInputRef} type="search" placeholder="Search the wiki..." className="input pl-10" value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); goToSearchPage(); } else if (e.key === 'Escape') { setShowSearch(false); setSearchQuery(''); setSearchResults([]); } }} />
+                onKeyDown={onMobileSearchKeyDown} role="combobox" aria-expanded={searchResults.length > 0}
+                aria-autocomplete="list" />
               {isSearching && <Loader2 className="search-icon-right" size={18} />}
 
               {searchResults.length > 0 && (
                 <div className="search-results">
-                  {searchResults.map(page => (
-                    <SearchResultRow key={page.url} page={page} query={searchQuery.trim()} onSelect={handleSearchSelect} />
+                  {searchResults.map((page, i) => (
+                    <SearchResultRow key={page.url} page={page} query={searchQuery.trim()} active={i === highlight}
+                      onHover={() => setHighlight(i)} onSelect={handleSearchSelect} />
                   ))}
                 </div>
               )}

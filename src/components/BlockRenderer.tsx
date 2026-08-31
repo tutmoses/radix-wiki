@@ -10,6 +10,11 @@ import QRCode from 'qrcode';
 import { cn, formatRelativeTime, formatDate, generateBannerSvg, getContentSnippet, pagePath } from '@/lib/utils';
 import { findTagByPath } from '@/lib/tags';
 import { safeLinkHref } from 'wiki-formant/validation';
+// The rendered-article passes are `wiki-formant/dom`, shared with caper. The
+// copy-button injector there was byte-identical to the one this file held, down
+// to the SVG path data, and the Twitter origin was written out here as well as
+// twice more in the editor's node views.
+import { addCopyButtons, hydrateTweetEmbeds, onTweetResize, sizeTweetEmbeds } from 'wiki-formant/dom';
 import { processHtml } from '@/lib/html';
 import { usePages, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
@@ -19,26 +24,6 @@ import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
 import { metadataRows } from '@/lib/taxonomy';
 import { TokenChart } from '@/components/charts/TokenChart';
 import { formatPriceSubscript } from '@/components/charts/format';
-
-// ========== COPY BUTTON ==========
-const COPY_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-const CHECK_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-
-function addCopyButton(pre: Element) {
-  const btn = document.createElement('button');
-  btn.className = 'code-copy-btn';
-  btn.setAttribute('aria-label', 'Copy code');
-  btn.innerHTML = COPY_SVG;
-  btn.onclick = () => {
-    const code = pre.querySelector('code')?.textContent || pre.textContent || '';
-    navigator.clipboard.writeText(code).then(() => {
-      btn.innerHTML = CHECK_SVG;
-      setTimeout(() => { btn.innerHTML = COPY_SVG; }, 2000);
-    });
-  };
-  (pre as HTMLElement).style.position = 'relative';
-  pre.appendChild(btn);
-}
 
 // ========== PAGE CARD ==========
 const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; compact?: boolean }) {
@@ -304,21 +289,8 @@ const ContentBlockView = memo(function ContentBlockView({ html }: { html: string
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.querySelectorAll('[data-twitter-embed]:not([data-init])').forEach(container => {
-      container.setAttribute('data-init', '');
-      const tweetId = container.getAttribute('data-tweet-id');
-      if (!tweetId) return;
-      const iframe = container.querySelector('iframe') as HTMLIFrameElement | null;
-      if (iframe) { iframe.src = `https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&dnt=true`; iframe.setAttribute('scrolling', 'no'); }
-    });
-    const handleMessage = (e: MessageEvent) => {
-      if (e.origin !== 'https://platform.twitter.com') return;
-      const data = e.data?.['twttr.embed'];
-      if (data?.method === 'twttr.private.resize' && data.params?.[0]?.height) {
-        el.querySelectorAll('[data-twitter-embed] iframe').forEach(iframe => { (iframe as HTMLIFrameElement).style.height = `${data.params[0].height}px`; });
-      }
-    };
-    window.addEventListener('message', handleMessage);
+    hydrateTweetEmbeds(el);
+    const offResize = onTweetResize(height => sizeTweetEmbeds(el, height));
 
     if (/\$\$|\\\(|\\\[/.test(html)) {
       import('katex/dist/katex.min.css').then(() => import('katex/contrib/auto-render')).then(({ default: render }) => {
@@ -334,7 +306,7 @@ const ContentBlockView = memo(function ContentBlockView({ html }: { html: string
       });
     }
 
-    return () => window.removeEventListener('message', handleMessage);
+    return offResize;
   }, [html]);
 
   return processedHtml.trim() ? <div ref={ref} className="prose-content" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: processedHtml }} /> : null;
@@ -543,8 +515,7 @@ export function BlockRenderer({ content, className }: { content: Block[] | unkno
       tabGroup.appendChild(tabList);
       tabGroup.appendChild(tabPanels);
     });
-    // Add copy buttons to highlighted code blocks
-    container.querySelectorAll('pre:not(:has(.code-copy-btn))').forEach(addCopyButton);
+    addCopyButtons(container);
   }, []);
 
   if (!blocks.length) return null;

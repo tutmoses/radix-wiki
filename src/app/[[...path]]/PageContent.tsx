@@ -16,7 +16,7 @@ import { Badge, Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
 import { cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet, pagePath } from '@/lib/utils';
 import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder, type TagNode } from '@/lib/tags';
-import { categoryHref, toggleFilter, type Facet, type FacetFilters, type FacetValue, type SharedFacet } from '@/lib/taxonomy';
+import { categoryHref, type Control, type FacetControlGroup, type FacetFilters, type SharedFacet } from '@/lib/taxonomy';
 import { createBlock } from '@/lib/block-utils';
 import { freshnessBanner } from '@/lib/freshness';
 import type { WikiPage } from '@/types';
@@ -226,50 +226,48 @@ function CategoryHero({ description, mainArticle, subcategories }: { description
  * and the grid starts at the top. Below `md` the rail is collapsed behind one
  * button, so a phone gets the pages first.
  */
-function CategoryRail({ tagPath, sort, facets, filters, letters, letter, open }: {
-  tagPath: string; sort: SortOrder; facets: Facet[]; filters: FacetFilters; letters: FacetValue[]; letter?: string; open: boolean;
+function CategoryRail({ facetGroups, letters, open }: {
+  facetGroups: FacetControlGroup[]; letters: Control[]; open: boolean;
 }) {
   return (
     <nav className={cn('category-rail', open && 'category-rail-open')} aria-label="Filter this category">
       {/* The index leads: it is two lines against the facets' twenty, and a rail
           tall enough to scroll would otherwise bury the one control that is the
-          whole point of a 142-page category. */}
+          whole point of a 142-page category. The reset control leads the row
+          because the taxonomy puts it there, so it cannot be forgotten. */}
       {letters.length > 0 && (
         <div className="facet-group">
           <span className="facet-group-label">Index</span>
           <div className="alpha-index">
-            <Link href={categoryHref(tagPath, { sort, filters })} className={cn('alpha-letter', !letter && 'alpha-letter-active')}>All</Link>
-            {letters.map(({ value, count }) => (
+            {letters.map(({ value, label, count, href, active, reset }) => (
               <Link
-                key={value}
-                href={categoryHref(tagPath, { sort, filters, letter: letter === value ? undefined : value })}
-                className={cn('alpha-letter', letter === value && 'alpha-letter-active')}
-                title={`${count} page${count === 1 ? '' : 's'}`}
+                key={value || 'all'}
+                href={href}
+                className={cn('alpha-letter', active && 'alpha-letter-active')}
+                aria-current={active ? 'true' : undefined}
+                title={reset ? `All ${count} pages` : `${count} page${count === 1 ? '' : 's'}`}
               >
-                {value}
+                {label}
               </Link>
             ))}
           </div>
         </div>
       )}
-      {facets.map(facet => (
+      {facetGroups.map(facet => (
         <div key={facet.key} className="facet-group">
           <span className="facet-group-label">{facet.label}</span>
-          {facet.values.map(({ value, count }) => {
-            const active = filters[facet.key] === value;
-            return (
-              <Link
-                key={value}
-                href={categoryHref(tagPath, { sort, filters: toggleFilter(filters, facet.key, value), letter })}
-                className={cn('facet-option', active && 'facet-option-active')}
-                aria-current={active ? 'true' : undefined}
-                title={value}
-              >
-                <span className="truncate">{value}</span>
-                <span className="facet-option-count">{count}</span>
-              </Link>
-            );
-          })}
+          {facet.options.map(({ value, count, href, active }) => (
+            <Link
+              key={value}
+              href={href}
+              className={cn('facet-option', active && 'facet-option-active')}
+              aria-current={active ? 'true' : undefined}
+              title={value}
+            >
+              <span className="truncate">{value}</span>
+              <span className="facet-option-count">{count}</span>
+            </Link>
+          ))}
         </div>
       ))}
     </nav>
@@ -412,15 +410,15 @@ function NewPageControl({ tagPath }: { tagPath: string }) {
 }
 
 /** The pages in a category: count bar, grid, filter rail. Stands alone, or runs under the category's hub article. */
-function CategoryListing({ tagPath, pages, sort, total, facets, filters, letters, letter, heading }: {
+function CategoryListing({ tagPath, pages, sort, total, facetGroups, filters, letters, letter, heading }: {
   tagPath: string[]; pages: WikiPage[]; sort: SortOrder; total: number;
-  facets: Facet[]; filters: FacetFilters; letters: FacetValue[]; letter?: string; heading?: ReactNode;
+  facetGroups: FacetControlGroup[]; filters: FacetFilters; letters: Control[]; letter?: string; heading?: ReactNode;
 }) {
   const { isAuthenticated } = useAuth();
   const [showFilters, setShowFilters] = useState(false);
   const pathStr = tagPath.join('/');
   const tag = findTagByPath(tagPath);
-  const hasRail = facets.length > 0 || letters.length > 0;
+  const hasRail = facetGroups.length > 0 || letters.length > 0;
 
   return (
     <div className="stack">
@@ -471,7 +469,7 @@ function CategoryListing({ tagPath, pages, sort, total, facets, filters, letters
           )}
         </div>
         {hasRail && (
-          <CategoryRail tagPath={pathStr} sort={sort} facets={facets} filters={filters} letters={letters} letter={letter} open={showFilters} />
+          <CategoryRail facetGroups={facetGroups} letters={letters} open={showFilters} />
         )}
       </div>
     </div>
@@ -479,9 +477,9 @@ function CategoryListing({ tagPath, pages, sort, total, facets, filters, letters
 }
 
 // ========== CATEGORY VIEW ==========
-export function CategoryView({ tagPath, pages, sort, total, facets, filters, letters, letter, subcategories, mainArticle, hub, nowMs }: {
+export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters, letters, letter, subcategories, mainArticle, hub, nowMs }: {
   tagPath: string[]; pages: WikiPage[]; sort: SortOrder; total: number;
-  facets: Facet[]; filters: FacetFilters; letters: FacetValue[]; letter?: string;
+  facetGroups: FacetControlGroup[]; filters: FacetFilters; letters: Control[]; letter?: string;
   subcategories: SubcategorySummary[]; mainArticle: PageRef | null; hub: WikiPage | null;
   /** Server clock, so a hub's freshness notice cannot differ between SSR and hydration. */
   nowMs: number;
@@ -505,7 +503,7 @@ export function CategoryView({ tagPath, pages, sort, total, facets, filters, let
         listing={isContainer ? null : (
           <CategoryListing
             tagPath={tagPath} pages={pages} sort={sort} total={total}
-            facets={facets} filters={filters} letters={letters} letter={letter}
+            facetGroups={facetGroups} filters={filters} letters={letters} letter={letter}
             heading={
               <div className="spread">
                 <h2 id="pages-in-this-category" className="m-0!">Pages in {categoryName}</h2>
@@ -535,7 +533,7 @@ export function CategoryView({ tagPath, pages, sort, total, facets, filters, let
       {isContainer ? null : (
         <CategoryListing
           tagPath={tagPath} pages={pages} sort={sort} total={total}
-          facets={facets} filters={filters} letters={letters} letter={letter}
+          facetGroups={facetGroups} filters={filters} letters={letters} letter={letter}
         />
       )}
     </div>

@@ -1,102 +1,52 @@
-// src/components/LinkPreview.tsx — Wikipedia-style hover cards for internal
-// links. Delegated hover listener on the article prose; on a sustained hover of
-// an internal article link it fetches a lead-paragraph preview and floats a card
-// near the link. Results are cached per path; the card stays open while the
-// cursor moves into it.
+// src/components/LinkPreview.tsx — Wikipedia-style hover cards for internal links.
+//
+// The controller is `wiki-formant/react`, shared with the other wikis, which had
+// written the same ninety lines: the same 350ms intent delay, the same grace
+// period so the cursor can cross the gap into the card, the same viewport-clamp
+// arithmetic and the same per-href cache. What stays here is the only part that
+// was ever this wiki's — which links are eligible, where a preview comes from,
+// and what the card looks like.
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useLinkPreview } from 'wiki-formant/react';
 
 type Preview = { found: boolean; title?: string; excerpt?: string; bannerImage?: string | null };
 
 // Non-article top-level routes that would never resolve to a page preview.
 const SKIP_PREFIX = new Set(['charts', 'search', 'leaderboard', 'welcome', 'rewards']);
 
-const CARD_W = 320;
-const CARD_H = 240;
+const eligible = (a: HTMLAnchorElement): boolean => {
+  if (!a.closest('.prose-content')) return false;
+  const href = a.getAttribute('href') || '';
+  if (!href.startsWith('/')) return false;
+  const segs = href.replace(/[#?].*$/, '').split('/').filter(Boolean);
+  return segs.length >= 2 && !SKIP_PREFIX.has(segs[0]!);
+};
+
+const fetchPreview = async (href: string): Promise<Preview | null> => {
+  const res = await fetch(`/api/wiki/preview?path=${encodeURIComponent(href.replace(/^\//, ''))}`);
+  if (!res.ok) return null;
+  const data: Preview = await res.json();
+  // `found: false` is a resolved answer, not a card. Returning null tells the
+  // controller to cache the miss and never re-ask for this href.
+  return data.found ? data : null;
+};
 
 export function LinkPreview() {
-  const [card, setCard] = useState<{ data: Preview; left: number; top: number; above: boolean } | null>(null);
-  const cache = useRef(new Map<string, Preview>());
-  const showTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const activeHref = useRef<string | null>(null);
+  const { preview, cardProps } = useLinkPreview<Preview>({ eligible, fetch: fetchPreview });
 
-  useEffect(() => {
-    const clearTimers = () => { clearTimeout(showTimer.current); clearTimeout(hideTimer.current); };
-
-    const eligible = (a: HTMLAnchorElement | null): a is HTMLAnchorElement => {
-      if (!a || !a.closest('.prose-content')) return false;
-      const href = a.getAttribute('href') || '';
-      if (!href.startsWith('/')) return false;
-      const segs = href.replace(/[#?].*$/, '').split('/').filter(Boolean);
-      return segs.length >= 2 && !SKIP_PREFIX.has(segs[0]!);
-    };
-
-    const onOver = (e: MouseEvent) => {
-      const a = (e.target as HTMLElement | null)?.closest('a') as HTMLAnchorElement | null;
-      if (!eligible(a)) return;
-      const href = a.getAttribute('href')!.replace(/[#?].*$/, '');
-      if (activeHref.current === href) { clearTimeout(hideTimer.current); return; }
-      clearTimers();
-      activeHref.current = href;
-      showTimer.current = setTimeout(async () => {
-        let data = cache.current.get(href);
-        if (!data) {
-          try {
-            const res = await fetch(`/api/wiki/preview?path=${encodeURIComponent(href.replace(/^\//, ''))}`);
-            data = res.ok ? await res.json() : { found: false };
-          } catch { data = { found: false }; }
-          cache.current.set(href, data!);
-        }
-        if (activeHref.current !== href || !data?.found) return;
-        const rect = a.getBoundingClientRect();
-        const above = rect.bottom + CARD_H > window.innerHeight && rect.top > CARD_H;
-        setCard({
-          data,
-          left: Math.max(8, Math.min(rect.left, window.innerWidth - CARD_W - 8)),
-          top: above ? rect.top - 8 : rect.bottom + 8,
-          above,
-        });
-      }, 350);
-    };
-
-    const onOut = (e: MouseEvent) => {
-      const related = e.relatedTarget as HTMLElement | null;
-      if (related?.closest('.link-preview-card')) return; // cursor moving into the card
-      clearTimers();
-      hideTimer.current = setTimeout(() => { activeHref.current = null; setCard(null); }, 200);
-    };
-
-    document.addEventListener('mouseover', onOver);
-    document.addEventListener('mouseout', onOut);
-    return () => {
-      clearTimers();
-      document.removeEventListener('mouseover', onOver);
-      document.removeEventListener('mouseout', onOut);
-    };
-  }, []);
-
-  if (!card) return null;
-
-  const keepOpen = () => clearTimeout(hideTimer.current);
-  const scheduleHide = () => { hideTimer.current = setTimeout(() => { activeHref.current = null; setCard(null); }, 200); };
+  if (!preview) return null;
 
   return (
-    <div
-      className="link-preview-card"
-      style={{ left: card.left, top: card.top, transform: card.above ? 'translateY(-100%)' : undefined }}
-      onMouseEnter={keepOpen}
-      onMouseLeave={scheduleHide}
-    >
-      {card.data.bannerImage && (
+    <div className="link-preview-card" {...cardProps}>
+      {preview.bannerImage && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={card.data.bannerImage} alt="" className="link-preview-banner" loading="lazy" />
+        <img src={preview.bannerImage} alt="" className="link-preview-banner" loading="lazy" />
       )}
       <div className="link-preview-body">
-        <div className="link-preview-title">{card.data.title}</div>
-        {card.data.excerpt && <p className="link-preview-excerpt">{card.data.excerpt}</p>}
+        <div className="link-preview-title">{preview.title}</div>
+        {preview.excerpt && <p className="link-preview-excerpt">{preview.excerpt}</p>}
       </div>
     </div>
   );

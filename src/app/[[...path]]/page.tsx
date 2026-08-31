@@ -7,7 +7,7 @@ import { parsePath, getHomepage, getPage, getCategoryHub, getCategoryPages, getD
 import { getMaintenanceQueues } from '@/lib/maintenance';
 import { getSession } from '@/lib/auth';
 import type { RelatedPages, SubcategorySummary } from './PageContent';
-import { alphaIndex, buildFacets, facetFilters, filterPages, rankRelated, ALPHA_INDEX_MIN_PAGES } from '@/lib/taxonomy';
+import { alphaControls, facetControls, facetFilters, filterPages, rankRelated, resolveLetter } from '@/lib/taxonomy';
 import { findTagByPath, getMainArticle, getSortOrder, TAG_HIERARCHY, type TagNode, type SortOrder } from '@/lib/tags';
 import { highlightBlocks } from '@/lib/highlight';
 import { processBlocks } from '@/lib/html';
@@ -430,8 +430,12 @@ export default async function DynamicPage({ params, searchParams }: Props) {
     // The tree gives one axis; `select` metadata gives the cross-cutting one, and
     // the alphabetical index only earns its space once the grid outgrows a screen.
     const filters = facetFilters(parsed.tagPath, query);
-    const letters = all.length >= ALPHA_INDEX_MIN_PAGES ? alphaIndex(all, filters) : [];
-    const letter = letters.some(l => l.value === str(query.letter)) ? str(query.letter) : undefined;
+    // `resolveLetter` drops a `?letter=` no page starts with, and `alphaControls`
+    // owns the "has this outgrown a grid?" threshold — both were spelled out here
+    // and neither made it into the other two wikis.
+    const letter = resolveLetter(all, filters, str(query.letter));
+    const state = { sort, filters, letter };
+    const letters = alphaControls(parsed.tagPath, all, state);
     const pages = filterPages(all, filters, letter);
 
     const counts = await getTagCounts();
@@ -458,7 +462,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
         <JsonLd data={breadcrumbLd(tagSegments)} />
         <CategoryView
           tagPath={tagSegments} pages={pages} sort={sort} total={all.length}
-          facets={buildFacets(parsed.tagPath, all, filters, letter)} filters={filters}
+          facetGroups={facetControls(parsed.tagPath, all, state)} filters={filters}
           letters={letters} letter={letter} subcategories={subcategories} mainArticle={mainArticle}
           hub={hub} nowMs={nowMs}
         />

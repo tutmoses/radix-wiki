@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo, useRef, type RefObject } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { create } from 'zustand';
 import { isValidTagPath } from '@/lib/tags';
@@ -10,16 +10,11 @@ import type { WikiPage, AuthSession, RadixWalletData, WikiNotification } from '@
 
 // ========== CLICK OUTSIDE HOOK ==========
 
-export function useClickOutside<T extends HTMLElement>(onClose: () => void): RefObject<T | null> {
-  const ref = useRef<T>(null);
-  useEffect(() => {
-    // offsetParent is null while the element is display:none — a hidden container must not claim outside-clicks
-    const handler = (e: MouseEvent) => { if (ref.current && ref.current.offsetParent !== null && !ref.current.contains(e.target as Node)) onClose(); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
-  return ref;
-}
+// `wiki-formant/react`, shared with the other wikis — all three had written this,
+// and only this copy carried the `offsetParent` guard that keeps a container
+// hidden at the current breakpoint from claiming outside-clicks. The package
+// took this version; re-exported so call sites keep importing from `@/hooks`.
+export { useClickOutside } from 'wiki-formant/react';
 
 // ========== FETCH HOOK ==========
 

@@ -24,19 +24,26 @@ export default function SearchView({ query: initialQuery }: { query: string }) {
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
+  // This page pages its results, so it keeps its own fetch rather than using
+  // `useTypeahead` — but it needs the same guard the hook carries: without it a
+  // slow response for an abandoned query lands over the results being read.
+  const requestId = useRef(0);
+
   const performSearch = useCallback(async (q: string, p = 1) => {
     const trimmed = q.trim();
-    if (!trimmed) { setResults([]); setTotal(0); setSearched(''); return; }
+    if (!trimmed) { requestId.current++; setResults([]); setTotal(0); setSearched(''); return; }
+    const id = ++requestId.current;
     setIsSearching(true);
     try {
       const res = await fetch(`/api/wiki?${new URLSearchParams({ q: trimmed, page: String(p), pageSize: String(PAGE_SIZE) })}`);
+      if (id !== requestId.current) return;
       if (res.ok) {
         const data = await res.json();
         setResults(data.items || []);
         setTotal(data.total ?? (data.items || []).length);
       }
     } catch (e) { console.error('Search failed:', e); }
-    finally { setIsSearching(false); setSearched(trimmed); }
+    finally { if (id === requestId.current) { setIsSearching(false); setSearched(trimmed); } }
   }, []);
 
   useEffect(() => {

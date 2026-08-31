@@ -6,6 +6,10 @@
 // is the only part that is this wiki's: which metadata keys a tag path declares,
 // and what a category URL looks like.
 //
+// The rail's ROWS come from here too now (`facetControls`/`alphaControls`),
+// not just the counts: the href arithmetic that carries the reader's letter and
+// sort through every chip was the part all three wikis had rebuilt.
+//
 // Two behaviours changed when this moved out, both fixes:
 //   - `rankRelated` now names an axis the returned siblings actually SHARE. It
 //     used to pick the narrowest axis the subject carried without checking, so
@@ -21,7 +25,9 @@ export {
   DEFAULT_ALPHA_INDEX_MIN_PAGES as ALPHA_INDEX_MIN_PAGES,
   firstLetter,
   toggleFilter,
+  type Control,
   type Facet,
+  type FacetControlGroup,
   type FacetFilters,
   type FacetValue,
   type MetadataKeyDefinition,
@@ -47,4 +53,10 @@ export const {
   alphaIndex,
   rankRelated,
   metadataRows,
+  // The rail's rows, with every href already built through `categoryHref`.
+  // The rail used to assemble these itself, and the two other wikis assembled
+  // their own — which is how one of them shipped no A–Z index at all.
+  facetControls,
+  alphaControls,
+  resolveLetter,
 } = taxonomy;
