@@ -12,6 +12,7 @@
 import { NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
+import { AGENT_CARD_CACHE_CONTROL } from 'wiki-formant/well-known';
 
 export const revalidate = 86400;
 
@@ -20,7 +21,7 @@ export async function GET() {
   return new NextResponse(doc, {
     headers: {
       'Content-Type': 'text/markdown; charset=utf-8',
-      'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
+      'Cache-Control': AGENT_CARD_CACHE_CONTROL,
     },
   });
 }

@@ -15,6 +15,7 @@
 import { NextResponse } from 'next/server';
 import { BASE_URL } from '@/lib/utils';
 import { SERVER_INFO, REGISTRY_NAME } from '@/lib/mcp-tools';
+import { AGENT_CARD_CACHE_CONTROL } from 'wiki-formant/well-known';
 
 export const revalidate = 86400;
 
@@ -37,6 +38,6 @@ const SERVER_CARD = {
 
 export async function GET() {
   return NextResponse.json(SERVER_CARD, {
-    headers: { 'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800' },
+    headers: { 'Cache-Control': AGENT_CARD_CACHE_CONTROL },
   });
 }

@@ -2,11 +2,12 @@
 
 import { NextResponse } from 'next/server';
 import { SPEC } from '@/lib/openapi';
+import { AGENT_CARD_CACHE_CONTROL } from 'wiki-formant/well-known';
 
 export const revalidate = 86400;
 
 export async function GET() {
   return NextResponse.json(SPEC, {
-    headers: { 'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800' },
+    headers: { 'Cache-Control': AGENT_CARD_CACHE_CONTROL },
   });
 }

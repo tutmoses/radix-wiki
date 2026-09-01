@@ -2,6 +2,7 @@
 
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { matchSnippet } from 'wiki-formant/text';
 import { decodeEntities } from '@/lib/content';
 
 export const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
@@ -63,18 +64,6 @@ function toPlainText(html: string): string {
     .trim();
 }
 
-/** Every `text` value at any block depth — mirrors the `$.**.text` that search matches on. */
-function collectText(node: unknown, out: string[] = []): string[] {
-  if (Array.isArray(node)) { for (const item of node) collectText(item, out); return out; }
-  if (node && typeof node === 'object') {
-    for (const [key, value] of Object.entries(node)) {
-      if (key === 'text' && typeof value === 'string') out.push(value);
-      else collectText(value, out);
-    }
-  }
-  return out;
-}
-
 /** Extract plain text snippet from page content blocks (skips infobox, strips HTML, truncates) */
 export function getContentSnippet(content: unknown, maxLen = 150): string {
   if (!Array.isArray(content)) return '';
@@ -101,23 +90,15 @@ export function clampSnippet(snippet: string | null | undefined, maxLen: number)
  * Snippet centred on the first occurrence of `query` anywhere in the page, so a search
  * result can show why it matched. Falls back to the page opening when the match is in
  * the title alone.
+ *
+ * The walk and the clamp are `wiki-formant/text`, shared with caper, which had
+ * adopted it first. The shared copy also collapses `&nbsp;` before decoding, which
+ * the version that lived here did not — a phrase broken by one read back with the
+ * entity still in it. What stays is this wiki's opening, which is the first
+ * `content` block rather than the whole page flattened.
  */
 export function getMatchSnippet(content: unknown, query: string, maxLen = 200): string {
-  const term = query.trim();
-  if (!term || !Array.isArray(content)) return getContentSnippet(content, maxLen);
-
-  const text = toPlainText(collectText(content).join(' '));
-  const at = text.toLowerCase().indexOf(term.toLowerCase());
-  if (at === -1) return getContentSnippet(content, maxLen);
-
-  // Keep ~a line of lead-in before the hit, starting at a word boundary.
-  let start = Math.max(0, at - 60);
-  if (start > 0) {
-    const boundary = text.indexOf(' ', start);
-    if (boundary > -1 && boundary < at) start = boundary + 1;
-  }
-  const end = Math.min(text.length, start + maxLen);
-  return `${start > 0 ? '…' : ''}${text.slice(start, end).trimEnd()}${end < text.length ? '…' : ''}`;
+  return matchSnippet(content, query, () => getContentSnippet(content, maxLen), maxLen);
 }
 
 // ========== GENERATIVE BANNER ==========

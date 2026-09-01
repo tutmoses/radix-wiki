@@ -16,6 +16,7 @@ import { pageToMarkdown } from '@/lib/markdown';
 import type { WikiPageInput } from '@/types';
 import type { Block } from '@/types/blocks';
 import { deliverWebhooks } from '@/lib/webhooks';
+import { markdownHeaders } from 'wiki-formant/http';
 
 type PathParams = { path?: string[] };
 
@@ -159,12 +160,13 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
         updatedAt: page.updatedAt,
         lastVerifiedAt: page.lastVerifiedAt,
       });
+      // `wiki-formant/http`, shared with the other twins. The TTL is passed
+      // through rather than taken from the helper's default: this wiki caches
+      // its twins for 60s where caper and acuiq2 cache theirs for an hour, and
+      // reconciling that is a separate decision from removing the third copy of
+      // the content type.
       return new NextResponse(md, {
-        headers: {
-          'Content-Type': 'text/markdown; charset=utf-8',
-          'Cache-Control': CACHE.medium['Cache-Control'],
-          'Last-Modified': page.updatedAt.toUTCString(),
-        },
+        headers: markdownHeaders(page.updatedAt.toUTCString(), { extra: CACHE.medium }),
       });
     }
 
