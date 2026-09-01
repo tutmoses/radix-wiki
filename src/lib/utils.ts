@@ -125,9 +125,15 @@ export function hashStr(s: string): number {
   return Math.abs(h);
 }
 
+// Lehmer/Park-Miller, seeded by an integer, so a title always lays its banner
+// out the same way. The two guards are caper's, which had them and this copy did
+// not: without the modulo the seed can exceed the modulus, and without the
+// `<= 0` correction a seed of 0 sticks the generator at 0 forever — every call
+// returns the same number and the banner degenerates to a single point.
 export function seededRandom(seed: number): () => number {
-  let s = seed;
-  return () => { s = (s * 16807 + 0) % 2147483647; return s / 2147483647; };
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
 }
 
 const svgCache = new Map<string, string>();
