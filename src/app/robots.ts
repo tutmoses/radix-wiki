@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { BASE_URL } from '@/lib/utils';
+import { aiCrawlerRules } from 'wiki-formant/crawlers';
 
 export default function robots(): MetadataRoute.Robots {
   // `/api/wiki/*/mdx$` is the markdown twin of a page, and it has to out-specify the
@@ -33,18 +34,13 @@ export default function robots(): MetadataRoute.Robots {
   // The aiAllow entries still win over `/api/` by longest-match precedence,
   // which is what keeps /api/mcp and /api/wiki/ reachable for agents.
   const disallow = ['/api/', ...pageVariantDisallow];
-  const aiAgents = [
-    'GPTBot', 'ChatGPT-User', 'OAI-SearchBot',
-    'ClaudeBot', 'Claude-User', 'Claude-SearchBot',
-    'PerplexityBot', 'Perplexity-User',
-    'Amazonbot', 'Google-Extended', 'Applebot-Extended',
-    'Meta-ExternalAgent', 'MistralAI-User', 'DuckAssistBot',
-  ];
+  // The roster is `wiki-formant/crawlers`, shared with src/proxy.ts, which used
+  // to keep a second and different list of the same thing. Five agents the proxy
+  // measured — Bytespider, CCBot, cohere-ai, Claude-Web, Meta-ExternalFetcher —
+  // had no group here at all, so by the rule above they were granted whatever
+  // `*` grants. They now get the same group as every other AI agent.
   return {
-    rules: [
-      { userAgent: '*', allow: '/', disallow },
-      ...aiAgents.map(userAgent => ({ userAgent, allow: aiAllow, disallow })),
-    ],
+    rules: aiCrawlerRules({ allow: '/', disallow, aiAllow }),
     sitemap: `${BASE_URL}/sitemap.xml`,
   };
 }

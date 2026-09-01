@@ -1,35 +1,13 @@
 import { NextResponse, type NextRequest, type NextFetchEvent } from 'next/server';
 import { plausibleEvent } from '@/lib/track';
+import { detectAiBot } from 'wiki-formant/crawlers';
 
-// Applebot-Extended is deliberately absent: it never fetches pages — it is a
-// robots.txt-only token that Applebot checks before using crawled data for AI.
-const AI_BOTS: Record<string, string> = {
-  'GPTBot': 'GPTBot',
-  'ChatGPT-User': 'ChatGPT',
-  'OAI-SearchBot': 'OAISearchBot',
-  'ClaudeBot': 'ClaudeBot',
-  'Claude-Web': 'ClaudeBot',
-  'Claude-User': 'ClaudeUser',
-  'Claude-SearchBot': 'ClaudeSearchBot',
-  'PerplexityBot': 'PerplexityBot',
-  'Perplexity-User': 'PerplexityUser',
-  'Amazonbot': 'Amazonbot',
-  'Google-Extended': 'GoogleExtended',
-  'Bytespider': 'Bytespider',
-  'CCBot': 'CCBot',
-  'cohere-ai': 'CohereBot',
-  'Meta-ExternalAgent': 'MetaExternalAgent',
-  'Meta-ExternalFetcher': 'MetaExternalFetcher',
-  'MistralAI-User': 'MistralAI',
-  'DuckAssistBot': 'DuckAssistBot',
-};
 
+// The roster is `wiki-formant/crawlers`, shared with robots.ts, which used to
+// keep a second and different list of the same thing.
 export function proxy(request: NextRequest, event: NextFetchEvent) {
-  const ua = request.headers.get('user-agent') || '';
-  const bot = Object.entries(AI_BOTS).find(([pattern]) => ua.includes(pattern));
-  if (!bot) return NextResponse.next();
-
-  const [, botName] = bot;
+  const botName = detectAiBot(request.headers.get('user-agent'));
+  if (!botName) return NextResponse.next();
 
   event.waitUntil(
     plausibleEvent('AI Bot Visit', request.nextUrl.href, { bot: botName }, request.headers),
