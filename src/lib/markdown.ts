@@ -28,11 +28,12 @@ import {
 import { BANNER_LABELS } from '@/lib/content';
 import { BASE_URL, pageUrl } from '@/lib/utils';
 import type { Block, AtomicBlock } from '@/types/blocks';
+import { ccBy40 } from 'wiki-formant/license';
 
-export const WIKI_LICENSE = {
-  spdx: 'CC-BY-4.0',
-  url: 'https://creativecommons.org/licenses/by/4.0/',
-} as const;
+// The grant, its name and the credit line, from `wiki-formant/license` — the
+// same four fields the other two wikis had each written out. Only the site's own
+// identity is passed in.
+export const WIKI_LICENSE = ccBy40({ siteName: 'Radix Wiki', siteUrl: BASE_URL });
 
 const decode = decodeEntities;
 

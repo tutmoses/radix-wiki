@@ -9,8 +9,10 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { BASE_URL, getContentSnippet, pageUrl } from '@/lib/utils';
 import { ogImageUrl } from '@/lib/og';
-import { blocksToFeedHtml, clampWords, publishedAt, renderFeed, renderItem, FEED_HEADERS } from '@/lib/feed';
+import { blocksToFeedHtml, clampWords, publishedAt, renderFeed, FEED_HEADERS } from '@/lib/feed';
 import { RECAP_PREFIX, SERIES_SLUG, issueLabel, scoreline, type LedgerState } from '@/lib/week-in-review';
+import { licenseNote } from 'wiki-formant/license';
+import { WIKI_LICENSE } from '@/lib/markdown';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +40,7 @@ export async function GET() {
     .map(p => {
       const url = pageUrl('blog', p.slug);
       const description = clampWords((p.metadata as Record<string, string> | null)?.excerpt || getContentSnippet(p.content));
-      return renderItem({
+      return {
         title: `${issueLabel(p.issue)}: ${p.title.replace(/^Radix Week in Review:\s*/, '')}`,
         url,
         description,
@@ -46,7 +48,7 @@ export async function GET() {
         categories: ['Radix Week in Review'],
         image: ogImageUrl({ title: p.title, description, tagPath: 'blog', banner: p.bannerImage }),
         html: blocksToFeedHtml(p.content),
-      });
+      };
     });
 
   const state = (index?.metadata as { state?: LedgerState } | null)?.state;
@@ -55,6 +57,7 @@ export async function GET() {
     title: 'Radix Week in Review',
     link: `${BASE_URL}/blog/${SERIES_SLUG}`,
     description: `The week in the Radix ecosystem, read against the ledger. ${scoreline(state)}`,
+    copyright: licenseNote(WIKI_LICENSE),
     self: `${BASE_URL}/week-in-review.xml`,
   }, items), { headers: FEED_HEADERS });
 }
