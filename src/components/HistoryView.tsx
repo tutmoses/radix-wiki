@@ -109,8 +109,8 @@ function ExpandedChanges({ changes }: { changes: BlockChange[] }) {
           const icons = { added: <Plus size={12} className="text-success" />, removed: <Minus size={12} className="text-error" />, modified: <Pencil size={12} className="text-warning" />, moved: <Move size={12} className="text-info" /> };
           const colors = { added: 'text-success', removed: 'text-error', modified: 'text-warning', moved: 'text-info' };
           const textAttr = c.attributes?.text as { from: string; to: string } | undefined;
-          const fromText = c.contentDiff?.from ?? textAttr?.from ?? '';
-          const toText = c.contentDiff?.to ?? textAttr?.to ?? '';
+          const fromText = c.leafDiff?.from ?? textAttr?.from ?? '';
+          const toText = c.leafDiff?.to ?? textAttr?.to ?? '';
           const hasTextChange = fromText || toText;
           return (
             <div key={i} className="text-xs">
