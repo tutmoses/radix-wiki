@@ -8,8 +8,12 @@ import { shortenAddress } from '@/lib/utils';
 import { SortHead, type SortColumn } from './SortHead';
 import { formatXrd, formatPercent } from './format';
 import type { Validator } from '@/lib/radix/validators';
+import { useTableSort } from 'wiki-formant/react';
 
-type SortKey = 'rank' | 'name' | 'totalStake' | 'fee' | 'ownerStake';
+// `rank` was in this union with no column to select it and no branch in the
+// sort — the same dead key the sibling table carried, copied along with the
+// state machine. The shared hook's exhaustive comparator record surfaced both.
+type SortKey = 'name' | 'totalStake' | 'fee' | 'ownerStake';
 
 const COLUMNS: SortColumn<SortKey>[] = [
   { k: 'name', label: 'Validator' },
@@ -19,27 +23,20 @@ const COLUMNS: SortColumn<SortKey>[] = [
 ];
 
 export function ValidatorsTable({ validators, limit }: { validators: Validator[]; limit?: number }) {
-  const [sortKey, setSortKey] = useState<SortKey>('totalStake');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-
-  const sorted = useMemo(() => {
-    const arr = [...validators];
-    arr.sort((a, b) => {
-      let cmp = 0;
-      if (sortKey === 'name') cmp = a.name.localeCompare(b.name);
-      else if (sortKey === 'totalStake') cmp = a.totalStake - b.totalStake;
-      else if (sortKey === 'fee') cmp = a.fee - b.fee;
-      else if (sortKey === 'ownerStake') cmp = a.ownerStake - b.ownerStake;
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
-    return limit ? arr.slice(0, limit) : arr;
-  }, [validators, sortKey, sortDir, limit]);
-
-  const handleSort = (key: SortKey) => {
-    if (key === sortKey) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortKey(key); setSortDir(key === 'name' ? 'asc' : 'desc'); }
-  };
-
+  // `useTableSort` from `wiki-formant/react` — the same state machine that was
+  // inlined here and in TokensTable, differing only in the seed and the payload.
+  const { sorted: all, sortKey, direction: sortDir, toggle: handleSort } = useTableSort(validators, {
+    defaultKey: 'totalStake' as SortKey,
+    comparators: {
+      name: (a, b) => a.name.localeCompare(b.name),
+      totalStake: (a, b) => a.totalStake - b.totalStake,
+      fee: (a, b) => a.fee - b.fee,
+      ownerStake: (a, b) => a.ownerStake - b.ownerStake,
+    },
+    // A name column opens A–Z; every numeric column opens largest first.
+    defaultDirection: key => (key === 'name' ? 'asc' : 'desc'),
+  });
+  const sorted = useMemo(() => (limit ? all.slice(0, limit) : all), [all, limit]);
 
   return (
     <div className="data-table-wrap">

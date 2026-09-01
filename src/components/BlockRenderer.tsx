@@ -24,6 +24,7 @@ import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
 import { metadataRows } from '@/lib/taxonomy';
 import { TokenChart } from '@/components/charts/TokenChart';
 import { formatPriceSubscript } from '@/components/charts/format';
+import { useCopy } from 'wiki-formant/react';
 
 // ========== PAGE CARD ==========
 const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; compact?: boolean }) {
@@ -339,7 +340,9 @@ const RADIX_ACCOUNT_RE = /^account_(rdx|tdx_2_)1[a-z0-9]{50,}$/;
 
 function TipJarBlockView({ block }: { block: TipJarBlock }) {
   const [renderedQr, setRenderedQr] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  // `useCopy` from `wiki-formant/react`. The version here had no rejection
+  // handler, so a denied clipboard left the button saying "Copied".
+  const { copied, copy } = useCopy();
   const address = (block.address || '').trim();
   const isValid = RADIX_ACCOUNT_RE.test(address);
 
@@ -356,10 +359,6 @@ function TipJarBlockView({ block }: { block: TipJarBlock }) {
   // never shows the previous address's code.
   const qrSvg = isValid ? renderedQr : null;
 
-  const copy = useCallback(() => {
-    navigator.clipboard.writeText(address).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
-  }, [address]);
-
   return (
     <div className="tip-jar">
       {block.label && <div className="tip-jar-label">{block.label}</div>}
@@ -370,7 +369,7 @@ function TipJarBlockView({ block }: { block: TipJarBlock }) {
         <div className="tip-jar-placeholder">{address && !isValid ? 'Not a valid Radix account address.' : 'No tip address set.'}</div>
       )}
       {isValid && (
-        <button type="button" className="tip-jar-address" onClick={copy} title="Copy address">
+        <button type="button" className="tip-jar-address" onClick={() => copy(address)} title="Copy address">
           <span className="tip-jar-address-text">{address}</span>
           {copied ? <Check size={14} /> : <Copy size={14} />}
         </button>

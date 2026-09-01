@@ -3,6 +3,7 @@
 import type { Block, BlockType, AtomicBlock } from '@/types/blocks';
 import { createBlockValidator, duplicateBlockIds, validateLinkGroups, validateReferenceItems } from 'wiki-formant/validation';
 import { Clock, FileText, Columns, TrendingUp, Pencil, Info, Rss, Code2, BarChart3, MessageSquareQuote, LayoutGrid, QrCode, ListOrdered, AlertTriangle, type LucideIcon } from 'lucide-react';
+import { someBlock } from 'wiki-formant/blocks';
 
 export const CODE_LANGS = ['javascript', 'typescript', 'css', 'json', 'bash', 'python', 'rust', 'sql', 'html', 'xml', 'jsx', 'tsx', 'markdown', 'yaml', 'toml'] as const;
 export const DEFAULT_LANG = 'rust';
@@ -110,22 +111,36 @@ export const validateBlocks = (content: unknown): content is Block[] => validate
 
 // --- Code detection ---
 
+/**
+ * Whether the page holds anything the highlighter has to ship for.
+ *
+ * The walk is `someBlock` from `wiki-formant/blocks`. The version here checked
+ * containers by hand and was the fifth copy of that walk in this repo.
+ */
 export function hasCodeBlocksInContent(content: Block[]): boolean {
-  if (!content || !Array.isArray(content)) return false;
-  const check = (blocks: Block[]): boolean => {
-    if (!blocks || !Array.isArray(blocks)) return false;
-    for (const block of blocks) {
-      if (!block) continue;
-      if (block.type === 'content' && block.text?.includes('<pre')) return true;
-      if (block.type === 'codeTabs') return true;
-      if (block.type === 'columns' && block.columns) {
-        for (const col of block.columns) {
-          if (col?.blocks && check(col.blocks)) return true;
-        }
-      }
-      if (block.type === 'infobox' && block.blocks?.length && check(block.blocks)) return true;
-    }
-    return false;
-  };
-  return check(content);
+  if (!Array.isArray(content)) return false;
+  return someBlock(
+    content,
+    block =>
+      !!block &&
+      ((block.type === 'content' && !!block.text?.includes('<pre')) || block.type === 'codeTabs'),
+    BLOCK_SHAPE.containers,
+  );
 }
+
+/**
+ * This wiki's two container types, for the shared tree walk. Written once here
+ * rather than at each call site, which is where the three-branch version used to
+ * be re-derived per pass.
+ */
+export const BLOCK_SHAPE = {
+  containers: (block: Block) =>
+    block.type === 'infobox' ? [block.blocks as Block[]]
+    : block.type === 'columns' ? block.columns.map(col => col.blocks as Block[])
+    : null,
+  rebuild: (block: Block, groups: Block[][]): Block =>
+    block.type === 'infobox' ? { ...block, blocks: groups[0] as AtomicBlock[] }
+    : block.type === 'columns'
+      ? { ...block, columns: block.columns.map((col, i) => ({ ...col, blocks: groups[i] as AtomicBlock[] })) }
+      : block,
+};

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { Search, Menu, X, Loader2, LogOut, ChevronDown, Edit, History, User, FileCode, Bell, Webhook, Database, MoreVertical, Quote, Link2, Check, Eye, EyeOff } from 'lucide-react';
-import { useSidebar, useTypeahead } from 'wiki-formant/react';
+import { useCopy, useSidebar, useTypeahead } from 'wiki-formant/react';
 import type { ComboboxOptionProps } from 'wiki-formant/combobox';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth, useClickOutside, usePagePath, useFetch } from '@/hooks';
@@ -145,7 +145,8 @@ function PageToolsDropdown({ onClose, historyPath, mdxPath, tagPath, slug, isPag
 }) {
   const { isAuthenticated } = useAuth();
   const showToast = useStore(s => s.showToast);
-  const [copied, setCopied] = useState<'cite' | 'link' | null>(null);
+  // `useCopy` from `wiki-formant/react`, keyed: two copyable things, one indicator.
+  const { copied, copy: copyText } = useCopy<'cite' | 'link'>(1500);
   const [watch, setWatch] = useState<{ connected: boolean; subId: string | null } | null>(null);
   const [watchBusy, setWatchBusy] = useState(false);
 
@@ -163,11 +164,7 @@ function PageToolsDropdown({ onClose, historyPath, mdxPath, tagPath, slug, isPag
 
   const pageUrl = () => `${window.location.origin}/${tagPath}/${slug}`;
   const copy = async (kind: 'cite' | 'link', text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(kind);
-      setTimeout(() => setCopied(null), 1500);
-    } catch { /* clipboard unavailable */ }
+    await copyText(text, kind);
   };
 
   const toggleWatch = async () => {

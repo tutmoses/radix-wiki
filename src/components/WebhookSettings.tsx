@@ -9,6 +9,7 @@ import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useStore } from '@/hooks';
 import { findTagByPath, isValidTagPath } from '@/lib/tags';
+import { useCopy } from 'wiki-formant/react';
 
 interface Webhook {
   id: string;
@@ -263,7 +264,10 @@ export function WebhookSettings() {
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [newSecret, setNewSecret] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  // `useCopy` from `wiki-formant/react`. The version here did not await the
+  // write and showed "Copied" whether or not it succeeded — for a webhook secret
+  // shown once, that is the reader pasting nothing and having no way to tell.
+  const { copied, copy } = useCopy();
   const [url, setUrl] = useState('https://');
   const [events, setEvents] = useState<string[]>(['page.created', 'page.updated']);
   const [tagFilter, setTagFilter] = useState('');
@@ -324,11 +328,7 @@ export function WebhookSettings() {
   };
 
   const copySecret = () => {
-    if (newSecret) {
-      navigator.clipboard.writeText(newSecret);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    if (newSecret) void copy(newSecret);
   };
 
   return (

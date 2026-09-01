@@ -5,6 +5,8 @@ import rehypeParse from 'rehype-parse';
 import rehypeStringify from 'rehype-stringify';
 import rehypePrettyCode from 'rehype-pretty-code';
 import type { Block, AtomicBlock, CodeTabsBlock } from '@/types/blocks';
+import { mapBlockTreeAsync } from 'wiki-formant/blocks';
+import { BLOCK_SHAPE } from '@/lib/block-utils';
 
 const processor = unified()
   .use(rehypeParse, { fragment: true })
@@ -42,20 +44,7 @@ function escapeHtml(s: string): string {
 }
 
 export async function highlightBlocks(blocks: Block[]): Promise<Block[]> {
-  return Promise.all(blocks.map(async (block): Promise<Block> => {
-    if (block.type === 'columns') {
-      const columns = await Promise.all(
-        block.columns.map(async col => ({
-          ...col,
-          blocks: await Promise.all(col.blocks.map(highlightAtomicBlock)),
-        }))
-      );
-      return { ...block, columns };
-    }
-    if (block.type === 'infobox') {
-      const inner = await Promise.all(block.blocks.map(highlightAtomicBlock));
-      return { ...block, blocks: inner };
-    }
-    return highlightAtomicBlock(block as AtomicBlock) as Promise<Block>;
-  }));
+  // Same container walk as html.ts and three other files; the async twin of it
+  // is `mapBlockTreeAsync` from `wiki-formant/blocks`.
+  return mapBlockTreeAsync(blocks, b => highlightAtomicBlock(b as AtomicBlock) as Promise<Block>, BLOCK_SHAPE);
 }

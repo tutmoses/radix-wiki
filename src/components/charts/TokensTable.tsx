@@ -9,8 +9,12 @@ import { cn } from '@/lib/utils';
 import { SortHead, type SortColumn } from './SortHead';
 import { formatUsd, formatPercent, formatPriceSubscript } from './format';
 import type { TokenSummary } from '@/lib/radix/tokens';
+import { useTableSort } from 'wiki-formant/react';
 
-type SortKey = 'rank' | 'name' | 'price' | 'change24h' | 'volume24h' | 'marketCap' | 'tvl';
+// `rank` used to be in this union with no column to select it and no branch in
+// the sort — it fell through to cmp = 0. The shared hook takes an exhaustive
+// comparator record, which is what surfaced it.
+type SortKey = 'name' | 'price' | 'change24h' | 'volume24h' | 'marketCap' | 'tvl';
 
 const COLUMNS: SortColumn<SortKey>[] = [
   { k: 'name', label: 'Token' },
@@ -21,29 +25,23 @@ const COLUMNS: SortColumn<SortKey>[] = [
 ];
 
 export function TokensTable({ tokens, limit }: { tokens: TokenSummary[]; limit?: number }) {
-  const [sortKey, setSortKey] = useState<SortKey>('tvl');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-
-  const sorted = useMemo(() => {
-    const arr = [...tokens];
-    arr.sort((a, b) => {
-      let cmp = 0;
-      if (sortKey === 'name') cmp = (a.symbol || a.name).localeCompare(b.symbol || b.name);
-      else if (sortKey === 'price') cmp = a.price - b.price;
-      else if (sortKey === 'change24h') cmp = (a.change24h ?? -Infinity) - (b.change24h ?? -Infinity);
-      else if (sortKey === 'volume24h') cmp = (a.volume24h ?? 0) - (b.volume24h ?? 0);
-      else if (sortKey === 'marketCap') cmp = (a.marketCap ?? 0) - (b.marketCap ?? 0);
-      else if (sortKey === 'tvl') cmp = (a.tvl ?? 0) - (b.tvl ?? 0);
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
-    return limit ? arr.slice(0, limit) : arr;
-  }, [tokens, sortKey, sortDir, limit]);
-
-  const handleSort = (key: SortKey) => {
-    if (key === sortKey) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortKey(key); setSortDir(key === 'name' ? 'asc' : 'desc'); }
-  };
-
+  // The sort state machine is `useTableSort` from `wiki-formant/react`. It was
+  // inlined here and, four lines apart, in ValidatorsTable. The comparator record
+  // replaces the if-chain both copies used.
+  const { sorted: all, sortKey, direction: sortDir, toggle: handleSort } = useTableSort(tokens, {
+    defaultKey: 'tvl' as SortKey,
+    comparators: {
+      name: (a, b) => (a.symbol || a.name).localeCompare(b.symbol || b.name),
+      price: (a, b) => a.price - b.price,
+      change24h: (a, b) => (a.change24h ?? -Infinity) - (b.change24h ?? -Infinity),
+      volume24h: (a, b) => (a.volume24h ?? 0) - (b.volume24h ?? 0),
+      marketCap: (a, b) => (a.marketCap ?? 0) - (b.marketCap ?? 0),
+      tvl: (a, b) => (a.tvl ?? 0) - (b.tvl ?? 0),
+    },
+    // A name column opens A–Z; every numeric column opens largest first.
+    defaultDirection: key => (key === 'name' ? 'asc' : 'desc'),
+  });
+  const sorted = useMemo(() => (limit ? all.slice(0, limit) : all), [all, limit]);
 
   return (
     <div className="data-table-wrap">

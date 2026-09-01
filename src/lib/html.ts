@@ -10,6 +10,8 @@ import { injectHeadingIds } from 'wiki-formant/headings';
 import { normaliseLinks } from 'wiki-formant/links';
 import { slugify } from '@/lib/utils';
 import type { Block, AtomicBlock } from '@/types/blocks';
+import { mapBlockTree } from 'wiki-formant/blocks';
+import { BLOCK_SHAPE } from '@/lib/block-utils';
 
 /** Process HTML content for display: heading ids + anchors, link normalisation, alt attrs. */
 export function processHtml(html: string, citedRefs?: Set<number>): string {
@@ -36,13 +38,11 @@ export function processBlocks(blocks: Block[]): Block[] {
   // Shared across content blocks so citation `id="cite-n"` targets are unique
   // doc-wide.
   const citedRefs = new Set<number>();
-  const mapAtomic = (b: AtomicBlock): AtomicBlock =>
-    b.type === 'content' && typeof b.text === 'string' ? { ...b, text: processHtml(b.text, citedRefs) } : b;
-
-  return blocks.map((block): Block => {
-    if (block.type === 'content') return mapAtomic(block) as Block;
-    if (block.type === 'infobox') return { ...block, blocks: block.blocks.map(mapAtomic) };
-    if (block.type === 'columns') return { ...block, columns: block.columns.map(col => ({ ...col, blocks: col.blocks.map(mapAtomic) })) };
-    return block;
-  });
+  // The container walk is `mapBlockTree` from `wiki-formant/blocks`. It was
+  // written out here, and in four other files in this repo.
+  return mapBlockTree(
+    blocks,
+    b => (b.type === 'content' && typeof b.text === 'string' ? { ...b, text: processHtml(b.text, citedRefs) } : b),
+    BLOCK_SHAPE,
+  );
 }
