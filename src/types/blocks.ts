@@ -27,7 +27,11 @@ export interface TipJarBlock extends BaseBlock { type: 'tipJar'; address: string
 export interface ReferenceItem { id: string; text: string; url?: string; }
 export interface ReferencesBlock extends BaseBlock { type: 'references'; title?: string; items: ReferenceItem[]; }
 // Wikipedia-style top-of-article maintenance notices. `text` overrides the default message.
-export type BannerVariant = 'stub' | 'unsourced' | 'outdated' | 'promotional' | 'cleanup' | 'coi';
+// The union is `wiki-formant/text`, which also owns BANNER_LABELS — the record
+// this repo already imports to render them. Declared separately they can drift,
+// and a variant with no label reads back as the raw key.
+export type { BannerVariant } from 'wiki-formant/text';
+import type { BannerVariant } from 'wiki-formant/text';
 export interface BannerBlock extends BaseBlock { type: 'banner'; variant: BannerVariant; text?: string; }
 
 // Atomic blocks that can be nested inside containers
