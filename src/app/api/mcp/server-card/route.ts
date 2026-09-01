@@ -6,35 +6,26 @@
 //
 // Status: the extension is a DRAFT (SEP-1649 / SEP-2127) and its location has
 // already moved once, from /.well-known/mcp.json to this path. It is served
-// here only because it costs nothing to keep correct — identity comes from
-// package.json and the endpoint from BASE_URL, so there is no third copy of
-// anything to drift. If the draft moves again, move this route; if it dies,
+// here only because it costs nothing to keep correct — every field is projected
+// from server.json, the registry manifest that already single-sources the
+// version, so there is no second copy of anything to drift. If the draft moves
+// again, move this route; if it dies,
 // delete it. Cards deliberately omit tool listings — that is what tools/list
 // is for.
 
 import { NextResponse } from 'next/server';
-import { BASE_URL } from '@/lib/utils';
-import { SERVER_INFO, REGISTRY_NAME } from '@/lib/mcp-tools';
-import { AGENT_CARD_CACHE_CONTROL } from 'wiki-formant/well-known';
+import { AGENT_CARD_CACHE_CONTROL, serverCard } from 'wiki-formant/well-known';
+import { MCP_PROTOCOL_VERSION } from 'wiki-formant/mcp';
+import serverManifest from '../../../../../server.json';
 
 export const revalidate = 86400;
 
-const SERVER_CARD = {
-  $schema: 'https://static.modelcontextprotocol.io/schemas/draft/server-card.schema.json',
-  name: REGISTRY_NAME,
-  title: 'Radix Wiki',
-  description:
-    'Community-maintained knowledge base for Radix DLT. Search and read the corpus, track the Radix DAO ideas board, and — with a ROLA bearer token — create and edit pages.',
-  version: SERVER_INFO.version,
-  websiteUrl: BASE_URL,
-  remotes: [
-    {
-      type: 'streamable-http',
-      url: `${BASE_URL}/api/mcp`,
-      supportedProtocolVersions: ['2025-03-26'],
-    },
-  ],
-};
+// Projected from server.json, the registry manifest that already single-sources
+// the version. It used to retype `title` and `description` as literals here, so
+// the site served two different descriptions of the same server with nothing
+// comparing them — the manifest's and this one's. The manifest wins, because it
+// is the copy the registry publishes.
+const SERVER_CARD = serverCard(serverManifest, MCP_PROTOCOL_VERSION);
 
 export async function GET() {
   return NextResponse.json(SERVER_CARD, {
