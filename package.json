@@ -52,7 +52,7 @@
     "sharp": "^0.35.3",
     "tailwind-merge": "^3.5.0",
     "unified": "^11.0.5",
-    "wiki-formant": "^0.8.0",
+    "wiki-formant": "^0.9.0",
     "zustand": "^5.0.0"
   },
   "devDependencies": {

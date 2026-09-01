@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { Search, Menu, X, Loader2, LogOut, ChevronDown, Edit, History, User, FileCode, Bell, Webhook, Database, MoreVertical, Quote, Link2, Check, Eye, EyeOff } from 'lucide-react';
 import { useSidebar, useTypeahead } from 'wiki-formant/react';
+import type { ComboboxOptionProps } from 'wiki-formant/combobox';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth, useClickOutside, usePagePath, useFetch } from '@/hooks';
 import { cn, shortenAddress, formatRelativeTime, pagePath } from '@/lib/utils';
@@ -110,12 +111,15 @@ function UserMenuDropdown({ onClose, onLogout }: { onClose: () => void; onLogout
 // One row shape for both the desktop dropdown and the mobile panel. The snippet is
 // the passage the query matched (computed server-side by the shared summarizer),
 // so a body-text hit doesn't read as an unrelated title.
-function SearchResultRow({ page, query, active, onSelect, onHover }: {
+function SearchResultRow({ page, query, active, onSelect, onHover, optionProps }: {
   page: PageSummary; query: string; active?: boolean; onSelect: (page: PageSummary) => void; onHover?: () => void;
+  optionProps: ComboboxOptionProps;
 }) {
   return (
+    // The row used to carry a bare `aria-selected`, which is not an attribute a
+    // plain button takes. The listbox contract is `wiki-formant/combobox` now.
     <button type="button" onClick={() => onSelect(page)} onMouseEnter={onHover}
-      className={cn('search-result', active && 'search-result-active')} aria-selected={active}>
+      className={cn('search-result', active && 'search-result-active')} {...optionProps}>
       <div className="font-medium truncate"><Highlight text={page.title} query={query} /></div>
       <div className="text-small text-text-muted truncate">{pagePath(page.tagPath, page.slug)}</div>
       {page.snippet && <p className="text-small text-text-muted line-clamp-1 mt-0.5"><Highlight text={page.snippet} query={query} /></p>}
@@ -266,11 +270,19 @@ export function Header() {
     onKeyDown: onSearchKeyDown,
     clearItems,
     reset: resetSearch,
+    combobox,
   } = useTypeahead<PageSummary>({
     fetch: searchPages,
     onPick: page => handleSearchSelect(page),
     onEscape: () => { setSearchOpen(false); setShowSearch(false); },
   });
+  // One hook, two rendered lists: the desktop dropdown and the mobile panel are
+  // both in the document, so they need separate id sets or every option id is
+  // duplicated. `searchOpen` is passed because the hook keeps its results when
+  // the desktop dropdown closes, and an aria-activedescendant pointing into a
+  // list that is not rendered is worse than none.
+  const desktopCombobox = combobox('desktop', searchOpen);
+  const mobileCombobox = combobox('mobile');
   const clearSearchResults = useCallback(() => { clearItems(); setSearchOpen(false); }, [clearItems]);
   const searchRef = useClickOutside<HTMLDivElement>(clearSearchResults);
   const desktopSearchRef = useClickOutside<HTMLFormElement>(clearSearchResults);
@@ -358,14 +370,14 @@ export function Header() {
             <Search className="search-icon-left" size={18} />
             <input ref={desktopSearchInputRef} type="search" placeholder="Search the wiki... ( / )" className="input pl-10" value={searchQuery}
               onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); }}
-              onKeyDown={onSearchKeyDown} role="combobox" aria-expanded={searchOpen && searchResults.length > 0}
-              aria-autocomplete="list" />
+              onKeyDown={onSearchKeyDown} {...desktopCombobox.inputProps} />
             {isSearching && <Loader2 className="search-icon-right" size={18} />}
             {searchOpen && searchResults.length > 0 && (
-              <div className="search-results">
+              <div className="search-results" {...desktopCombobox.listProps}>
                 {searchResults.map((page, i) => (
                   <SearchResultRow key={page.url} page={page} query={searchQuery.trim()} active={i === highlight}
-                    onHover={() => setHighlight(i)} onSelect={handleSearchSelect} />
+                    onHover={() => setHighlight(i)} onSelect={handleSearchSelect}
+                    optionProps={desktopCombobox.optionProps(i)} />
                 ))}
                 <button type="button" onClick={goToSearchPage} className="search-result search-result-all">
                   See all results for &ldquo;{searchQuery.trim()}&rdquo;
@@ -444,15 +456,15 @@ export function Header() {
               <Search className="search-icon-left" size={18} />
               <input ref={searchInputRef} type="search" placeholder="Search the wiki..." className="input pl-10" value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                onKeyDown={onMobileSearchKeyDown} role="combobox" aria-expanded={searchResults.length > 0}
-                aria-autocomplete="list" />
+                onKeyDown={onMobileSearchKeyDown} {...mobileCombobox.inputProps} />
               {isSearching && <Loader2 className="search-icon-right" size={18} />}
 
               {searchResults.length > 0 && (
-                <div className="search-results">
+                <div className="search-results" {...mobileCombobox.listProps}>
                   {searchResults.map((page, i) => (
                     <SearchResultRow key={page.url} page={page} query={searchQuery.trim()} active={i === highlight}
-                      onHover={() => setHighlight(i)} onSelect={handleSearchSelect} />
+                      onHover={() => setHighlight(i)} onSelect={handleSearchSelect}
+                      optionProps={mobileCombobox.optionProps(i)} />
                   ))}
                 </div>
               )}
