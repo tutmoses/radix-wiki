@@ -14,7 +14,7 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { LinkPreview } from '@/components/LinkPreview';
 import { Badge, Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
-import { cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet, pagePath } from '@/lib/utils';
+import { categoryLabel, cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet, pagePath } from '@/lib/utils';
 import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder, type TagNode } from '@/lib/tags';
 import { categoryHref, type Control, type FacetControlGroup, type FacetFilters, type SharedFacet } from '@/lib/taxonomy';
 import { createBlock } from '@/lib/block-utils';
@@ -156,13 +156,52 @@ export function SortToggle({ sort, tagPath, filters = {}, letter }: { sort: Sort
   );
 }
 
-// ========== CATEGORY HERO ==========
-export interface SubcategorySummary { name: string; href: string; description?: string; pages: number; subs: number }
+// ========== SECTION INDEX ==========
 export interface PageRef { title: string; href: string }
+export interface SubcategorySummary {
+  name: string; href: string; description?: string;
+  /** Pages anywhere in this subcategory's subtree. */
+  total: number;
+  /** What the card lists: this subcategory's own sections where it has them, else its first few pages. */
+  links: PageRef[];
+  /** Whether `links` are sections rather than articles. */
+  isSections: boolean;
+}
 
-function subcategoryMeta({ pages, subs }: SubcategorySummary): string {
-  return [pages && `${pages} page${pages === 1 ? '' : 's'}`, subs && `${subs} subcategor${subs === 1 ? 'y' : 'ies'}`]
-    .filter(Boolean).join(' · ');
+/**
+ * A category's subcategories, each card listing what it holds. The card used to
+ * be a name, a blurb and a page count, which made a container category a page of
+ * cards leading to another page of cards — /developers put 33 tutorials two
+ * clicks away and named none of them. Listing the titles turns the card into the
+ * index it was standing in for.
+ */
+function SectionIndex({ subcategories }: { subcategories: SubcategorySummary[] }) {
+  if (!subcategories.length) return null;
+  return (
+    <div className="section-index">
+      {subcategories.map(child => {
+        const rest = child.isSections ? 0 : child.total - child.links.length;
+        return (
+          <div key={child.href} className="section-card">
+            <Link href={child.href} className="section-card-title">{child.name}</Link>
+            {child.description && <p className="section-card-desc">{child.description}</p>}
+            {child.links.length > 0 && (
+              <ul className="section-card-links">
+                {child.links.map(l => (
+                  <li key={l.href}><Link href={l.href} className="link">{l.title}</Link></li>
+                ))}
+              </ul>
+            )}
+            <Link href={child.href} className="section-card-more">
+              {child.total === 0 ? 'Browse section'
+                : rest > 0 ? `${rest} more page${rest === 1 ? '' : 's'}`
+                : `All ${child.total} page${child.total === 1 ? '' : 's'}`} →
+            </Link>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 /**
@@ -192,8 +231,8 @@ function SubscribeRow({ tagPath }: { tagPath: string }) {
   );
 }
 
-function CategoryHero({ description, mainArticle, subcategories }: { description?: string; mainArticle: PageRef | null; subcategories: SubcategorySummary[] }) {
-  if (!description && !mainArticle && !subcategories.length) return null;
+function CategoryHero({ description, mainArticle }: { description?: string; mainArticle: PageRef | null }) {
+  if (!description && !mainArticle) return null;
   return (
     <div className="category-hero">
       {description && <p className="text-text-muted text-lg">{description}</p>}
@@ -201,17 +240,6 @@ function CategoryHero({ description, mainArticle, subcategories }: { description
         <p className="category-main-article">
           The main article for this category is <Link href={mainArticle.href} className="link">{mainArticle.title}</Link>.
         </p>
-      )}
-      {subcategories.length > 0 && (
-        <div className="category-hero-grid">
-          {subcategories.map(child => (
-            <Link key={child.href} href={child.href} className="category-hero-card">
-              <span className="font-medium">{child.name}</span>
-              {child.description && <span className="text-text-muted text-small">{child.description}</span>}
-              <span className="subcategory-meta">{subcategoryMeta(child)}</span>
-            </Link>
-          ))}
-        </div>
       )}
     </div>
   );
@@ -280,7 +308,7 @@ function ResultsBar({ tag, tagPath, total, shown, sort, filters, letter, hasRail
   tag: TagNode | null; tagPath: string; total: number; shown: number; sort: SortOrder;
   filters: FacetFilters; letter?: string; hasRail: boolean; filtersOpen: boolean; onToggleFilters: () => void;
 }) {
-  const categoryName = tag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagPath.split('/').at(-1) || 'this section';
+  const categoryName = categoryLabel(tag?.name ?? '') || tagPath.split('/').at(-1) || 'this section';
   const narrowed = Object.keys(filters).length + (letter ? 1 : 0);
   return (
     <div className="results-bar">
@@ -486,13 +514,41 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
 }) {
   const pathStr = tagPath.join('/');
   const tag = findTagByPath(tagPath);
-  // A container category (Tech, Contents) holds only subcategories — sorting and an
-  // "empty" notice are both noise there; the subcategory cards are the whole page.
-  const isContainer = total === 0 && subcategories.length > 0;
-  const categoryName = tag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagPath.at(-1) || 'this category';
+  const categoryName = categoryLabel(tag?.name ?? '') || tagPath.at(-1) || 'this category';
+  const controls = (
+    <div className="row-md">
+      <SubscribeRow tagPath={pathStr} />
+      <NewPageControl tagPath={pathStr} />
+    </div>
+  );
+  const listing = total > 0 && (
+    <CategoryListing
+      tagPath={tagPath} pages={pages} sort={sort} total={total}
+      facetGroups={facetGroups} filters={filters} letters={letters} letter={letter}
+      heading={
+        <div className="spread">
+          <h2 id="pages-in-this-category" className="m-0!">Pages in {categoryName}</h2>
+          {controls}
+        </div>
+      }
+    />
+  );
+  // A hub page has no heading row of its own — the banner carries the title — so
+  // on one that is all sections the controls ride the section heading rather
+  // than disappearing with the listing.
+  const sections = subcategories.length > 0 && (
+    <section className="stack-sm">
+      <div className="spread">
+        <h2 id="sections" className="m-0!">Sections in {categoryName}</h2>
+        {hub && !listing && controls}
+      </div>
+      <SectionIndex subcategories={subcategories} />
+    </section>
+  );
 
-  // The hub article owns the page — banner, title, infobox — and the listing
-  // becomes its last section, the way a Wikipedia article carries its category.
+  // The hub article owns the page — banner, title, infobox — and the section
+  // index and listing become its last sections, the way a Wikipedia article
+  // carries its category.
   if (hub) {
     return (
       <PageViewContent
@@ -500,21 +556,8 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
         related={{ pages: [], sharedFacet: null }}
         series={null}
         nowMs={nowMs}
-        listing={isContainer ? null : (
-          <CategoryListing
-            tagPath={tagPath} pages={pages} sort={sort} total={total}
-            facetGroups={facetGroups} filters={filters} letters={letters} letter={letter}
-            heading={
-              <div className="spread">
-                <h2 id="pages-in-this-category" className="m-0!">Pages in {categoryName}</h2>
-                <div className="row-md">
-                  <SubscribeRow tagPath={pathStr} />
-                  <NewPageControl tagPath={pathStr} />
-                </div>
-              </div>
-            }
-          />
-        )}
+        sections={sections || undefined}
+        listing={listing || undefined}
       />
     );
   }
@@ -524,18 +567,18 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
       <Breadcrumbs path={tagPath} />
       <div className="spread">
         <h1>{tag?.name || tagPath[tagPath.length - 1]}</h1>
-        <div className="row-md">
-          <SubscribeRow tagPath={pathStr} />
-          <NewPageControl tagPath={pathStr} />
-        </div>
+        {controls}
       </div>
-      <CategoryHero description={tag?.description} mainArticle={mainArticle} subcategories={subcategories} />
-      {isContainer ? null : (
+      <CategoryHero description={tag?.description} mainArticle={mainArticle} />
+      {sections}
+      {/* A category with no pages of its own and no subcategories still needs to
+          say so, and to offer the create control. */}
+      {listing || (subcategories.length === 0 && (
         <CategoryListing
           tagPath={tagPath} pages={pages} sort={sort} total={total}
           facetGroups={facetGroups} filters={filters} letters={letters} letter={letter}
         />
-      )}
+      ))}
     </div>
   );
 }
@@ -553,7 +596,7 @@ export type RelatedPages = { pages: RelatedPage[]; sharedFacet: SharedFacet | nu
 function SeeAlso({ pages, tagPath, sharedFacet }: { pages: RelatedPage[]; tagPath: string; sharedFacet?: SharedFacet | null }) {
   if (!pages.length) return null;
   const sectionTag = findTagByPath(tagPath.split('/'));
-  const sectionName = sectionTag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagPath;
+  const sectionName = categoryLabel(sectionTag?.name ?? '') || tagPath;
   return (
     <aside className="see-also" aria-labelledby="see-also-heading">
       <h2 id="see-also-heading" className="text-h4">
@@ -576,7 +619,7 @@ function SeeAlso({ pages, tagPath, sharedFacet }: { pages: RelatedPage[]; tagPat
 }
 
 // ========== PAGE VIEW (Read-only) ==========
-function PageViewContent({ page, related, series, listing, nowMs }: { page: WikiPage; related: RelatedPages; series: PageRef | null; listing?: ReactNode; nowMs: number }) {
+function PageViewContent({ page, related, series, sections, listing, nowMs }: { page: WikiPage; related: RelatedPages; series: PageRef | null; sections?: ReactNode; listing?: ReactNode; nowMs: number }) {
   const { isAuthenticated } = useAuth();
   // Contributor stats belong to the page's *subject* — the explicit
   // metadata.subjectUserId pointer set on profile pages (community bios,
@@ -605,9 +648,20 @@ function PageViewContent({ page, related, series, listing, nowMs }: { page: Wiki
     </>
   );
 
+  // A category's section index sits where a table of contents sits: after the
+  // lead, before the body. On a hub that had grown to nine blocks it was
+  // otherwise the last thing on the page — the navigation for 33 tutorials
+  // parked below the resource directory nobody scrolls to.
+  const leadEnd = mainBlocks.findIndex(b => b.type === 'content') + 1;
   const main = (
     <div className="page-main-content stack">
-      <BlockRenderer content={mainBlocks} />
+      {sections ? (
+        <>
+          <BlockRenderer content={mainBlocks.slice(0, leadEnd)} />
+          {sections}
+          <BlockRenderer content={mainBlocks.slice(leadEnd)} />
+        </>
+      ) : <BlockRenderer content={mainBlocks} />}
       {!listing && tail}
     </div>
   );

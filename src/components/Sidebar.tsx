@@ -50,8 +50,10 @@ export function Sidebar() {
   const closeMobile = useCallback(() => { if (isMobile) setSidebarOpen(false); }, [isMobile, setSidebarOpen]);
   const visibleTags = useMemo(() => getVisibleTags(), []);
 
-  const { isHomepage, isPage, isEdit, isHistory } = usePagePath();
-  const showToc = (isHomepage || isPage) && !isEdit && !isHistory;
+  const { isHomepage, isCategory, isPage, isEdit, isHistory } = usePagePath();
+  // Categories carry a hub article and a section index, both of which have
+  // headings worth jumping to — they were the only long pages with no rail.
+  const showToc = (isHomepage || isPage || isCategory) && !isEdit && !isHistory;
 
   return (
     <aside className={cn('sidebar', sidebarOpen ? 'sidebar-open' : 'sidebar-closed', !ready && 'sidebar-instant')}>
@@ -67,8 +69,8 @@ export function Sidebar() {
         </div>
 
         {/* Top-level sections only. Every category page already renders its own
-            children as cards carrying a blurb and a page count, which a tree
-            can't — mirroring the whole hierarchy here made it the third copy on
+            children as cards carrying a blurb and the pages they hold, which a
+            tree can't — mirroring the whole hierarchy here made it the third copy on
             screen, next to the breadcrumbs and those cards. */}
         <div className="stack-sm p-4">
           <span className="sidebar-label">Categories</span>

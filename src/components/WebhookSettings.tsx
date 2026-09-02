@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Trash2, Copy, Check, Loader2, ExternalLink, Bell, BellOff } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui';
-import { cn } from '@/lib/utils';
+import { categoryLabel, cn } from '@/lib/utils';
 import { useStore } from '@/hooks';
 import { findTagByPath, isValidTagPath } from '@/lib/tags';
 import { useCopy } from 'wiki-formant/react';
@@ -59,7 +59,7 @@ function parseCurrentContext(pathname: string): { tagPath: string; slug: string 
   // Check if it's a category (all segments form a valid tag path)
   if (isValidTagPath(clean)) {
     const tag = findTagByPath(clean);
-    const name = tag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || clean.at(-1)!.replace(/-/g, ' ');
+    const name = categoryLabel(tag?.name ?? '') || clean.at(-1)!.replace(/-/g, ' ');
     return { tagPath: clean.join('/'), slug: null, label: name };
   }
 

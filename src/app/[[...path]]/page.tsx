@@ -3,17 +3,16 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { notFound, redirect } from 'next/navigation';
-import { parsePath, getHomepage, getPage, getCategoryHub, getCategoryPages, getDescendantPages, getTagCounts, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getEcosystemPageByAsset } from '@/lib/wiki';
+import { parsePath, getHomepage, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getEcosystemPageByAsset } from '@/lib/wiki';
 import { getMaintenanceQueues } from '@/lib/maintenance';
 import { getSession } from '@/lib/auth';
-import type { RelatedPages, SubcategorySummary } from './PageContent';
 import { alphaControls, facetControls, facetFilters, filterPages, rankRelated, resolveLetter } from '@/lib/taxonomy';
 import { findTagByPath, getMainArticle, getSortOrder, TAG_HIERARCHY, type TagNode, type SortOrder } from '@/lib/tags';
 import { highlightBlocks } from '@/lib/highlight';
 import { processBlocks } from '@/lib/html';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { prisma } from '@/lib/prisma/client';
-import { PageView, HomepageView, CategoryView, PageSkeleton, HistoryView, type HistoryData } from './PageContent';
+import { PageView, HomepageView, CategoryView, PageSkeleton, HistoryView, type HistoryData, type RelatedPages, type SubcategorySummary } from './PageContent';
 import dynamic from 'next/dynamic';
 
 const IdeasView = dynamic(() => import('./IdeasView'), { loading: () => <PageSkeleton /> });
@@ -26,7 +25,7 @@ import ChartsOverview from '@/components/charts/ChartsOverview';
 import ValidatorsView from '@/components/charts/ValidatorsView';
 import TokensView from '@/components/charts/TokensView';
 import TokenDetailView from '@/components/charts/TokenDetailView';
-import { BASE_URL, clampSnippet, getContentSnippet } from '@/lib/utils';
+import { BASE_URL, categoryLabel, clampSnippet, getContentSnippet } from '@/lib/utils';
 import { ogMetadata, ogImageUrl } from '@/lib/og';
 import { articleType, aboutEntity, articleLearningProps } from '@/lib/entity-ld';
 import { getTokenDetail } from '@/lib/radix/tokens';
@@ -50,6 +49,9 @@ export async function generateStaticParams() {
     ...pages.filter(p => p.tagPath && p.slug).map(p => ({ path: [...p.tagPath.split('/'), p.slug] })),
   ];
 }
+
+/** How many article links a section card carries before it defers to its own page. */
+const SECTION_CARD_PAGES = 6;
 
 export const dynamicParams = true;
 export const revalidate = 60;
@@ -120,7 +122,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const tagSegments = parsed.tagPath.split('/');
     const tag = findTagByPath(tagSegments);
     const hub = await getCategoryHub(parsed.tagPath);
-    const categoryName = tag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagSegments.at(-1)?.replace(/-/g, ' ') || 'Category';
+    const categoryName = categoryLabel(tag?.name ?? '') || tagSegments.at(-1)?.replace(/-/g, ' ') || 'Category';
     const parentPath = tagSegments.slice(0, -1).join(' › ');
     const hubExcerpt = (hub?.metadata as Record<string, string> | null)?.excerpt;
     const title = hub?.title || categoryName;
@@ -179,7 +181,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const snippet = getContentSnippet(page?.content);
   const tagSegments = page?.tagPath?.split('/').filter(Boolean) || [];
   const sectionName = tagSegments.length
-    ? findTagByPath(tagSegments.slice(0, 1))?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '')
+    ? categoryLabel(findTagByPath(tagSegments.slice(0, 1))?.name ?? '')
     : undefined;
   // Description derived directly from content so it never goes stale
   const description = snippet
@@ -280,7 +282,7 @@ function citationsFrom(content: unknown): Record<string, unknown>[] {
 
 function articleLd(page: WikiPage, url: string) {
   const tagSegments = page.tagPath?.split('/').filter(Boolean) || [];
-  const section = tagSegments.length ? (findTagByPath(tagSegments.slice(0, 1))?.name ?? tagSegments[0] ?? '').replace(/^\p{Emoji_Presentation}\s*/u, '') : undefined;
+  const section = tagSegments.length ? categoryLabel(findTagByPath(tagSegments.slice(0, 1))?.name ?? tagSegments[0] ?? '') : undefined;
   const citations = citationsFrom(page.content);
   const about = aboutEntity(page.tagPath, page.title, page.metadata);
   // Google recommends an image on every article; pages without a banner get the
@@ -314,7 +316,8 @@ function articleLd(page: WikiPage, url: string) {
   };
 }
 
-function collectionLd(name: string, url: string, pages: { title: string; tagPath: string; slug: string }[], description?: string) {
+/** `items` are the category's pages, or — for a container that holds none — its sections. */
+function collectionLd(name: string, url: string, items: ({ title: string; tagPath: string; slug: string } | { name: string; href: string })[], description?: string) {
   return {
     '@type': 'CollectionPage',
     name, url,
@@ -322,8 +325,12 @@ function collectionLd(name: string, url: string, pages: { title: string; tagPath
     isPartOf: { '@type': 'WebSite', name: 'RADIX Wiki', url: BASE_URL },
     mainEntity: {
       '@type': 'ItemList',
-      numberOfItems: pages.length,
-      itemListElement: pages.slice(0, 50).map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: `${BASE_URL}/${p.tagPath}/${p.slug}`, name: p.title })),
+      numberOfItems: items.length,
+      itemListElement: items.slice(0, 50).map((item, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        ...('href' in item ? { url: `${BASE_URL}${item.href}`, name: item.name } : { url: `${BASE_URL}/${item.tagPath}/${item.slug}`, name: item.title }),
+      })),
     },
   };
 }
@@ -396,7 +403,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   if (parsed.type === 'category') {
     const tagSegments = parsed.tagPath.split('/');
     const tag = findTagByPath(tagSegments);
-    const categoryName = tag?.name?.replace(/^\p{Emoji_Presentation}\s*/u, '') || tagSegments.at(-1)?.replace(/-/g, ' ') || 'Category';
+    const categoryName = categoryLabel(tag?.name ?? '') || tagSegments.at(-1)?.replace(/-/g, ' ') || 'Category';
     const categoryUrl = `${BASE_URL}/${parsed.tagPath}`;
 
     // `/<category>/edit` edits the hub article where one exists; categories
@@ -420,12 +427,12 @@ export default async function DynamicPage({ params, searchParams }: Props) {
     }
     const defaultSort = getSortOrder(tagSegments);
     const sort = (sortParam && VALID_SORTS.has(sortParam) ? sortParam : defaultSort) as SortOrder;
-    let all = await getCategoryPages(parsed.tagPath, sort);
-    // A container category (Contents, Tech) holds no pages of its own — list its
-    // subtree beneath the subcategory cards so browsing reaches articles in one hop.
-    if (!all.length && (tag?.children ?? []).some(c => !c.hidden)) {
-      all = await getDescendantPages(parsed.tagPath, sort);
-    }
+    // Pages filed directly here, and only those. A container category used to
+    // flatten its whole subtree into one grid beneath the subcategory cards,
+    // because a card carrying nothing but a page count was a dead end; the cards
+    // now list the articles themselves, so the flat copy was the same 122 pages
+    // twice on one screen — the wall this section index exists to remove.
+    const all = await getCategoryPages(parsed.tagPath, sort);
 
     // The tree gives one axis; `select` metadata gives the cross-cutting one, and
     // the alphabetical index only earns its space once the grid outgrows a screen.
@@ -438,16 +445,25 @@ export default async function DynamicPage({ params, searchParams }: Props) {
     const letters = alphaControls(parsed.tagPath, all, state);
     const pages = filterPages(all, filters, letter);
 
-    const counts = await getTagCounts();
-    const subcategories: SubcategorySummary[] = (tag?.children ?? []).filter(c => !c.hidden).map(child => {
+    // Subcategory cards carry what they hold, not just how many: a section index
+    // that lists articles is navigation, one that lists numbers is a wall. A
+    // subcategory that is itself a container (Tech) lists its own sections, since
+    // six arbitrary articles from a 86-page subtree describe nothing.
+    const visibleChildren = (tag?.children ?? []).filter(c => !c.hidden);
+    const refs = visibleChildren.length ? await getSubtreeRefs(parsed.tagPath) : [];
+    const subcategories: SubcategorySummary[] = visibleChildren.map(child => {
       const childPath = `${parsed.tagPath}/${child.slug}`;
-      const descendants = Object.entries(counts).filter(([p]) => p === childPath || p.startsWith(`${childPath}/`));
+      const held = refs.filter(r => r.tagPath === childPath || r.tagPath.startsWith(`${childPath}/`));
+      const grandchildren = (child.children ?? []).filter(c => !c.hidden);
       return {
         name: child.name,
         href: `/${childPath}`,
         description: child.description,
-        pages: descendants.reduce((n, [, c]) => n + c, 0),
-        subs: (child.children ?? []).filter(c => !c.hidden).length,
+        total: held.length,
+        isSections: grandchildren.length > 0,
+        links: grandchildren.length
+          ? grandchildren.map(g => ({ title: g.name, href: `/${childPath}/${g.slug}` }))
+          : held.slice(0, SECTION_CARD_PAGES).map(r => ({ title: r.title, href: `/${r.tagPath}/${r.slug}` })),
       };
     });
     // A hub article heads its own category, so the pointer to a main article
@@ -458,7 +474,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
     return (
       <>
         {hub && <JsonLd data={articleLd(hub, categoryUrl)} />}
-        <JsonLd data={collectionLd(categoryName, categoryUrl, pages, tag?.description)} />
+        <JsonLd data={collectionLd(categoryName, categoryUrl, pages.length ? pages : subcategories, tag?.description)} />
         <JsonLd data={breadcrumbLd(tagSegments)} />
         <CategoryView
           tagPath={tagSegments} pages={pages} sort={sort} total={all.length}

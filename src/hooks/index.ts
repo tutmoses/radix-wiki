@@ -58,11 +58,12 @@ export function usePagePath() {
   const isHistory = last === 'history';
   const viewSegs = (isEdit || isHistory) ? segments.slice(0, -1) : segments;
   const isHomepage = viewSegs.length === 0;
-  const isPage = !isHomepage && !isValidTagPath(viewSegs) && viewSegs.length >= 2;
+  const isCategory = !isHomepage && isValidTagPath(viewSegs);
+  const isPage = !isHomepage && !isCategory && viewSegs.length >= 2;
   const viewPath = isHomepage ? '/' : `/${viewSegs.join('/')}`;
   const tagPath = isPage ? viewSegs.slice(0, -1).join('/') : null;
   const slug = isPage ? viewSegs[viewSegs.length - 1] : null;
-  return { isHomepage, isPage, isEdit, isHistory, viewPath, tagPath, slug };
+  return { isHomepage, isCategory, isPage, isEdit, isHistory, viewPath, tagPath, slug };
 }
 
 // ========== STORE ==========

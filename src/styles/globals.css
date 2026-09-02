@@ -420,10 +420,20 @@
 
   /* ===== CATEGORY HERO ===== */
   .category-hero { @apply flex flex-col gap-4 pb-4 border-b border-border-muted; }
-  .category-hero-grid { @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3; }
-  .category-hero-card { @apply flex flex-col gap-1 p-4 bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5 hover:shadow; }
   .category-main-article { @apply text-text-muted; }
-  .subcategory-meta { @apply mt-auto pt-2 text-text-muted text-xs; }
+
+  /* ===== SECTION INDEX ===== */
+  /* Three columns, not four: a card that lists the articles it holds needs the
+     width for titles. `auto-rows-fr` keeps the "N more pages" foot on one line
+     across a row whose cards hold different numbers of links. */
+  /* Two columns for most of the range: this grid runs both full-width and inside
+     the article column beside an infobox, and three cards there truncate titles. */
+  .section-index { @apply grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 auto-rows-fr gap-3; }
+  .section-card { @apply flex flex-col gap-2 p-4 bg-surface-1 border border-border-muted rounded-lg transition-colors hover:border-accent; }
+  .section-card-title { @apply font-medium transition-colors hover:text-accent; }
+  .section-card-desc { @apply m-0 text-text-muted text-small; }
+  .section-card-links { @apply m-0 pl-0 list-none flex flex-col gap-1 text-small; li { @apply m-0 truncate; } }
+  .section-card-more { @apply mt-auto pt-1 text-text-muted text-xs transition-colors hover:text-accent; }
 
   /* ===== SUBSCRIBE ROW ===== */
   .subscribe-row { @apply flex items-center flex-wrap gap-2 text-small; }

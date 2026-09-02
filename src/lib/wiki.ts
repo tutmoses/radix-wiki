@@ -192,24 +192,28 @@ export const getCategoryPages = cached('getCategoryPages',
   },
 );
 
-/** Pages under a container category's subtree, so browsing never dead-ends on a page of cards. */
-export const getDescendantPages = cached('getDescendantPages',
-  async (tagPath: string, sort?: SortOrder, limit = 200): Promise<WikiPage[]> => {
-    const resolvedSort = sort ?? getSortOrder(tagPath.split('/'));
-    return prisma.page.findMany({
-      where: { tagPath: { startsWith: `${tagPath}/` }, slug: { not: '' } },
-      select: CATEGORY_SELECT,
-      orderBy: sortOrderBy[resolvedSort],
-      take: limit,
-    }).then(rows => rows.map(listRow)) as unknown as WikiPage[];
-  },
-);
-
-/** Pages per tag path, for the "44 pages · 3 subcategories" line on subcategory cards. */
-export const getTagCounts = cached('getTagCounts', async (): Promise<Record<string, number>> => {
-  const rows = await prisma.page.groupBy({ by: ['tagPath'], where: { slug: { not: '' } }, _count: { _all: true } });
-  return Object.fromEntries(rows.map(r => [r.tagPath, r._count._all]));
+/** A category's subtree, minus the tag paths declared wiki-internal — search
+ *  already excludes them, and a reader browsing Contents has no business being
+ *  handed the maintenance log. */
+const subtreeWhere = (tagPath: string) => ({
+  tagPath: { startsWith: `${tagPath}/`, notIn: HIDDEN_TAG_PATHS },
+  slug: { not: '' },
 });
+
+/**
+ * Title-only refs for everything under a category. A subcategory card used to
+ * carry a page *count* and nothing else, which made a section index a page of
+ * cards leading to more cards; with the titles it holds, the card is the index
+ * and every article is one hop from the category it lives in.
+ */
+export const getSubtreeRefs = cached('getSubtreeRefs',
+  async (tagPath: string): Promise<{ tagPath: string; slug: string; title: string }[]> =>
+    prisma.page.findMany({
+      where: subtreeWhere(tagPath),
+      select: { tagPath: true, slug: true, title: true },
+      orderBy: { title: 'asc' },
+    }),
+);
 
 /** Title-only lookup — a category's main article usually lives in another category. */
 export const getPageRef = cached('getPageRef',

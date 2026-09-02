@@ -11,6 +11,15 @@ export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * A tag node's name as prose — "Blog", not "✍️ Blog". The old
+ * `\p{Emoji_Presentation}` test only matched glyphs that default to emoji
+ * presentation, so ✍️ and ⚖️ (text-default codepoints wearing a
+ * variation selector) survived it and reached headings as "Pages in ✍️ Blog".
+ */
+export const categoryLabel = (name: string): string =>
+  name.replace(/^[\p{Extended_Pictographic}\p{Emoji_Modifier}\uFE0F\u200D]+\s*/u, '');
+
 export function slugify(text: string): string {
   return text.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '');
 }
