@@ -5,6 +5,8 @@
 // then verifies them:
 //   - external: HTTP HEAD (falling back to GET) with a timeout
 //   - internal: resolved against the set of live page paths in the DB
+//   - externals: status-checked, except YouTube watch/youtu.be links, which go
+//               through oEmbed for the same reason the embeds do (run 353)
 //   - embeds:   status-checked, except YouTube embeds (whose /embed/ URL 200s
 //               even for a private or deleted video) which are resolved via the
 //               oEmbed endpoint instead, and JS widget shells whose 200 proves
@@ -33,6 +35,11 @@ const linkRegex = /<a\s+[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi;
 const embedRegex = /<(iframe|img)\b[^>]*?\ssrc="([^"]*)"/gi;
 
 const youtubeEmbedRegex = /^https?:\/\/(?:www\.)?(?:youtube-nocookie\.com|youtube\.com)\/embed\/([\w-]+)/;
+// The same video cited as a LINK rather than an iframe. youtu.be/<id> 303s and
+// youtube.com/watch?v=<id> 200s for deleted and private videos alike, so an anchor
+// carrying a dead video is invisible to a status check — 55 of them had gone unprobed
+// corpus-wide until run 353 resolved them and found 7 unwatchable.
+const youtubeWatchRegex = /^https?:\/\/(?:(?:www\.)?youtube\.com\/(?:watch\?(?:[^#]*&)?v=|shorts\/|live\/)|youtu\.be\/)([\w-]{6,})/;
 
 // Hosts that answer 200 with a JS loader shell regardless of whether the deck /
 // store / dataset behind the query string still exists. A status check on these
@@ -60,6 +67,34 @@ const STATIC_PATHS = ['/', '/leaderboard', '/welcome', '/rewards', '/search', '/
   // Agent surface: real routes, not wiki pages, so they need declaring here or every
   // page that cites one is reported as a broken internal link (run 272).
   '/AGENTS.md'];
+
+// Route handlers under src/app/ — /week-in-review.xml, /blog.xml, /llms.txt and
+// friends are real URLs with no backing page row, so without this every page that
+// cites one reads as a broken internal link (run 347: /week-in-review.xml was
+// reported broken on eleven blog pages while the live feed answered 200). Read from
+// disk like publicAssetPaths() so a new route resolves on its own. Conventional
+// files that name their own output are mapped by hand — there are only three.
+const CONVENTION_ROUTES = { 'sitemap.ts': '/sitemap.xml', 'robots.ts': '/robots.txt', 'manifest.ts': '/manifest.webmanifest' };
+
+function appRoutePaths() {
+  const dir = new URL('../src/app/', import.meta.url);
+  const walk = (base, prefix = '') =>
+    readdirSync(new URL(base, dir), { withFileTypes: true }).flatMap((e) => {
+      if (e.isDirectory()) {
+        // /api/* is machine surface, and a bracketed segment is a dynamic route
+        // whose instances are pages, not fixed paths.
+        if (e.name === 'api' || e.name.startsWith('[')) return [];
+        return walk(`${base}${e.name}/`, `${prefix}${e.name}/`);
+      }
+      if (e.name === 'route.ts') return [`/${prefix}`.replace(/(.)\/$/, '$1')];
+      return CONVENTION_ROUTES[e.name] && !prefix ? [CONVENTION_ROUTES[e.name]] : [];
+    });
+  try {
+    return walk('');
+  } catch {
+    return [];
+  }
+}
 
 // Files served straight out of public/ — /logo.png, /favicon.ico and friends are
 // real URLs with no backing page row, so without this every page offering them for
@@ -192,6 +227,14 @@ async function probeYouTube(videoId) {
   }
 }
 
+// An external anchor gets the same treatment as an embed when it names a video: the
+// citation is only good if a reader can watch it, and only oEmbed can say so.
+async function probeExternal(url) {
+  const yt = url.match(youtubeWatchRegex);
+  if (yt) return { url, videoId: yt[1], ...(await probeYouTube(yt[1])) };
+  return probe(url);
+}
+
 async function probeEmbed({ kind, url }) {
   const yt = url.match(youtubeEmbedRegex);
   if (yt) return { kind, url, videoId: yt[1], ...(await probeYouTube(yt[1])) };
@@ -240,7 +283,7 @@ try {
   // (derived from tag_path rather than parsed out of TAG_HIERARCHY, which is a
   // nested TS literal this .mjs cannot import), and the static routes parsePath
   // resolves outside the tag tree.
-  const livePaths = new Set([...STATIC_PATHS, ...publicAssetPaths()]);
+  const livePaths = new Set([...STATIC_PATHS, ...appRoutePaths(), ...publicAssetPaths()]);
   const { rows: allRows } = await client.query('SELECT slug, tag_path FROM pages');
   for (const r of allRows) {
     livePaths.add(`/${r.tag_path}/${r.slug}`);
@@ -273,7 +316,7 @@ try {
   }
 
   const externalUrls = [...externalToPages.keys()];
-  const results = await mapLimit(externalUrls, CONCURRENCY, probe);
+  const results = await mapLimit(externalUrls, CONCURRENCY, probeExternal);
   const brokenExternal = results
     .filter((r) => !r.ok)
     .map((r) => ({ ...r, pages: externalToPages.get(r.url) }));
