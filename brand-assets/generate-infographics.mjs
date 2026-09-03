@@ -40,6 +40,75 @@ function radixEngine() {
   return { W, H, title: 'The Radix Engine', tag: 'EXECUTION STACK', note: 'Written in Scrypto (Rust) · asset-oriented · Scrypto VM + Native VM.', body: b };
 }
 
+
+// ============================ The Developer Path ===========================
+// The route through /developers, in the order the sections are meant to be read.
+// Counts and difficulty come from the pages themselves (metadata.difficulty on
+// each guide); keep them in step when guides are added or moved.
+function developerPath() {
+  const W = 920, H = 770, L = 48, R = W - L, w = R - L;
+
+  // A right-aligned count/difficulty pill. Sized from the label, since
+  // "Beginner" and "Beginner to Advanced" are very different widths.
+  const pill = (xRight, y, label, col) => {
+    const pw = label.length * 6.1 + 18;
+    return `<rect x="${xRight - pw}" y="${y - 12}" width="${pw}" height="18" rx="9" fill="none" stroke="${col}" stroke-width="0.9"/>`
+      + t(xRight - pw / 2, y + 1, label, { size: 10, w: 700, fill: col, font: MONO, anchor: 'middle', ls: '0.04em' });
+  };
+
+  let b = paras(L, 150, 'Seven sections, and only the first four are a sequence. Work down the spine in order — each stage assumes the one above it — then take the branches the project actually needs.', 116, { size: 14, lh: 21, fill: C.text2 });
+
+  b += sectionLabel(L, 224, 'THE CORE PATH \u2014 IN ORDER');
+
+  const stages = [
+    { n: 1, name: 'Getting Started', meta: '3 guides \u00b7 Beginner', col: C.getaway,
+      desc: 'Install the toolchain, write a first blueprint, deploy to Stokenet and then mainnet.' },
+    { n: 2, name: 'Scrypto', meta: '9 guides \u00b7 Beginner to Advanced', col: C.getaway,
+      desc: 'Resources and NFTs, authorization and badges, events and royalties, testing, vault patterns, multi-component architecture, oracles, permissioned assets.' },
+    { n: 3, name: 'Transactions', meta: '5 guides \u00b7 Intermediate to Advanced', col: C.jupiter,
+      desc: 'The manifest language, the transaction lifecycle, fees, the Radix Engine Toolkit, addresses and entity types.' },
+    { n: 4, name: 'Frontend', meta: '4 guides \u00b7 Intermediate', col: C.jupiter,
+      desc: 'The dApp Toolkit, the Gateway SDK, ROLA wallet login, dApp definition and wallet verification.' },
+  ];
+
+  const y0 = 244, h = 76, gap = 12, chipX = L + 34;
+  // The spine runs behind the chips, so the four cards read as one ordered run
+  // rather than four unrelated boxes.
+  b += `<line x1="${chipX}" y1="${y0 + h / 2}" x2="${chipX}" y2="${y0 + 3 * (h + gap) + h / 2}" stroke="${C.hair}" stroke-width="1.5"/>`;
+  stages.forEach((st, i) => {
+    const y = y0 + i * (h + gap);
+    b += card(L + 56, y, w - 56, h, i === 0);
+    b += `<rect x="${L + 56}" y="${y}" width="3" height="${h}" fill="${st.col}"/>`;
+    b += `<circle cx="${chipX}" cy="${y + h / 2}" r="14" fill="${C.bg}"/>`;
+    b += numChip(chipX, y + h / 2, st.n, st.col);
+    b += t(L + 76, y + 26, st.name, { size: 16, w: 700, fill: C.text });
+    b += pill(R - 16, y + 24, st.meta, C.muted);
+    b += paras(L + 76, y + 46, st.desc, 88, { size: 12.5, lh: 16, fill: C.text2 });
+  });
+
+  const by = y0 + 4 * (h + gap) + 18;
+  b += sectionLabel(L, by, 'THEN, AS THE PROJECT NEEDS IT');
+  const branches = [
+    { name: 'Infrastructure', meta: '3 guides', desc: 'Run a node, use the public APIs, and integrate off-ledger services.' },
+    { name: 'AI Agents', meta: '5 pages', desc: 'x402 payments, agent wallets, MCP servers, and context packs for coding agents.' },
+    { name: 'Tools', meta: '4 pages', desc: 'Manifest builders, event webhooks, and the community SDKs.' },
+  ];
+  const cw = Math.floor((w - 2 * 14) / 3), cy = by + 18, ch = 96;
+  branches.forEach((br, i) => {
+    const x = L + i * (cw + 14);
+    b += card(x, cy, cw, ch);
+    b += t(x + 16, cy + 26, br.name, { size: 14.5, w: 700, fill: C.text });
+    b += t(x + 16, cy + 44, br.meta, { size: 10.5, w: 700, fill: C.muted, font: MONO, ls: '0.06em' });
+    b += paras(x + 16, cy + 63, br.desc, 34, { size: 12, lh: 15, fill: C.text2 });
+  });
+
+  return {
+    W, H, title: 'The Route to Mastery', tag: 'DEVELOPER PATH',
+    note: 'Start at Installing Scrypto \u00b7 33 guides across seven sections \u00b7 radix.wiki/developers',
+    body: b,
+  };
+}
+
 // ============================ Radix Organizational Structure ===============
 // Boxes-and-connectors org chart grounded in radix.wiki's own pages
 // (ecosystem/radix-foundation, ecosystem/rdx-works, ecosystem/radix-accountability-council,
@@ -166,6 +235,7 @@ function radixOrgChart() {
 const GRAPHICS = [
   { file: '01-radix-engine', build: radixEngine },
   { file: '02-org-structure', build: radixOrgChart },
+  { file: '03-developer-path', build: developerPath },
 ];
 
 await renderPngs(GRAPHICS.map((g) => {

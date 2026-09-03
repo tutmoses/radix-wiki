@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { uid, cuid, AUTHOR_ID } from './seed-utils.mjs';
+import { figureBlock } from '../brand-assets/kit.mjs';
 config();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -37,23 +38,26 @@ const SPECS = [
     intro: 'Radix governance spans a family of legal entities and an in-progress handover from the Radix Foundation to a community-owned DAO. The map below shows who holds what today and where authority is heading.',
     caption: 'The Radix entity group and the 2026 Foundation-to-DAO governance handover.',
   },
+  {
+    file: '03-developer-path', marker: 'radix-developer-path',
+    tagPath: 'developers', slug: '',
+    after: '<h2>Where to start</h2>',
+    heading: 'The route to mastery',
+    intro: 'The seven sections are not seven equal choices. The first four are a sequence — each assumes the one above it — and the remaining three are branches to take when the project needs them.',
+    caption: 'The developer path: four sequential stages, then three branches.',
+  },
 ];
 
-const escAttr = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-
-function embedSvg(file, label) {
-  const raw = readFileSync(resolve(REPO, `brand-assets/${file}.svg`), 'utf8').trim();
-  return raw.replace(/<svg\b[^>]*>/, (tag) =>
-    tag
-      .replace(/ width="\d+" height="\d+"/, '')
-      .replace(/>$/, ` preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block" role="img" aria-label="${escAttr(label)}">`));
-}
-
+// The strip/wrap transform is kit.figureBlock — this script used to carry its own
+// copy, which is how the border colour here and the kit's could have drifted apart.
 function figureHtml(s) {
-  const svg = embedSvg(s.file, `radix.wiki infographic – ${s.heading}`);
-  return `<h2>${s.heading}</h2>
-<p>${s.intro}</p>
-<figure data-graphic="${s.marker}" style="max-width:760px;margin:1.5em auto;border:1px solid #5a6178;border-radius:8px;overflow:hidden;background:#393e50"><div style="padding:8px">${svg}</div><figcaption style="padding:10px 14px;border-top:1px solid #5a6178;font-size:12px;color:#c5c9d6">${s.caption}</figcaption></figure>`;
+  const svg = readFileSync(resolve(REPO, `brand-assets/${s.file}.svg`), 'utf8').trim();
+  const figure = figureBlock(svg, {
+    marker: s.marker,
+    label: `radix.wiki infographic – ${s.heading}`,
+    caption: s.caption,
+  });
+  return `<h2>${s.heading}</h2>\n<p>${s.intro}</p>\n${figure}`;
 }
 
 const bumpMinor = (v) => {
@@ -78,7 +82,17 @@ try {
     if (idx >= 0 && blocks[idx].text === html) { console.log(`${s.tagPath}/${s.slug}: unchanged, skip`); continue; }
     let action;
     if (idx >= 0) { blocks[idx] = { ...blocks[idx], text: html }; action = `replaced [${idx}]`; }
-    else { blocks.push({ id: uid(), type: 'content', text: html }); action = `appended [${blocks.length - 1}]`; }
+    else {
+      // `after` puts the figure where it belongs in the argument rather than at
+      // the end of the article, which on a long hub is past the resource lists.
+      const at = s.after
+        ? blocks.findIndex((b) => b.type === 'content' && typeof b.text === 'string' && b.text.includes(s.after))
+        : -1;
+      if (s.after && at < 0) { console.log(`SKIP ${s.tagPath}/${s.slug} – anchor "${s.after}" not found`); continue; }
+      const pos = at >= 0 ? at + 1 : blocks.length;
+      blocks.splice(pos, 0, { id: uid(), type: 'content', text: html });
+      action = `inserted [${pos}]`;
+    }
 
     const version = bumpMinor(page.version);
     const now = new Date().toISOString();
