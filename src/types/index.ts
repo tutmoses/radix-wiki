@@ -2,14 +2,10 @@
 
 import type { User, Page, Revision, Comment, Notification, Prisma } from '@prisma/client';
 
-// Auth types
-export interface AuthSession {
-  userId: string;
-  radixAddress: string;
-  personaAddress?: string;
-  displayName?: string;
-  expiresAt: Date;
-}
+// Auth types. The session and the wallet proof are shaped by the stack that
+// produces them, which is now `wiki-formant/rola`; re-exported here so the rest
+// of the app keeps importing its types from one place.
+export type { AuthSession, SignedChallenge } from 'wiki-formant/rola';
 
 export interface RadixPersona {
   identityAddress: string;
@@ -25,16 +21,6 @@ export interface RadixAccount {
 export interface RadixWalletData {
   persona?: RadixPersona;
   accounts: RadixAccount[];
-}
-
-export interface SignedChallenge {
-  challenge: string;
-  address: string;
-  proof: {
-    publicKey: string;
-    signature: string;
-    curve: 'curve25519' | 'secp256k1';
-  };
 }
 
 // Wiki types - derive from Prisma. `shortAddress` is the computed display-safe
