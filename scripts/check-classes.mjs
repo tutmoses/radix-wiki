@@ -11,8 +11,15 @@
 // globals.css's components alike — is the ground truth. Any bare token written in
 // a className string literal and absent from that set is dead.
 //
+// It also counts the inverse fault. CLAUDE.md allows one-off modifiers inline but
+// bans compositions: 3+ utilities in one className is a component class that was
+// never named, and the same cluster then drifts between its copies. Which tokens
+// are utilities is derived, not listed — anything the build emits that globals.css
+// does not define is Tailwind's.
+//
 //   node scripts/check-classes.mjs           # exit 1 on any dead token
 //   node scripts/check-classes.mjs --warn    # report and exit 0
+//   node scripts/check-classes.mjs --compositions   # also fail on 3+ inline utilities
 //
 // Needs a build first (npm run build): without one there is nothing to check
 // against, and the script says so and exits 0 rather than failing blind.
@@ -47,25 +54,55 @@ for (const f of cssFiles) {
   }
 }
 
+// Classes this project defines itself. Everything else the build emitted is a
+// Tailwind utility, which is what makes the composition count derivable rather
+// than a maintained prefix list.
+const globalsFile = walk(SRC_DIR, '.css').find(f => f.endsWith('globals.css'));
+const named = new Set();
+if (globalsFile) {
+  for (const m of fs.readFileSync(globalsFile, 'utf8').matchAll(/\.((?:\\.|[-\w])+)/g)) {
+    named.add(m[1].replace(/\\/g, ''));
+  }
+}
+
 // Only bare literals: anything interpolated is beyond a static check.
 const dead = new Map();
+const compositions = [];
 for (const f of walk(SRC_DIR, '.tsx')) {
   fs.readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
     for (const m of line.matchAll(/className=(?:"([^"]*)"|\{'([^']*)')/g)) {
-      for (const tok of (m[1] || m[2]).split(/\s+/)) {
+      const raw = (m[1] ?? m[2] ?? '').split(/\s+/);
+      let utilities = 0;
+      for (const tok of raw) {
         if (!tok || tok.includes('$') || tok.includes('{')) continue;
         const base = tok.replace(/^[a-z-]+:/, '').replace(/^!/, ''); // strip variant, important
-        if (emitted.has(tok) || emitted.has(base)) continue;
+        if (emitted.has(tok) || emitted.has(base)) {
+          if (!named.has(base)) utilities++;
+          continue;
+        }
         if (!dead.has(tok)) dead.set(tok, []);
         dead.get(tok).push(`${f}:${i + 1}`);
       }
+      if (utilities >= 3) compositions.push({ at: `${f}:${i + 1}`, n: utilities, s: (m[1] ?? m[2]) });
     }
   });
 }
 
+const CHECK_COMPOSITIONS = process.argv.includes('--compositions');
+
+if (compositions.length) {
+  const verb = CHECK_COMPOSITIONS ? 'must be named' : 'should be named (advisory)';
+  console.error(`check-classes: ${compositions.length} inline composition(s) of 3+ utilities ${verb}:\n`);
+  for (const c of compositions.sort((a, b) => b.n - a.n).slice(0, 20)) {
+    console.error(`  ${String(c.n).padStart(2)} utils  ${c.at}  ${c.s.slice(0, 72)}`);
+  }
+  if (compositions.length > 20) console.error(`  … and ${compositions.length - 20} more`);
+  console.error('');
+}
+
 if (!dead.size) {
   console.log(`check-classes: clean — every className token resolves against ${emitted.size} emitted selectors.`);
-  process.exit(0);
+  process.exit(CHECK_COMPOSITIONS && compositions.length && !WARN_ONLY ? 1 : 0);
 }
 
 console.error(`check-classes: ${dead.size} className token(s) style nothing:\n`);
