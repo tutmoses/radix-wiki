@@ -39,12 +39,16 @@ const SPECS = [
     caption: 'The Radix entity group and the 2026 Foundation-to-DAO governance handover.',
   },
   {
+    // One section, not two: the prose spent a hundred words saying what the
+    // figure shows, so "Where to start" and "The route to mastery" are one
+    // block now — a short lead, then the map, whose every box is a link.
     file: '03-developer-path', marker: 'radix-developer-path',
     tagPath: 'developers', slug: '',
-    after: '<h2>Where to start</h2>',
-    heading: 'The route to mastery',
-    intro: 'The seven sections are not seven equal choices. The first four are a sequence — each assumes the one above it — and the remaining three are branches to take when the project needs them.',
-    caption: 'The developer path: four sequential stages, then three branches.',
+    after: '<h2>Introduction</h2>',
+    interactive: true,
+    heading: 'Where to start',
+    intro: '<a href="/developers/getting-started/01-install-scrypto">Installing Scrypto</a> is step one for everyone — the toolchain, a first blueprint, a package deployed to <a href="/contents/tech/releases/stokenet">Stokenet</a>. After that the map is the order. Give <a href="/developers/transactions/01-manifest-language">manifests</a> more time than their position suggests: a Radix transaction states what it intends to do in a form the <a href="/contents/tech/core-protocols/radix-wallet">wallet</a> can show a user before they sign it.',
+    caption: 'Four sequential stages, then three branches. Every box links to its section.',
   },
 ];
 
@@ -56,6 +60,7 @@ function figureHtml(s) {
     marker: s.marker,
     label: `radix.wiki infographic – ${s.heading}`,
     caption: s.caption,
+    interactive: s.interactive === true,
   });
   return `<h2>${s.heading}</h2>\n<p>${s.intro}</p>\n${figure}`;
 }

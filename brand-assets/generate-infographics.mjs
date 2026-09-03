@@ -43,68 +43,82 @@ function radixEngine() {
 
 // ============================ The Developer Path ===========================
 // The route through /developers, in the order the sections are meant to be read.
-// Counts and difficulty come from the pages themselves (metadata.difficulty on
-// each guide); keep them in step when guides are added or moved.
+// Every box is a link on the web. The affordance is NOT stated inside the SVG:
+// the same file renders as a social-card PNG, where nothing is clickable, so the
+// claim lives in the figcaption instead.
+// The figure is the page's navigation, not a picture of it,
+// so it is embedded with `interactive: true` (which keeps the links reachable —
+// see kit.figureBlock) and the labels are drawn in accent so they read as links.
+// Counts and difficulty come from the guides' own metadata.difficulty; keep them
+// in step when guides are added or moved.
 function developerPath() {
-  const W = 920, H = 770, L = 48, R = W - L, w = R - L;
+  const W = 920, H = 680, L = 48, R = W - L, w = R - L;
 
-  // A right-aligned count/difficulty pill. Sized from the label, since
-  // "Beginner" and "Beginner to Advanced" are very different widths.
+  // An <a> whose only child is a <rect> has no text, and normaliseLinks replaces
+  // a text-less anchor's contents with a label derived from its href — so the
+  // link must always wrap the card's <text> too, never the box alone.
+  const link = (href, inner) => `<a href="${href}">${inner}</a>`;
+  const chevron = (x, y, col) =>
+    `<path d="M${x},${y - 4} L${x + 4.5},${y} L${x},${y + 4}" fill="none" stroke="${col}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`;
   const pill = (xRight, y, label, col) => {
     const pw = label.length * 6.1 + 18;
     return `<rect x="${xRight - pw}" y="${y - 12}" width="${pw}" height="18" rx="9" fill="none" stroke="${col}" stroke-width="0.9"/>`
       + t(xRight - pw / 2, y + 1, label, { size: 10, w: 700, fill: col, font: MONO, anchor: 'middle', ls: '0.04em' });
   };
 
-  let b = paras(L, 150, 'Seven sections, and only the first four are a sequence. Work down the spine in order — each stage assumes the one above it — then take the branches the project actually needs.', 116, { size: 14, lh: 21, fill: C.text2 });
+  let b = paras(L, 150, 'Only the first four sections are a sequence \u2014 each stage assumes the one above it. The last three are branches, taken when a project needs them.', 116, { size: 14, lh: 21, fill: C.text2 });
 
-  b += sectionLabel(L, 224, 'THE CORE PATH \u2014 IN ORDER');
+  b += sectionLabel(L, 210, 'THE CORE PATH \u2014 IN ORDER');
 
   const stages = [
-    { n: 1, name: 'Getting Started', meta: '3 guides \u00b7 Beginner', col: C.getaway,
+    { n: 1, name: 'Getting Started', slug: 'getting-started', meta: '3 \u00b7 Beginner', col: C.getaway,
       desc: 'Install the toolchain, write a first blueprint, deploy to Stokenet and then mainnet.' },
-    { n: 2, name: 'Scrypto', meta: '9 guides \u00b7 Beginner to Advanced', col: C.getaway,
-      desc: 'Resources and NFTs, authorization and badges, events and royalties, testing, vault patterns, multi-component architecture, oracles, permissioned assets.' },
-    { n: 3, name: 'Transactions', meta: '5 guides \u00b7 Intermediate to Advanced', col: C.jupiter,
-      desc: 'The manifest language, the transaction lifecycle, fees, the Radix Engine Toolkit, addresses and entity types.' },
-    { n: 4, name: 'Frontend', meta: '4 guides \u00b7 Intermediate', col: C.jupiter,
-      desc: 'The dApp Toolkit, the Gateway SDK, ROLA wallet login, dApp definition and wallet verification.' },
+    { n: 2, name: 'Scrypto', slug: 'scrypto', meta: '9 \u00b7 Beginner to Advanced', col: C.getaway,
+      desc: 'Resources and NFTs, authorization and badges, testing, and the design patterns.' },
+    { n: 3, name: 'Transactions', slug: 'transactions', meta: '5 \u00b7 Intermediate to Advanced', col: C.jupiter,
+      desc: 'The manifest language, the transaction lifecycle, fees, addresses and entity types.' },
+    { n: 4, name: 'Frontend', slug: 'frontend', meta: '4 \u00b7 Intermediate', col: C.jupiter,
+      desc: 'The dApp Toolkit, the Gateway SDK, ROLA wallet login, and dApp verification.' },
   ];
 
-  const y0 = 244, h = 76, gap = 12, chipX = L + 34;
-  // The spine runs behind the chips, so the four cards read as one ordered run
+  const y0 = 228, h = 60, gap = 12, chipX = L + 34, cardX = L + 56;
+  // The spine runs behind the chips, so the four rows read as one ordered run
   // rather than four unrelated boxes.
   b += `<line x1="${chipX}" y1="${y0 + h / 2}" x2="${chipX}" y2="${y0 + 3 * (h + gap) + h / 2}" stroke="${C.hair}" stroke-width="1.5"/>`;
   stages.forEach((st, i) => {
-    const y = y0 + i * (h + gap);
-    b += card(L + 56, y, w - 56, h, i === 0);
-    b += `<rect x="${L + 56}" y="${y}" width="3" height="${h}" fill="${st.col}"/>`;
-    b += `<circle cx="${chipX}" cy="${y + h / 2}" r="14" fill="${C.bg}"/>`;
-    b += numChip(chipX, y + h / 2, st.n, st.col);
-    b += t(L + 76, y + 26, st.name, { size: 16, w: 700, fill: C.text });
-    b += pill(R - 16, y + 24, st.meta, C.muted);
-    b += paras(L + 76, y + 46, st.desc, 88, { size: 12.5, lh: 16, fill: C.text2 });
+    const y = y0 + i * (h + gap), mid = y + h / 2;
+    let row = card(cardX, y, R - cardX, h, i === 0);
+    row += `<rect x="${cardX}" y="${y}" width="3" height="${h}" fill="${st.col}"/>`;
+    row += `<circle cx="${chipX}" cy="${mid}" r="14" fill="${C.bg}"/>`;
+    row += numChip(chipX, mid, st.n, st.col);
+    row += t(cardX + 20, y + 25, st.name, { size: 16, w: 700, fill: st.col });
+    row += pill(R - 34, y + 23, st.meta, C.muted);
+    row += t(cardX + 20, y + 45, st.desc, { size: 12.5, w: 400, fill: C.text2 });
+    row += chevron(R - 22, mid, C.neut);
+    b += link(`/developers/${st.slug}`, row);
   });
 
-  const by = y0 + 4 * (h + gap) + 18;
+  const by = y0 + 4 * (h + gap) + 20;
   b += sectionLabel(L, by, 'THEN, AS THE PROJECT NEEDS IT');
   const branches = [
-    { name: 'Infrastructure', meta: '3 guides', desc: 'Run a node, use the public APIs, and integrate off-ledger services.' },
-    { name: 'AI Agents', meta: '5 pages', desc: 'x402 payments, agent wallets, MCP servers, and context packs for coding agents.' },
-    { name: 'Tools', meta: '4 pages', desc: 'Manifest builders, event webhooks, and the community SDKs.' },
+    { name: 'Infrastructure', slug: 'infrastructure', meta: '3 guides', desc: 'Run a node, use the public APIs, integrate off-ledger services.' },
+    { name: 'AI Agents', slug: 'ai-agents', meta: '5 pages', desc: 'x402 payments, agent wallets, MCP servers, context packs.' },
+    { name: 'Tools', slug: 'tools', meta: '4 pages', desc: 'Manifest builders, event webhooks, the community SDKs.' },
   ];
-  const cw = Math.floor((w - 2 * 14) / 3), cy = by + 18, ch = 96;
+  const cw = Math.floor((w - 2 * 14) / 3), cy = by + 18, ch = 78;
   branches.forEach((br, i) => {
     const x = L + i * (cw + 14);
-    b += card(x, cy, cw, ch);
-    b += t(x + 16, cy + 26, br.name, { size: 14.5, w: 700, fill: C.text });
-    b += t(x + 16, cy + 44, br.meta, { size: 10.5, w: 700, fill: C.muted, font: MONO, ls: '0.06em' });
-    b += paras(x + 16, cy + 63, br.desc, 34, { size: 12, lh: 15, fill: C.text2 });
+    let box = card(x, cy, cw, ch);
+    box += t(x + 16, cy + 25, br.name, { size: 14.5, w: 700, fill: C.getaway });
+    box += t(x + cw - 34, cy + 25, br.meta, { size: 10, w: 700, fill: C.muted, font: MONO, anchor: 'end', ls: '0.05em' });
+    box += paras(x + 16, cy + 45, br.desc, 33, { size: 12, lh: 15, fill: C.text2 });
+    box += chevron(x + cw - 22, cy + 21, C.neut);
+    b += link(`/developers/${br.slug}`, box);
   });
 
   return {
     W, H, title: 'The Route to Mastery', tag: 'DEVELOPER PATH',
-    note: 'Start at Installing Scrypto \u00b7 33 guides across seven sections \u00b7 radix.wiki/developers',
+    note: '33 guides across seven sections \u00b7 start at Installing Scrypto',
     body: b,
   };
 }

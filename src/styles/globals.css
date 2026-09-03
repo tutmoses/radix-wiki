@@ -130,6 +130,12 @@
   .prose-content {
     a[href^="/"] { @apply text-accent font-medium decoration-accent/40 underline underline-offset-2 hover:text-accent-hover hover:decoration-accent-hover/60; }
     a[href^="http"] { @apply text-text underline underline-offset-2 decoration-text/30 hover:text-accent-hover hover:decoration-accent-hover/50; &::after { content: '\2009\2197'; font-size: 0.75em; } }
+    /* A clickable figure keeps its own affordance. SVG <text> inherits
+       text-decoration from an ancestor <a>, so the prose anchor rule above draws
+       a line under every label in the diagram; the external-link ::after glyph
+       has nowhere to render inside SVG either.
+       An attribute selector is needed to outweigh `a[href^="/"]` above. */
+    figure svg a[href] { @apply no-underline; &::after { content: none; } }
   }
 
   /* ===== HEADING PERMALINK ANCHORS ===== */

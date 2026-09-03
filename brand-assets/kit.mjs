@@ -104,12 +104,16 @@ export function frame(W, H, title, tag, note, body) {
 /** Wrap a kit SVG as wiki-embeddable figure HTML: responsive, accessible, keyed for
  *  idempotent replacement on data-graphic="<marker>". The canonical embed transform —
  *  use this rather than re-deriving the strip/wrap in each script. */
-export function figureBlock(svgRaw, { marker, label, caption }) {
+export function figureBlock(svgRaw, { marker, label, caption, interactive = false }) {
   const escAttr = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  // `role="img"` collapses the graphic to one node for assistive tech, which is
+  // right for a diagram and wrong for one whose boxes are links — the links stop
+  // being reachable. An interactive figure is a labelled group instead.
+  const role = interactive ? 'group' : 'img';
   const svg = svgRaw.replace(/<svg\b[^>]*>/, (tag) =>
     tag
       .replace(/ width="\d+" height="\d+"/, '')
-      .replace(/>$/, ` preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block" role="img" aria-label="${escAttr(label)}">`));
+      .replace(/>$/, ` preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block" role="${role}" aria-label="${escAttr(label)}">`));
   return `<figure data-graphic="${marker}" style="max-width:760px;margin:1.5em auto;border:1px solid ${C.hair};border-radius:8px;overflow:hidden;background:${C.bg}"><div style="padding:8px">${svg}</div><figcaption style="padding:10px 14px;border-top:1px solid ${C.hair};font-size:12px;color:${C.muted}">${esc(caption)}</figcaption></figure>`;
 }
 
