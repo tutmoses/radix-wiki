@@ -9,7 +9,7 @@ import { useMemo, useCallback } from 'react';
 import { TableOfContents as SharedToc, useSidebar } from 'wiki-formant/react';
 import { cn } from '@/lib/utils';
 import { usePagePath, useAuth } from '@/hooks';
-import { getVisibleTags } from '@/lib/tags';
+import { getVisibleTags, type TagNode } from '@/lib/tags';
 
 function NavItem({ href, icon, label, isActive, onNavigate }: { href: string; icon: React.ReactNode; label: string; isActive?: boolean; onNavigate?: () => void }) {
   return (
@@ -38,6 +38,48 @@ const TableOfContents = () => (
     label="On This Page"
   />
 );
+
+/**
+ * The category list, expanding only the branch the reader is in. It used to be
+ * top-level only, because every category page drew its children as cards and a
+ * tree here made a third copy on screen next to those and the breadcrumbs. The
+ * cards are gone from the pages whose article already routes to its own
+ * sections, and this is where that navigation belongs: it persists while
+ * reading a guide, where the card grid never reached.
+ *
+ * Only the active trail opens, so the rail shows one section's children rather
+ * than the whole hierarchy, and the deepest matching node is the one marked
+ * current — an ancestor is on the trail, not the page you are on.
+ */
+function CategoryTree({ nodes, parent = '', pathname, onNavigate }: {
+  nodes: TagNode[]; parent?: string; pathname: string; onNavigate: () => void;
+}) {
+  return (
+    <nav className="stack-sm">
+      {nodes.map(node => {
+        const path = parent ? `${parent}/${node.slug}` : node.slug;
+        const href = `/${path}`;
+        const onTrail = pathname === href || pathname.startsWith(`${href}/`);
+        const children = (node.children ?? []).filter(c => !c.hidden);
+        const openChildren = onTrail ? children : [];
+        const isCurrent = onTrail && !openChildren.some(c => pathname.startsWith(`${href}/${c.slug}`));
+        return (
+          <div key={path}>
+            <Link href={href} onClick={onNavigate} title={node.name}
+              className={cn('nav-item', isCurrent && 'bg-accent-muted text-accent font-medium')}>
+              <span className="truncate">{node.name}</span>
+            </Link>
+            {openChildren.length > 0 && (
+              <div className="nav-subtree">
+                <CategoryTree nodes={openChildren} parent={path} pathname={pathname} onNavigate={onNavigate} />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </nav>
+  );
+}
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -68,20 +110,9 @@ export function Sidebar() {
           </nav>
         </div>
 
-        {/* Top-level sections only. Every category page already renders its own
-            children as cards carrying a blurb and the pages they hold, which a
-            tree can't — mirroring the whole hierarchy here made it the third copy on
-            screen, next to the breadcrumbs and those cards. */}
         <div className="stack-sm p-4">
           <span className="sidebar-label">Categories</span>
-          <nav className="stack-sm">
-            {visibleTags.map(node => (
-              <Link key={node.slug} href={`/${node.slug}`} onClick={closeMobile} title={node.name}
-                className={cn('nav-item', (pathname === `/${node.slug}` || pathname.startsWith(`/${node.slug}/`)) && 'bg-accent-muted text-accent font-medium')}>
-                <span className="truncate">{node.name}</span>
-              </Link>
-            ))}
-          </nav>
+          <CategoryTree nodes={visibleTags} pathname={pathname} onNavigate={closeMobile} />
         </div>
 
         {showToc && (

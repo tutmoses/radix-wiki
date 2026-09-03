@@ -385,6 +385,9 @@
 
   /* Nav items */
   .nav-item { @apply flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-text-muted hover:bg-surface-2 hover:text-text; }
+  /* A child branch of the category tree: indented under its parent with a rule,
+     so the trail is readable without an expander control. */
+  .nav-subtree { @apply mt-1 ml-4 pl-2 border-l border-border-muted flex flex-col gap-1; .nav-item { @apply py-1.5 text-small; } }
 
   /* Table of contents */
   .toc-btn { @apply flex items-center gap-2 px-3 py-2 text-text-muted hover:text-text transition-colors w-full; }

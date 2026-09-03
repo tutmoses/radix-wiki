@@ -352,6 +352,22 @@ function breadcrumbLd(path: string[], leafTitle?: string) {
   return { '@type': 'BreadcrumbList', itemListElement: items };
 }
 
+/**
+ * Whether a page's blocks contain a link to exactly `href`. Matched against the
+ * block texts rather than `JSON.stringify(content)`: the serialised form escapes
+ * the quotes this depends on, so the closing quote never matches and every path
+ * looks linked.
+ */
+function linksTo(content: unknown, href: string): boolean {
+  const needle = `href="${href}"`;
+  const walk = (blocks: unknown): boolean => Array.isArray(blocks) && blocks.some((b: any) => {
+    if (b?.type === 'infobox') return walk(b.blocks);
+    if (b?.type === 'columns') return (b.columns ?? []).some((c: { blocks?: unknown }) => walk(c?.blocks));
+    return typeof b?.text === 'string' && b.text.includes(needle);
+  });
+  return walk(content);
+}
+
 const VALID_SORTS = new Set<string>(['title', 'newest', 'oldest', 'recent']);
 
 export default async function DynamicPage({ params, searchParams }: Props) {
@@ -451,7 +467,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
     // six arbitrary articles from a 86-page subtree describe nothing.
     const visibleChildren = (tag?.children ?? []).filter(c => !c.hidden);
     const refs = visibleChildren.length ? await getSubtreeRefs(parsed.tagPath) : [];
-    const subcategories: SubcategorySummary[] = visibleChildren.map(child => {
+    const allSubcategories: SubcategorySummary[] = visibleChildren.map(child => {
       const childPath = `${parsed.tagPath}/${child.slug}`;
       const held = refs.filter(r => r.tagPath === childPath || r.tagPath.startsWith(`${childPath}/`));
       const grandchildren = (child.children ?? []).filter(c => !c.hidden);
@@ -471,10 +487,19 @@ export default async function DynamicPage({ params, searchParams }: Props) {
     const hub = await withProcessedContent(await getCategoryHub(parsed.tagPath));
     const mainArticle = !hub && tag?.mainArticle ? await getPageRef(tag.mainArticle) : null;
 
+    // An article that links every one of its own subsections is already the
+    // index, and the card grid under it is the same navigation twice — which is
+    // what /developers looked like once its lead grew a stepper. The rail
+    // carries the tree either way. A hub that routes to only some of its
+    // sections keeps the grid, so navigation is never silently lost.
+    const routedByHub = !!hub && visibleChildren.length > 0
+      && visibleChildren.every(c => linksTo(hub.content, `/${parsed.tagPath}/${c.slug}`));
+    const subcategories = routedByHub ? [] : allSubcategories;
+
     return (
       <>
         {hub && <JsonLd data={articleLd(hub, categoryUrl)} />}
-        <JsonLd data={collectionLd(categoryName, categoryUrl, pages.length ? pages : subcategories, tag?.description)} />
+        <JsonLd data={collectionLd(categoryName, categoryUrl, pages.length ? pages : allSubcategories, tag?.description)} />
         <JsonLd data={breadcrumbLd(tagSegments)} />
         <CategoryView
           tagPath={tagSegments} pages={pages} sort={sort} total={all.length}
