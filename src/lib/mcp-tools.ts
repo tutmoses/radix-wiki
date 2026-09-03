@@ -20,7 +20,6 @@ import type { ToolSchema } from 'wiki-formant/mcp';
 export const SERVER_INFO = { name: 'radix-wiki', version: serverManifest.version };
 
 /** Registry identity, for the server card. */
-export const REGISTRY_NAME = serverManifest.name;
 
 export type McpToolSpec = {
   name: string;

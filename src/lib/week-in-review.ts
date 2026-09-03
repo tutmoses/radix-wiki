@@ -5,7 +5,6 @@
 // They agree because the rules live here and the script mirrors these three
 // functions verbatim; both sides are asserted by scripts/wir-lint.mjs.
 
-export const SERIES_TAG = 'blog';
 export const SERIES_SLUG = 'week-in-review';
 export const RECAP_PREFIX = 'week-in-review-';
 

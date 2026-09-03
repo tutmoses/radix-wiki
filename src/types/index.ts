@@ -78,7 +78,6 @@ export type IdeasPage = WikiPage & {
   lastActivity: Date;
 };
 
-export type NotificationType = 'comment_on_page' | 'comment_reply' | 'page_edited';
 
 export type WikiNotification = Notification & {
   actor: WikiAuthor;
