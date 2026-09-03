@@ -43,12 +43,11 @@ function radixEngine() {
 
 // ============================ The Developer Path ===========================
 // The route through /developers, in the order the sections are meant to be read.
-// Every box is a link on the web. The affordance is NOT stated inside the SVG:
-// the same file renders as a social-card PNG, where nothing is clickable, so the
-// claim lives in the figcaption instead.
-// The figure is the page's navigation, not a picture of it,
-// so it is embedded with `interactive: true` (which keeps the links reachable —
-// see kit.figureBlock) and the labels are drawn in accent so they read as links.
+// NOT embedded in the page: /developers carries an HTML stepper instead, because
+// a diagram gives a reader no affordance that it can be clicked and a 920px
+// canvas scaled into a phone column renders its labels at about eight pixels.
+// This builds the 2x PNG that serves as the section's social card. The <a> boxes
+// are kept — they cost nothing in the PNG and make the SVG usable on its own.
 // Counts and difficulty come from the guides' own metadata.difficulty; keep them
 // in step when guides are added or moved.
 function developerPath() {

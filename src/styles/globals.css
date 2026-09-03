@@ -130,12 +130,10 @@
   .prose-content {
     a[href^="/"] { @apply text-accent font-medium decoration-accent/40 underline underline-offset-2 hover:text-accent-hover hover:decoration-accent-hover/60; }
     a[href^="http"] { @apply text-text underline underline-offset-2 decoration-text/30 hover:text-accent-hover hover:decoration-accent-hover/50; &::after { content: '\2009\2197'; font-size: 0.75em; } }
-    /* A clickable figure keeps its own affordance. SVG <text> inherits
-       text-decoration from an ancestor <a>, so the prose anchor rule above draws
-       a line under every label in the diagram; the external-link ::after glyph
-       has nowhere to render inside SVG either.
-       An attribute selector is needed to outweigh `a[href^="/"]` above. */
-    figure svg a[href] { @apply no-underline; &::after { content: none; } }
+    /* The learning path's rows are links, and the prose anchor rule above would
+       underline them and stamp the external-link glyph on them. The extra class
+       in the selector is what outweighs `a[href^="/"]`. */
+    .path a[href] { @apply no-underline; &::after { content: none; } }
   }
 
   /* ===== HEADING PERMALINK ANCHORS ===== */
@@ -439,6 +437,31 @@
   .section-card-title { @apply font-medium transition-colors hover:text-accent; }
   .section-card-desc { @apply m-0 text-text-muted text-small; }
   .section-card-links { @apply m-0 pl-0 list-none flex flex-col gap-1 text-small; li { @apply m-0 truncate; } }
+
+  /* ===== LEARNING PATH ===== */
+  /* Rows, not cards, and deliberately so: the section index above is already a
+     card grid listing every guide, so a second one reads as the same thing
+     twice. What this adds is order and difficulty, which a stepper carries and
+     a grid cannot. It replaced an SVG whose boxes were links — a diagram gives
+     no affordance that it can be clicked, and a 920px canvas scaled into a
+     phone renders its labels at about eight pixels. */
+  .path { @apply list-none m-0 p-0 flex flex-col gap-2 relative; }
+  .path-step { @apply relative m-0 p-0; }
+  /* The connector between the numbered chips, so four rows read as one run. */
+  .path-step:not(:last-child)::after {
+    content: ''; @apply absolute left-7 w-px bg-border-muted;
+    top: calc(100% - 0.5rem); height: 1rem;
+  }
+  .path-step-link { @apply flex items-center gap-4 p-3 pr-4 bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5 hover:shadow; }
+  .path-step-num { @apply shrink-0 grid place-items-center w-8 h-8 rounded-full border border-accent bg-surface-0 font-mono text-small font-bold text-accent; }
+  .path-step-main { @apply flex flex-col gap-0.5 min-w-0 flex-1; }
+  /* The count rides the title line rather than its own column: as a column it
+     took 280px and squeezed every description into three wrapped lines. */
+  .path-step-head { @apply flex items-baseline gap-3 flex-wrap; }
+  .path-step-title { @apply font-medium text-accent; }
+  .path-step-desc { @apply text-text-muted text-small; }
+  .path-step-meta { @apply hidden sm:block text-xs font-mono text-text-muted; }
+  .path-branches { @apply text-text-muted text-small; }
   .section-card-more { @apply mt-auto pt-1 text-text-muted text-xs transition-colors hover:text-accent; }
 
   /* ===== SUBSCRIBE ROW ===== */
