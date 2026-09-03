@@ -1,32 +1,47 @@
-// scripts/sweep-359-developers-wikilinks.mjs
+// scripts/wikilink.mjs — link a tag subtree's prose against the term -> page map.
 //
-// Wikilinks the whole `developers` subtree against a term -> page map. The
-// tutorials were written as standalone documents: "blueprint", "vault",
-// "ROLA", "Gateway SDK" appear hundreds of times across 34 pages and almost
-// none of them reach the article that defines the term.
+// The wiki's articles are written as standalone documents: blueprint, vault,
+// worktop, ROLA, Gateway SDK appear hundreds of times and most never reach the
+// article that defines the term. This links them, under Wikipedia's rules:
 //
-// Rules, which are Wikipedia's:
 //   - FIRST mention per page only. A page that says "resource" forty times
 //     gets one link.
 //   - Never inside an existing <a>, <code>, <pre> or a heading. The HTML is
-//     walked as a tag/text token stream so a term inside markup or an
-//     attribute is never touched.
+//     walked as a tag/text token stream, so a term inside markup or an
+//     attribute is never touched, and no run ships a nested anchor.
 //   - Never link a page to itself, and never add a second link to a target the
-//     page already links to.
-//   - Longest term first, so "Radix dApp Toolkit" wins over "Radix Engine"
-//     wins over "Radix".
+//     page already reaches. The infobox is its own scope: it is a summary table
+//     whose every row is a link, so a page-wide budget left rows plain.
+//   - Longest term first, so "Radix dApp Toolkit" beats "Radix Engine".
 //
-// Usage: node scripts/sweep-359-developers-wikilinks.mjs [--dry-run] [--verbose]
+// A term map cannot tell a Radix `component` from a web component, so
+// NEGATIVE_CONTEXTS vetoes a match on the text before it and PAGE_TERM_DENY
+// drops a term for a page that uses it in a non-Radix sense throughout. Both
+// were paid for in false positives; see sweep-360.
+//
+// Usage:
+//   node scripts/wikilink.mjs developers --dry-run --verbose
+//   node scripts/wikilink.mjs contents/tech
 
 import pg from 'pg';
 import { config } from 'dotenv';
 import { cuid, AUTHOR_ID, isLockedPage } from './seed-utils.mjs';
+import { readFileSync } from 'node:fs';
 config();
 
-const DRY = process.argv.includes('--dry-run');
-const VERBOSE = process.argv.includes('--verbose');
-const PREFIX = 'developers';
+const args = process.argv.slice(2);
+const DRY = args.includes('--dry-run');
+const VERBOSE = args.includes('--verbose');
+// --contexts prints the prose around each proposed link, so a run is reviewable
+// before it writes. A term map's failures are all context failures.
+const CONTEXTS = args.includes('--contexts');
+const PREFIX = args.find(a => !a.startsWith('--'));
 const MAX_PER_PAGE = 14;
+
+if (!PREFIX) {
+  console.error('usage: node scripts/wikilink.mjs <tagPath> [--dry-run] [--verbose]');
+  process.exit(1);
+}
 
 // Apostrophes reach the DB as entities, so any term carrying one matches both.
 const AP = "(?:'|&rsquo;|&#8217;|\u2019)";
@@ -83,21 +98,46 @@ const TERMS = [
 ];
 
 // Terms are never linked inside these, nor inside any tag or attribute.
-const NO_LINK_TAGS = new Set(['a', 'code', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']);
+// `svg` matters as much as `code`: several articles embed a kit-rendered figure
+// whose <text> nodes are ordinary prose to a tokenizer, and an <a> inside an
+// <svg><text> is not a link, it is a broken graphic.
+const NO_LINK_TAGS = new Set(['a', 'code', 'pre', 'svg', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']);
 
 // A term map cannot tell a Radix `component` from a web component, or a Radix
 // `resource` from the HTTP resource an x402 client requests. Each pattern is
 // tested against the ~40 characters preceding a candidate match, plus the match
 // itself; a hit vetoes the link. Every entry here is a false positive this pass
 // actually produced and sweep 360 had to undo.
+// Tested against the text around a candidate — roughly 200 characters before it,
+// the match, and 60 after — so a veto can key on either side of the word.
 const NEGATIVE_CONTEXTS = [
-  /(?:requests?|returns?|serves?|fetch(?:es)?) (?:a|the) resources?$/i,  // an HTTP resource
-  /web components?$/i,                                                    // a custom element
-  /Hardware Requirements.{0,40}Resource$/is,                              // a spec table's row label
-  /(?:crates\.io|docs\.rs|shields\.io|README).{0,30}badges?$/i,           // build badges
-  /an ID badge$/i,                                                        // the physical-badge analogy
-  /instead of the manifest$/i,                                            // the dApp-definition JSON
-  /[a-z0-9]-$/,                                                           // the tail of a hyphenated name
+  /(?:requests?|returns?|serves?|fetch(?:es)?|delivers?) (?:a|the) resources?\b/i, // an HTTP resource
+  /\bweb components?\b/i,                                            // a custom element
+  /Hardware Requirements[\s\S]{0,40}Resource/i,                      // a spec table's row label
+  /(?:crates\.io|docs\.rs|shields\.io|README)[\s\S]{0,30}badges?\b/i, // build badges
+  /\ban ID badge\b/i,                                                // the physical-badge analogy
+  /instead of the manifest\b/i,                                      // the dApp-definition JSON
+  /\ballocating resources?\b/i,                                      // the economics sense
+  /(?:essential|key|core|critical|integral|software) components?\b/i, // "a key component of X"
+  /components? of (?:a|the) (?:system|DeFi|DeSci|ecosystem)/i,       // ditto, from the other side
+  /\bshared resources?\b/i,                                          // a treasury, IP, trademarks
+  /\bresources? gap\b/i,                                             // a funding gap
+  /(?:network|organisation|organization)(?:'|&rsquo;|\u2019)?s resources?\b/i, // an attacker's compute
+  /\bbanks and vaults\b/i,                                           // the kind with a steel door
+  /(?:offers?|provides?|is) an? blueprint for\b/i,                   // the metaphor
+  /\bcomponents? must rely on\b/i,                                   // a distributed-systems component
+  /(?:strengths|weaknesses)[\s\S]{0,80}NFTs?\b/i,                    // another chain's NFT activity
+  /\bcomput(?:ational|ing) resources?\b/i,                            // CPU and RAM
+  /\bmore than a badge\b/i,                                          // the metaphor
+  /\b(?:S3|Spaces|tenant|storage|object)\s+buckets?\b/i,             // object storage
+  /\bbuckets? that now returns\b/i,                                  // ditto, from the other side
+  /\bblock manifests?\b/i,                                           // a block's substate list
+  /\bcomponents? are necessary\b/i,                                  // "what components are necessary"
+];
+
+/** Vetoes keyed on the text *preceding* a match only, where a trailing window would misfire. */
+const NEGATIVE_PREFIXES = [
+  /[a-z0-9]-$/,   // the tail of a hyphenated name: radixdlt-[rola], radix-[SubIntents]
 ];
 
 // Pages that use a term in a non-Radix sense throughout, where vetoing one
@@ -106,6 +146,15 @@ const NEGATIVE_CONTEXTS = [
 const PAGE_TERM_DENY = {
   'developers/ai-agents/ai-agents-and-x402': ['/contents/tech/core-concepts/resources'],
   'developers/infrastructure/01-running-a-node': ['/contents/tech/core-concepts/resources'],
+  // A 2018 research page about a decentralised Twitter: every "component" and
+  // "resource" on it is the ordinary computing word.
+  // A general distributed-systems article: "component" is the ordinary word
+  // throughout, and vetoing one context only moves the link to the next sentence.
+  'contents/tech/core-concepts/trust-boundary': ['/contents/tech/core-concepts/components'],
+  'contents/tech/research/cassandra': [
+    '/contents/tech/core-concepts/components',
+    '/contents/tech/core-concepts/resources',
+  ],
 };
 
 const matcher = new RegExp(`\\b(?:${TERMS.map(([p]) => p).join('|')})\\b`, 'gi');
@@ -142,10 +191,13 @@ function linkify(html, claimed, budget) {
       // Joined from the start rather than a fixed token count: splitting on a
       // capture group puts an empty string between adjacent tags, so "six tokens
       // back" reached only <table> and the Hardware-Requirements veto never fired.
-      const context = (parts.slice(0, i).join('') + part.slice(0, offset)).slice(-200) + match;
-      if (NEGATIVE_CONTEXTS.some(re => re.test(context))) return match;
+      const before = (parts.slice(0, i).join('') + part.slice(0, offset)).slice(-200);
+      const after = (part.slice(offset + match.length) + parts.slice(i + 1).join('')).slice(0, 60);
+      if (NEGATIVE_PREFIXES.some(re => re.test(before))) return match;
+      if (NEGATIVE_CONTEXTS.some(re => re.test(before + match + after))) return match;
       claimed.add(href);
-      added.push({ text: match, href });
+      const plain = (str) => str.replace(/<[^>]+>/g, '').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ');
+      added.push({ text: match, href, context: `${plain(before).slice(-75)}[${match}]${plain(after)}` });
       return `<a href="${href}" rel="noopener">${match}</a>`;
     });
   }
@@ -194,9 +246,16 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, ssl:
 const client = await pool.connect();
 
 try {
-  const { rows } = await client.query(
+  // Hidden tag paths are wiki-internal surfaces, and the maintenance log under
+  // contents/tech/operations is re-rendered from metadata.state on every sweep —
+  // linking its prose is work the next run silently throws away.
+  const hidden = [...readFileSync(new URL('../src/lib/tags.ts', import.meta.url), 'utf8')
+    .matchAll(/slug: '([^']+)'[^}]*hidden: true/g)].map(m => m[1]);
+  const { rows } = (await client.query(
     `SELECT id, tag_path, slug, title, version, content FROM pages
-     WHERE tag_path = $1 OR tag_path LIKE $2 ORDER BY tag_path, slug`, [PREFIX, `${PREFIX}/%`]);
+     WHERE tag_path = $1 OR tag_path LIKE $2 ORDER BY tag_path, slug`, [PREFIX, `${PREFIX}/%`]))
+    .rows.filter(r => !hidden.some(h => r.tag_path === h || r.tag_path.endsWith(`/${h}`)))
+    .reduce((acc, r) => (acc.rows.push(r), acc), { rows: [] });
 
   let touched = 0, totalLinks = 0, skippedLocked = 0;
   const now = new Date().toISOString();
@@ -230,6 +289,7 @@ try {
     const version = `${maj}.${min}.${patch + 1}`;
     console.log(`  ${DRY ? '[dry] ' : ''}${path.padEnd(48)} v${page.version} -> v${version}  +${added.length}`);
     if (VERBOSE) for (const a of added) console.log(`        ${a.text.padEnd(26)} -> ${a.href}`);
+    if (CONTEXTS) for (const a of added) console.log(`        [${a.text}] …${a.context}…`);
 
     if (DRY) continue;
     const json = JSON.stringify(blocks);
