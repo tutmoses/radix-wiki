@@ -85,6 +85,29 @@ const TERMS = [
 // Terms are never linked inside these, nor inside any tag or attribute.
 const NO_LINK_TAGS = new Set(['a', 'code', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']);
 
+// A term map cannot tell a Radix `component` from a web component, or a Radix
+// `resource` from the HTTP resource an x402 client requests. Each pattern is
+// tested against the ~40 characters preceding a candidate match, plus the match
+// itself; a hit vetoes the link. Every entry here is a false positive this pass
+// actually produced and sweep 360 had to undo.
+const NEGATIVE_CONTEXTS = [
+  /(?:requests?|returns?|serves?|fetch(?:es)?) (?:a|the) resources?$/i,  // an HTTP resource
+  /web components?$/i,                                                    // a custom element
+  /Hardware Requirements.{0,40}Resource$/is,                              // a spec table's row label
+  /(?:crates\.io|docs\.rs|shields\.io|README).{0,30}badges?$/i,           // build badges
+  /an ID badge$/i,                                                        // the physical-badge analogy
+  /instead of the manifest$/i,                                            // the dApp-definition JSON
+  /[a-z0-9]-$/,                                                           // the tail of a hyphenated name
+];
+
+// Pages that use a term in a non-Radix sense throughout, where vetoing one
+// context just moves the mistake to the next sentence. The x402 article is about
+// HTTP: every "resource" on it is the thing a 402 response gates.
+const PAGE_TERM_DENY = {
+  'developers/ai-agents/ai-agents-and-x402': ['/contents/tech/core-concepts/resources'],
+  'developers/infrastructure/01-running-a-node': ['/contents/tech/core-concepts/resources'],
+};
+
 const matcher = new RegExp(`\\b(?:${TERMS.map(([p]) => p).join('|')})\\b`, 'gi');
 const resolve = (text) => {
   for (const [pattern, href] of TERMS) {
@@ -112,10 +135,15 @@ function linkify(html, claimed, budget) {
       continue;
     }
     if (open.length || !part.trim() || added.length >= budget) continue;
-    parts[i] = part.replace(matcher, (match) => {
+    parts[i] = part.replace(matcher, (match, offset) => {
       if (added.length >= budget) return match;
       const href = resolve(match);
       if (!href || claimed.has(href)) return match;
+      // Joined from the start rather than a fixed token count: splitting on a
+      // capture group puts an empty string between adjacent tags, so "six tokens
+      // back" reached only <table> and the Hardware-Requirements veto never fired.
+      const context = (parts.slice(0, i).join('') + part.slice(0, offset)).slice(-200) + match;
+      if (NEGATIVE_CONTEXTS.some(re => re.test(context))) return match;
       claimed.add(href);
       added.push({ text: match, href });
       return `<a href="${href}" rel="noopener">${match}</a>`;
@@ -184,6 +212,7 @@ try {
       // no self-links, no second link to a target already reached from here.
       const claimed = claimedIn(scope);
       claimed.add(path);
+      for (const href of PAGE_TERM_DENY[`${page.tag_path}/${page.slug}`] ?? []) claimed.add(href);
       for (const block of scope) {
         const budget = MAX_PER_PAGE - added.length;
         if (budget <= 0) break;
