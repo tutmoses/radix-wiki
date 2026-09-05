@@ -12,6 +12,8 @@
 import { prisma } from '@/lib/prisma/client';
 import { BASE_URL, categoryLabel, pageUrl, pagePath } from '@/lib/utils';
 import { orderByIds, searchPageIds, summarizePage, SUMMARY_SELECT } from '@/lib/wiki';
+import { listEnvelope } from 'wiki-formant/pagination';
+import { MCP_RATE_LIMIT_TEXT } from '@/lib/api';
 import { extractText } from '@/lib/content';
 import { buildFullCorpus, buildLlmsTxt } from '@/lib/llms';
 import { TAG_HIERARCHY, getMetadataKeys, type TagNode } from '@/lib/tags';
@@ -24,7 +26,7 @@ import type { Block } from '@/types/blocks';
 const INSTRUCTIONS = [
   'Community-maintained knowledge base for Radix DLT, the layer-1 with linear scalability and asset-oriented smart contracts.',
   'Usual sequence: get_categories to orient, search_wiki or list_pages to locate, then get_page to read. Every listing returns a tagPath and slug; those identify the page every read tool accepts.',
-  'Reads are open and never authenticate. Rate limit: 60 requests per minute per IP, shared across all methods.',
+  `Reads are open and never authenticate. Rate limit: ${MCP_RATE_LIMIT_TEXT}, shared across all methods.`,
   'Writing without leaving the protocol: get_challenge → sign the ROLA message with your own Ed25519 key → login (returns a Bearer token) → create_page / edit_page with that token as an HTTP `Authorization: Bearer <token>` header on the POSTs carrying the calls.',
   `Deep reference (ROLA signing spec, REST equivalents, content model): ${BASE_URL}/AGENTS.md (also served at ${BASE_URL}/agents-md). Any page URL + ".md" is its markdown twin.`,
 ].join('\n');
@@ -94,7 +96,7 @@ async function search_wiki(args: { query: string; tagPath?: string; page?: numbe
   const results = ids.length
     ? await prisma.page.findMany({ where: { id: { in: ids } }, select: { id: true, ...SUMMARY_SELECT } })
     : [];
-  return { total, page, pageSize: size, pages: orderByIds(results, ids).map(p => summarizePage(p, query, headlines.get(p.id))) };
+  return listEnvelope(orderByIds(results, ids).map(p => summarizePage(p, query, headlines.get(p.id))), total, page, size);
 }
 
 async function get_page(args: { tagPath: string; slug: string }) {
@@ -123,7 +125,7 @@ async function list_pages(args: { tagPath?: string; sort?: string; page?: number
     prisma.page.findMany({ where, select: SUMMARY_SELECT, orderBy, skip: (page - 1) * size, take: size }),
     prisma.page.count({ where }),
   ]);
-  return { total, page, pageSize: size, pages: results.map(page => summarizePage(page)) };
+  return listEnvelope(results.map(page => summarizePage(page)), total, page, size);
 }
 
 async function get_categories() {
@@ -317,7 +319,9 @@ export function serverConfig(auth: string | null): McpServerConfig {
   return {
     serverInfo: SERVER_INFO,
     instructions: INSTRUCTIONS,
-    tools: TOOLS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema, handler: handlers[name]! })),
+    tools: TOOLS.map(({ name, title, description, inputSchema, annotations }) => ({
+      name, title, description, inputSchema, annotations, handler: handlers[name]!,
+    })),
     resources: RESOURCES,
     docsUrl: `${BASE_URL}/AGENTS.md`,
     onCall: (req, body) => trackMcpCall(req, SERVER_INFO.name, body),

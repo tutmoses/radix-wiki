@@ -20,4 +20,4 @@ const header = (pageCount: number) => [
   ``,
 ].join('\n\n');
 
-export const GET = corpusRoute(() => buildFullCorpus(header));
+export const GET = corpusRoute('llms-full', () => buildFullCorpus(header));

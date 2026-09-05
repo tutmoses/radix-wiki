@@ -1,7 +1,7 @@
 // src/lib/api.ts - Shared API utilities
 
 import { NextRequest, NextResponse } from 'next/server';
-import { rateLimit, clientKey, retryMessage, type RateLimitOptions } from 'wiki-formant/rate-limit';
+import { rateLimit, clientKey, rateLimitedResponse, type RateLimitOptions } from 'wiki-formant/rate-limit';
 import { getSession } from '@/lib/auth';
 import { requireBalance, type BalanceAction } from '@/lib/radix/balance';
 import type { AuthSession } from '@/types';
@@ -48,6 +48,15 @@ export function cachedJson<T>(data: T, headers: Record<string, string> = CACHE.s
 }
 
 // ---- rate limiting ----
+
+/**
+ * The one MCP rate-limit number. `initialize`'s instructions, the OpenAPI spec
+ * and /.well-known/mcp.json all read this rather than restating it, so the
+ * route enforces exactly what the documents claim.
+ */
+export const MCP_RATE_LIMIT_PER_MIN = 60;
+export const MCP_RATE_LIMIT_TEXT = `${MCP_RATE_LIMIT_PER_MIN} requests per minute per IP`;
+
 // The bucket itself is `wiki-formant/rate-limit`, shared with the other agent
 // surfaces — this was the third copy of it in the workspace. What stays here is
 // the Next binding: reading the request headers and shaping the 429.
@@ -59,13 +68,22 @@ export function checkRateLimit(
   request: NextRequest,
   prefix: string,
   opts: RateLimitOptions,
-): NextResponse | null {
+): Response | null {
   const limit = rateLimit(clientKey(prefix, request.headers), opts);
-  if (limit.ok) return null;
-  return json({ error: retryMessage(limit.retryAfterSec) }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSec) } });
+  return limit.ok ? null : rateLimitedResponse(limit.retryAfterSec);
 }
 
-export async function handleRoute(fn: () => Promise<NextResponse>, errorMsg = 'Internal server error'): Promise<NextResponse> {
+/** The verdict itself, for a caller that has to shape its own refusal — an MCP
+ *  endpoint owes a JSON-RPC envelope, not this one's plain JSON body. */
+export function rateLimitVerdict(request: NextRequest, prefix: string, opts: RateLimitOptions) {
+  return rateLimit(clientKey(prefix, request.headers), opts);
+}
+
+// `Response`, not `NextResponse`: the shared helpers in `wiki-formant/http`
+// answer with web-standard responses — a 304 from `notModified`, a descriptor
+// from `descriptorResponse` — and a route that returns one is still a valid
+// Next route handler.
+export async function handleRoute(fn: () => Promise<Response>, errorMsg = 'Internal server error'): Promise<Response> {
   try {
     return await fn();
   } catch (error) {

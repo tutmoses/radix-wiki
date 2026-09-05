@@ -8,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
   // pattern length, and `/api/wiki/` beat that disallow by a single character — a
   // one-char margin deciding whether agents can read the twins at all. Naming the twin
   // route outright settles it at 16 characters against 9.
-  const aiAllow = ['/', '/api/mcp', '/api/wiki/', '/api/wiki/*/mdx$', '/llms.txt', '/llms-index.txt', '/llms-full.txt', '/openapi.json'];
+  const aiAllow = ['/', '/api/mcp', '/api/wiki/', '/api/wiki/*/mdx$', '/llms.txt', '/llms-index.txt', '/llms-full.txt', '/openapi.json', '/.well-known/'];
   // The /edit, /history and /mdx VIEWS of a wiki page should not be indexed.
   //
   // Two properties of robots.txt matching decide the shape of these patterns: a

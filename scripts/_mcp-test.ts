@@ -18,7 +18,11 @@ import {
   transportChecks,
   versionCoherence,
   agentCardParity,
+  annotationChecks,
   conditionalGetChecks,
+  descriptorChecks,
+  payloadBudget,
+  robotsChecks,
 } from 'wiki-formant/conformance';
 import serverManifest from '../server.json';
 
@@ -34,10 +38,24 @@ const MCP = t.endpoint;
     card: { url: `${BASE}/.well-known/agent-card.json`, at: j => j.version },
     legacyCard: { url: `${BASE}/.well-known/agent.json`, at: j => j.version },
     openapi: { url: `${BASE}/openapi.json`, at: j => (j.info as { version?: string })?.version },
+    openapiWellKnown: { url: `${BASE}/.well-known/openapi.json`, at: j => (j.info as { version?: string })?.version },
+    mcpManifest: { url: `${BASE}/.well-known/mcp.json`, at: j => j.version },
     serverCard: { url: `${MCP}/server-card`, at: j => j.version },
   }, init.result?.serverInfo?.version);
 
   await agentCardParity(t);
+  await annotationChecks(t, { writes: ['get_challenge', 'login', 'create_page', 'edit_page'] });
+
+  // The three calls an agent makes before anything else. One page with a
+  // 327 KB blob in its metadata column put all three over 350 KB — roughly
+  // 90k tokens — and every assertion below still passed, because none of them
+  // weighed the answer.
+  await payloadBudget(t, [
+    { name: 'list_pages' },
+    { name: 'get_recent_changes' },
+    { name: 'search_wiki', args: { query: 'radix' } },
+    { name: 'get_categories' },
+  ]);
 
   // ---- tools ---------------------------------------------------------------
   console.log(`\n=== tools ===`);
@@ -108,13 +126,40 @@ const MCP = t.endpoint;
     const mdBody = await md.text();
     check(
       '.md twin',
-      md.status === 200 && (md.headers.get('content-type') ?? '').includes('text/markdown') && !!md.headers.get('last-modified'),
-      `${md.status} ${md.headers.get('content-type')} last-modified=${!!md.headers.get('last-modified')}`,
+      md.status === 200 && (md.headers.get('content-type') ?? '').includes('text/markdown') && !!md.headers.get('last-modified') && !!md.headers.get('etag'),
+      `${md.status} ${md.headers.get('content-type')} etag=${md.headers.get('etag')}`,
     );
     check('.md is real markdown', !/<(Infobox|RecentPages|PageList|AssetPrice|Column)/.test(mdBody) && !mdBody.includes('. $1'), 'no JSX component tags, no $1 artifacts');
   }
 
-  await conditionalGetChecks(t, ['llms.txt', 'llms-index.txt', 'llms-full.txt']);
+  // Every surface an agent recrawls, not only the ones that already passed.
+  await conditionalGetChecks(t, [
+    'llms.txt',
+    'llms-index.txt',
+    'llms-full.txt',
+    ...(first ? [`${first.tagPath}/${first.slug}.md`] : []),
+  ]);
+
+  // Built from code rather than rows, so an ETag is the whole validator.
+  await descriptorChecks(t, [
+    '.well-known/agent-card.json',
+    '.well-known/agent.json',
+    '.well-known/openapi.json',
+    'openapi.json',
+    '.well-known/mcp.json',
+    'api/mcp/server-card',
+  ]);
+
+  // Three depths that shared one ETag between them would pass every check
+  // above and still not move when only one of them changed.
+  const tags = await Promise.all(
+    ['llms.txt', 'llms-index.txt', 'llms-full.txt'].map(p =>
+      fetch(`${BASE}/${p}`).then(r => r.headers.get('etag')),
+    ),
+  );
+  check('llms depths have distinct ETags', new Set(tags).size === 3, tags.join(' '));
+
+  await robotsChecks(t, ['/api/mcp', '/llms.txt', '/.well-known/agent-card.json']);
 
   const sitemap = await (await fetch(`${BASE}/sitemap.xml`)).text();
   check('sitemap lists llms.txt', sitemap.includes('/llms.txt') && sitemap.includes('/llms-full.txt') && sitemap.includes('/llms-index.txt'), 'llms.txt + llms-index.txt + llms-full.txt present');

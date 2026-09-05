@@ -126,6 +126,13 @@
      embeds keep the full column. Same split caper draws. */
   .prose-content :where(p, ul, ol, blockquote, h2, h3, h4) { max-width: var(--measure); }
 
+  /* The cap only has to work where nothing sits beside the prose. In the infobox
+     grid the column is already 702px, and `ch` resolves against each element's
+     own font-size — so a 16px paragraph capped at 636px while the 25.6px heading
+     above it, and the columns and link grids below it, ran the full column. Two
+     right edges 66px apart reads as a mistake, not as a measure. */
+  .page-with-infobox .prose-content :where(p, ul, ol, blockquote, h2, h3, h4) { max-width: none; }
+
   .prose-content {
     a[href^="/"] { @apply text-accent font-medium decoration-accent/40 underline underline-offset-2 hover:text-accent-hover hover:decoration-accent-hover/60; }
     a[href^="http"] { @apply text-text underline underline-offset-2 decoration-text/30 hover:text-accent-hover hover:decoration-accent-hover/50; &::after { content: '\2009\2197'; font-size: 0.75em; } }

@@ -1,13 +1,14 @@
 // src/app/openapi.json/route.ts — serves the OpenAPI 3.1 spec from @/lib/openapi.
+//
+// Also mounted at /.well-known/openapi.json. The three origins in this
+// workspace had each picked one of the two paths and 404'd the other, so an
+// agent that guessed wrong concluded there was no spec.
 
-import { NextResponse } from 'next/server';
+import { descriptorResponse } from 'wiki-formant/http';
 import { SPEC } from '@/lib/openapi';
-import { AGENT_CARD_CACHE_CONTROL } from 'wiki-formant/well-known';
 
 export const revalidate = 86400;
 
-export async function GET() {
-  return NextResponse.json(SPEC, {
-    headers: { 'Cache-Control': AGENT_CARD_CACHE_CONTROL },
-  });
+export async function GET(request: Request) {
+  return descriptorResponse(request, SPEC);
 }

@@ -10,7 +10,7 @@ import { BASE_URL } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = corpusRoute(async () => {
+export const GET = corpusRoute('llms-index', async () => {
   const pages = await prisma.page.findMany({
     select: { title: true, tagPath: true, slug: true, content: true },
     where: { tagPath: { not: '' } },

@@ -285,8 +285,38 @@ export const SUMMARY_SELECT = { title: true, tagPath: true, slug: true, content:
  * would silently fall back to the page opening — the infobox. Postgres already
  * knows where the stem matched, so it hands back the passage instead.
  */
+/** A single metadata value's ceiling in a listing. Generous for a real one. */
+const META_VALUE_MAX = 500;
+
+/**
+ * Metadata as a *listing* may carry it: declared keys only, each bounded.
+ *
+ * `metadata` is a free-form JSON column, and one page had the wiki-sweep
+ * routine writing 327 KB of run state into it. Passed straight through, that
+ * single row made `list_pages`, `get_recent_changes` and `search_wiki` each
+ * answer with roughly 350 KB — around 90k tokens, on the three calls an agent
+ * makes before anything else — and published internal operational notes to
+ * anonymous MCP callers. The REST twin of the same query came back at 31 KB,
+ * so the agent lane alone paid it.
+ *
+ * Which keys a page shows is a schema question the tag hierarchy already
+ * answers, so ask it. The cap is the backstop for a declared key that grows:
+ * a projection that trusts the column is the bug that was just fixed.
+ */
+function listingMetadata(tagPath: string, meta: Record<string, unknown> | null) {
+  if (!meta) return null;
+  const declared = new Set(getMetadataKeys(tagPath.split('/')).map(k => k.key));
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(meta)) {
+    if (!declared.has(key) || value == null) continue;
+    const text = typeof value === 'string' ? value : JSON.stringify(value);
+    out[key] = text.length > META_VALUE_MAX ? `${text.slice(0, META_VALUE_MAX)}…` : value;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
 export function summarizePage(p: { title: string; tagPath: string; slug: string; content: unknown; updatedAt: Date; metadata?: unknown; lastVerifiedAt?: Date | null }, query?: string, headline?: string) {
-  const meta = (p.metadata ?? null) as Record<string, unknown> | null;
+  const meta = listingMetadata(p.tagPath, (p.metadata ?? null) as Record<string, unknown> | null);
   return {
     title: p.title,
     url: pageUrl(p.tagPath, p.slug),
@@ -301,7 +331,7 @@ export function summarizePage(p: { title: string; tagPath: string; slug: string;
       || (query ? getMatchSnippet(p.content, query) : getContentSnippet(p.content)),
     updatedAt: p.updatedAt.toISOString().split('T')[0],
     ...(p.lastVerifiedAt ? { lastVerified: p.lastVerifiedAt.toISOString().split('T')[0] } : {}),
-    ...(meta && Object.keys(meta).length ? { metadata: meta } : {}),
+    ...(meta ? { metadata: meta } : {}),
   };
 }
 

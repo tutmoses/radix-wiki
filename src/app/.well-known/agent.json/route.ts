@@ -3,8 +3,8 @@
 // `wiki-formant/well-known`, shared with the other agent surfaces; what stays
 // here is what a card is supposed to differ in.
 
-import { NextResponse } from 'next/server';
-import { agentCard, skillsFromTools, AGENT_CARD_CACHE_CONTROL } from 'wiki-formant/well-known';
+import { descriptorResponse } from 'wiki-formant/http';
+import { agentCard, skillsFromTools } from 'wiki-formant/well-known';
 import { BASE_URL } from '@/lib/utils';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 
@@ -30,6 +30,10 @@ const AGENT_CARD = agentCard({
   },
 });
 
-export async function GET() {
-  return NextResponse.json(AGENT_CARD, { headers: { 'Cache-Control': AGENT_CARD_CACHE_CONTROL } });
+// `descriptorResponse` rather than a bare JSON body: the card is the document
+// an A2A client refetches most and it carried no validator at all, so a caller
+// fell back to heuristic freshness with no way to revalidate — a corrected card
+// reached nobody on any schedule this origin controlled.
+export async function GET(request: Request) {
+  return descriptorResponse(request, AGENT_CARD);
 }

@@ -13,7 +13,7 @@
 // version that an external system reads, so it owns the number. `initialize`
 // and the server card follow it rather than keeping their own.
 import serverManifest from '../../server.json';
-import type { ToolSchema } from 'wiki-formant/mcp';
+import type { ToolAnnotations, ToolSchema } from 'wiki-formant/mcp';
 
 /** Reported by `initialize`. `name` is the MCP server id, distinct from the
  *  registry's namespaced `serverManifest.name`. */
@@ -23,8 +23,16 @@ export const SERVER_INFO = { name: 'radix-wiki', version: serverManifest.version
 
 export type McpToolSpec = {
   name: string;
+  /** Human-facing label. 2025-06-18 promoted this out of `annotations`. */
+  title: string;
   description: string;
   inputSchema: ToolSchema;
+  /**
+   * Required, not optional. Without these every tool looks alike, so a client
+   * deciding what to auto-approve cannot tell `get_page` from `edit_page` —
+   * and this manifest shipped eleven tools, four of which write, carrying none.
+   */
+  annotations: ToolAnnotations;
   /** Write tools require `Authorization: Bearer <ROLA JWT>`. */
   auth?: 'rola';
   /** Surfaced as an A2A skill on the agent card. */
@@ -34,7 +42,13 @@ export type McpToolSpec = {
 export const TOOLS: McpToolSpec[] = [
   {
     name: 'search_wiki',
-    description: 'Search Radix Wiki pages by keyword. Matches against titles and content. Returns titles, URLs, snippets, and update dates.',
+    title: 'Search the wiki',
+    description:
+      'Keyword search across Radix Wiki titles and page text — the first call when you know what you are looking for. '
+      + 'Returns a page of results, each with its title, URL, tagPath, slug, a matched snippet and the date it was last updated. '
+      + 'The tagPath and slug identify the page every read tool accepts. Narrow with tagPath when a term is common; page through with page/pageSize. '
+      + 'When you do not yet know what exists, call get_categories first.',
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
@@ -53,7 +67,13 @@ export const TOOLS: McpToolSpec[] = [
   },
   {
     name: 'get_page',
-    description: 'Fetch the full text content of a specific Radix Wiki page.',
+    title: 'Read a page',
+    description:
+      'Read one page in full: its extracted text, current version number, update date and declared metadata. '
+      + 'Takes the tagPath and slug that every listing returns — not a URL and not a title. '
+      + 'A wrong pair is answered with the tools that find a right one rather than an empty result. '
+      + 'For the whole article set at once use get_full_corpus, and for a page as markdown fetch its URL with `.md` appended.',
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
@@ -70,7 +90,12 @@ export const TOOLS: McpToolSpec[] = [
   },
   {
     name: 'list_pages',
-    description: 'List Radix Wiki pages, optionally filtered by tag path.',
+    title: 'List pages',
+    description:
+      'Browse the wiki by tag path rather than by keyword — every page under a branch, newest first by default. '
+      + 'Returns the same rows as search_wiki (title, URL, tagPath, slug, snippet, updatedAt) plus a pagination envelope carrying totalPages, hasMore and nextPage. '
+      + 'Omit tagPath to walk the whole wiki; pass one from get_categories to stay inside a branch. Sort by title for an A-Z pass.',
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
@@ -84,12 +109,21 @@ export const TOOLS: McpToolSpec[] = [
   },
   {
     name: 'get_categories',
-    description: 'Get the wiki tag hierarchy with page counts per category. Useful for understanding what content exists, and for finding a valid tagPath before writing.',
+    title: 'List categories',
+    description:
+      'The wiki tag hierarchy as a tree, each node carrying its path, name, description and page count. '
+      + 'The cheapest way to orient before searching, and the only way to find a valid tagPath before create_page. '
+      + 'Costs one call and a few kilobytes; prefer it to listing pages to find out what exists.',
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
     inputSchema: { type: 'object', properties: {} },
   },
   {
     name: 'get_recent_changes',
-    description: 'Get recently updated wiki pages. Useful for monitoring new content.',
+    title: 'Recent changes',
+    description:
+      'Pages edited within the last N days, newest first — what to poll when you are watching the wiki rather than reading it. '
+      + 'Same row shape as list_pages. Look back at most 30 days and take at most 50 rows; for anything older, list_pages sorted by updatedAt.',
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
@@ -100,11 +134,18 @@ export const TOOLS: McpToolSpec[] = [
   },
   {
     name: 'get_full_corpus',
-    description: 'Return the entire Radix Wiki as a single text document. Use for comprehensive context or bulk ingestion.',
+    title: 'Whole corpus',
+    description:
+      'Every article as one plain-text document, for bulk ingestion rather than reading. '
+      + 'This is megabytes and far larger than a context window — take it only when you are indexing the wiki, never to answer a single question. '
+      + 'Search or list first; the same corpus is also served, cacheably and with an ETag, at /llms-full.txt.',
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
     inputSchema: { type: 'object', properties: {} },
   },
   {
     name: 'get_ideas_board',
+    title: 'Ideas pipeline',
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
     description: 'Get the RADIX Wiki Ideas Pipeline kanban — community proposals and Radix DAO tasks grouped into status columns (Discussion → Proposed → Approved → In Progress → Testing → Done), each card carrying its working group, category, priority, and assignee. Use this to follow DAO / project progress.',
     inputSchema: {
       type: 'object',
@@ -121,6 +162,8 @@ export const TOOLS: McpToolSpec[] = [
   },
   {
     name: 'get_challenge',
+    title: 'Start a login',
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     description:
       'Step 1 of writing to the wiki: a single-use ROLA challenge (5-minute expiry). ' +
       'The response spells out the exact recipe for the message your Ed25519 key must sign. ' +
@@ -129,6 +172,8 @@ export const TOOLS: McpToolSpec[] = [
   },
   {
     name: 'login',
+    title: 'Exchange a signed proof for a token',
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     description:
       'Step 2: exchange the signed ROLA proof for a 7-day Bearer token — the same verification the human wallet flow runs. ' +
       'Send the returned token as an HTTP `Authorization: Bearer <token>` header on every later create_page / edit_page call; tool arguments never carry it.',
@@ -146,6 +191,8 @@ export const TOOLS: McpToolSpec[] = [
   },
   {
     name: 'create_page',
+    title: 'Create a page',
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     description: 'Create a new Radix Wiki page. Requires a ROLA bearer token — see https://radix.wiki/AGENTS.md for the challenge-sign-verify flow. Call get_categories first for a valid tagPath. Some paths are balance-gated (blog needs 50,000 XRD). Earns contribution points.',
     auth: 'rola',
     inputSchema: {
@@ -172,6 +219,8 @@ export const TOOLS: McpToolSpec[] = [
   },
   {
     name: 'edit_page',
+    title: 'Edit a page',
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
     description: 'Edit an existing Radix Wiki page. Requires a ROLA bearer token — see https://radix.wiki/AGENTS.md. Fetch the page with get_page first and send the full revised block array; the version bump, block-level diff, and revision entry are computed server-side. Locked and author-only pages are rejected. Earns contribution points.',
     auth: 'rola',
     inputSchema: {

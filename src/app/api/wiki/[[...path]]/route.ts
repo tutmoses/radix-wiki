@@ -16,7 +16,7 @@ import { pageToMarkdown } from '@/lib/markdown';
 import type { WikiPageInput, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
 import { deliverWebhooks } from '@/lib/webhooks';
-import { markdownHeaders } from 'wiki-formant/http';
+import { corpusEtag, markdownHeaders, notModified } from 'wiki-formant/http';
 
 type PathParams = { path?: string[] };
 
@@ -165,9 +165,20 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       // its twins for 60s where caper and acuiq2 cache theirs for an hour, and
       // reconciling that is a separate decision from removing the third copy of
       // the content type.
-      return new NextResponse(md, {
-        headers: markdownHeaders(page.updatedAt.toUTCString(), { extra: CACHE.medium }),
-      });
+      //
+      // The validator is the page's own revision, so a recrawl of an unchanged
+      // page costs a 304 instead of a block resolve and a markdown render. The
+      // twin is the most recrawled URL a page has and it was the one surface
+      // here serving no ETag at all — it only ever 304'd where the edge
+      // happened to synthesise a Last-Modified for it.
+      const lastModified = page.updatedAt.toUTCString();
+      const etag = corpusEtag([page.tagPath, page.slug, page.version, page.updatedAt]);
+      return (
+        notModified(request, etag, lastModified) ??
+        new NextResponse(md, {
+          headers: markdownHeaders(lastModified, { etag, extra: CACHE.medium }),
+        })
+      );
     }
 
     return cachedJson(page, { ...CACHE.short, 'Last-Modified': page.updatedAt.toUTCString() });

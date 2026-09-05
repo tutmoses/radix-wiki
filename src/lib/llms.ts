@@ -15,10 +15,18 @@ import { extractText } from '@/lib/content';
 import { CHARTS_PAGES } from '@/lib/static-pages';
 import type { Block } from '@/types/blocks';
 
-/** A GET handler serving `build()` under the corpus ETag — or a 304 instead. */
-export function corpusRoute(build: () => Promise<string>) {
+/**
+ * A GET handler serving `build()` under the corpus ETag — or a 304 instead.
+ *
+ * `depth` is part of the seed. Without it the three depths served one identical
+ * ETag between them, which is legal (a tag is scoped to its URI) and still
+ * wrong in the case that matters: an edit to one depth's own preamble moves no
+ * page row, so the tag would not move and the stale document would be served
+ * until something else in the corpus changed.
+ */
+export function corpusRoute(depth: string, build: () => Promise<string>) {
   return async (request: NextRequest) => {
-    const { etag, lastModified } = await corpusValidators();
+    const { etag, lastModified } = await corpusValidators(depth);
     const cached = notModified(request, etag, lastModified);
     return cached ?? new NextResponse(await build(), { headers: textHeaders(etag, lastModified) });
   };
@@ -57,12 +65,12 @@ export function pageLine(p: { title: string; tagPath: string | null; slug: strin
   });
 }
 
-/** Corpus-wide ETag + Last-Modified from page count and newest update. */
-export async function corpusValidators() {
+/** Corpus-wide ETag + Last-Modified from page count, newest update and depth. */
+export async function corpusValidators(depth = '') {
   const agg = await prisma.page.aggregate({ _count: true, _max: { updatedAt: true } });
   const stamp = agg._max.updatedAt ?? new Date(0);
   return {
-    etag: corpusEtag([agg._count, stamp]),
+    etag: corpusEtag([depth, agg._count, stamp]),
     lastModified: stamp.toUTCString(),
   };
 }

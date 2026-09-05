@@ -13,9 +13,9 @@
 // delete it. Cards deliberately omit tool listings — that is what tools/list
 // is for.
 
-import { NextResponse } from 'next/server';
-import { AGENT_CARD_CACHE_CONTROL, serverCard } from 'wiki-formant/well-known';
-import { MCP_PROTOCOL_VERSION } from 'wiki-formant/mcp';
+import { descriptorResponse } from 'wiki-formant/http';
+import { serverCard } from 'wiki-formant/well-known';
+import { MCP_PROTOCOL_VERSIONS } from 'wiki-formant/mcp';
 import serverManifest from '../../../../../server.json';
 
 export const revalidate = 86400;
@@ -25,10 +25,8 @@ export const revalidate = 86400;
 // the site served two different descriptions of the same server with nothing
 // comparing them — the manifest's and this one's. The manifest wins, because it
 // is the copy the registry publishes.
-const SERVER_CARD = serverCard(serverManifest, MCP_PROTOCOL_VERSION);
+const SERVER_CARD = serverCard(serverManifest, MCP_PROTOCOL_VERSIONS);
 
-export async function GET() {
-  return NextResponse.json(SERVER_CARD, {
-    headers: { 'Cache-Control': AGENT_CARD_CACHE_CONTROL },
-  });
+export async function GET(request: Request) {
+  return descriptorResponse(request, SERVER_CARD);
 }

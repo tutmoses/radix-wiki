@@ -12,4 +12,4 @@ import { buildLlmsTxt, corpusRoute } from '@/lib/llms';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = corpusRoute(buildLlmsTxt);
+export const GET = corpusRoute('llms', buildLlmsTxt);
