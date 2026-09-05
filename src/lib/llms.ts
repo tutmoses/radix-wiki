@@ -8,6 +8,7 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { corpusEtag, notModified, textHeaders, cleanSnippet, pageLine as formantPageLine } from 'wiki-formant/http';
+import { NOT_HIDDEN } from '@/lib/wiki';
 import { prisma } from '@/lib/prisma/client';
 import { TAG_HIERARCHY, tagPaths } from '@/lib/tags';
 import { categoryLabel, getContentSnippet, pageUrl, BASE_URL } from '@/lib/utils';
@@ -40,7 +41,7 @@ export function corpusRoute(depth: string, build: () => Promise<string>) {
 export async function buildFullCorpus(header: (pageCount: number) => string): Promise<string> {
   const pages = await prisma.page.findMany({
     select: { title: true, tagPath: true, slug: true, content: true, updatedAt: true },
-    where: { tagPath: { not: '' } },
+    where: { tagPath: { not: '', ...NOT_HIDDEN } },
     orderBy: { updatedAt: 'desc' },
   });
   const sections = pages.map(p => {
@@ -206,11 +207,11 @@ export async function buildLlmsTxt(): Promise<string> {
   const [recent, counts] = await Promise.all([
     prisma.page.findMany({
       select: { title: true, tagPath: true, slug: true, content: true },
-      where: { tagPath: { not: '' } },
+      where: { tagPath: { not: '', ...NOT_HIDDEN } },
       orderBy: { updatedAt: 'desc' },
       take: RECENT_LIMIT,
     }),
-    prisma.page.groupBy({ by: ['tagPath'], _count: true, where: { tagPath: { not: '' } } }),
+    prisma.page.groupBy({ by: ['tagPath'], _count: true, where: { tagPath: { not: '', ...NOT_HIDDEN } } }),
   ]);
 
   // Roll tag-path counts up to top-level sections

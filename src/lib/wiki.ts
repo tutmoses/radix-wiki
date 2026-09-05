@@ -168,11 +168,23 @@ export const getCategoryPages = cached('getCategoryPages',
   },
 );
 
-/** A category's subtree, minus the tag paths declared wiki-internal — search
- *  already excludes them, and a reader browsing Contents has no business being
- *  handed the maintenance log. */
+/**
+ * The tag-path filter every listing shares.
+ *
+ * A hidden path stays reachable by naming it — the maintenance log keeps its
+ * URL, its markdown twin and its history — but it never arrives unasked. That
+ * distinction was already declared on the tag and then read by exactly two
+ * queries, so the log surfaced in the Recently Updated widget, in three MCP
+ * tools and in all three llms depths: an operations record for the wiki,
+ * rewritten by a routine several times a day, sitting at the top of every
+ * "what changed" an agent or a reader asked for.
+ */
+export const NOT_HIDDEN = { notIn: HIDDEN_TAG_PATHS } as const;
+
+/** A category's subtree, minus the tag paths declared wiki-internal — a reader
+ *  browsing Contents has no business being handed the maintenance log. */
 const subtreeWhere = (tagPath: string) => ({
-  tagPath: { startsWith: `${tagPath}/`, notIn: HIDDEN_TAG_PATHS },
+  tagPath: { startsWith: `${tagPath}/`, ...NOT_HIDDEN },
   slug: { not: '' },
 });
 
@@ -415,6 +427,7 @@ export async function searchPageIds(
              ts_rank_cd(p.search_tsv, q.tsq, 32) AS fts_rank
         FROM pages p CROSS JOIN q
        WHERE p.tag_path <> ''
+         AND (${tagPath}::text IS NOT NULL OR p.tag_path <> ALL(${HIDDEN_TAG_PATHS}::text[]))
          AND (${tagPath}::text IS NULL OR p.tag_path = ${tagPath})
          AND (p.title ILIKE ${like}
               OR (p.tag_path <> ALL(${HIDDEN_TAG_PATHS}::text[])
@@ -451,7 +464,10 @@ export async function searchPageIds(
 
 const getRecentPages = cached('getRecentPages',
   async (tagPath: string | undefined, limit: number) => (await prisma.page.findMany({
-    where: tagPath ? { tagPath } : undefined,
+    // A block that names a path gets that path, hidden or not. One that names
+    // none is asking "what changed on the wiki", and the answer to that is
+    // article space.
+    where: tagPath ? { tagPath } : { tagPath: NOT_HIDDEN },
     select: PAGE_LIST_SELECT,
     orderBy: { updatedAt: 'desc' },
     take: limit,

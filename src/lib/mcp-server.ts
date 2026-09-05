@@ -11,7 +11,7 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { BASE_URL, categoryLabel, pageUrl, pagePath } from '@/lib/utils';
-import { orderByIds, searchPageIds, summarizePage, SUMMARY_SELECT } from '@/lib/wiki';
+import { NOT_HIDDEN, orderByIds, searchPageIds, summarizePage, SUMMARY_SELECT } from '@/lib/wiki';
 import { listEnvelope } from 'wiki-formant/pagination';
 import { MCP_RATE_LIMIT_TEXT } from '@/lib/api';
 import { extractText } from '@/lib/content';
@@ -119,7 +119,9 @@ async function get_page(args: { tagPath: string; slug: string }) {
 async function list_pages(args: { tagPath?: string; sort?: string; page?: number; pageSize?: number }) {
   const { tagPath, sort = 'updatedAt', page = 1, pageSize = 20 } = args;
   const size = Math.min(pageSize, 100);
-  const where = tagPath ? { tagPath } : {};
+  // Naming a path gets that path. Naming none gets article space, not the
+  // wiki's own operations log sitting at the top of it.
+  const where = tagPath ? { tagPath } : { tagPath: NOT_HIDDEN };
   const orderBy = sort === 'title' ? { title: 'asc' as const } : { updatedAt: 'desc' as const };
   const [results, total] = await Promise.all([
     prisma.page.findMany({ where, select: SUMMARY_SELECT, orderBy, skip: (page - 1) * size, take: size }),
@@ -129,7 +131,10 @@ async function list_pages(args: { tagPath?: string; sort?: string; page?: number
 }
 
 async function get_categories() {
-  const counts = await prisma.page.groupBy({ by: ['tagPath'], _count: true });
+  // The tree already drops hidden nodes; the total has to drop their pages too,
+  // or `get_categories` and `list_pages` report two different sizes for the
+  // same wiki and an agent has no way to tell which one it is walking.
+  const counts = await prisma.page.groupBy({ by: ['tagPath'], _count: true, where: { tagPath: NOT_HIDDEN } });
   const countMap = new Map(counts.map(c => [c.tagPath, c._count]));
   return { categories: buildCategoryTree(TAG_HIERARCHY, countMap), totalPages: counts.reduce((s, c) => s + c._count, 0) };
 }
@@ -140,7 +145,7 @@ async function get_recent_changes(args: { days?: number; limit?: number }) {
   const since = new Date();
   since.setDate(since.getDate() - days);
   const pages = await prisma.page.findMany({
-    where: { updatedAt: { gte: since } },
+    where: { updatedAt: { gte: since }, tagPath: NOT_HIDDEN },
     select: SUMMARY_SELECT,
     orderBy: { updatedAt: 'desc' },
     take: limit,
