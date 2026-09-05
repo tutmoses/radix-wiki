@@ -5,7 +5,7 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Card } from '@/components/ui';
 import type { MaintenanceQueue } from '@/lib/maintenance';
 
-export function MaintenanceView({ queues }: { queues: MaintenanceQueue[] }) {
+function MaintenanceView({ queues }: { queues: MaintenanceQueue[] }) {
   const total = queues.reduce((n, q) => n + q.items.length, 0);
   return (
     <div className="stack">

@@ -2,7 +2,7 @@
 
 'use client';
 
-import { FileText, MessageSquare, Edit3, Calendar, Users, Shield, Star } from 'lucide-react';
+import { FileText, Edit3, Calendar, Users, Shield, Star } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { useFetch } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -105,5 +105,3 @@ export function UserStats({ userId }: { userId: string }) {
     </section>
   );
 }
-
-export default UserStats;

@@ -10,6 +10,14 @@ import type { RadixWalletData, SignedChallenge } from '@/types';
 
 type RadixDappToolkitType = Awaited<ReturnType<typeof import('@radixdlt/radix-dapp-toolkit').RadixDappToolkit>>;
 
+// The wallet's state arrives twice — once through dataRequestControl, once on
+// walletData$ — and carries proofs and persona data the app never stores. This
+// is the narrowing to the two fields it does, written once for both.
+const toWalletData = ({ persona, accounts }: RadixWalletData): RadixWalletData => ({
+  persona: persona ? { identityAddress: persona.identityAddress, label: persona.label } : undefined,
+  accounts: accounts.map(a => ({ address: a.address, label: a.label, appearanceId: a.appearanceId })),
+});
+
 export function RadixProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const rdtRef = useRef<RadixDappToolkitType | null>(null);
@@ -102,17 +110,7 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
 
             if (!account || !proof) return;
 
-            const data: RadixWalletData = {
-              persona: walletResponse.persona ? {
-                identityAddress: walletResponse.persona.identityAddress,
-                label: walletResponse.persona.label,
-              } : undefined,
-              accounts: walletResponse.accounts.map((a) => ({
-                address: a.address, label: a.label, appearanceId: a.appearanceId,
-              })),
-            };
-
-            await createSession(data, {
+            await createSession(toWalletData(walletResponse), {
               challenge: proof.challenge,
               address: proof.address,
               proof: proof.proof,
@@ -126,10 +124,7 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
         // walletData$ only tracks connection state — auth is handled above
         subscription = rdt.walletApi.walletData$.subscribe((walletData) => {
           if (walletData.accounts.length > 0) {
-            setWalletData({
-              persona: walletData.persona ? { identityAddress: walletData.persona.identityAddress, label: walletData.persona.label } : undefined,
-              accounts: walletData.accounts.map((a) => ({ address: a.address, label: a.label, appearanceId: a.appearanceId })),
-            });
+            setWalletData(toWalletData(walletData));
             setConnected(true);
           } else {
             setWalletData(null);
@@ -161,5 +156,3 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>;
 }
-
-export default RadixProvider;

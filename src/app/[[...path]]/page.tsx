@@ -7,10 +7,11 @@ import { parsePath, getHomepage, getPage, getCategoryHub, getCategoryPages, getS
 import { getMaintenanceQueues } from '@/lib/maintenance';
 import { getSession } from '@/lib/auth';
 import { alphaControls, facetControls, facetFilters, filterPages, rankRelated, resolveLetter } from '@/lib/taxonomy';
-import { findTagByPath, getMainArticle, getSortOrder, TAG_HIERARCHY, type TagNode, type SortOrder } from '@/lib/tags';
+import { findTagByPath, getMainArticle, getSortOrder, tagPaths, type SortOrder } from '@/lib/tags';
 import { highlightBlocks } from '@/lib/highlight';
 import { processBlocks } from '@/lib/html';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
+import { STATIC_PAGES } from '@/lib/static-pages';
 import { prisma } from '@/lib/prisma/client';
 import { PageView, HomepageView, CategoryView, PageSkeleton, HistoryView, type HistoryData, type RelatedPages, type SubcategorySummary } from './PageContent';
 import dynamic from 'next/dynamic';
@@ -32,16 +33,10 @@ import { getTokenDetail } from '@/lib/radix/tokens';
 import type { Block } from '@/types/blocks';
 import type { WikiPage } from '@/types';
 
-function collectTagPaths(nodes: TagNode[], parent = ''): string[] {
-  return nodes.flatMap(n => {
-    const p = parent ? `${parent}/${n.slug}` : n.slug;
-    return [p, ...(n.children ? collectTagPaths(n.children, p) : [])];
-  });
-}
-
 export async function generateStaticParams() {
   const pages = await prisma.page.findMany({ select: { tagPath: true, slug: true } });
-  const categories = collectTagPaths(TAG_HIERARCHY).filter(Boolean);
+  // Hidden paths included: they are prebuilt like any other, just unlisted.
+  const categories = tagPaths().map(t => t.path).filter(Boolean);
 
   return [
     { path: [] },
@@ -79,41 +74,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title, description, ...ogMetadata({ title, description, url: canonical, type: 'article' }) };
   }
 
-  // Search results — noindex (thin, query-dependent)
-  if (parsed.type === 'search') {
+  // The non-article routes — homepage included — read their metadata off the
+  // one table that also drives the sitemap and llms.txt.
+  const staticPage = STATIC_PAGES[parsed.type];
+  if (staticPage) {
+    const { path: staticPath, title, description, noindex, absoluteTitle, imageTitle } = staticPage;
+    const url = staticPath ? `${BASE_URL}/${staticPath}` : BASE_URL;
     return {
-      title: 'Search — RADIX Wiki',
-      description: 'Search the community-maintained RADIX Wiki.',
-      robots: NOINDEX_ROBOTS,
-      alternates: { canonical: `${BASE_URL}/search` },
+      title: absoluteTitle ? { absolute: title } : title,
+      description,
+      ...(noindex
+        ? { robots: NOINDEX_ROBOTS, alternates: { canonical: url } }
+        : ogMetadata({ title, description, url, imageTitle })),
     };
-  }
-
-  // Work queues — noindex, the same way Wikipedia hides maintenance categories from readers
-  if (parsed.type === 'maintenance') {
-    return {
-      title: 'Maintenance — RADIX Wiki',
-      description: 'Pages flagged as outdated, orphaned, unsourced, or missing required metadata.',
-      robots: NOINDEX_ROBOTS,
-      alternates: { canonical: `${BASE_URL}/maintenance` },
-    };
-  }
-
-  // Static pages with fixed metadata. `path` is the URL where the parsed type
-  // doesn't spell it (charts-validators lives at /charts/validators).
-  const STATIC_META: Record<string, { title: string; description: string; path?: string }> = {
-    leaderboard: { title: 'Leaderboard', description: 'Top RADIX.wiki contributors ranked by contribution points.' },
-    welcome: { title: 'Welcome', description: 'Get started with RADIX Wiki — connect your Radix wallet and begin contributing to the decentralized knowledge base.' },
-    rewards: { title: 'Rewards', description: 'Track contributor rewards and XRD airdrop eligibility on RADIX Wiki.' },
-    charts: { title: 'Charts', description: 'Live Radix network statistics, validator directory, and ecosystem token analytics — successor to RadixCharts.' },
-    'charts-validators': { title: 'Validators', description: 'Sortable directory of all Radix validators with stake, fee, and ownership data.', path: 'charts/validators' },
-    'charts-tokens': { title: 'Tokens', description: 'Top tokens on Radix ranked by total value locked, with price, volume, and 24h change.', path: 'charts/tokens' },
-  };
-
-  const staticMeta = STATIC_META[parsed.type];
-  if (staticMeta) {
-    const { path: staticPath, ...meta } = staticMeta;
-    return { ...meta, ...ogMetadata({ ...meta, url: `${BASE_URL}/${staticPath ?? parsed.type}` }) };
   }
 
   // Category pages — unique title + description from the hub article if there is
@@ -146,18 +119,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: `${label} view on RADIX Wiki.`,
       robots: NOINDEX_ROBOTS,
       alternates: { canonical: `${BASE_URL}/${parsed.tagPath}/${parsed.slug}`.replace(/\/+$/, '') || BASE_URL },
-    };
-  }
-
-  // Homepage — hand-tuned, keyword-rich metadata (title.absolute bypasses the "%s | RADIX Wiki" template)
-  if (parsed.type === 'homepage') {
-    const title = 'Radix Wiki: XRD, Scrypto & the Radix DLT Crypto Ecosystem';
-    const description = 'The community-maintained wiki for Radix DLT – XRD, the Radix Engine, Scrypto smart contracts, Cerberus consensus, validators, staking, and the DeFi ecosystem.';
-    return {
-      title: { absolute: title },
-      description,
-      // The card headline stays the brand, not the keyword-length document title.
-      ...ogMetadata({ title, description, url: BASE_URL, imageTitle: 'RADIX Wiki' }),
     };
   }
 
@@ -411,11 +372,6 @@ export default async function DynamicPage({ params, searchParams }: Props) {
     return <HomepageView page={page} isEditing={true} />;
   }
 
-  if (parsed.type === 'history' && !parsed.tagPath && !parsed.slug) {
-    const data = await getPageHistory('', '') as HistoryData;
-    return <Suspense fallback={<PageSkeleton />}><HistoryView data={data} tagPath="" slug="" isHomepage /></Suspense>;
-  }
-
   if (parsed.type === 'category') {
     const tagSegments = parsed.tagPath.split('/');
     const tag = findTagByPath(tagSegments);
@@ -513,7 +469,9 @@ export default async function DynamicPage({ params, searchParams }: Props) {
 
   if (parsed.type === 'history') {
     const data = await getPageHistory(parsed.tagPath, parsed.slug) as HistoryData;
-    return <Suspense fallback={<PageSkeleton />}><HistoryView data={data} tagPath={parsed.tagPath} slug={parsed.slug} /></Suspense>;
+    // The homepage's own history is `''`/`''` — the same call, told to head itself
+    // "Homepage History" and to reach the root API route.
+    return <Suspense fallback={<PageSkeleton />}><HistoryView data={data} tagPath={parsed.tagPath} slug={parsed.slug} isHomepage={!parsed.tagPath && !parsed.slug} /></Suspense>;
   }
 
   const rawPage = await getPage(parsed.tagPath, parsed.slug);

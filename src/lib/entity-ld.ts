@@ -11,6 +11,8 @@
 //   articleType() – what the PAGE is (TechArticle for developer docs, …)
 //   aboutEntity() – what the page is ABOUT (the Organization, tool, or event)
 
+import { categoryLabel } from '@/lib/utils';
+
 const URL_KEYS = ['website', 'x', 'telegram', 'github', 'discord'] as const;
 
 /** Metadata stores bare hostnames ("radixscan.io") as often as full URLs; sameAs needs absolute. */
@@ -23,13 +25,6 @@ function absoluteHttpUrl(value: string): string | null {
   } catch {
     return null;
   }
-}
-
-/** Select-typed values carry an emoji prefix ("🟢 Active") that is presentation, not data. */
-function plainValue(value: string | undefined): string | undefined {
-  if (!value) return undefined;
-  const stripped = value.replace(/^[^\p{L}\p{N}]+/u, '').trim();
-  return stripped || undefined;
 }
 
 /** "30 minutes" -> "PT30M". Returns undefined when the text isn't a simple duration. */
@@ -84,7 +79,7 @@ export function articleLearningProps(
   const [root] = segments(tagPath);
   if (root !== 'developers') return {};
   const md = (metadata ?? {}) as Record<string, string>;
-  const level = plainValue(md.difficulty);
+  const level = categoryLabel(md.difficulty) || undefined;
   const time = isoDuration(md.estimatedTime);
   if (!level && !time && !md.prerequisites) return {};
   return {
@@ -110,7 +105,7 @@ export function aboutEntity(
   const md = (metadata ?? {}) as Record<string, string>;
   const links = sameAs(md);
   const founded = isoDate(md.founded);
-  const status = plainValue(md.status);
+  const status = categoryLabel(md.status) || undefined;
 
   // Third-party developer tools and agent projects.
   if (root === 'developers' && (child === 'tools' || child === 'ai-agents')) {
@@ -130,7 +125,7 @@ export function aboutEntity(
 
   // Ecosystem projects: the largest typed set on the wiki (140 pages).
   if (root === 'ecosystem') {
-    const category = plainValue(md.category);
+    const category = categoryLabel(md.category) || undefined;
     return {
       '@type': 'Organization',
       name: title,

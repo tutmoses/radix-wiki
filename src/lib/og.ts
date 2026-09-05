@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { BASE_URL } from '@/lib/utils';
 
 export const SITE_NAME = 'RADIX Wiki';
-export const SITE_HANDLE = '@RadixWiki';
+const SITE_HANDLE = '@RadixWiki';
 
 const CARD = { width: 1200, height: 630 } as const;
 

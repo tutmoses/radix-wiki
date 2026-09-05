@@ -3,18 +3,16 @@
 //
 // Idempotent: keyed on data-graphic="<marker>" (re-run replaces in place). Writes
 // one revisions row per changed page. Skips locked pages. Run: node scripts/seed-infographics.mjs
-import pg from 'pg';
 import { config } from 'dotenv';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { uid, cuid, AUTHOR_ID } from './seed-utils.mjs';
+import { isLockedPage, withClient, embedFigure } from './seed-utils.mjs';
 import { figureBlock } from '../brand-assets/kit.mjs';
 config();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(__dirname, '..');
-const LOCKED = new Set(['ecosystem/radix-namespace', 'ecosystem/xrd-domains']);
 
 const SPECS = [
   {
@@ -52,46 +50,18 @@ function figureHtml(s) {
   return `<h2>${s.heading}</h2>\n<p>${s.intro}</p>\n${figure}`;
 }
 
-const bumpMinor = (v) => {
-  const m = (v ?? '').match(/^(\d+)\.(\d+)\.(\d+)$/);
-  return m ? `${m[1]}.${Number(m[2]) + 1}.0` : '1.1.0';
-};
-
-const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, ssl: { rejectUnauthorized: false } });
-const client = await pool.connect();
-try {
+await withClient(async (client) => {
   for (const s of SPECS) {
-    if (LOCKED.has(`${s.tagPath}/${s.slug}`)) { console.log(`LOCKED, skip ${s.tagPath}/${s.slug}`); continue; }
+    if (isLockedPage(s.tagPath, s.slug)) { console.log(`LOCKED, skip ${s.tagPath}/${s.slug}`); continue; }
     const { rows } = await client.query('SELECT id, title, content, version FROM pages WHERE tag_path = $1 AND slug = $2', [s.tagPath, s.slug]);
     if (!rows[0]) { console.log(`SKIP ${s.tagPath}/${s.slug} – not found`); continue; }
-    const page = rows[0];
-    const blocks = Array.isArray(page.content) ? page.content : [];
-    const html = figureHtml(s);
-    const marker = `data-graphic="${s.marker}"`;
-    const idx = blocks.findIndex((b) => b.type === 'content' && typeof b.text === 'string' && b.text.includes(marker));
 
-    if (idx >= 0 && blocks[idx].text === html) { console.log(`${s.tagPath}/${s.slug}: unchanged, skip`); continue; }
-    let action;
-    if (idx >= 0) { blocks[idx] = { ...blocks[idx], text: html }; action = `replaced [${idx}]`; }
-    else { blocks.push({ id: uid(), type: 'content', text: html }); action = `appended [${blocks.length - 1}]`; }
-
-    const version = bumpMinor(page.version);
-    const now = new Date().toISOString();
-    await client.query('BEGIN');
-    await client.query('UPDATE pages SET content = $1, version = $2, updated_at = $3 WHERE id = $4',
-      [JSON.stringify(blocks), version, now, page.id]);
-    await client.query(
-      `INSERT INTO revisions (id, page_id, content, title, version, change_type, author_id, message, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [cuid(), page.id, JSON.stringify(blocks), page.title, version, 'minor', AUTHOR_ID, `Add the "${s.heading}" infographic.`, now]);
-    await client.query('COMMIT');
-    console.log(`${s.tagPath}/${s.slug}: ${action}; ${blocks.length} blocks; rev ${version}`);
+    const res = await embedFigure(client, rows[0], {
+      marker: s.marker,
+      html: figureHtml(s),
+      message: `Add the "${s.heading}" infographic.`,
+    });
+    if (!res) { console.log(`${s.tagPath}/${s.slug}: unchanged, skip`); continue; }
+    console.log(`${s.tagPath}/${s.slug}: ${res.action}; ${res.blocks.length} blocks; rev ${res.version}`);
   }
-} catch (e) {
-  await client.query('ROLLBACK');
-  throw e;
-} finally {
-  client.release();
-  await pool.end();
-}
+});

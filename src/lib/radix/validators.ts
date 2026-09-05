@@ -2,7 +2,12 @@
 
 import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
-import { getGatewayUrl, RADIX_CONFIG } from './config';
+import { num, paginatedGatewayFetch, readMetadata, type GatewayPage } from './gateway';
+
+/** `/state/validators/list` is the one endpoint that nests its page a level down. */
+interface ValidatorPage extends GatewayPage {
+  validators?: { items?: unknown[]; next_cursor?: string | null };
+}
 
 export interface Validator {
   address: string;
@@ -18,21 +23,6 @@ export interface Validator {
   ownerStake: number;
   /** Set only when a fee change is still pending; past requests are never cleared on-ledger. */
   feeChange?: { epoch: number; fee: number };
-}
-
-function readMetadata(metadata: any, key: string): string | undefined {
-  if (!metadata?.items) return undefined;
-  const item = metadata.items.find((i: any) => i.key === key);
-  const typed = item?.value?.typed;
-  if (!typed) return undefined;
-  if (typeof typed.value === 'string') return typed.value;
-  if (Array.isArray(typed.values) && typeof typed.values[0] === 'string') return typed.values[0];
-  return undefined;
-}
-
-function num(value: unknown): number {
-  const n = parseFloat(String(value ?? '0'));
-  return isFinite(n) ? n : 0;
 }
 
 function parseValidator(item: any, currentEpoch: number): Validator | null {
@@ -68,42 +58,23 @@ function parseValidator(item: any, currentEpoch: number): Validator | null {
   };
 }
 
-async function fetchAllValidators(): Promise<{ items: any[]; epoch: number }> {
-  const url = `${getGatewayUrl(RADIX_CONFIG.networkId)}/state/validators/list`;
-  const items: any[] = [];
-  let epoch = 0;
-  let cursor: string | undefined;
-  try {
-    do {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(cursor ? { cursor } : {}),
-        cache: 'no-store',
-      });
-      if (!res.ok) {
-        console.error(`[validators] Gateway ${res.status}`);
-        break;
-      }
-      const data = await res.json();
-      epoch = Number(data?.ledger_state?.epoch) || epoch;
-      const wrapper = data?.validators ?? {};
-      if (Array.isArray(wrapper.items)) items.push(...wrapper.items);
-      cursor = wrapper.next_cursor ?? data?.next_cursor ?? undefined;
-    } while (cursor);
-  } catch (err) {
-    console.error('[validators] error', err);
-  }
-  return { items, epoch };
-}
-
 const _getValidators = unstable_cache(
   async (): Promise<Validator[]> => {
-    const { items, epoch } = await fetchAllValidators();
-    return items
-      .map((item) => parseValidator(item, epoch))
-      .filter((v): v is Validator => v !== null)
-      .sort((a, b) => b.totalStake - a.totalStake);
+    // The epoch that makes a pending fee change "pending" ships with each page, so
+    // validators are parsed page by page rather than collected and parsed after.
+    const validators = await paginatedGatewayFetch<Validator, ValidatorPage>(
+      '/state/validators/list',
+      {},
+      (data) => {
+        const epoch = Number(data.ledger_state?.epoch) || 0;
+        return (data.validators?.items ?? [])
+          .map((item) => parseValidator(item, epoch))
+          .filter((v): v is Validator => v !== null);
+      },
+      'validators',
+      (data) => data.validators?.next_cursor ?? data.next_cursor,
+    );
+    return validators.sort((a, b) => b.totalStake - a.totalStake);
   },
   ['radix-validators-v3'],
   { revalidate: 300, tags: ['charts'] },

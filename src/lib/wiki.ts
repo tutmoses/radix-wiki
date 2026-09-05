@@ -9,6 +9,7 @@ import { isValidTagPath, getSortOrder, getMetadataKeys, HIDDEN_TAG_PATHS, type S
 import type { WikiPage, IdeasPage } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, RssFeedBlock, ColumnsBlock } from '@/types/blocks';
 import { computeRevisionDiff } from '@/lib/versioning';
+import { STATIC_PATH_TYPES } from '@/lib/static-pages';
 
 // ========== PRISMA QUERY FRAGMENTS ==========
 export const AUTHOR_SELECT = { select: { id: true, displayName: true, shortAddress: true, avatarUrl: true } } as const;
@@ -61,28 +62,13 @@ export function parsePath(segments: string[] = [], mode: 'client' | 'api' = 'cli
   const base: ParsedPath = { type: 'homepage', tagPath: '', slug: '', suffix: null };
   if (segments.length === 0) return base;
 
-  // Static pages
-  if (segments.length === 1 && segments[0] === 'leaderboard') {
-    return { ...base, type: 'leaderboard' };
-  }
-  if (segments.length === 1 && segments[0] === 'welcome') {
-    return { ...base, type: 'welcome' };
-  }
-  if (segments.length === 1 && segments[0] === 'rewards') {
-    return { ...base, type: 'rewards' };
-  }
-  if (segments.length === 1 && segments[0] === 'search') {
-    return { ...base, type: 'search' };
-  }
-  if (segments.length === 1 && segments[0] === 'maintenance') {
-    return { ...base, type: 'maintenance' };
-  }
+  // Static pages, including the two-segment /charts pair — one lookup over the
+  // same table that gives each of them its metadata and its sitemap row.
+  const staticType = STATIC_PATH_TYPES.get(segments.join('/'));
+  if (staticType) return { ...base, type: staticType as ParsedPath['type'] };
 
-  // Charts section
+  // A token address is the only other thing under /charts; nothing else is.
   if (segments[0] === 'charts') {
-    if (segments.length === 1) return { ...base, type: 'charts' };
-    if (segments.length === 2 && segments[1] === 'validators') return { ...base, type: 'charts-validators' };
-    if (segments.length === 2 && segments[1] === 'tokens') return { ...base, type: 'charts-tokens' };
     if (segments.length === 3 && segments[1] === 'tokens' && segments[2]!.startsWith('resource_')) {
       return { ...base, type: 'token-detail', tokenAddress: segments[2] };
     }
@@ -112,9 +98,7 @@ export function parsePath(segments: string[] = [], mode: 'client' | 'api' = 'cli
     return { ...base, type: suffix === 'edit' ? 'category' : suffix, tagPath: pathSegments.join('/'), suffix };
   }
 
-  if (pathSegments.length < 2) {
-    return mode === 'api' ? { ...base, type: 'invalid' } : { ...base, type: 'invalid' };
-  }
+  if (pathSegments.length < 2) return { ...base, type: 'invalid' };
 
   const slug = pathSegments[pathSegments.length - 1]!;
   const tagPathSegments = pathSegments.slice(0, -1);
@@ -131,29 +115,21 @@ export function parsePath(segments: string[] = [], mode: 'client' | 'api' = 'cli
 
 // ========== DATA FETCHING ==========
 
-export const getHomepage = cached('getHomepage',
-  async (): Promise<WikiPage | null> => {
-    return prisma.page.findUnique({ where: { tagPath_slug: { tagPath: '', slug: '' } }, include: PAGE_INCLUDE }) as Promise<WikiPage | null>;
-  },
-);
-
 export const getPage = cached('getPage',
   async (tagPath: string, slug: string): Promise<WikiPage | null> => {
     return prisma.page.findUnique({ where: { tagPath_slug: { tagPath, slug } }, include: PAGE_INCLUDE }) as Promise<WikiPage | null>;
   },
 );
 
+/** The root's own article occupies the empty slug of the empty tag path. */
+export const getHomepage = () => getPage('', '');
+
 /**
  * A category's own article, stored at the empty slug — the same slot the homepage
  * occupies for the root. The category URL renders it above the listing, so the
  * topic and the pages under it are one page rather than an article plus a pointer.
  */
-export const getCategoryHub = cached('getCategoryHub',
-  async (tagPath: string): Promise<WikiPage | null> => {
-    if (!tagPath) return null;
-    return prisma.page.findUnique({ where: { tagPath_slug: { tagPath, slug: '' } }, include: PAGE_INCLUDE }) as Promise<WikiPage | null>;
-  },
-);
+export const getCategoryHub = async (tagPath: string) => tagPath ? getPage(tagPath, '') : null;
 
 export const getEcosystemPageByAsset = cached('getEcosystemPageByAsset',
   async (resourceAddress: string): Promise<{ tagPath: string; slug: string; title: string } | null> => {
@@ -251,44 +227,49 @@ export const getIdeasPages = cached('getIdeasPages',
   },
 );
 
-export const getPageHistory = cached('getPageHistory',
-  async (tagPath: string, slug: string) => {
-    const page = await prisma.page.findUnique({
-      where: { tagPath_slug: { tagPath, slug } },
-      select: { id: true, title: true, version: true },
-    });
-    if (!page) return null;
+/**
+ * Uncached, and deliberately reachable that way: `/api/wiki/…/history` is the
+ * documented way to confirm a direct-DB script write landed, and those scripts
+ * insert revisions without revalidating the `wiki` tag.
+ */
+export async function loadPageHistory(tagPath: string, slug: string) {
+  const page = await prisma.page.findUnique({
+    where: { tagPath_slug: { tagPath, slug } },
+    select: { id: true, title: true, version: true },
+  });
+  if (!page) return null;
 
-    const revisions = await prisma.revision.findMany({
-      where: { pageId: page.id },
-      select: {
-        id: true, title: true, version: true, changeType: true,
-        changes: true, content: true, message: true, createdAt: true,
-        author: AUTHOR_SELECT,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  const revisions = await prisma.revision.findMany({
+    where: { pageId: page.id },
+    select: {
+      id: true, title: true, version: true, changeType: true,
+      changes: true, content: true, message: true, createdAt: true,
+      author: AUTHOR_SELECT,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
 
-    // Backfill changes for revisions that don't have stored diffs
-    const backfilled = revisions.map((rev, i) => {
-      if (rev.changes && Array.isArray(rev.changes) && (rev.changes as unknown[]).length > 0) {
-        const { content: _, ...rest } = rev;
-        return rest;
-      }
-      const next = revisions[i + 1];
-      const newContent = (rev.content as unknown as Block[]) || [];
-      const oldContent = next ? (next.content as unknown as Block[]) || [] : [];
-      const diff = computeRevisionDiff(
-        next?.version ?? null, oldContent, newContent,
-        next?.title ?? '', rev.title, null, null,
-      );
+  // Backfill changes for revisions that don't have stored diffs
+  const backfilled = revisions.map((rev, i) => {
+    if (rev.changes && Array.isArray(rev.changes) && (rev.changes as unknown[]).length > 0) {
       const { content: _, ...rest } = rev;
-      return { ...rest, changes: diff.changes, changeType: diff.changeType || rev.changeType };
-    });
+      return rest;
+    }
+    const next = revisions[i + 1];
+    const newContent = (rev.content as unknown as Block[]) || [];
+    const oldContent = next ? (next.content as unknown as Block[]) || [] : [];
+    const diff = computeRevisionDiff(
+      next?.version ?? null, oldContent, newContent,
+      next?.title ?? '', rev.title, null, null,
+    );
+    const { content: _, ...rest } = rev;
+    return { ...rest, changes: diff.changes, changeType: diff.changeType || rev.changeType };
+  });
 
-    return { currentVersion: page.version, revisions: backfilled };
-  },
-);
+  return { currentVersion: page.version, revisions: backfilled };
+}
+
+export const getPageHistory = cached('getPageHistory', loadPageHistory);
 
 // ========== SEARCH ==========
 
@@ -438,24 +419,24 @@ export async function searchPageIds(
 
 // ========== BLOCK DATA RESOLUTION ==========
 
-const getRecentPages = unstable_cache(
-  async (tagPath: string | undefined, limit: number) => plain(await prisma.page.findMany({
+const getRecentPages = cached('getRecentPages',
+  async (tagPath: string | undefined, limit: number) => (await prisma.page.findMany({
     where: tagPath ? { tagPath } : undefined,
     select: PAGE_LIST_SELECT,
     orderBy: { updatedAt: 'desc' },
     take: limit,
-  })).map(listRow), ['getRecentPages'], CACHE_OPTS,
+  })).map(listRow),
 );
 
-const getPagesByIds = unstable_cache(
+const getPagesByIds = cached('getPagesByIds',
   async (ids: string[]) => {
     if (!ids.length) return [];
-    const pages = plain(await prisma.page.findMany({ where: { id: { in: ids } }, select: PAGE_LIST_SELECT })).map(listRow);
+    const pages = (await prisma.page.findMany({ where: { id: { in: ids } }, select: PAGE_LIST_SELECT })).map(listRow);
     return orderByIds(pages, ids);
-  }, ['getPagesByIds'], CACHE_OPTS,
+  },
 );
 
-const getFeedItems = unstable_cache(
+const getFeedItems = cached('getFeedItems',
   async (url: string, limit: number): Promise<any[]> => {
     try {
       const res = await fetch(url, { headers: { 'User-Agent': 'radix-wiki' } });
@@ -463,7 +444,7 @@ const getFeedItems = unstable_cache(
       const json = await res.json();
       return Array.isArray(json?.items) ? json.items.slice(0, limit) : [];
     } catch { return []; }
-  }, ['getFeedItems'], CACHE_OPTS,
+  },
 );
 
 /** Pre-resolve recentPages, pageList, and rssFeed blocks server-side to avoid client waterfalls. */

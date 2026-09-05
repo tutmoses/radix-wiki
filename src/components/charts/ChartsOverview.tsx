@@ -16,6 +16,14 @@ export default async function ChartsOverview() {
     getTopTokens(50),
   ]);
 
+  const STAT_CARDS = [
+    { icon: Server, value: stats.activeValidatorCount, label: `Active validators, of ${stats.registeredValidatorCount} registered` },
+    { icon: Coins, value: formatXrd(stats.totalStake), label: 'Total stake' },
+    { icon: Activity, value: formatXrd(stats.xrdSupply), label: 'XRD supply' },
+    { icon: Activity, value: formatCompact(stats.currentEpoch), label: 'Epoch' },
+    { icon: Activity, value: formatCompact(stats.ledgerStateVersion), label: 'State version' },
+  ];
+
   return (
     <div className="stack">
       <div className="stack-sm">
@@ -29,33 +37,13 @@ export default async function ChartsOverview() {
       </div>
 
       <div className="charts-stat-grid">
-        <div className="stat-card">
-          <Server size={18} className="text-text-muted" />
-          <span className="stat-value">{stats.activeValidatorCount}</span>
-          <span className="text-small text-text-muted">
-            Active validators, of {stats.registeredValidatorCount} registered
-          </span>
-        </div>
-        <div className="stat-card">
-          <Coins size={18} className="text-text-muted" />
-          <span className="stat-value">{formatXrd(stats.totalStake)}</span>
-          <span className="text-small text-text-muted">Total stake</span>
-        </div>
-        <div className="stat-card">
-          <Activity size={18} className="text-text-muted" />
-          <span className="stat-value">{formatXrd(stats.xrdSupply)}</span>
-          <span className="text-small text-text-muted">XRD supply</span>
-        </div>
-        <div className="stat-card">
-          <Activity size={18} className="text-text-muted" />
-          <span className="stat-value">{formatCompact(stats.currentEpoch)}</span>
-          <span className="text-small text-text-muted">Epoch</span>
-        </div>
-        <div className="stat-card">
-          <Activity size={18} className="text-text-muted" />
-          <span className="stat-value">{formatCompact(stats.ledgerStateVersion)}</span>
-          <span className="text-small text-text-muted">State version</span>
-        </div>
+        {STAT_CARDS.map(({ icon: Icon, value, label }) => (
+          <div key={label} className="stat-card">
+            <Icon size={18} className="text-text-muted" />
+            <span className="stat-value">{value}</span>
+            <span className="text-small text-text-muted">{label}</span>
+          </div>
+        ))}
       </div>
 
       <section className="stack-sm">

@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo, memo, type ReactNode } from 'react';
-import { useClickOutside } from '@/hooks';
+import { useAccountQr, useClickOutside } from '@/hooks';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TiptapLink from '@tiptap/extension-link';
@@ -13,8 +13,7 @@ import TiptapTableRow from '@tiptap/extension-table-row';
 import TiptapTableCell from '@tiptap/extension-table-cell';
 import TiptapTableHeader from '@tiptap/extension-table-header';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Pencil, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, LayoutGrid, X, Check, Info, Map, Rss, QrCode, type LucideIcon } from 'lucide-react';
-import QRCode from 'qrcode';
+import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, LayoutGrid, Info, Rss, QrCode, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock, CODE_LANGS, DEFAULT_LANG } from '@/lib/block-utils';
 import { toMapEmbedUrl, resolveMapUrl } from '@/lib/map-utils';
@@ -256,8 +255,8 @@ function RssFeedBlockEdit({ block, onUpdate }: BlockProps<RssFeedBlock>) {
   );
 }
 
-function InfoboxBlockEdit({ block, onUpdate }: BlockProps<InfoboxBlock>) {
-  const setBlocks = useCallback((blocks: AtomicBlock[]) => onUpdate?.({ ...block, blocks }), [block, onUpdate]);
+export function InfoboxEditor({ block, onChange }: { block: InfoboxBlock; onChange?: (block: InfoboxBlock) => void }) {
+  const setBlocks = useCallback((blocks: AtomicBlock[]) => onChange?.({ ...block, blocks }), [block, onChange]);
   const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(block.blocks || [], setBlocks);
   const handleBlockUpdate = useCallback((i: number, b: Block) => update(i, b as AtomicBlock), [update]);
 
@@ -387,24 +386,8 @@ function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Colum
   );
 }
 
-const RADIX_ACCOUNT_RE = /^account_(rdx|tdx_2_)1[a-z0-9]{50,}$/;
-
 function TipJarBlockEdit({ block, onUpdate }: BlockProps<TipJarBlock>) {
-  const [renderedQr, setRenderedQr] = useState<string | null>(null);
-  const address = (block.address || '').trim();
-  const isValid = RADIX_ACCOUNT_RE.test(address);
-  useEffect(() => {
-    if (!isValid) return;
-    let active = true;
-    QRCode.toString(address, { type: 'svg', errorCorrectionLevel: 'M', margin: 1, color: { dark: '#1a1d29', light: '#ffffff' } })
-      .then(u => { if (active) setRenderedQr(u); })
-      .catch(() => { if (active) setRenderedQr(null); });
-    return () => { active = false; };
-  }, [address, isValid]);
-
-  // Masked at render instead of cleared from the effect, so an invalid address
-  // never shows the previous address's code.
-  const qr = isValid ? renderedQr : null;
+  const { address, isValid, qr } = useAccountQr(block.address);
   return (
     <EditWrapper icon={QrCode} label="Tip Jar (QR)">
       <Input label="Heading" value={block.label || ''} onChange={e => onUpdate?.({ ...block, label: e.target.value })} placeholder="Tip the author ☕️" />
@@ -477,7 +460,7 @@ function renderBlockEdit(block: Block | AtomicBlock, onUpdate?: (b: Block) => vo
     case 'assetPrice': return <AssetPriceBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'rssFeed': return <RssFeedBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'columns': return <ColumnsBlockEdit block={block} onUpdate={onUpdate as any} />;
-    case 'infobox': return <InfoboxBlockEdit block={block} onUpdate={onUpdate as any} />;
+    case 'infobox': return <InfoboxEditor block={block} onChange={onUpdate as any} />;
     case 'linkGrid': return <LinkGridBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'tipJar': return <TipJarBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'banner': return <BannerBlockEdit block={block} onUpdate={onUpdate as any} />;
@@ -553,10 +536,6 @@ export function BlockEditor({ content, onChange }: { content: Block[]; onChange:
       <InsertButton onInsert={insert} />
     </div>
   );
-}
-
-export function InfoboxEditor({ block, onChange }: { block: InfoboxBlock; onChange: (block: InfoboxBlock) => void }) {
-  return <InfoboxBlockEdit block={block} onUpdate={onChange} />;
 }
 
 export default BlockEditor;

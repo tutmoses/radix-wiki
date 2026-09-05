@@ -28,15 +28,14 @@
 //   node scripts/standardize-images.mjs --apply   # upload, rewrite, then delete unreferenced blobs
 //   node scripts/standardize-images.mjs --apply --keep-blobs   # rewrite but skip the deletion phase
 
-import pg from 'pg';
 import sharp from 'sharp';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { execFileSync } from 'child_process';
-import { randomUUID } from 'crypto';
 import { put, list, del } from '@vercel/blob';
 import { config } from 'dotenv';
+import { uid, withClient } from './seed-utils.mjs';
 
 config({ path: new URL('../.env', import.meta.url) });
 
@@ -111,11 +110,7 @@ async function standardise(buf) {
   return { out, meta: { ...meta, format: sourceFormat } };
 }
 
-const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, ssl: { rejectUnauthorized: false } });
-const client = await pool.connect();
-
-try {
+await withClient(async (client) => {
   // ---- Phase 1: inventory -------------------------------------------------
   const referenced = await referencedUrls(client);
   // Walk the parsed JSON rather than content::text — in the text form the HTML
@@ -179,7 +174,7 @@ try {
     console.log(`  ${mb(buf.length).padStart(8)} → ${mb(result.out.length).padStart(8)}  ${result.meta.format} ${result.meta.width}px → webp ${Math.min(result.meta.width, MAX_WIDTH)}px`);
 
     if (!apply) { replacements.set(url, '<pending>'); continue; }
-    const blob = await put(`${randomUUID()}.webp`, result.out, { access: 'public', addRandomSuffix: false, contentType: 'image/webp' });
+    const blob = await put(`${uid()}.webp`, result.out, { access: 'public', addRandomSuffix: false, contentType: 'image/webp' });
     replacements.set(url, blob.url);
   }
 
@@ -250,7 +245,4 @@ try {
       console.log(`\nDone: ${mb(freed)} freed, ${stored.size - doomed.length} blobs remain.`);
     }
   }
-} finally {
-  client.release();
-  await pool.end();
-}
+});

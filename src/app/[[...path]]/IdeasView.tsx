@@ -3,16 +3,14 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, MessageSquare, LayoutGrid, List } from 'lucide-react';
+import { MessageSquare, LayoutGrid, List } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { UserAvatar } from '@/components/UserAvatar';
-import { Badge, Button, Input } from '@/components/ui';
-import { useAuth } from '@/hooks';
-import { cn, slugify, formatRelativeTime } from '@/lib/utils';
+import { Badge } from '@/components/ui';
+import { categoryLabel, cn, formatRelativeTime } from '@/lib/utils';
 import { findTagByPath, getMetadataKeys, type SortOrder } from '@/lib/tags';
-import { SortToggle } from './PageContent';
+import { NewPageControl, SortToggle } from './PageContent';
 import type { WikiPage, PageMetadata, IdeasPage } from '@/types';
 
 function parseAssignee(raw?: string): { name: string; address: string } | null {
@@ -29,12 +27,6 @@ function AssigneeChip({ raw }: { raw?: string }) {
       <span>{assignee.name}</span>
     </span>
   );
-}
-
-/** Strip leading emoji/symbol prefix from metadata values (e.g. "🔵 In Progress" → "In Progress") */
-function normalizeField(raw?: string): string {
-  if (!raw) return '';
-  return raw.replace(/^[^\p{Lu}\p{Ll}\p{Nd}]+/u, '');
 }
 
 /** Derive a semantic color token from the emoji prefix in a tags.ts option string */
@@ -56,7 +48,7 @@ type ColorToken = string;
 interface StatusOption { raw: string; label: string; color: ColorToken }
 
 function parseSelectOptions(options: string[]): StatusOption[] {
-  return options.map(raw => ({ raw, label: normalizeField(raw), color: emojiColor(raw) }));
+  return options.map(raw => ({ raw, label: categoryLabel(raw), color: emojiColor(raw) }));
 }
 
 const BADGE_VARIANT: Record<string, string> = {
@@ -66,13 +58,13 @@ const BADGE_VARIANT: Record<string, string> = {
 
 function BoardCard({ page, priorityOptions }: { page: WikiPage; priorityOptions: StatusOption[] }) {
   const meta = (page.metadata as PageMetadata) || {};
-  const prio = priorityOptions.find(o => o.label === normalizeField(meta.priority));
+  const prio = priorityOptions.find(o => o.label === categoryLabel(meta.priority));
   return (
     <Link href={`/${page.tagPath}/${page.slug}`} className="board-card">
       <span className="board-card-title">{page.title}</span>
       <div className="board-card-meta">
-        {meta.priority && <Badge variant={(BADGE_VARIANT[prio?.color ?? 'default'] ?? 'default') as 'default'}>{normalizeField(meta.priority)}</Badge>}
-        {meta.category && <Badge variant="secondary">{normalizeField(meta.category)}</Badge>}
+        {meta.priority && <Badge variant={(BADGE_VARIANT[prio?.color ?? 'default'] ?? 'default') as 'default'}>{categoryLabel(meta.priority)}</Badge>}
+        {meta.category && <Badge variant="secondary">{categoryLabel(meta.category)}</Badge>}
         <AssigneeChip raw={meta.assignee} />
       </div>
     </Link>
@@ -85,8 +77,8 @@ function IdeasListView({ pages, categoryFilter, statusFilter, statusOptions, pri
 }) {
   const filtered = useMemo(() => {
     let result = pages;
-    if (categoryFilter) result = result.filter(p => normalizeField((p.metadata as PageMetadata)?.category) === categoryFilter);
-    if (statusFilter) result = result.filter(p => normalizeField((p.metadata as PageMetadata)?.status) === statusFilter);
+    if (categoryFilter) result = result.filter(p => categoryLabel((p.metadata as PageMetadata)?.category) === categoryFilter);
+    if (statusFilter) result = result.filter(p => categoryLabel((p.metadata as PageMetadata)?.status) === statusFilter);
     return result;
   }, [pages, categoryFilter, statusFilter]);
 
@@ -96,16 +88,16 @@ function IdeasListView({ pages, categoryFilter, statusFilter, statusOptions, pri
     <div className="ideas-list">
       {filtered.map(p => {
         const meta = (p.metadata as PageMetadata) || {};
-        const st = statusOptions.find(o => o.label === normalizeField(meta.status));
-        const pr = priorityOptions.find(o => o.label === normalizeField(meta.priority));
+        const st = statusOptions.find(o => o.label === categoryLabel(meta.status));
+        const pr = priorityOptions.find(o => o.label === categoryLabel(meta.priority));
         return (
           <Link key={p.id} href={`/${p.tagPath}/${p.slug}`} className="ideas-row">
             <div className="ideas-row-main">
               <span className="ideas-row-title">{p.title}</span>
               <div className="ideas-row-badges">
-                {meta.status && <Badge variant={(BADGE_VARIANT[st?.color ?? 'default'] ?? 'default') as 'default'}>{normalizeField(meta.status)}</Badge>}
-                {meta.category && <Badge variant="secondary">{normalizeField(meta.category)}</Badge>}
-                {meta.priority && <Badge variant={(BADGE_VARIANT[pr?.color ?? 'default'] ?? 'default') as 'default'}>{normalizeField(meta.priority)}</Badge>}
+                {meta.status && <Badge variant={(BADGE_VARIANT[st?.color ?? 'default'] ?? 'default') as 'default'}>{categoryLabel(meta.status)}</Badge>}
+                {meta.category && <Badge variant="secondary">{categoryLabel(meta.category)}</Badge>}
+                {meta.priority && <Badge variant={(BADGE_VARIANT[pr?.color ?? 'default'] ?? 'default') as 'default'}>{categoryLabel(meta.priority)}</Badge>}
               </div>
             </div>
             <div className="ideas-row-meta">
@@ -129,15 +121,11 @@ function sortPages(pages: IdeasPage[], sort: SortOrder): IdeasPage[] {
 }
 
 export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[]; pages: IdeasPage[]; sort: SortOrder }) {
-  const router = useRouter();
-  const { isAuthenticated } = useAuth();
   const pathStr = tagPath.join('/');
   const tag = findTagByPath(tagPath);
   const [view, setView] = useState<'list' | 'board'>('board');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [newSlug, setNewSlug] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
 
   const metaKeys = useMemo(() => getMetadataKeys(tagPath), [tagPath]);
   const statusOptions = useMemo(() => parseSelectOptions(metaKeys.find(k => k.key === 'status')?.options ?? []), [metaKeys]);
@@ -147,22 +135,32 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
 
   const columns = useMemo(() => {
     const filtered = categoryFilter
-      ? sorted.filter(p => normalizeField((p.metadata as PageMetadata)?.category) === categoryFilter)
+      ? sorted.filter(p => categoryLabel((p.metadata as PageMetadata)?.category) === categoryFilter)
       : sorted;
     return statusOptions.map(opt => ({
       ...opt,
-      items: filtered.filter(p => normalizeField((p.metadata as PageMetadata)?.status) === opt.label),
+      items: filtered.filter(p => categoryLabel((p.metadata as PageMetadata)?.status) === opt.label),
     }));
   }, [sorted, categoryFilter, statusOptions]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
     for (const p of pages) {
-      const c = normalizeField((p.metadata as PageMetadata)?.category);
+      const c = categoryLabel((p.metadata as PageMetadata)?.category);
       if (c) set.add(c);
     }
     return [...set].sort();
   }, [pages]);
+
+  // The one filter row both views carry.
+  const categoryTabs = categories.length > 0 && (
+    <div className="status-tabs">
+      <button className={cn('status-tab', categoryFilter === '' && 'border-text text-text')} onClick={() => setCategoryFilter('')}>All Types</button>
+      {categories.map(c => (
+        <button key={c} className={cn('status-tab', categoryFilter === c && 'border-text text-text')} onClick={() => setCategoryFilter(c)}>{c}</button>
+      ))}
+    </div>
+  );
 
   return (
     <div className="stack">
@@ -173,15 +171,7 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
           <SortToggle sort={sort} tagPath={pathStr} />
           <button className={cn('icon-btn', view === 'list' && 'text-accent')} onClick={() => setView('list')} title="List view"><List size={18} /></button>
           <button className={cn('icon-btn', view === 'board' && 'text-accent')} onClick={() => setView('board')} title="Board view"><LayoutGrid size={18} /></button>
-          {isAuthenticated && (
-            showCreate ? (
-              <>
-                <Input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="idea-slug" className="w-48" onKeyDown={e => e.key === 'Enter' && newSlug.trim() && router.push(`/${pathStr}/${slugify(newSlug)}`)} autoFocus />
-                <Button size="sm" onClick={() => { const s = slugify(newSlug); if (s) router.push(`/${pathStr}/${s}`); }} disabled={!newSlug.trim()}>Go</Button>
-                <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
-              </>
-            ) : <Button size="sm" onClick={() => setShowCreate(true)}><Plus size={16} />New Idea</Button>
-          )}
+          <NewPageControl tagPath={pathStr} noun="Idea" />
         </div>
       </div>
       {view === 'list' ? (
@@ -192,26 +182,12 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
               <button key={o.label} className={cn('status-tab', statusFilter === o.label && `border-${o.color} text-${o.color}`)} onClick={() => setStatusFilter(o.label)}>{o.label}</button>
             ))}
           </div>
-          {categories.length > 0 && (
-            <div className="status-tabs">
-              <button className={cn('status-tab', categoryFilter === '' && 'border-text text-text')} onClick={() => setCategoryFilter('')}>All Types</button>
-              {categories.map(c => (
-                <button key={c} className={cn('status-tab', categoryFilter === c && 'border-text text-text')} onClick={() => setCategoryFilter(c)}>{c}</button>
-              ))}
-            </div>
-          )}
+          {categoryTabs}
           <IdeasListView pages={sorted} categoryFilter={categoryFilter} statusFilter={statusFilter} statusOptions={statusOptions} priorityOptions={priorityOptions} />
         </div>
       ) : (
         <div className="ideas-panel">
-          {categories.length > 0 && (
-            <div className="status-tabs">
-              <button className={cn('status-tab', categoryFilter === '' && 'border-text text-text')} onClick={() => setCategoryFilter('')}>All Types</button>
-              {categories.map(c => (
-                <button key={c} className={cn('status-tab', categoryFilter === c && 'border-text text-text')} onClick={() => setCategoryFilter(c)}>{c}</button>
-              ))}
-            </div>
-          )}
+          {categoryTabs}
           <div className="board-columns">
           {columns.map(({ label, color, items }) => (
             <div key={label} className="board-column">

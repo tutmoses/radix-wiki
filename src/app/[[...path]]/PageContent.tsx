@@ -41,8 +41,6 @@ const UserStats = dynamic(() => import('@/components/UserStats').then(m => m.Use
 const BlockEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.BlockEditor), { ssr: false, loading: () => <div className="h-64 skeleton rounded-lg" /> });
 const InfoboxEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.InfoboxEditor), { ssr: false, loading: () => <div className="h-32 skeleton rounded-lg" /> });
 
-export { StatusCard } from '@/components/ui';
-
 export function PageSkeleton() {
   return (
     <div className="stack">
@@ -418,7 +416,8 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
 }
 
 // ========== CATEGORY LISTING ==========
-function NewPageControl({ tagPath }: { tagPath: string }) {
+/** `noun` names what the category holds — a board of ideas creates an Idea, not a Page. */
+export function NewPageControl({ tagPath, noun = 'Page' }: { tagPath: string; noun?: string }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [newSlug, setNewSlug] = useState('');
@@ -428,11 +427,11 @@ function NewPageControl({ tagPath }: { tagPath: string }) {
     <div className="row">
       {showCreate ? (
         <>
-          <Input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="page-slug" className="w-48" onKeyDown={e => e.key === 'Enter' && newSlug.trim() && router.push(`/${tagPath}/${slugify(newSlug)}`)} autoFocus />
+          <Input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder={`${noun.toLowerCase()}-slug`} className="w-48" onKeyDown={e => e.key === 'Enter' && newSlug.trim() && router.push(`/${tagPath}/${slugify(newSlug)}`)} autoFocus />
           <Button size="sm" onClick={() => { const s = slugify(newSlug); if (s) router.push(`/${tagPath}/${s}`); }} disabled={!newSlug.trim()}>Go</Button>
           <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
         </>
-      ) : <Button size="sm" onClick={() => setShowCreate(true)}><Plus size={16} />New Page</Button>}
+      ) : <Button size="sm" onClick={() => setShowCreate(true)}><Plus size={16} />New {noun}</Button>}
     </div>
   );
 }

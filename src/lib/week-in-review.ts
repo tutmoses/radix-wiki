@@ -8,9 +8,9 @@
 export const SERIES_SLUG = 'week-in-review';
 export const RECAP_PREFIX = 'week-in-review-';
 
-export type PredictionStatus = 'open' | 'hit' | 'miss' | 'void';
+type PredictionStatus = 'open' | 'hit' | 'miss' | 'void';
 
-export type Prediction = {
+type Prediction = {
   id: string;
   claim: string;
   who: string;
@@ -24,13 +24,13 @@ export type Prediction = {
   sourceUrl?: string;
 };
 
-export type Throughline = { slug: string; week: string; title: string; standout: string };
+type Throughline = { slug: string; week: string; title: string; standout: string };
 
 export type LedgerState = { predictions?: Prediction[]; throughlines?: Throughline[]; trackingSince?: string };
 
 /** `hit` and `miss` are the only scored outcomes. `void` is a withdrawn claim and
  *  must never flatter the rate by counting as anything but withdrawn. */
-export function tally(state: LedgerState | null | undefined) {
+function tally(state: LedgerState | null | undefined) {
   const preds = state?.predictions ?? [];
   const hit = preds.filter(p => p.status === 'hit').length;
   const miss = preds.filter(p => p.status === 'miss').length;

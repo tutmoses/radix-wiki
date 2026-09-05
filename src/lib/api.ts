@@ -6,9 +6,8 @@ import { getSession } from '@/lib/auth';
 import { requireBalance, type BalanceAction } from '@/lib/radix/balance';
 import type { AuthSession } from '@/types';
 
-export function json<T>(data: T, status?: number | { status?: number }): NextResponse {
-  const opts = typeof status === 'number' ? { status } : status;
-  return NextResponse.json(data, opts);
+export function json<T>(data: T, init?: number | ResponseInit): NextResponse {
+  return NextResponse.json(data, typeof init === 'number' ? { status: init } : init);
 }
 
 export const errors = {
@@ -45,7 +44,7 @@ export const CACHE = {
 } as const;
 
 export function cachedJson<T>(data: T, headers: Record<string, string> = CACHE.short, status?: number) {
-  return NextResponse.json(data, { status, headers });
+  return json(data, { status, headers });
 }
 
 // ---- rate limiting ----
@@ -63,10 +62,7 @@ export function checkRateLimit(
 ): NextResponse | null {
   const limit = rateLimit(clientKey(prefix, request.headers), opts);
   if (limit.ok) return null;
-  return NextResponse.json(
-    { error: retryMessage(limit.retryAfterSec) },
-    { status: 429, headers: { 'Retry-After': String(limit.retryAfterSec) } },
-  );
+  return json({ error: retryMessage(limit.retryAfterSec) }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSec) } });
 }
 
 export async function handleRoute(fn: () => Promise<NextResponse>, errorMsg = 'Internal server error'): Promise<NextResponse> {

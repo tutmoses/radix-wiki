@@ -221,5 +221,3 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
     </Dropdown>
   );
 }
-
-export default LedgerDropdown;

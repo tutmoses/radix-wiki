@@ -2,7 +2,7 @@
 
 import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
-import { postGateway } from './gateway';
+import { entityDetails, num, readMetadata } from './gateway';
 
 export interface TokenSummary {
   address: string;
@@ -25,69 +25,58 @@ export interface TokenDetail extends TokenSummary {
   dashboardUrl: string;
 }
 
-function num(value: unknown): number {
-  const n = parseFloat(String(value ?? '0'));
-  return isFinite(n) ? n : 0;
-}
-
-function readMetadata(metadata: any, key: string): string | undefined {
-  if (!metadata?.items) return undefined;
-  const item = metadata.items.find((i: any) => i.key === key);
-  const typed = item?.value?.typed;
-  if (!typed) return undefined;
-  if (typeof typed.value === 'string') return typed.value;
-  if (Array.isArray(typed.values) && typeof typed.values[0] === 'string') return typed.values[0];
-  return undefined;
+/** Single GET against the OciSwap public API. Returns parsed JSON, or null. */
+async function ociswap<T>(path: string, label: string): Promise<T | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const res = await fetch(`https://api.ociswap.com${path}`, { cache: 'no-store', signal: controller.signal });
+    if (!res.ok) {
+      console.error(`[${label}] OciSwap ${res.status}`);
+      return null;
+    }
+    return await res.json() as T;
+  } catch (err) {
+    console.error(`[${label}] error`, err);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function parseOciToken(t: any): TokenSummary | null {
   const address = t?.address ?? t?.resource_address;
   if (!address || typeof address !== 'string') return null;
-  const priceNow = parseFloat(t?.price?.usd?.now ?? '0');
-  const price24h = parseFloat(t?.price?.usd?.['24h'] ?? '0');
-  const change = price24h > 0 && priceNow > 0 ? ((priceNow - price24h) / price24h) * 100 : undefined;
-  const volume = parseFloat(t?.volume?.usd?.['24h'] ?? '0');
-  const tvl = parseFloat(t?.tvl?.usd?.now ?? '0');
-  const marketCap = parseFloat(t?.market_cap?.circulating?.usd?.now ?? t?.market_cap?.usd?.now ?? '0');
+  const price = num(t?.price?.usd?.now);
+  const price24h = num(t?.price?.usd?.['24h']);
+  const volume = num(t?.volume?.usd?.['24h']);
+  const tvl = num(t?.tvl?.usd?.now);
+  const marketCap = num(t?.market_cap?.circulating?.usd?.now ?? t?.market_cap?.usd?.now);
 
   return {
     address,
     symbol: t?.symbol ?? '',
     name: t?.name ?? '',
     iconUrl: t?.icon_url ?? undefined,
-    price: isFinite(priceNow) ? priceNow : 0,
-    change24h: change !== undefined && isFinite(change) ? change : undefined,
-    volume24h: isFinite(volume) && volume > 0 ? volume : undefined,
-    marketCap: isFinite(marketCap) && marketCap > 0 ? marketCap : undefined,
-    tvl: isFinite(tvl) && tvl > 0 ? tvl : undefined,
+    price,
+    change24h: price24h > 0 && price > 0 ? ((price - price24h) / price24h) * 100 : undefined,
+    volume24h: volume > 0 ? volume : undefined,
+    marketCap: marketCap > 0 ? marketCap : undefined,
+    tvl: tvl > 0 ? tvl : undefined,
   };
 }
 
+/** OciSwap has shipped the token list under three different keys; accept all. */
+type OciTokenList = { data?: unknown[]; tokens?: unknown[] } & unknown[];
+
 async function _fetchTopTokens(limit: number): Promise<TokenSummary[]> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10000);
-  try {
-    const res = await fetch(`https://api.ociswap.com/tokens?limit=${limit}`, {
-      cache: 'no-store',
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      console.error(`[top-tokens] OciSwap ${res.status}`);
-      return [];
-    }
-    const data = await res.json();
-    const items: any[] = Array.isArray(data?.data) ? data.data : Array.isArray(data?.tokens) ? data.tokens : Array.isArray(data) ? data : [];
-    return items
-      .map(parseOciToken)
-      // A quoted price with no trading behind it is a stale artifact, not a price. This
-      // is what put xLINK at $670bn (and a $6.5tn market cap) atop the table on zero volume.
-      .filter((t): t is TokenSummary => t !== null && t.price > 0 && (t.volume24h ?? 0) > 0);
-  } catch (err) {
-    console.error('[top-tokens] error', err);
-    return [];
-  } finally {
-    clearTimeout(timer);
-  }
+  const data = await ociswap<OciTokenList>(`/tokens?limit=${limit}`, 'top-tokens');
+  const items: unknown[] = Array.isArray(data?.data) ? data.data : Array.isArray(data?.tokens) ? data.tokens : Array.isArray(data) ? data : [];
+  return items
+    .map(parseOciToken)
+    // A quoted price with no trading behind it is a stale artifact, not a price. This
+    // is what put xLINK at $670bn (and a $6.5tn market cap) atop the table on zero volume.
+    .filter((t): t is TokenSummary => t !== null && t.price > 0 && (t.volume24h ?? 0) > 0);
 }
 
 // Cache successful results only — don't poison the cache with [] on transient failures.
@@ -106,55 +95,37 @@ const _getTopTokens = async (limit = 100): Promise<TokenSummary[]> => {
 
 export const getTopTokens = cache(_getTopTokens);
 
-async function gatewayEntity(address: string): Promise<any | null> {
-  const data = await postGateway<any>('/state/entity/details', { addresses: [address] }, 'token-entity');
-  return data?.items?.[0] ?? null;
-}
+async function _getTokenDetailRaw(address: string): Promise<TokenDetail | null> {
+  if (!address.startsWith('resource_')) return null;
+  const [oci, entity] = await Promise.all([
+    ociswap<Record<string, unknown>>(`/tokens/${address}`, 'token-detail'),
+    entityDetails(address, 'token-entity'),
+  ]);
 
-async function ociSwapToken(address: string): Promise<any | null> {
-  try {
-    const res = await fetch(`https://api.ociswap.com/tokens/${address}`, { cache: 'no-store' });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
+  const summary = oci ? parseOciToken(oci) : null;
+  if (!summary && !entity) return null;
 
-function _getTokenDetailRaw(address: string): Promise<TokenDetail | null> {
-  return (async () => {
-    if (!address.startsWith('resource_')) return null;
-    const [oci, entity] = await Promise.all([ociSwapToken(address), gatewayEntity(address)]);
+  const symbol = summary?.symbol || readMetadata(entity?.metadata, 'symbol') || '';
+  const totalSupply = num(entity?.details?.total_supply);
+  const divisibility = entity?.details?.divisibility;
 
-    const summary = oci ? parseOciToken(oci) : null;
-    const symbol = summary?.symbol || readMetadata(entity?.metadata, 'symbol') || '';
-    const name = summary?.name || readMetadata(entity?.metadata, 'name') || symbol || address.slice(0, 24);
-    const iconUrl = summary?.iconUrl || readMetadata(entity?.metadata, 'icon_url');
-    const description = readMetadata(entity?.metadata, 'description');
-    const infoUrl = readMetadata(entity?.metadata, 'info_url');
-    const totalSupply = parseFloat(entity?.details?.total_supply ?? '0');
-    const divisibility = entity?.details?.divisibility;
-
-    if (!summary && !entity) return null;
-
-    return {
-      address,
-      symbol,
-      name,
-      iconUrl,
-      price: summary?.price ?? 0,
-      change24h: summary?.change24h,
-      volume24h: summary?.volume24h,
-      marketCap: summary?.marketCap,
-      tvl: summary?.tvl,
-      totalSupply: isFinite(totalSupply) && totalSupply > 0 ? totalSupply : undefined,
-      divisibility: typeof divisibility === 'number' ? divisibility : undefined,
-      description,
-      infoUrl,
-      ociswapUrl: `https://ociswap.com/tokens/${address}`,
-      dashboardUrl: `https://dashboard.radixdlt.com/resource/${address}`,
-    };
-  })();
+  return {
+    address,
+    symbol,
+    name: summary?.name || readMetadata(entity?.metadata, 'name') || symbol || address.slice(0, 24),
+    iconUrl: summary?.iconUrl || readMetadata(entity?.metadata, 'icon_url'),
+    price: summary?.price ?? 0,
+    change24h: summary?.change24h,
+    volume24h: summary?.volume24h,
+    marketCap: summary?.marketCap,
+    tvl: summary?.tvl,
+    totalSupply: totalSupply > 0 ? totalSupply : undefined,
+    divisibility: typeof divisibility === 'number' ? divisibility : undefined,
+    description: readMetadata(entity?.metadata, 'description'),
+    infoUrl: readMetadata(entity?.metadata, 'info_url'),
+    ociswapUrl: `https://ociswap.com/tokens/${address}`,
+    dashboardUrl: `https://dashboard.radixdlt.com/resource/${address}`,
+  };
 }
 
 export const getTokenDetail = cache(
@@ -169,32 +140,24 @@ export interface DexStats {
   newPools7d: number;
 }
 
+/** Only the four figures the dashboard reads; OciSwap sends far more. */
+type XrdSeries = Record<string, unknown>;
+type OciStatistics = {
+  volume?: { xrd?: XrdSeries };
+  total_value_locked?: { xrd?: XrdSeries };
+  event_counts?: { swap?: XrdSeries; instantiate_pool?: XrdSeries };
+};
+
 async function _fetchDexStats(): Promise<DexStats | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10000);
-  try {
-    const res = await fetch('https://api.ociswap.com/statistics', {
-      cache: 'no-store',
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      console.error(`[dex-stats] OciSwap ${res.status}`);
-      return null;
-    }
-    const d = await res.json();
-    // XRD-denominated throughout: the native unit needs no price oracle to be true later.
-    return {
-      volume7dXrd: num(d?.volume?.xrd?.['7d']),
-      swaps7d: num(d?.event_counts?.swap?.['7d']),
-      tvlXrd: num(d?.total_value_locked?.xrd?.now),
-      newPools7d: num(d?.event_counts?.instantiate_pool?.['7d']),
-    };
-  } catch (err) {
-    console.error('[dex-stats] error', err);
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
+  const d = await ociswap<OciStatistics>('/statistics', 'dex-stats');
+  if (!d) return null;
+  // XRD-denominated throughout: the native unit needs no price oracle to be true later.
+  return {
+    volume7dXrd: num(d?.volume?.xrd?.['7d']),
+    swaps7d: num(d?.event_counts?.swap?.['7d']),
+    tvlXrd: num(d?.total_value_locked?.xrd?.now),
+    newPools7d: num(d?.event_counts?.instantiate_pool?.['7d']),
+  };
 }
 
 export const getDexStats = cache(

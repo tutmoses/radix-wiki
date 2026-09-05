@@ -15,12 +15,8 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
-    return json(
-      webhooks.map((w) => ({
-        ...w,
-        secret: `...${w.secret.slice(-8)}`,
-      })),
-    );
+    // The secret is returned in full once, on creation; a listing only identifies it.
+    return json(webhooks.map((w) => ({ ...w, secret: `...${w.secret.slice(-8)}` })));
   }, 'Failed to list webhooks');
 }
 
@@ -29,20 +25,11 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuth(request);
     if ('error' in auth) return auth.error;
 
-    const body = await request.json();
-    const { url, events, tagPathFilter } = body as {
-      url?: string;
-      events?: string[];
-      tagPathFilter?: string;
-    };
+    const { url, events, tagPathFilter } = await request.json() as
+      { url?: string; events?: string[]; tagPathFilter?: string };
 
-    if (!url || !url.startsWith('https://')) {
-      return errors.badRequest('url must be a valid HTTPS URL');
-    }
-
-    if (!events || !Array.isArray(events) || events.length === 0) {
-      return errors.badRequest('events must be a non-empty array');
-    }
+    if (!url || !url.startsWith('https://')) return errors.badRequest('url must be a valid HTTPS URL');
+    if (!Array.isArray(events) || events.length === 0) return errors.badRequest('events must be a non-empty array');
 
     const invalidEvents = events.filter((e) => !VALID_EVENTS.includes(e as WebhookEvent));
     if (invalidEvents.length > 0) {
@@ -50,9 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     const count = await prisma.webhook.count({ where: { userId: auth.session.userId } });
-    if (count >= 10) {
-      return errors.badRequest('Maximum 10 webhooks per user');
-    }
+    if (count >= 10) return errors.badRequest('Maximum 10 webhooks per user');
 
     const webhook = await prisma.webhook.create({
       data: {

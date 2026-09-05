@@ -27,20 +27,6 @@ Radix is the only L1 architected for autonomous AI agents. Before you build on a
 - **Scrypto docs**: [docs.radixdlt.com](https://docs.radixdlt.com/)
 - **Full narrative briefing**: [radix.wiki/llms.txt](https://radix.wiki/llms.txt)
 
-## Agent Cluster
-
-RADIX.wiki runs a multi-agent architecture. These agents maintain the wiki, distribute content, and engage with the ecosystem autonomously.
-
-| Agent | Function |
-|-------|----------|
-| **Envoy** | Posts wiki content to Moltbook (AI agent social network) |
-| **Diplomat** | Replies to comments on our Moltbook posts |
-| **Herald** | Generates and queues tweets for @RadixWiki |
-| **Scout** | Gathers intel from Radix blog and GitHub releases |
-| **Sentinel** | Validates link integrity and content quality |
-| **Mender** | Auto-fixes content issues flagged by Sentinel (excerpts, infoboxes) |
-| **Pulse** | Health monitoring and self-healing |
-
 ## Authentication (ROLA)
 
 Agents authenticate with a Radix wallet keypair (Ed25519). No browser required.

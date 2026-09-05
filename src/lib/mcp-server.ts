@@ -10,10 +10,10 @@
 // validation) are `wiki-formant/mcp`, shared with the other wikis.
 
 import { prisma } from '@/lib/prisma/client';
-import { BASE_URL, pageUrl, getContentSnippet, pagePath } from '@/lib/utils';
+import { BASE_URL, categoryLabel, pageUrl, pagePath } from '@/lib/utils';
 import { orderByIds, searchPageIds, summarizePage, SUMMARY_SELECT } from '@/lib/wiki';
 import { extractText } from '@/lib/content';
-import { buildLlmsTxt } from '@/lib/llms';
+import { buildFullCorpus, buildLlmsTxt } from '@/lib/llms';
 import { TAG_HIERARCHY, getMetadataKeys, type TagNode } from '@/lib/tags';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 import { RADIX_CONFIG } from '@/lib/radix/config';
@@ -58,11 +58,6 @@ const IDEAS_SELECT = { title: true, tagPath: true, slug: true, metadata: true, u
 
 // ========== IDEAS BOARD HELPERS ==========
 
-/** Strip a leading emoji/symbol prefix from a metadata value (e.g. "🔴 Discussion" → "Discussion"). */
-function normalizeField(raw?: string): string {
-  return raw ? raw.replace(/^[^\p{Lu}\p{Ll}\p{Nd}]+/u, '').trim() : '';
-}
-
 /** Assignee is stored either as a JSON string {name,address} or a plain name. */
 function assigneeName(raw?: string): string | null {
   if (!raw) return null;
@@ -80,10 +75,9 @@ function workingGroupFromTitle(title: string): string | null {
 function buildCategoryTree(nodes: TagNode[], counts: Map<string, number>, parent = ''): object[] {
   return nodes.filter(n => !n.hidden && n.slug).map(n => {
     const path = parent ? `${parent}/${n.slug}` : n.slug;
-    const name = n.name.replace(/^\S+\s/, ''); // strip emoji
     return {
       path,
-      name,
+      name: categoryLabel(n.name),
       ...(n.description ? { description: n.description } : {}),
       pageCount: counts.get(path) || 0,
       ...(n.children ? { children: buildCategoryTree(n.children, counts, path) } : {}),
@@ -152,19 +146,10 @@ async function get_recent_changes(args: { days?: number; limit?: number }) {
   return { days, count: pages.length, pages: pages.map(page => summarizePage(page)) };
 }
 
-async function get_full_corpus() {
-  const pages = await prisma.page.findMany({
-    select: FULL_SELECT,
-    where: { tagPath: { not: '' } },
-    orderBy: { updatedAt: 'desc' },
-  });
-  const sections = pages.map(p => {
-    const body = extractText((p.content as unknown as Block[]) || []);
-    const snippet = getContentSnippet(p.content);
-    return `## ${p.title}\n\nURL: ${pageUrl(p.tagPath, p.slug)}\nUpdated: ${p.updatedAt.toISOString().split('T')[0]}\n${snippet ? `Summary: ${snippet}\n` : ''}\n${body}`;
-  });
-  return [`# Radix Wiki — Full Content\n\n> ${pages.length} pages, generated ${new Date().toISOString().split('T')[0]}`, ...sections].join('\n\n');
-}
+// The same walk /llms-full.txt serves. The document header stays this tool's
+// own — its clients parse it, and the URL's carries a licence grant instead.
+const get_full_corpus = () => buildFullCorpus(pageCount =>
+  `# Radix Wiki — Full Content\n\n> ${pageCount} pages, generated ${new Date().toISOString().split('T')[0]}`);
 
 async function get_ideas_board(args: { category?: string; workingGroup?: string }) {
   const pages = await prisma.page.findMany({
@@ -173,7 +158,7 @@ async function get_ideas_board(args: { category?: string; workingGroup?: string 
     orderBy: { updatedAt: 'desc' },
   });
 
-  const catFilter = args.category ? normalizeField(args.category).toLowerCase() : null;
+  const catFilter = args.category ? categoryLabel(args.category).toLowerCase() : null;
   const wgFilter = args.workingGroup ? args.workingGroup.toLowerCase() : null;
 
   const cards = pages.map(p => {
@@ -183,8 +168,8 @@ async function get_ideas_board(args: { category?: string; workingGroup?: string 
       url: pageUrl(p.tagPath, p.slug),
       workingGroup: workingGroupFromTitle(p.title),
       rawStatus: m.status ?? '',
-      priority: normalizeField(m.priority) || null,
-      category: normalizeField(m.category) || null,
+      priority: categoryLabel(m.priority) || null,
+      category: categoryLabel(m.category) || null,
       assignee: assigneeName(m.assignee),
       updatedAt: p.updatedAt.toISOString().split('T')[0],
     };
@@ -203,7 +188,7 @@ async function get_ideas_board(args: { category?: string; workingGroup?: string 
 
   const columns = statusOptions.map(opt => {
     const items = cards.filter(c => c.rawStatus === opt);
-    return { status: normalizeField(opt), count: items.length, cards: items.map(shape) };
+    return { status: categoryLabel(opt), count: items.length, cards: items.map(shape) };
   });
   const orphans = cards.filter(c => !known.has(c.rawStatus));
   if (orphans.length) columns.push({ status: 'Uncategorized', count: orphans.length, cards: orphans.map(shape) });

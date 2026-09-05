@@ -51,5 +51,3 @@ export function LinkPreview() {
     </div>
   );
 }
-
-export default LinkPreview;

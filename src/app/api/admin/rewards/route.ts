@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { json, errors, requireAuth } from '@/lib/api';
 import { getEditorScores } from '@/lib/scoring';
-import { getTreasuryBalance, getTreasuryAddress } from '@/lib/radix/treasury';
+import { getTreasuryBalance, getTreasuryAddress } from '@/lib/radix/balance';
 
 export const dynamic = 'force-dynamic';
 

@@ -7,11 +7,11 @@
 import sharp from 'sharp';
 
 /** Prose column is ~800px, so 2x covers retina without paying for more. */
-export const MAX_WIDTH = 1600;
+const MAX_WIDTH = 1600;
 
 /** Photographs tolerate q80; PNG sources are usually screenshots or diagrams
  *  whose text smears below q90. */
-export const QUALITY = { photo: 80, flat: 90 } as const;
+const QUALITY = { photo: 80, flat: 90 } as const;
 
 /** Accepted uploads. SVG is excluded deliberately — it is executable markup. */
 export const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif'];

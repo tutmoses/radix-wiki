@@ -5,7 +5,6 @@
 import { useState, useEffect, useCallback, useActionState } from 'react';
 import { MessageSquare, Reply, Trash2, ChevronDown, ChevronUp, Send } from 'lucide-react';
 import { cn, formatRelativeTime } from '@/lib/utils';
-import { getXrdRequired } from '@/lib/tags';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -104,7 +103,7 @@ function CommentThread({ comment, depth, onReply, onDelete, currentUserId }: {
   );
 }
 
-export function Discussion({ pageId, tagPath }: { pageId: string; tagPath: string }) {
+export function Discussion({ pageId }: { pageId: string; tagPath: string }) {
   const [comments, setComments] = useState<WikiComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   // Collapsed by default — talk shouldn't compete with the article (Wikipedia keeps it off-page entirely).
@@ -159,5 +158,3 @@ export function Discussion({ pageId, tagPath }: { pageId: string; tagPath: strin
     </section>
   );
 }
-
-export default Discussion;

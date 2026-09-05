@@ -12,13 +12,18 @@ export function cn(...inputs: ClassValue[]): string {
 }
 
 /**
- * A tag node's name as prose — "Blog", not "✍️ Blog". The old
- * `\p{Emoji_Presentation}` test only matched glyphs that default to emoji
- * presentation, so ✍️ and ⚖️ (text-default codepoints wearing a
- * variation selector) survived it and reached headings as "Pages in ✍️ Blog".
+ * A declared label as prose — "Blog" from "✍️ Blog", "In Progress" from
+ * "🔵 In Progress". One rule for tag names and `select` option values alike:
+ * both prefixes are the same convention, a decoration the schema carries that no
+ * heading, badge, JSON-LD field or MCP row wants.
+ *
+ * The class is "everything up to the first letter or digit", not "the leading
+ * emoji": ✍️ and ⚖️ are text-default codepoints wearing a variation
+ * selector, so an emoji test misses them, and the ideas board's priorities
+ * ("㆔ High", "㆓ Medium") are Unicode numerals, so \p{N} misses those.
  */
-export const categoryLabel = (name: string): string =>
-  name.replace(/^[\p{Extended_Pictographic}\p{Emoji_Modifier}\uFE0F\u200D]+\s*/u, '');
+export const categoryLabel = (name?: string): string =>
+  (name ?? '').replace(/^[^\p{Lu}\p{Ll}\p{Nd}]+/u, '').trim();
 
 export function slugify(text: string): string {
   return text.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '');

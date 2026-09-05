@@ -5,30 +5,14 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import { shortenAddress } from '@/lib/utils';
 
-function createPool(): pg.Pool {
-  if (globalForPrisma.pool) {
-    return globalForPrisma.pool;
-  }
-
-  const connectionString = process.env.DATABASE_URL;
-
+function buildClient() {
   // For serverless (Neon/Supabase), use minimal pool
-  const pool = new pg.Pool({
-    connectionString,
+  const adapter = new PrismaPg(new pg.Pool({
+    connectionString: process.env.DATABASE_URL,
     max: 1,
     idleTimeoutMillis: 20000,
     connectionTimeoutMillis: 30000,
-  });
-
-  // Always cache the pool to prevent multiple instances
-  globalForPrisma.pool = pool;
-
-  return pool;
-}
-
-function buildClient() {
-  const pool = createPool();
-  const adapter = new PrismaPg(pool);
+  }));
 
   return new PrismaClient({
     adapter,
@@ -48,26 +32,10 @@ function buildClient() {
   });
 }
 
-type ExtendedPrismaClient = ReturnType<typeof buildClient>;
+// Cached on globalThis so a warm invocation — or an HMR reload — reuses the one
+// client, and with it the one pool. The client owns the pool, so caching it is
+// the whole of the caching.
+const globalForPrisma = globalThis as unknown as { prisma: ReturnType<typeof buildClient> | undefined };
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: ExtendedPrismaClient | undefined;
-  pool: pg.Pool | undefined;
-};
-
-function createPrismaClient(): ExtendedPrismaClient {
-  if (globalForPrisma.prisma) {
-    return globalForPrisma.prisma;
-  }
-
-  const prisma = buildClient();
-
-  // Always cache to prevent multiple instances
-  globalForPrisma.prisma = prisma;
-
-  return prisma;
-}
-
-export const prisma = createPrismaClient();
-
-export default prisma;
+export const prisma = globalForPrisma.prisma ?? buildClient();
+globalForPrisma.prisma = prisma;

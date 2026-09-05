@@ -30,7 +30,7 @@ export class WikiScene extends Scene {
   // optionally click through to the top hit.
   async doSearch(query, { caption, open = false } = {}) {
     await this.cursorClick('[aria-label="Search"]');
-    const input = this.page.locator('.search-panel input[type="search"]');
+    const input = this.page.locator('.header-search input[type="search"]');
     await input.waitFor({ state: "visible", timeout: 8000 });
     if (caption) await this.caption(caption[0], caption[1]);
     await this.typeInto(input, query, 95);       // 300ms-debounced — slow type lets results land

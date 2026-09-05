@@ -10,8 +10,11 @@ import { Button, Badge } from '@/components/ui';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { useAuth } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
+import { changeSummary } from 'wiki-formant/revisions';
 import { formatDate, cn, pagePath } from '@/lib/utils';
 import { stripHtml } from '@/lib/content';
+import { BLOCK_META } from '@/lib/block-utils';
+import type { BlockType } from '@/types/blocks';
 import type { BlockChange } from '@/lib/versioning';
 
 interface RevisionData {
@@ -35,23 +38,15 @@ const TYPE_BADGE: Record<string, { label: string; variant: 'danger' | 'warning' 
 
 const CONTAINER_TYPES = new Set(['infobox', 'columns']);
 
-function changeSummaryText(changes: BlockChange[]): string {
-  const visible = changes.filter(c => !CONTAINER_TYPES.has(c.type));
-  if (visible.length === 0) return '';
-  const counts = visible.reduce((acc, c) => { acc[c.action] = (acc[c.action] || 0) + 1; return acc; }, {} as Record<string, number>);
-  const parts: string[] = [];
-  if (counts.added) parts.push(`${counts.added} block${counts.added > 1 ? 's' : ''} added`);
-  if (counts.removed) parts.push(`${counts.removed} block${counts.removed > 1 ? 's' : ''} removed`);
-  if (counts.modified) parts.push(`${counts.modified} block${counts.modified > 1 ? 's' : ''} modified`);
-  if (counts.moved) parts.push(`${counts.moved} block${counts.moved > 1 ? 's' : ''} reordered`);
-  return parts.join(', ');
-}
-
+// The counted phrasing is `wiki-formant/revisions`, the one the stored revision
+// message already uses. Containers are dropped first (this view never lists
+// them) and an empty set reads off the revision's own change type instead.
 function ChangeSummary({ changes, changeType }: { changes: BlockChange[]; changeType: string }) {
-  const summary = changeSummaryText(changes);
-  if (summary) return <span className="text-xs text-text-muted">{summary}</span>;
-  const fallback = changeType === 'major' ? 'Structural changes' : changeType === 'minor' ? 'Content updated' : changeType === 'patch' ? 'Metadata updated' : 'No changes';
-  return <span className="text-xs text-text-muted">{fallback}</span>;
+  const visible = changes.filter(c => !CONTAINER_TYPES.has(c.type));
+  const summary = visible.length
+    ? changeSummary({ changes: visible, titleChanged: false })
+    : changeType === 'major' ? 'Structural changes' : changeType === 'minor' ? 'Content updated' : changeType === 'patch' ? 'Metadata updated' : 'No changes';
+  return <span className="text-xs text-text-muted">{summary}</span>;
 }
 
 function ContentDiff({ from, to }: { from: string; to: string }) {
@@ -96,7 +91,9 @@ function formatBlockPath(path: string, type: string): string {
   }
 
   const location = segments.length ? segments.join(' → ') : 'root';
-  const typeLabel = type === 'content' ? 'Text' : type === 'recentPages' ? 'Recent Pages' : type === 'pageList' ? 'Page List' : type === 'assetPrice' ? 'Asset Price' : type === 'columns' ? 'Columns' : type;
+  // Editor labels, except that a content block is 'Text' where it is being read
+  // rather than inserted. An unknown type is a block this build no longer has.
+  const typeLabel = type === 'content' ? 'Text' : BLOCK_META[type as BlockType]?.label ?? type;
   return `${typeLabel} at ${location}`;
 }
 

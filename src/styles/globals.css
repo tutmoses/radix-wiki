@@ -22,7 +22,6 @@
   --color-danger: #ffc599;
   --color-danger-muted: rgba(255, 197, 153, 0.12);
   --color-info-muted: rgba(204, 209, 255, 0.12);
-  --color-purple: #d8ccff;
   --text-h1: 1.8rem;
   --text-h2: 1.6rem;
   --text-h3: 1.4rem;
@@ -338,13 +337,14 @@
   /* ===== HEADER ===== */
   .header { @apply sticky top-0 z-50 bg-surface-0/80 backdrop-blur-md border-b border-border-muted; }
   .header-inner { @apply w-full px-4 sm:px-6 lg:px-8; }
-  .header-bar { @apply flex items-center gap-2 h-[var(--header-height)]; }
+  /* flex-wrap + min-h only differ from a fixed row when a child actually wraps,
+     and only `.header-search-open` does that, below `sm`. */
+  .header-bar { @apply flex flex-wrap items-center gap-2 min-h-[var(--header-height)]; }
   .logo-text { @apply font-semibold text-lg hidden sm:block; }
   .header-actions { @apply flex items-center gap-2 ml-auto; }
 
   /* User pill (connected state) */
   .user-pill { @apply flex items-center gap-2 bg-surface-1 border border-border-muted rounded-lg px-2 sm:px-3 py-1.5 hover:bg-surface-2 transition-colors; }
-  .user-dot { @apply w-2 h-2 rounded-full bg-success; }
 
   /* User avatar */
   .user-avatar { @apply rounded-full shrink-0; }
@@ -354,7 +354,13 @@
 
   /* ===== SEARCH ===== */
   .header-search { @apply relative hidden sm:block flex-1 max-w-xl mx-2; }
-  .search-panel { @apply pb-4 animate-[slide-up_0.3s_ease-out]; }
+  /* The one search field: inline in the bar above `sm`, its own full-width row
+     under it once the toggle opens it. The bar is a fixed-height flex row, so on
+     a phone the field takes a line rather than competing with the icons. */
+  /* `basis-full`, not `w-full`: `.header-search` is `flex-1` (basis 0), which
+     beats a width in a flex row, so only a full basis makes the field wrap onto
+     its own line instead of being squeezed between the logo and the icons. */
+  .header-search-open { @apply block max-sm:basis-full max-sm:order-last max-sm:mx-0 max-sm:max-w-none max-sm:pb-4; }
   .search-icon-left { @apply absolute left-3 top-1/2 -translate-y-1/2 text-text-muted; }
   .search-icon-right { @apply absolute right-3 top-1/2 -translate-y-1/2 text-text-muted animate-spin; }
   .search-results { @apply absolute top-full left-0 right-0 mt-2 bg-surface-1 border border-border rounded-lg shadow overflow-hidden z-50; }
@@ -500,14 +506,8 @@
     @apply hidden flex-col gap-5 p-4 bg-surface-1 border border-border-muted rounded-lg;
     order: -1; /* Opened on a phone it belongs above the grid, not below it. */
 
-    @media (min-width: 768px) {
-      @apply flex;
-      position: sticky;
-      top: calc(var(--header-height) + 1.5rem);
-      align-self: start;
-      max-height: calc(100dvh - var(--header-height) - 3rem);
-      overflow-y: auto;
-    }
+    /* Sticky and scrolling with the infobox — see the shared rail rule below. */
+    @media (min-width: 768px) { @apply flex; }
   }
   .category-rail-open { @apply flex; }
 
@@ -688,23 +688,18 @@
       th { border-bottom: 0; }
       td { border-top: 0; }
     }
-
-    @media (min-width: 768px) {
-      position: sticky;
-      top: calc(var(--header-height) + 1.5rem);
-      align-self: start;
-      max-height: calc(100dvh - var(--header-height) - 3rem);
-      overflow-y: auto;
-    }
   }
 
-
   /* Infobox editor sidebar */
-  .infobox-editor {
-    grid-area: infobox;
-    width: 100%;
+  .infobox-editor { grid-area: infobox; width: 100%; }
 
-    @media (min-width: 768px) {
+  /* One sticky slot for all three rails. It has to stay after `.infobox`, whose
+     `overflow: hidden` a later `overflow-y: auto` is what beats. The query is px
+     rather than Tailwind's `md`: 48rem resolves against the browser's default
+     font size, so for a reader who has changed it the rail's grid slot (768px,
+     above) and its stickiness would flip at different widths. */
+  @media (min-width: 768px) {
+    :is(.infobox, .infobox-editor, .category-rail) {
       position: sticky;
       top: calc(var(--header-height) + 1.5rem);
       align-self: start;

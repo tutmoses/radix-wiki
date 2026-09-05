@@ -16,10 +16,9 @@
 // three times (sweeps 202 and 224 found it weeks later) because every anchor in a
 // stale nav still resolves 200.
 
-import pg from 'pg';
-import { randomUUID } from 'crypto';
 import { config } from 'dotenv';
-import { cuid, AUTHOR_ID, isLockedPage } from './seed-utils.mjs';
+import { bump } from 'wiki-formant/versioning';
+import { uid, cuid, AUTHOR_ID, isLockedPage, esc, meta, withClient } from './seed-utils.mjs';
 
 config({ path: new URL('../.env', import.meta.url) });
 
@@ -27,14 +26,11 @@ const TAG = 'blog';
 const INDEX_SLUG = 'week-in-review';
 const RECAP_LIKE = 'week-in-review-%';
 const INDEX_TITLE = 'Radix Week in Review';
-const uid = () => randomUUID();
 
 const [mode, ...rest] = process.argv.slice(2);
 const DRY = process.argv.includes('--dry-run');
 const EN = '\u2013';
 const MONTH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** The week a recap covers: the seven days ending on its metadata.date. */
 function weekLabel(iso) {
@@ -94,8 +90,6 @@ function navHtml(prev, next, issue) {
   const previously = prev?.excerpt ? `<p><em>Previously:</em> ${esc(prev.excerpt)}</p>` : '';
   return nav + previously;
 }
-
-const meta = (row) => (row.metadata && typeof row.metadata === 'object' ? row.metadata : {});
 
 async function loadRecaps(client) {
   const { rows } = await client.query(
@@ -297,8 +291,7 @@ async function sync(client, stateOverride) {
     // pass to settle.
     r.content = blocks;
 
-    const [maj, min, pat] = String(r.version || '1.0.0').split('.');
-    const version = `${maj}.${min}.${Number(pat) + 1}`;
+    const version = bump(r.version, 'patch');
     console.log(`  ${DRY ? '[dry] ' : ''}${r.slug}  v${r.version} -> v${version}  ${action}`);
     if (DRY) {
       const plain = (h) => h.replace(/<\/(p|h\d|li)>/g, ' ').replace(/<[^>]+>/g, '').replace(/&middot;/g, '\u00b7')
@@ -356,8 +349,7 @@ async function sync(client, stateOverride) {
       console.log(`  ${INDEX_SLUG}  no change`);
       ok++;
     } else {
-      const [maj, min] = String(existing.version || '1.0.0').split('.');
-      const version = `${maj}.${Number(min) + 1}.0`;
+      const version = bump(existing.version, 'minor');
       console.log(`  ${DRY ? '[dry] ' : ''}${INDEX_SLUG}  v${existing.version} -> v${version}  index rebuilt`);
       if (!DRY) {
         const now = new Date().toISOString();
@@ -412,10 +404,7 @@ async function resolve(client, names) {
   console.log(`${hit} hit / ${names.length - hit} miss`);
 }
 
-const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, ssl: { rejectUnauthorized: false } });
-const client = await pool.connect();
-try {
+await withClient(async (client) => {
   if (mode === 'read') {
     const row = await readIndex(client);
     if (!row) { console.error('Index page not found. Run: node scripts/week-in-review.mjs sync'); process.exit(2); }
@@ -434,11 +423,4 @@ try {
     console.error('Usage: node scripts/week-in-review.mjs <read|write|sync|resolve> [json|names] [--dry-run]');
     process.exit(1);
   }
-} catch (e) {
-  try { await client.query('ROLLBACK'); } catch {}
-  console.error('ERROR:', e.message);
-  process.exitCode = 1;
-} finally {
-  client.release();
-  await pool.end();
-}
+});

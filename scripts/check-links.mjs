@@ -19,9 +19,9 @@
 //
 // Prints a human summary to stdout and, with --json, the full report as JSON.
 
-import pg from 'pg';
 import { readdirSync } from 'fs';
 import { config } from 'dotenv';
+import { withClient } from './seed-utils.mjs';
 
 config({ path: new URL('../.env', import.meta.url) });
 
@@ -270,10 +270,7 @@ async function mapLimit(items, limit, fn) {
   return out;
 }
 
-const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, ssl: { rejectUnauthorized: false } });
-const client = await pool.connect();
-try {
+await withClient(async (client) => {
   const { rows } = await client.query(
     'SELECT slug, title, tag_path, content, updated_at FROM pages WHERE tag_path LIKE $1 ORDER BY updated_at ASC',
     [`${prefix}%`],
@@ -383,7 +380,4 @@ try {
     for (const p of pagesByStaleness.slice(0, 8)) console.log(`  ${String(p.updatedAt).slice(0, 10)}  ${p.path}`);
     console.log('');
   }
-} finally {
-  client.release();
-  await pool.end();
-}
+});

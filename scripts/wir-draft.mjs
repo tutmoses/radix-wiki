@@ -12,10 +12,9 @@
 // `node scripts/wir-lint.mjs --file <that file>`, then publish it with insertPages.
 // Nothing here touches the database.
 
-import pg from 'pg';
 import fs from 'node:fs';
 import { config } from 'dotenv';
-import { uid } from './seed-utils.mjs';
+import { uid, argOf, weekKey, fmt, compact, withClient } from './seed-utils.mjs';
 
 config({ path: new URL('../.env', import.meta.url) });
 
@@ -23,25 +22,6 @@ const SNAP_TAG = 'contents/tech/operations';
 const SNAP_SLUG = 'network-weekly';
 const TODO = 'TODO';
 
-const argOf = (flag) => { const i = process.argv.indexOf(flag); return i >= 0 ? process.argv[i + 1] : null; };
-
-function weekKey(iso) {
-  const d = iso ? new Date(`${iso}T00:00:00Z`) : new Date();
-  const sunday = new Date(d);
-  sunday.setUTCDate(d.getUTCDate() - d.getUTCDay());
-  return sunday.toISOString().slice(0, 10);
-}
-
-const fmt = (n, digits = 0) =>
-  n == null || !isFinite(n) ? '—' : n.toLocaleString('en-US', { maximumFractionDigits: digits });
-function compact(n) {
-  if (n == null || !isFinite(n)) return '—';
-  const a = Math.abs(n);
-  if (a >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
-  if (a >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
-  if (a >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
-  return `${n}`;
-}
 /** Week-over-week change, only when the two readings are close enough to compare. */
 function wow(now, was, gapDays) {
   if (!isFinite(now) || !isFinite(was) || !was || gapDays > 10) return '';
@@ -52,10 +32,7 @@ function wow(now, was, gapDays) {
 
 const content = (text) => ({ id: uid(), type: 'content', text });
 
-const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, ssl: { rejectUnauthorized: false } });
-const client = await pool.connect();
-try {
+await withClient(async (client) => {
   const week = weekKey(argOf('--week'));
   const since = new Date(new Date(`${week}T00:00:00Z`).getTime() - 6 * 86400000).toISOString().slice(0, 10);
 
@@ -184,7 +161,4 @@ try {
   console.log(`  wiki pages touched this week: ${touched.length}`);
   for (const p of touched.slice(0, 8)) console.log(`    ${pagePath(p)}  ${p.title}`);
   console.log(`\nFill the TODOs, then: node scripts/wir-lint.mjs --file ${out}`);
-} finally {
-  client.release();
-  await pool.end();
-}
+});

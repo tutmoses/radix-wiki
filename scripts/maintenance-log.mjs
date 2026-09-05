@@ -26,16 +26,14 @@
 // them by running again: FLAG FOR A HUMAN backlog items (nothing here can action
 // them) and banked bot-block watermarks (they are why an audit costs no probes).
 
-import pg from 'pg';
-import { randomUUID } from 'crypto';
 import { config } from 'dotenv';
+import { bump } from 'wiki-formant/versioning';
+import { uid, AUTHOR_ID, esc, withClient } from './seed-utils.mjs';
 
 config({ path: new URL('../.env', import.meta.url) });
 
 const TAG_PATH = 'contents/tech/operations';
 const SLUG = 'wiki-maintenance-log';
-const AUTHOR_ID = 'cmk5t48vx0000005zc5se4dqz';
-const uid = () => randomUUID();
 
 const [mode, payload] = process.argv.slice(2);
 const DRY = process.argv.includes('--dry-run');
@@ -62,9 +60,6 @@ const PINNED = /FLAG FOR A HUMAN/i;
 // they are the `sources` analogue of PINNED. They also accrete slowly (41 keys
 // in 320 runs) where plain site probes do not.
 const BANKED = /\bbanked\b|bot[- ]?(wall|block)|\b(403|429|999)\b|cloudflare/i;
-
-const esc = (s) =>
-  String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** Drop what's closed or duplicated, cap what's append-only. */
 function compact(state) {
@@ -181,10 +176,7 @@ function render(state) {
   ];
 }
 
-const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, ssl: { rejectUnauthorized: false } });
-const client = await pool.connect();
-try {
+await withClient(async (client) => {
   if (mode === 'read') {
     const { rows } = await client.query(
       'SELECT metadata FROM pages WHERE tag_path = $1 AND slug = $2',
@@ -269,8 +261,7 @@ try {
       'SELECT created_at FROM revisions WHERE page_id = $1 ORDER BY created_at DESC LIMIT 1', [id],
     );
     const revise = mode === 'compact' || !last || last.created_at.toISOString().slice(0, 10) !== now.slice(0, 10);
-    const [maj, min] = was.split('.');
-    const version = revise ? `${maj}.${Number(min) + 1}.0` : was;
+    const version = revise ? bump(was, 'minor') : was;
 
     const count = (v) => (Array.isArray(v) ? v.length : Object.keys(v || {}).length);
     for (const key of ['backlog', 'runHistory', 'feedback']) {
@@ -303,11 +294,4 @@ try {
     console.error('Usage: node scripts/maintenance-log.mjs <read|write|compact|backlog-add> [json] [--dry-run]');
     process.exit(1);
   }
-} catch (e) {
-  try { await client.query('ROLLBACK'); } catch {}
-  console.error('ERROR:', e.message);
-  process.exitCode = 1;
-} finally {
-  client.release();
-  await pool.end();
-}
+});

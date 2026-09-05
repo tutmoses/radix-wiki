@@ -1,23 +1,33 @@
-// scripts/network-snapshot.mjs — one on-chain reading a week, kept as a series.
+// scripts/network-snapshot.mjs — one reading of the network a week, kept as a series.
 //
 // The numbers live on a real wiki page at /contents/tech/operations/network-weekly:
 // machine state in pages.metadata.state, visible blocks re-rendered from it, the same
 // shape as maintenance-log.mjs. A week-over-week delta needs last week's reading, and
 // this is the only thing that remembers it.
 //
-//   node scripts/network-snapshot.mjs capture [--dry-run]   # read the ledger, store the week
-//   node scripts/network-snapshot.mjs read                  # print state JSON
+//   node scripts/network-snapshot.mjs capture [--dry-run]     # read the ledger, store the week
+//   node scripts/network-snapshot.mjs capture-dev [--week YYYY-MM-DD] [--dry-run]
+//   node scripts/network-snapshot.mjs read                    # print state JSON
 //   node scripts/network-snapshot.mjs announce <id> <impressions> <likes> <replies>
 //
-// Data comes from /api/charts/snapshot rather than the Gateway directly, so this script
-// and /charts share one parser. A second fee parser is how /charts came to publish the
-// stored validator fee instead of the charged one, for months, across 59% of staked XRD.
-// Override the origin with SNAPSHOT_ORIGIN=http://localhost:3000 when testing.
+// Ledger data comes from /api/charts/snapshot rather than the Gateway directly, so this
+// script and /charts share one parser. A second fee parser is how /charts came to publish
+// the stored validator fee instead of the charged one, for months, across 59% of staked
+// XRD. Override the origin with SNAPSHOT_ORIGIN=http://localhost:3000 when testing.
+//
+// `capture-dev` is the other half of the same week: the recap read the ledger every week
+// and never read the code, which is half the ecosystem missing. It parks repository
+// activity beside the ledger series in the same state blob, through the authenticated
+// `gh` CLI (5,000 req/hr). Anything that fails is recorded as an error on that repo and
+// the rest of the capture still lands: a rate limit must never cost the week its reading.
 
-import pg from 'pg';
-import { randomUUID } from 'crypto';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { config } from 'dotenv';
-import { cuid, AUTHOR_ID, isLockedPage } from './seed-utils.mjs';
+import { bump } from 'wiki-formant/versioning';
+import {
+  uid, cuid, AUTHOR_ID, isLockedPage, esc, meta, argOf, weekKey, fmt, compact, delta, withClient,
+} from './seed-utils.mjs';
 
 config({ path: new URL('../.env', import.meta.url) });
 
@@ -25,50 +35,25 @@ const TAG = 'contents/tech/operations';
 const SLUG = 'network-weekly';
 const TITLE = 'The Network, Week by Week';
 const ORIGIN = process.env.SNAPSHOT_ORIGIN || 'https://radix.wiki';
-const uid = () => randomUUID();
 
 const [mode, ...rest] = process.argv.slice(2);
 const DRY = process.argv.includes('--dry-run');
 
-// Two years of scalars; the validator sets and the append-only lists stay short. The
-// maintenance log reached 384 KB of content and 710 KB of state by not doing this.
-const SNAPSHOTS_MAX = 104, TOP_MAX = 12, ANNOUNCE_MAX = 26;
+// Two years of scalars, for both series; the validator sets and the append-only lists
+// stay short. The maintenance log reached 384 KB of content and 710 KB of state by not
+// doing this.
+const WEEKS_MAX = 104, TOP_MAX = 12, ANNOUNCE_MAX = 26;
 const SHOWN = 12;
 
-const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const meta = (row) => (row?.metadata && typeof row.metadata === 'object' ? row.metadata : {});
-
-/** The Sunday ending the week we are recording, so the key matches the recap's slug. */
-function weekKey(d = new Date()) {
-  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  t.setUTCDate(t.getUTCDate() - t.getUTCDay());
-  return t.toISOString().slice(0, 10);
-}
-
-const fmt = (n, digits = 0) =>
-  n == null || !isFinite(n) ? '—' : n.toLocaleString('en-US', { maximumFractionDigits: digits });
-
-function compact(n) {
-  if (n == null || !isFinite(n)) return '—';
-  const a = Math.abs(n);
-  if (a >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
-  if (a >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
-  if (a >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
-  return fmt(n);
-}
-
-/** Never invent a comparison: an absent or stale prior reading yields no delta at all. */
-function delta(now, was, { percent = true, staleDays = 10, gapDays = 0 } = {}) {
-  if (was == null || now == null || !isFinite(was) || !isFinite(now) || was === 0) return '';
-  if (gapDays > staleDays) return '';
-  const diff = now - was;
-  if (diff === 0) return 'no change';
-  const sign = diff > 0 ? '+' : '−';
-  const mag = Math.abs(diff);
-  return percent
-    ? `${sign}${((mag / Math.abs(was)) * 100).toFixed(1)}%`
-    : `${sign}${compact(mag)}`;
-}
+// The repositories the ecosystem's work actually lands in. Adding one here is the
+// only change needed for it to appear in the weekly figures.
+const REPOS = [
+  { repo: 'hyperscalers/hyperscale-rs', label: 'hyperscale-rs' },
+  { repo: 'hyperscalers/hyperscale-vm', label: 'hyperscale-vm' },
+  { repo: 'radixdlt/radixdlt-scrypto', label: 'radixdlt-scrypto' },
+  { repo: 'radixdlt/babylon-node', label: 'babylon-node' },
+  { repo: 'radixdlt/radix-engine-toolkit', label: 'radix-engine-toolkit' },
+];
 
 function render(state) {
   const snaps = (state.snapshots || []).slice(-SHOWN).reverse();
@@ -115,7 +100,7 @@ function render(state) {
 
 const cap = (state) => ({
   ...state,
-  snapshots: (state.snapshots || []).slice(-SNAPSHOTS_MAX).map((s, i, arr) =>
+  snapshots: (state.snapshots || []).slice(-WEEKS_MAX).map((s, i, arr) =>
     i < arr.length - TOP_MAX ? { ...s, top25: undefined } : s),
   announcements: (state.announcements || []).slice(-ANNOUNCE_MAX),
 });
@@ -152,8 +137,7 @@ async function persist(client, page, state, message) {
     return;
   }
 
-  const [maj, min] = String(page.version || '1.0.0').split('.');
-  const version = `${maj}.${Number(min) + 1}.0`;
+  const version = bump(page.version, 'minor');
   console.log(`  ${DRY ? '[dry] ' : ''}${SLUG}  v${page.version} -> v${version}`);
   if (DRY) return;
   await client.query('BEGIN');
@@ -166,10 +150,147 @@ async function persist(client, page, state, message) {
   await client.query('COMMIT');
 }
 
-const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, ssl: { rejectUnauthorized: false } });
-const client = await pool.connect();
-try {
+// ---------------------------------------------------------------- repositories
+
+const run = promisify(execFile);
+
+async function gh(path) {
+  const { stdout } = await run('gh', ['api', '-H', 'Accept: application/vnd.github+json', path], {
+    maxBuffer: 32 * 1024 * 1024,
+  });
+  return JSON.parse(stdout);
+}
+
+/** The commits endpoint caps a page at 100 and returns newest first, so a single
+ *  unpaginated call under-counts a busy week AND makes it look like the work landed
+ *  on two days. Walk the pages; stop at PAGE_MAX so one runaway repo cannot stall
+ *  the capture. */
+const PAGE_MAX = 6;
+async function allCommits(repo, since, until) {
+  const out = [];
+  for (let page = 1; page <= PAGE_MAX; page++) {
+    const batch = await gh(`/repos/${repo}/commits?since=${since}T00:00:00Z&until=${until}T23:59:59Z&per_page=100&page=${page}`);
+    if (!Array.isArray(batch)) throw new Error('unexpected response');
+    out.push(...batch);
+    if (batch.length < 100) return { commits: out, truncated: false };
+  }
+  return { commits: out, truncated: true };
+}
+
+async function repoWeek({ repo, label }, since, until) {
+  try {
+    // `since`/`until` are inclusive of the seven days ending on the recap's Sunday.
+    const { commits, truncated } = await allCommits(repo, since, until);
+
+    // Per-commit stats need one call each; cap it so a very busy week cannot turn
+    // into hundreds of requests. The count is always exact, the diff may be partial.
+    const detailed = commits.slice(0, 60);
+    let additions = 0, deletions = 0, files = 0, counted = 0;
+    for (const c of detailed) {
+      try {
+        const full = await gh(`/repos/${repo}/commits/${c.sha}`);
+        additions += full.stats?.additions ?? 0;
+        deletions += full.stats?.deletions ?? 0;
+        files += full.files?.length ?? 0;
+        counted++;
+      } catch { /* one bad commit does not spoil the week */ }
+    }
+
+    const days = new Set(commits.map((c) => (c.commit?.author?.date || '').slice(0, 10)).filter(Boolean));
+    const authors = new Set(commits.map((c) => c.author?.login || c.commit?.author?.name).filter(Boolean));
+    const perDay = {};
+    for (const c of commits) {
+      const d = (c.commit?.author?.date || '').slice(0, 10);
+      if (d) perDay[d] = (perDay[d] || 0) + 1;
+    }
+
+    return {
+      label, repo,
+      commits: commits.length,
+      // Flagged so nobody reads a capped count or diff as the true total.
+      truncated,
+      partial: counted < commits.length,
+      statsFrom: counted,
+      additions, deletions, files,
+      activeDays: days.size,
+      authors: [...authors].slice(0, 8),
+      perDay,
+    };
+  } catch (e) {
+    return { label, repo, error: String(e.message || e).slice(0, 200) };
+  }
+}
+
+async function languages() {
+  const out = {};
+  for (const { repo, label } of REPOS) {
+    try { out[label] = await gh(`/repos/${repo}/languages`); } catch { /* optional */ }
+  }
+  return out;
+}
+
+/** The repository reading writes metadata only: the visible blocks are the ledger's,
+ *  so re-rendering them here would churn every block id for a change they don't show. */
+async function captureDev(client, page) {
+  const state = meta(page).state ?? {};
+  const week = weekKey(argOf('--week'));
+  const until = week;
+  const since = new Date(new Date(`${week}T00:00:00Z`).getTime() - 6 * 86400000).toISOString().slice(0, 10);
+  console.log(`Capturing ${since} .. ${until}`);
+
+  const repos = [];
+  for (const r of REPOS) {
+    const res = await repoWeek(r, since, until);
+    repos.push(res);
+    console.log(`  ${res.label.padEnd(22)} ${res.error ? `ERROR ${res.error}` : `${res.commits}${res.truncated ? '+' : ''} commits, +${res.additions} -${res.deletions}, ${res.files} files, ${res.activeDays}/7 days${res.partial ? ' (diff sampled)' : ''}`}`);
+  }
+
+  const ok = repos.filter((r) => !r.error);
+  const entry = {
+    week, since, until,
+    capturedAt: new Date().toISOString(),
+    commits: ok.reduce((s, r) => s + r.commits, 0),
+    additions: ok.reduce((s, r) => s + r.additions, 0),
+    deletions: ok.reduce((s, r) => s + r.deletions, 0),
+    files: ok.reduce((s, r) => s + r.files, 0),
+    // Commit counts are exact. Line and file totals come from a sample of each
+    // repo's commits, so when this is true they are a floor, never a total.
+    partial: ok.some((r) => r.partial),
+    statsFrom: ok.reduce((s, r) => s + (r.statsFrom || 0), 0),
+    contributors: [...new Set(ok.flatMap((r) => r.authors))].length,
+    repos,
+    languages: await languages(),
+  };
+
+  // Replace within the same week rather than append, so a re-run is idempotent.
+  const dev = (state.dev ?? []).filter((d) => d.week !== week);
+  dev.push(entry);
+  // Oldest first, matching state.snapshots, so both series index the same way.
+  dev.sort((a, b) => a.week.localeCompare(b.week));
+  const next = { ...state, dev: dev.slice(-WEEKS_MAX) };
+
+  console.log(`\n  week ${week}: ${entry.commits} commits, ` +
+    `${entry.partial ? 'at least ' : ''}+${entry.additions} -${entry.deletions} over ${entry.files} files ` +
+    `(diff from ${entry.statsFrom} of ${entry.commits} commits), ` +
+    `${entry.contributors} contributor(s) across ${ok.length}/${REPOS.length} repos`);
+
+  if (DRY) { console.log('[dry] no write'); return; }
+  const now = new Date().toISOString();
+  const version = bump(page.version, 'patch');
+  await client.query('BEGIN');
+  await client.query('UPDATE pages SET metadata = $1, version = $2, updated_at = $3 WHERE id = $4',
+    [JSON.stringify({ ...meta(page), state: next }), version, now, page.id]);
+  await client.query(
+    `INSERT INTO revisions (id, page_id, content, title, version, change_type, author_id, message, created_at)
+     SELECT $1, id, content, $2, $3, 'patch', $4, $5, $6 FROM pages WHERE id = $7`,
+    [cuid(), page.title, version, AUTHOR_ID, `Record repository activity for the week of ${week}`, now, page.id]);
+  await client.query('COMMIT');
+  console.log(`  written  v${page.version} -> v${version}`);
+}
+
+// ---------------------------------------------------------------- entry
+
+await withClient(async (client) => {
   if (isLockedPage(TAG, SLUG)) throw new Error(`${TAG}/${SLUG} is locked`);
 
   if (mode === 'read') {
@@ -221,6 +342,11 @@ try {
 
     await persist(client, page, cap({ ...state, snapshots }), `Ledger reading for the week ending ${week}`);
 
+  } else if (mode === 'capture-dev') {
+    const page = await load(client);
+    if (!page) throw new Error(`${TAG}/${SLUG} not found`);
+    await captureDev(client, page);
+
   } else if (mode === 'announce') {
     const [id, impressions, likes, replies] = rest.filter((a) => !a.startsWith('--'));
     if (!id) throw new Error('announce requires <tweetId> <impressions> <likes> <replies>');
@@ -235,14 +361,7 @@ try {
     await persist(client, page, cap({ ...state, announcements }), `Record how the ${weekKey()} recap was received`);
 
   } else {
-    console.error('Usage: node scripts/network-snapshot.mjs <capture|read|announce> [args] [--dry-run]');
+    console.error('Usage: node scripts/network-snapshot.mjs <capture|capture-dev|read|announce> [args] [--dry-run]');
     process.exit(1);
   }
-} catch (e) {
-  try { await client.query('ROLLBACK'); } catch {}
-  console.error('ERROR:', e.message);
-  process.exitCode = 1;
-} finally {
-  client.release();
-  await pool.end();
-}
+});

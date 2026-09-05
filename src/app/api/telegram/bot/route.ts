@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { json } from '@/lib/api';
-import { sendMessage } from '@/lib/telegram';
+import { sendMessage } from '@/lib/webhooks';
 
 export async function POST(request: Request) {
   try {

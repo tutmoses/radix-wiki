@@ -1,11 +1,11 @@
-// src/lib/tags.ts - Optimized tag resolution with memoization
+// src/lib/tags.ts — the tag hierarchy and the walks over it.
 
-export interface MetadataKeyDefinition {
-  key: string;
-  label: string;
+import type { MetadataKeyDefinition as FormantMetadataKey } from 'wiki-formant/taxonomy';
+
+/** The shared definition plus this wiki's two extra key types and its `required` flag. */
+export interface MetadataKeyDefinition extends FormantMetadataKey {
   type: 'text' | 'date' | 'url' | 'select' | 'user' | 'resource_address';
   required?: boolean;
-  options?: string[]; // For select type
 }
 
 export type SortOrder = 'title' | 'newest' | 'oldest' | 'recent';
@@ -161,7 +161,7 @@ export const TAG_HIERARCHY: TagNode[] = [
 ];
 
 // Article-assessment grade — a global key merged onto every page (Wikipedia-style quality scale).
-export const GLOBAL_METADATA_KEYS: MetadataKeyDefinition[] = [
+const GLOBAL_METADATA_KEYS: MetadataKeyDefinition[] = [
   { key: 'quality', label: 'Quality:', type: 'select', options: ['📄 Stub', '🌱 Start', '🥉 C-class', '🥈 B-class', '🥇 Good', '⭐ Featured'] },
 ];
 
@@ -190,14 +190,7 @@ interface TagPathContext {
   metadataKeys: MetadataKeyDefinition[];
 }
 
-// Memoization cache
-const resolveCache = new Map<string, TagPathContext>();
-
 function resolveTagPath(pathSegments: string[], hierarchy: TagNode[] = TAG_HIERARCHY): TagPathContext {
-  const key = pathSegments.join('/');
-  const cached = resolveCache.get(key);
-  if (cached) return cached;
-
   const requirements: NonNullable<TagNode['xrd']> = {};
   const metadataKeys: MetadataKeyDefinition[] = [];
   let current: TagNode[] = hierarchy;
@@ -207,11 +200,7 @@ function resolveTagPath(pathSegments: string[], hierarchy: TagNode[] = TAG_HIERA
 
   for (const segment of pathSegments) {
     node = current.find(n => n.slug === segment) ?? null;
-    if (!node) {
-      const result: TagPathContext = { node: null, isValid: false, isAuthorOnly: false, sort: 'title', xrdRequirements: {}, metadataKeys: [] };
-      resolveCache.set(key, result);
-      return result;
-    }
+    if (!node) return { node: null, isValid: false, isAuthorOnly: false, sort: 'title', xrdRequirements: {}, metadataKeys: [] };
     if (node.xrd) Object.assign(requirements, node.xrd);
     if (node.metadataKeys) metadataKeys.push(...node.metadataKeys);
     if (node.sort) sort = node.sort;
@@ -221,14 +210,12 @@ function resolveTagPath(pathSegments: string[], hierarchy: TagNode[] = TAG_HIERA
     current = node.children || [];
   }
 
-  const isAuthorOnly = isUnder(AUTHOR_ONLY_PATHS, key);
+  const isAuthorOnly = isUnder(AUTHOR_ONLY_PATHS, pathSegments.join('/'));
   metadataKeys.push(...GLOBAL_METADATA_KEYS);
-  const result: TagPathContext = { node, isValid: pathSegments.length > 0, isAuthorOnly, sort, mainArticle, xrdRequirements: requirements, metadataKeys };
-  resolveCache.set(key, result);
-  return result;
+  return { node, isValid: pathSegments.length > 0, isAuthorOnly, sort, mainArticle, xrdRequirements: requirements, metadataKeys };
 }
 
-// Convenience wrappers - all use cached resolution
+// Convenience wrappers
 export const findTagByPath = (pathSegments: string[]): TagNode | null => resolveTagPath(pathSegments).node;
 export const isValidTagPath = (pathSegments: string[]): boolean => resolveTagPath(pathSegments).isValid;
 export const isAuthorOnlyPath = (tagPath: string): boolean => resolveTagPath(tagPath.split('/')).isAuthorOnly;
@@ -252,12 +239,25 @@ export const getMainArticle = (tagPath: string): string | undefined => resolveTa
 export const getSortOrder = (pathSegments: string[]): SortOrder => resolveTagPath(pathSegments).sort;
 export const getVisibleTags = (hierarchy: TagNode[] = TAG_HIERARCHY): TagNode[] => hierarchy.filter(n => !n.hidden);
 
-function collectHiddenPaths(nodes: TagNode[], parent = ''): string[] {
+export interface TagPathEntry {
+  path: string;
+  node: TagNode;
+  /** Inherited: a node beneath a hidden one is hidden too. */
+  hidden: boolean;
+}
+
+/**
+ * Every tag path in the tree, depth-first, parents before children. The callers
+ * differ only in what they keep: the sitemap and the prebuild take the lot,
+ * llms.txt drops the hidden ones, HIDDEN_TAG_PATHS keeps nothing else.
+ */
+export function tagPaths(nodes: TagNode[] = TAG_HIERARCHY, parent = '', inherited = false): TagPathEntry[] {
   return nodes.flatMap(node => {
     const path = parent ? `${parent}/${node.slug}` : node.slug;
-    return [...(node.hidden && node.slug ? [path] : []), ...collectHiddenPaths(node.children ?? [], path)];
+    const hidden = inherited || !!node.hidden;
+    return [{ path, node, hidden }, ...tagPaths(node.children ?? [], path, hidden)];
   });
 }
 
 /** Tag paths declared hidden — wiki-internal surfaces (operations logs), not article space. */
-export const HIDDEN_TAG_PATHS: string[] = collectHiddenPaths(TAG_HIERARCHY);
+export const HIDDEN_TAG_PATHS: string[] = tagPaths().filter(t => t.hidden && t.node.slug).map(t => t.path);

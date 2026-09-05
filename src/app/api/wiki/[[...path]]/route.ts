@@ -9,18 +9,47 @@ import { isValidTagPath, isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAu
 import { requireBalance } from '@/lib/radix/balance';
 import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, type BlockChange } from '@/lib/versioning';
-import { parsePath, orderByIds, searchPageIds, summarizePage, resolveBlockData, AUTHOR_SELECT, PAGE_INCLUDE, PAGE_LIST_SELECT, SUMMARY_SELECT } from '@/lib/wiki';
+import { parsePath, orderByIds, searchPageIds, summarizePage, resolveBlockData, loadPageHistory, AUTHOR_SELECT, PAGE_INCLUDE, PAGE_LIST_SELECT, SUMMARY_SELECT } from '@/lib/wiki';
 import { validateBlocks } from '@/lib/block-utils';
 import { blocksToMdx } from '@/lib/mdx';
 import { pageToMarkdown } from '@/lib/markdown';
-import type { WikiPageInput } from '@/types';
+import type { WikiPageInput, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
 import { deliverWebhooks } from '@/lib/webhooks';
 import { markdownHeaders } from 'wiki-formant/http';
 
 type PathParams = { path?: string[] };
 
+const INITIAL_VERSION = '1.0.0';
 
+/** A page and its first revision, in one transaction — POST for an article, PUT
+ *  for the homepage row when it does not exist yet. */
+type NewPage = Pick<Prisma.PageUncheckedCreateInput, 'tagPath' | 'slug' | 'bannerImage' | 'metadata'>
+  & { title: string; content: Prisma.InputJsonValue };
+
+function createPage(data: NewPage, authorId: string) {
+  return prisma.$transaction(async (tx) => {
+    const page = await tx.page.create({
+      data: { ...data, version: INITIAL_VERSION, authorId },
+      include: { author: AUTHOR_SELECT },
+    });
+    await tx.revision.create({
+      data: {
+        pageId: page.id, title: data.title, content: data.content,
+        version: INITIAL_VERSION, changeType: 'major',
+        changes: [] as unknown as Prisma.InputJsonValue,
+        authorId, message: 'Initial version',
+      },
+    });
+    return page;
+  });
+}
+
+/** The required-metadata gate, identical on create and on update. */
+function metadataError(tagPath: string, metadata: PageMetadata | undefined) {
+  const missing = getMetadataKeys(tagPath.split('/')).filter(k => k.required && !metadata?.[k.key]?.trim());
+  return missing.length ? errors.badRequest(`Missing required metadata: ${missing.map(k => k.label).join(', ')}`) : null;
+}
 
 export async function GET(request: NextRequest, context: RouteContext<PathParams>) {
   const { path: rawPath } = await context.params;
@@ -32,35 +61,40 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
   const path = mdSuffix && rawPath ? [...rawPath.slice(0, -1), last!.slice(0, -3)] : rawPath;
   const parsed = parsePath(path, 'api');
 
-  // Handle MDX export outside handleRoute (returns raw Response)
-  if (parsed.type === 'mdx') {
-    try {
+  return handleRoute(async () => {
+    const { searchParams } = new URL(request.url);
+
+    // MDX export
+    if (parsed.type === 'mdx') {
       const page = await prisma.page.findUnique({
         where: { tagPath_slug: { tagPath: parsed.tagPath, slug: parsed.slug } },
         include: { author: AUTHOR_SELECT },
       });
       if (!page) return errors.notFound('Page not found');
 
-      const mdx = blocksToMdx(page);
-      const filename = page.slug || 'homepage';
-
-      return new NextResponse(mdx, {
+      return new NextResponse(blocksToMdx(page), {
         headers: {
           'Content-Type': 'text/mdx; charset=utf-8',
-          'Content-Disposition': `attachment; filename="${filename}.mdx"`,
+          'Content-Disposition': `attachment; filename="${page.slug || 'homepage'}.mdx"`,
         },
       });
-    } catch (error) {
-      console.error('MDX export failed', error);
-      return errors.internal('Failed to export MDX');
     }
-  }
-
-  return handleRoute(async () => {
-    const { searchParams } = new URL(request.url);
 
     // List mode
-    if (!path?.length && (searchParams.has('page') || searchParams.has('pageSize') || searchParams.has('q') || searchParams.has('tagPath') || searchParams.has('sort'))) {
+    if (!path?.length && (searchParams.has('page') || searchParams.has('pageSize') || searchParams.has('q') || searchParams.has('tagPath') || searchParams.has('sort') || searchParams.has('ids'))) {
+      // Batch lookup by id, the shape `/api/users/search?ids=` already uses: it
+      // hydrates a pageList block's stored ids on the client.
+      const idsParam = searchParams.get('ids');
+      if (idsParam !== null) {
+        const ids = idsParam.split(',').filter(Boolean).slice(0, 50);
+        if (!ids.length) return json([]);
+        const rows = await prisma.page.findMany({ where: { id: { in: ids } }, select: PAGE_LIST_SELECT });
+        // The author's chosen order, not the database's: getPagesByIds already
+        // orders its server-resolved twin this way, and a pageList block that
+        // hydrates on the client must not reshuffle itself.
+        return json(orderByIds(rows, ids));
+      }
+
       const { page, pageSize } = parsePagination(searchParams);
       const q = searchParams.get('q')?.trim() || '';
       const tagPath = searchParams.get('tagPath');
@@ -95,43 +129,12 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
 
     if (parsed.type === 'invalid') return errors.notFound('Invalid path');
 
-    // History mode
+    // History mode — the uncached read, so a direct-DB script write shows up here
+    // the moment it lands rather than after the `wiki` tag next revalidates.
     if (parsed.type === 'history') {
-      const page = await prisma.page.findUnique({
-        where: { tagPath_slug: { tagPath: parsed.tagPath, slug: parsed.slug } },
-        select: { id: true, version: true },
-      });
-      if (!page) return errors.notFound('Page not found');
-
-      const revisions = await prisma.revision.findMany({
-        where: { pageId: page.id },
-        select: {
-          id: true, title: true, version: true, changeType: true,
-          changes: true, content: true, message: true, createdAt: true,
-          author: AUTHOR_SELECT,
-        },
-        orderBy: { createdAt: 'desc' },
-      });
-
-      // Backfill changes for revisions that don't have them (e.g. seeded pages)
-      const backfilled = revisions.map((rev, i) => {
-        if (rev.changes && (rev.changes as unknown as BlockChange[]).length > 0) {
-          const { content: _, ...rest } = rev;
-          return rest;
-        }
-        const next = revisions[i + 1]; // older revision (list is newest-first)
-        const newContent = (rev.content as unknown as Block[]) || [];
-        const oldContent = next ? (next.content as unknown as Block[]) || [] : [];
-        const diff = computeRevisionDiff(
-          next?.version ?? null, oldContent, newContent,
-          next?.title ?? '', rev.title,
-          null, null,
-        );
-        const { content: _, ...rest } = rev;
-        return { ...rest, changes: diff.changes, changeType: diff.changeType || rev.changeType };
-      });
-
-      return cachedJson({ currentVersion: page.version, revisions: backfilled });
+      const history = await loadPageHistory(parsed.tagPath, parsed.slug);
+      if (!history) return errors.notFound('Page not found');
+      return cachedJson(history);
     }
 
     // Homepage or specific page
@@ -141,11 +144,8 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     });
 
     if (!page && parsed.type === 'homepage') return cachedJson(null);
-    if (!page) {
-      const res = errors.notFound('Page not found');
-      res.headers.set('Cache-Control', CACHE.short['Cache-Control']);
-      return res;
-    }
+    // The one 404 that is worth caching: a missing page is a hot path for crawlers.
+    if (!page) return cachedJson({ error: 'Page not found' }, CACHE.short, 404);
 
     // Agent-friendly text format: the `.md` twin, Accept negotiation, or an
     // explicit ?format=text. Real markdown, no component tags — dynamic
@@ -236,12 +236,8 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
       return errors.badRequest('Valid tag path required');
     }
 
-    const metadataKeys = getMetadataKeys(tagPath.split('/'));
-    const requiredKeys = metadataKeys.filter(k => k.required);
-    const missingKeys = requiredKeys.filter(k => !metadata?.[k.key]?.trim());
-    if (missingKeys.length > 0) {
-      return errors.badRequest(`Missing required metadata: ${missingKeys.map(k => k.label).join(', ')}`);
-    }
+    const metaError = metadataError(tagPath, metadata);
+    if (metaError) return metaError;
 
     const auth = await requireAuth(request, { type: 'create', tagPath });
     if ('error' in auth) return auth.error;
@@ -250,34 +246,15 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
     const existing = await prisma.page.findUnique({ where: { tagPath_slug: { tagPath, slug } } });
     if (existing) slug = `${slug}-${Date.now().toString(36)}`;
 
-    const initialVersion = '1.0.0';
-
-    const page = await prisma.$transaction(async (tx) => {
-      const p = await tx.page.create({
-        data: {
-          slug, title,
-          content: content as unknown as Prisma.InputJsonValue,
-          bannerImage, tagPath,
-          metadata: metadata as unknown as Prisma.InputJsonValue,
-          version: initialVersion, authorId: auth.session.userId,
-        },
-        include: { author: AUTHOR_SELECT },
-      });
-      await tx.revision.create({
-        data: {
-          pageId: p.id, title,
-          content: content as unknown as Prisma.InputJsonValue,
-          version: initialVersion, changeType: 'major',
-          changes: [] as unknown as Prisma.InputJsonValue,
-          authorId: auth.session.userId, message: 'Initial version',
-        },
-      });
-      return p;
-    });
+    const page = await createPage({
+      tagPath, slug, title, bannerImage,
+      content: content as unknown as Prisma.InputJsonValue,
+      metadata: metadata as unknown as Prisma.InputJsonValue,
+    }, auth.session.userId);
 
     const priorRevisions = await prisma.revision.count({ where: { authorId: auth.session.userId } });
     revalidateTag('wiki', { expire: 0 });
-    deliverWebhooks('page.created', page, { changeType: 'major', message: 'Initial version', version: initialVersion }, { displayName: page.author?.displayName ?? null, radixAddress: auth.session.radixAddress });
+    deliverWebhooks('page.created', page, { changeType: 'major', message: 'Initial version', version: INITIAL_VERSION }, { displayName: page.author?.displayName ?? null, radixAddress: auth.session.radixAddress });
     return json({ ...page, isFirstContribution: priorRevisions === 1 }, 201);
   }, 'Failed to create');
 }
@@ -303,28 +280,11 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
 
     // Homepage creation if it doesn't exist
     if (!existing && parsed.type === 'homepage') {
-      const initialVersion = '1.0.0';
-
-      const page = await prisma.$transaction(async (tx) => {
-        const p = await tx.page.create({
-          data: {
-            tagPath: '', slug: '',
-            title: title || 'Homepage',
-            content: (content as unknown as Prisma.InputJsonValue) || {},
-            bannerImage, version: initialVersion, authorId: auth.session.userId,
-          },
-        });
-        await tx.revision.create({
-          data: {
-            pageId: p.id, title: title || 'Homepage',
-            content: (content as unknown as Prisma.InputJsonValue) || {},
-            version: initialVersion, changeType: 'major',
-            changes: [] as unknown as Prisma.InputJsonValue,
-            authorId: auth.session.userId, message: 'Initial version',
-          },
-        });
-        return p;
-      });
+      const page = await createPage({
+        tagPath: '', slug: '', bannerImage,
+        title: title || 'Homepage',
+        content: (content as unknown as Prisma.InputJsonValue) || {},
+      }, auth.session.userId);
 
       revalidateTag('wiki', { expire: 0 });
       return json(page, 201);
@@ -366,12 +326,8 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     }
 
     if (metadata !== undefined) {
-      const metadataKeys = getMetadataKeys(existing.tagPath.split('/'));
-      const requiredKeys = metadataKeys.filter(k => k.required);
-      const missingKeys = requiredKeys.filter(k => !metadata?.[k.key]?.trim());
-      if (missingKeys.length > 0) {
-        return errors.badRequest(`Missing required metadata: ${missingKeys.map(k => k.label).join(', ')}`);
-      }
+      const metaError = metadataError(existing.tagPath, metadata);
+      if (metaError) return metaError;
     }
 
     const page = await prisma.$transaction(async (tx) => {

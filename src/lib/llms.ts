@@ -6,25 +6,46 @@
 // other wikis. What stays here is the part that is this wiki's: which
 // aggregate defines a corpus revision, and how a page row becomes a bullet.
 
+import { type NextRequest, NextResponse } from 'next/server';
 import { corpusEtag, notModified, textHeaders, cleanSnippet, pageLine as formantPageLine } from 'wiki-formant/http';
 import { prisma } from '@/lib/prisma/client';
-import { TAG_HIERARCHY, type TagNode } from '@/lib/tags';
-import { getContentSnippet, pageUrl, BASE_URL } from '@/lib/utils';
+import { TAG_HIERARCHY, tagPaths } from '@/lib/tags';
+import { categoryLabel, getContentSnippet, pageUrl, BASE_URL } from '@/lib/utils';
+import { extractText } from '@/lib/content';
 import { CHARTS_PAGES } from '@/lib/static-pages';
+import type { Block } from '@/types/blocks';
 
-// Re-exported because the three llms routes reach for them through this module.
-export { notModified, textHeaders, cleanSnippet };
+/** A GET handler serving `build()` under the corpus ETag — or a 304 instead. */
+export function corpusRoute(build: () => Promise<string>) {
+  return async (request: NextRequest) => {
+    const { etag, lastModified } = await corpusValidators();
+    const cached = notModified(request, etag, lastModified);
+    return cached ?? new NextResponse(await build(), { headers: textHeaders(etag, lastModified) });
+  };
+}
 
-export function collectCategories(nodes: TagNode[], parent = ''): { path: string; name: string }[] {
-  return nodes.filter(n => !n.hidden).flatMap(n => {
-    const path = parent ? `${parent}/${n.slug}` : n.slug;
-    return [{ path, name: n.name }, ...(n.children ? collectCategories(n.children, path) : [])];
+/**
+ * The complete text of every page, newest first, under the caller's own
+ * preamble — the body of /llms-full.txt and of the MCP `get_full_corpus` tool,
+ * which differ only in that preamble.
+ */
+export async function buildFullCorpus(header: (pageCount: number) => string): Promise<string> {
+  const pages = await prisma.page.findMany({
+    select: { title: true, tagPath: true, slug: true, content: true, updatedAt: true },
+    where: { tagPath: { not: '' } },
+    orderBy: { updatedAt: 'desc' },
   });
+  const sections = pages.map(p => {
+    const body = extractText((p.content as unknown as Block[]) || []);
+    const snippet = getContentSnippet(p.content);
+    return `## ${p.title}\n\nURL: ${pageUrl(p.tagPath, p.slug)}\nUpdated: ${p.updatedAt.toISOString().split('T')[0]}\n${snippet ? `Summary: ${cleanSnippet(snippet)}\n` : ''}\n${body}`;
+  });
+  return [header(pages.length), ...sections].join('\n\n');
 }
 
 /** Display-name lookup from top-level TAG_HIERARCHY slugs (emoji prefix stripped) */
 export const SECTION_NAMES = new Map(
-  TAG_HIERARCHY.filter(n => !n.hidden && n.slug).map(n => [n.slug, n.name.replace(/^\S+\s/, '')]),
+  TAG_HIERARCHY.filter(n => !n.hidden && n.slug).map(n => [n.slug, categoryLabel(n.name)]),
 );
 
 /** One markdown bullet for a page: linked title plus cleaned excerpt. */
@@ -194,7 +215,9 @@ export async function buildLlmsTxt(): Promise<string> {
     .sort((a, b) => b[1] - a[1])
     .map(([slug, n]) => `- [${SECTION_NAMES.get(slug) || slug}](${BASE_URL}/${slug}): ${n} pages`);
 
-  const categories = collectCategories(TAG_HIERARCHY);
+  // Names raw, emoji and all: this is the browsing index, and the glyph is how
+  // the category reads in the sidebar it mirrors.
+  const categories = tagPaths().filter(t => !t.hidden);
 
   return [
     PREAMBLE,
@@ -215,6 +238,6 @@ export async function buildLlmsTxt(): Promise<string> {
     '',
     '### Categories',
     '',
-    ...categories.map(c => `- [${c.name}](${BASE_URL}/${c.path})`),
+    ...categories.map(c => `- [${c.node.name}](${BASE_URL}/${c.path})`),
   ].join('\n');
 }

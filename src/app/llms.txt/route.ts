@@ -8,15 +8,8 @@
 // The document itself is built in @/lib/llms, so the MCP resource of the same
 // name can call it directly instead of fetching this URL over the network.
 
-import { type NextRequest, NextResponse } from 'next/server';
-import { buildLlmsTxt, corpusValidators, notModified, textHeaders } from '@/lib/llms';
+import { buildLlmsTxt, corpusRoute } from '@/lib/llms';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
-  const { etag, lastModified } = await corpusValidators();
-  const cached = notModified(request, etag, lastModified);
-  if (cached) return cached;
-
-  return new NextResponse(await buildLlmsTxt(), { headers: textHeaders(etag, lastModified) });
-}
+export const GET = corpusRoute(buildLlmsTxt);

@@ -9,21 +9,14 @@ export const RADIX_CONFIG = {
   applicationUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
 } as const;
 
-export enum RadixNetworkId {
-  Mainnet = 1,
-  Stokenet = 2,
-}
+// Mainnet is 1, Stokenet 2. Everything else the app reads off the network is one of
+// these two constants, so they are resolved once here rather than looked up per call.
+const STOKENET = RADIX_CONFIG.networkId === 2;
 
-const GATEWAY_URLS: Record<number, string> = {
-  [RadixNetworkId.Mainnet]: 'https://mainnet.radixdlt.com',
-  [RadixNetworkId.Stokenet]: 'https://stokenet.radixdlt.com',
-};
+/** The Gateway serving the configured network. */
+export const GATEWAY_URL = STOKENET ? 'https://stokenet.radixdlt.com' : 'https://mainnet.radixdlt.com';
 
-export function getGatewayUrl(networkId = RADIX_CONFIG.networkId): string {
-  return GATEWAY_URLS[networkId] ?? GATEWAY_URLS[RadixNetworkId.Mainnet]!;
-}
-
-export const XRD_RESOURCE: Record<number, string> = {
-  [RadixNetworkId.Mainnet]: 'resource_rdx1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxradxrd',
-  [RadixNetworkId.Stokenet]: 'resource_tdx_2_1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxtfd2jc',
-};
+/** The XRD resource on the configured network. */
+export const XRD_ADDRESS = STOKENET
+  ? 'resource_tdx_2_1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxtfd2jc'
+  : 'resource_rdx1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxradxrd';

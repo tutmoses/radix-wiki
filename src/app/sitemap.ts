@@ -2,23 +2,15 @@
 
 import type { MetadataRoute } from 'next';
 import { prisma } from '@/lib/prisma/client';
-import { TAG_HIERARCHY, isValidTagPath, type TagNode } from '@/lib/tags';
-import { CHARTS_PAGES } from '@/lib/static-pages';
+import { isValidTagPath, tagPaths } from '@/lib/tags';
+import { SITEMAP_PAGES } from '@/lib/static-pages';
 import { BASE_URL, pageUrl } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
 
-function collectTagPaths(nodes: TagNode[], parentPath = ''): string[] {
-  return nodes.flatMap(node => {
-    const path = parentPath ? `${parentPath}/${node.slug}` : node.slug;
-    return [path, ...(node.children ? collectTagPaths(node.children, path) : [])];
-  });
-}
-
 const HIGH_PRIORITY_PATHS = ['contents/tech/research', 'contents/tech/releases', 'contents/tech/core-protocols', 'contents/tech/core-concepts'];
 const MED_PRIORITY_PATHS = ['developers', 'ecosystem'];
-const STATIC_APP_PAGES = ['welcome', 'leaderboard', 'rewards'] as const;
 
 function pagePriority(tagPath: string): number {
   if (HIGH_PRIORITY_PATHS.some(hp => tagPath.startsWith(hp))) return 0.9;
@@ -32,7 +24,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     orderBy: { updatedAt: 'desc' },
   });
 
-  const categoryPaths = collectTagPaths(TAG_HIERARCHY);
+  const categoryPaths = tagPaths().map(t => t.path);
 
   // Newest page under each category → real lastModified (pages already ordered updatedAt desc)
   const catModified = new Map<string, Date>();
@@ -58,17 +50,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly' as const,
       priority: 0.8,
     })),
-    ...CHARTS_PAGES.map(p => ({
+    ...SITEMAP_PAGES.map(p => ({
       url: `${BASE_URL}/${p.path}`,
       lastModified: new Date(),
-      changeFrequency: 'daily' as const,
-      priority: 0.7,
-    })),
-    ...STATIC_APP_PAGES.map(path => ({
-      url: `${BASE_URL}/${path}`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
-      priority: 0.5,
+      changeFrequency: p.changeFrequency,
+      priority: p.priority,
     })),
     // Hub articles (empty slug) are omitted here: their URL is the category's own,
     // already emitted above.

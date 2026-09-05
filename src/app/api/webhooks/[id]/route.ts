@@ -4,9 +4,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { json, errors, handleRoute, requireAuth, type RouteContext } from '@/lib/api';
 
-type Params = { id: string };
-
-export async function DELETE(request: NextRequest, context: RouteContext<Params>) {
+export async function DELETE(request: NextRequest, context: RouteContext<{ id: string }>) {
   return handleRoute(async () => {
     const { id } = await context.params;
     if (!id) return errors.badRequest('Webhook ID required');

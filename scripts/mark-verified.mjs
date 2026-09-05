@@ -7,26 +7,18 @@
 // Usage:
 //   node scripts/mark-verified.mjs <tagPath> <slug>     stamp one page
 //   node scripts/mark-verified.mjs --all <tagPath>      stamp every page under a tag path
-import pg from 'pg';
-import { config } from 'dotenv';
-config();
+import { withClient } from './seed-utils.mjs';
 
-const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, ssl: { rejectUnauthorized: false } });
-
-async function main() {
+await withClient(async (client) => {
   const [, , a, b] = process.argv;
   const now = new Date().toISOString();
   let res;
   if (a === '--all') {
     if (!b) throw new Error('Usage: node scripts/mark-verified.mjs --all <tagPath>');
-    res = await pool.query('UPDATE pages SET last_verified_at = $1 WHERE tag_path = $2 OR tag_path LIKE $3', [now, b, `${b}/%`]);
+    res = await client.query('UPDATE pages SET last_verified_at = $1 WHERE tag_path = $2 OR tag_path LIKE $3', [now, b, `${b}/%`]);
   } else {
     if (!a || !b) throw new Error('Usage: node scripts/mark-verified.mjs <tagPath> <slug>');
-    res = await pool.query('UPDATE pages SET last_verified_at = $1 WHERE tag_path = $2 AND slug = $3', [now, a, b]);
+    res = await client.query('UPDATE pages SET last_verified_at = $1 WHERE tag_path = $2 AND slug = $3', [now, a, b]);
   }
   console.log(`Stamped last_verified_at on ${res.rowCount} page(s).`);
-  await pool.end();
-}
-
-main().catch(async (e) => { console.error(e); await pool.end(); process.exit(1); });
+});

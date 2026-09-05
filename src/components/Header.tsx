@@ -17,7 +17,7 @@ import { Button, Dropdown } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiPage, WikiNotification } from '@/types';
 import type { LedgerAnchor } from '@/lib/radix/ledger';
-import { WebhookSettings } from '@/components/WebhookSettings';
+import { WebhookSettings, useTelegram } from '@/components/WebhookSettings';
 import { LedgerDropdown } from '@/components/LedgerBackupView';
 
 function usePageContext() {
@@ -108,9 +108,8 @@ function UserMenuDropdown({ onClose, onLogout }: { onClose: () => void; onLogout
 }
 
 // ===== Search =====
-// One row shape for both the desktop dropdown and the mobile panel. The snippet is
-// the passage the query matched (computed server-side by the shared summarizer),
-// so a body-text hit doesn't read as an unrelated title.
+// The snippet is the passage the query matched (computed server-side by the
+// shared summarizer), so a body-text hit doesn't read as an unrelated title.
 function SearchResultRow({ page, query, active, onSelect, onHover, optionProps }: {
   page: PageSummary; query: string; active?: boolean; onSelect: (page: PageSummary) => void; onHover?: () => void;
   optionProps: ComboboxOptionProps;
@@ -147,20 +146,12 @@ function PageToolsDropdown({ onClose, historyPath, mdxPath, tagPath, slug, isPag
   const showToast = useStore(s => s.showToast);
   // `useCopy` from `wiki-formant/react`, keyed: two copyable things, one indicator.
   const { copied, copy: copyText } = useCopy<'cite' | 'link'>(1500);
-  const [watch, setWatch] = useState<{ connected: boolean; subId: string | null } | null>(null);
+  // The same `/api/telegram` client the settings panel uses, asked only when
+  // there is a page to watch and someone to watch it with.
+  const { state: telegram, subscribe, unsubscribe } = useTelegram(isAuthenticated && isPage);
   const [watchBusy, setWatchBusy] = useState(false);
 
-  const fetchWatch = useCallback(async () => {
-    const res = await fetch('/api/telegram');
-    if (!res.ok) return;
-    const data = await res.json();
-    const sub = (data.subscriptions || []).find((s: { tagPath: string; pageSlug: string; id: string }) => s.tagPath === tagPath && s.pageSlug === slug);
-    setWatch({ connected: !!data.connected, subId: sub?.id ?? null });
-  }, [tagPath, slug]);
-
-  useEffect(() => {
-    if (isAuthenticated && isPage) fetchWatch().catch(() => {});
-  }, [isAuthenticated, isPage, fetchWatch]);
+  const watching = telegram?.subscriptions.find(s => s.tagPath === tagPath && s.pageSlug === slug) ?? null;
 
   const pageUrl = () => `${window.location.origin}/${tagPath}/${slug}`;
   const copy = async (kind: 'cite' | 'link', text: string) => {
@@ -168,21 +159,12 @@ function PageToolsDropdown({ onClose, historyPath, mdxPath, tagPath, slug, isPag
   };
 
   const toggleWatch = async () => {
-    if (!watch || watchBusy) return;
-    if (!watch.connected) { onClose(); onConnectTelegram(); return; }
+    if (!telegram || watchBusy) return;
+    if (!telegram.connected) { onClose(); onConnectTelegram(); return; }
     setWatchBusy(true);
     try {
-      if (watch.subId) {
-        const res = await fetch(`/api/telegram?id=${watch.subId}`, { method: 'DELETE' });
-        if (res.ok) { setWatch({ ...watch, subId: null }); showToast('No longer watching this page'); }
-      } else {
-        const res = await fetch('/api/telegram', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tagPath, pageSlug: slug, events: ['page.updated', 'comment.created'] }),
-        });
-        if (res.ok) { await fetchWatch(); showToast('Watching this page'); }
-      }
+      if (watching) { if (await unsubscribe(watching.id)) showToast('No longer watching this page'); }
+      else if (tagPath && await subscribe(tagPath, slug ?? null, ['page.updated', 'comment.created'])) showToast('Watching this page');
     } finally { setWatchBusy(false); }
   };
 
@@ -192,8 +174,8 @@ function PageToolsDropdown({ onClose, historyPath, mdxPath, tagPath, slug, isPag
     <Dropdown onClose={onClose}>
       {isAuthenticated && isPage && (
         <button className="dropdown-item" onClick={toggleWatch} disabled={watchBusy}>
-          {watch?.subId ? <EyeOff size={16} /> : <Eye size={16} />}
-          {watch?.subId ? 'Unwatch this page' : 'Watch this page'}
+          {watching ? <EyeOff size={16} /> : <Eye size={16} />}
+          {watching ? 'Unwatch this page' : 'Watch this page'}
         </button>
       )}
       {historyPath && <Link href={historyPath} className="dropdown-item" onClick={onClose}><History size={16} />Page history</Link>}
@@ -273,18 +255,13 @@ export function Header() {
     onPick: page => handleSearchSelect(page),
     onEscape: () => { setSearchOpen(false); setShowSearch(false); },
   });
-  // One hook, two rendered lists: the desktop dropdown and the mobile panel are
-  // both in the document, so they need separate id sets or every option id is
-  // duplicated. `searchOpen` is passed because the hook keeps its results when
-  // the desktop dropdown closes, and an aria-activedescendant pointing into a
-  // list that is not rendered is worse than none.
-  const desktopCombobox = combobox('desktop', searchOpen);
-  const mobileCombobox = combobox('mobile');
+  // `searchOpen` is passed because the hook keeps its results when the dropdown
+  // closes, and an aria-activedescendant pointing into a list that is not
+  // rendered is worse than none.
+  const searchCombobox = combobox(undefined, searchOpen);
   const clearSearchResults = useCallback(() => { clearItems(); setSearchOpen(false); }, [clearItems]);
-  const searchRef = useClickOutside<HTMLDivElement>(clearSearchResults);
-  const desktopSearchRef = useClickOutside<HTMLFormElement>(clearSearchResults);
+  const searchRef = useClickOutside<HTMLFormElement>(clearSearchResults);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const desktopSearchInputRef = useRef<HTMLInputElement>(null);
 
   const goToSearchPage = useCallback(() => {
     const trimmed = searchQuery.trim();
@@ -302,8 +279,10 @@ export function Header() {
       const t = e.target as HTMLElement;
       if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return;
       e.preventDefault();
-      const desktop = desktopSearchInputRef.current;
-      if (desktop && desktop.offsetParent) desktop.focus();
+      // Below `sm` the one field is hidden until the toggle reveals it, and an
+      // `offsetParent` of null is how that reads from here.
+      const input = searchInputRef.current;
+      if (input?.offsetParent) input.focus();
       else setShowSearch(true);
     };
     window.addEventListener('keydown', onKey);
@@ -338,13 +317,6 @@ export function Header() {
     router.push(pagePath(page.tagPath, page.slug));
   }
 
-  // Enter with nothing highlighted means "search properly" rather than nothing.
-  // The desktop field is a form, so its submit handler already does this.
-  const onMobileSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !searchResults.length) { e.preventDefault(); goToSearchPage(); return; }
-    onSearchKeyDown(e);
-  };
-
   const handleLogout = async () => {
     setShowUserMenu(false);
     await logout();
@@ -363,18 +335,24 @@ export function Header() {
             <span className="logo-text">RADIX Wiki</span>
           </Link>
 
-          <form ref={desktopSearchRef} className="header-search" onSubmit={e => { e.preventDefault(); goToSearchPage(); }}>
+          {/* One field for both breakpoints: shown inline above `sm`, revealed by
+              the toggle below it. The two copies had drifted, and the desktop one
+              was the broken half — it nested `.search-empty` (itself absolutely
+              placed) inside `.search-results`, which is `overflow-hidden`, so
+              "No pages found" was clipped to a bordered 2px strip. */}
+          <form ref={searchRef} className={cn('header-search', showSearch && 'header-search-open')}
+            onSubmit={e => { e.preventDefault(); goToSearchPage(); }}>
             <Search className="search-icon-left" size={18} />
-            <input ref={desktopSearchInputRef} type="search" placeholder="Search the wiki... ( / )" className="input pl-10" value={searchQuery}
+            <input ref={searchInputRef} type="search" placeholder="Search the wiki..." className="input pl-10" value={searchQuery}
               onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); }}
-              onKeyDown={onSearchKeyDown} {...desktopCombobox.inputProps} />
+              onKeyDown={onSearchKeyDown} {...searchCombobox.inputProps} />
             {isSearching && <Loader2 className="search-icon-right" size={18} />}
             {searchOpen && searchResults.length > 0 && (
-              <div className="search-results" {...desktopCombobox.listProps}>
+              <div className="search-results" {...searchCombobox.listProps}>
                 {searchResults.map((page, i) => (
                   <SearchResultRow key={page.url} page={page} query={searchQuery.trim()} active={i === highlight}
                     onHover={() => setHighlight(i)} onSelect={handleSearchSelect}
-                    optionProps={desktopCombobox.optionProps(i)} />
+                    optionProps={searchCombobox.optionProps(i)} />
                 ))}
                 <button type="button" onClick={goToSearchPage} className="search-result search-result-all">
                   See all results for &ldquo;{searchQuery.trim()}&rdquo;
@@ -382,9 +360,7 @@ export function Header() {
               </div>
             )}
             {searchOpen && searchQuery.trim() && !isSearching && searchResults.length === 0 && (
-              <div className="search-results">
-                <div className="search-empty">No pages found for &ldquo;{searchQuery.trim()}&rdquo;</div>
-              </div>
+              <div className="search-empty">No pages found for &ldquo;{searchQuery.trim()}&rdquo;</div>
             )}
           </form>
 
@@ -446,34 +422,6 @@ export function Header() {
             </div>
           </div>
         </div>
-
-        {showSearch && (
-          <div ref={searchRef} className="search-panel sm:hidden">
-            <div className="relative">
-              <Search className="search-icon-left" size={18} />
-              <input ref={searchInputRef} type="search" placeholder="Search the wiki..." className="input pl-10" value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                onKeyDown={onMobileSearchKeyDown} {...mobileCombobox.inputProps} />
-              {isSearching && <Loader2 className="search-icon-right" size={18} />}
-
-              {searchResults.length > 0 && (
-                <div className="search-results" {...mobileCombobox.listProps}>
-                  {searchResults.map((page, i) => (
-                    <SearchResultRow key={page.url} page={page} query={searchQuery.trim()} active={i === highlight}
-                      onHover={() => setHighlight(i)} onSelect={handleSearchSelect}
-                      optionProps={mobileCombobox.optionProps(i)} />
-                  ))}
-                </div>
-              )}
-
-              {searchQuery.trim() && !isSearching && searchResults.length === 0 && (
-                <div className="search-empty">
-                  No pages found for &ldquo;{searchQuery}&rdquo;
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </header>
   );

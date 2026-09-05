@@ -1,7 +1,7 @@
 // src/lib/radix/balance.ts
 
 import { NextResponse } from 'next/server';
-import { RADIX_CONFIG, XRD_RESOURCE } from './config';
+import { XRD_ADDRESS } from './config';
 import { paginatedGatewayFetch } from './gateway';
 import { prisma } from '@/lib/prisma/client';
 import { getXrdRequired, XRD_NOT_A_FEE } from '@/lib/tags';
@@ -9,15 +9,25 @@ import type { AuthSession } from '@/types';
 
 export type BalanceAction = { type: 'create' | 'edit' | 'comment'; tagPath: string };
 
-async function getXrdBalance(address: string): Promise<number> {
-  const resource_address = XRD_RESOURCE[RADIX_CONFIG.networkId];
-  const amounts = await paginatedGatewayFetch<number>(
+/** Total XRD across every fungible vault an account holds. */
+export async function getXrdBalance(address: string, label = 'balance'): Promise<number> {
+  const amounts = await paginatedGatewayFetch<number, { items?: { amount: string }[] }>(
     '/state/entity/page/fungible-vaults/',
-    { address, resource_address },
-    (data) => (data as { items?: { amount: string }[] }).items?.map(v => parseFloat(v.amount || '0')) ?? [],
-    'balance',
+    { address, resource_address: XRD_ADDRESS },
+    (data) => data.items?.map(v => parseFloat(v.amount || '0')) ?? [],
+    label,
   );
   return amounts.reduce((sum, n) => sum + n, 0);
+}
+
+const TREASURY_ADDRESS = process.env.WIKI_TREASURY_ADDRESS || '';
+
+export function getTreasuryAddress(): string {
+  return TREASURY_ADDRESS;
+}
+
+export async function getTreasuryBalance(): Promise<number> {
+  return TREASURY_ADDRESS ? getXrdBalance(TREASURY_ADDRESS, 'treasury') : 0;
 }
 
 type BalanceResult =

@@ -13,16 +13,15 @@
 // Exits non-zero if any REQUIRED check fails. Advisories print and do not fail:
 // a rule that blocks a true story from shipping is worse than the drift it prevents.
 
-import pg from 'pg';
 import fs from 'node:fs';
 import { config } from 'dotenv';
+import { argOf, withClient } from './seed-utils.mjs';
 
 config({ path: new URL('../.env', import.meta.url) });
 
 const TAG = 'blog';
 const RECAP_LIKE = 'week-in-review-%';
 
-const argOf = (flag) => { const i = process.argv.indexOf(flag); return i >= 0 ? process.argv[i + 1] : null; };
 const args = process.argv.slice(2);
 
 // ---------------------------------------------------------------- thresholds
@@ -194,11 +193,7 @@ if (file) {
   process.exit(report(lint(file, Array.isArray(blocks) ? blocks : blocks.content)) ? 1 : 0);
 }
 
-const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, ssl: { rejectUnauthorized: false } });
-const client = await pool.connect();
-let failures = 0;
-try {
+await withClient(async (client) => {
   const all = args.includes('--all');
   const slug = args.find((x) => !x.startsWith('--'));
   if (!all && !slug) {
@@ -209,10 +204,8 @@ try {
     ? await client.query(`SELECT slug, content FROM pages WHERE tag_path = $1 AND slug LIKE $2 ORDER BY slug DESC`, [TAG, RECAP_LIKE])
     : await client.query(`SELECT slug, content FROM pages WHERE tag_path = $1 AND slug = $2`, [TAG, slug]);
   if (!rows.length) { console.error(`No recap found${slug ? ` for ${slug}` : ''}.`); process.exit(2); }
+  let failures = 0;
   for (const r of rows) failures += report(lint(r.slug, r.content)) ? 1 : 0;
   console.log(`\n${rows.length} recap(s), ${failures} failing.`);
-} finally {
-  client.release();
-  await pool.end();
-}
-process.exitCode = failures ? 1 : 0;
+  if (failures) process.exitCode = 1;
+});

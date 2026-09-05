@@ -7,9 +7,8 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { BASE_URL, getContentSnippet, pageUrl } from '@/lib/utils';
-import { ogImageUrl } from '@/lib/og';
-import { blocksToFeedHtml, clampWords, publishedAt, renderFeed, FEED_HEADERS } from '@/lib/feed';
+import { BASE_URL } from '@/lib/utils';
+import { feedItem, recapIssues, renderFeed, FEED_HEADERS } from '@/lib/feed';
 import { RECAP_PREFIX, SERIES_SLUG, issueLabel, scoreline, type LedgerState } from '@/lib/week-in-review';
 import { licenseNote } from 'wiki-formant/license';
 import { WIKI_LICENSE } from '@/lib/markdown';
@@ -27,29 +26,13 @@ export async function GET() {
     prisma.page.findFirst({ where: { tagPath: 'blog', slug: SERIES_SLUG }, select: { metadata: true } }),
   ]);
 
-  // Issue numbers are the chronological rank of a recap among its siblings, so
-  // #1 is the oldest. scripts/week-in-review.mjs derives them the same way.
-  const ordered = recaps
-    .map(p => ({ ...p, date: publishedAt(p.metadata, p.createdAt) }))
-    .sort((a, b) => a.date.getTime() - b.date.getTime());
-
-  const items = ordered
-    .map((p, i) => ({ ...p, issue: i + 1 }))
+  const items = recapIssues(recaps)
     .reverse()
     .slice(0, FEED_LIMIT)
-    .map(p => {
-      const url = pageUrl('blog', p.slug);
-      const description = clampWords((p.metadata as Record<string, string> | null)?.excerpt || getContentSnippet(p.content));
-      return {
-        title: `${issueLabel(p.issue)}: ${p.title.replace(/^Radix Week in Review:\s*/, '')}`,
-        url,
-        description,
-        date: p.date,
-        categories: ['Radix Week in Review'],
-        image: ogImageUrl({ title: p.title, description, tagPath: 'blog', banner: p.bannerImage }),
-        html: blocksToFeedHtml(p.content),
-      };
-    });
+    .map(p => feedItem(p, {
+      title: `${issueLabel(p.issue)}: ${p.title.replace(/^Radix Week in Review:\s*/, '')}`,
+      categories: ['Radix Week in Review'],
+    }));
 
   const state = (index?.metadata as { state?: LedgerState } | null)?.state;
 

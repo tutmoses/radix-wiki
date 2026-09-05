@@ -44,16 +44,15 @@ Button.displayName = 'Button';
 // Input
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
-  error?: string;
   hint?: string;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, hint, id, ...props }, ref) => (
+  ({ className, label, hint, id, ...props }, ref) => (
     <div className="stack-sm">
       {label && <label htmlFor={id || props.name} className="font-medium">{label}</label>}
-      <input ref={ref} id={id || props.name} className={cn('input', error && 'border-error focus:border-error', className)} aria-invalid={!!error} {...props} />
-      {error ? <p className="text-error">{error}</p> : hint && <small>{hint}</small>}
+      <input ref={ref} id={id || props.name} className={cn('input', className)} {...props} />
+      {hint && <small>{hint}</small>}
     </div>
   )
 );
@@ -79,13 +78,6 @@ const badgeVariants: Record<BadgeVariant, string> = {
 
 export function Badge({ className, variant = 'default', ...props }: HTMLAttributes<HTMLSpanElement> & { variant?: BadgeVariant }) {
   return <span className={cn('badge', badgeVariants[variant], className)} {...props} />;
-}
-
-// Spinner - CSS-only
-const spinnerSizes = { sm: 'h-4 w-4', md: 'h-6 w-6', lg: 'h-8 w-8' };
-
-export function Spinner({ size = 'md', className }: { size?: 'sm' | 'md' | 'lg'; className?: string }) {
-  return <span className={cn('spinner text-accent', spinnerSizes[size], className)} />;
 }
 
 // StatusCard - Reusable status/error display

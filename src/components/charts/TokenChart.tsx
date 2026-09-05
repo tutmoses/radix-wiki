@@ -2,8 +2,9 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useFetch } from '@/hooks';
 import { formatPriceSubscript } from './format';
 
 const TIMEFRAME_CONFIG: Record<string, { resolution: string; seconds: number; countback: number }> = {
@@ -17,37 +18,13 @@ const TIMEFRAME_LABELS: Record<string, string> = { '24h': '24H', '7d': '7D', '30
 
 type ChartPoint = { time: number; value: number };
 
-function useChartData(resourceAddress?: string, timeframe: string = '7d') {
-  const requestKey = resourceAddress ? `${resourceAddress}|${timeframe}` : null;
-  // One state value, tagged with the request it answers. "Loading" is then derived
-  // — the settled result not matching the request we want — instead of being
-  // flagged by a synchronous setState at the top of the effect.
-  const [settled, setSettled] = useState<{ key: string; data: ChartPoint[] | null; error: string | null } | null>(null);
+// The UDF response is columnar — parallel `t` and `c` arrays — or a status that
+// is not `ok`. A throw in here surfaces as the fetch's own error.
+type UdfResponse = { s?: string; t?: number[]; c?: (string | number)[] };
 
-  useEffect(() => {
-    if (!resourceAddress || !requestKey) return;
-    let cancelled = false;
-
-    const cfg = TIMEFRAME_CONFIG[timeframe] ?? TIMEFRAME_CONFIG['7d']!;
-    const now = Math.floor(Date.now() / 1000);
-    const from = now - cfg.seconds;
-    const url = `https://api.ociswap.com/udf/history?symbol=${resourceAddress}&resolution=${cfg.resolution}&from=${from}&to=${now}&countback=${cfg.countback}&currencyCode=USD`;
-
-    fetch(url)
-      .then(r => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
-      .then(json => {
-        if (cancelled) return;
-        if (json.s !== 'ok' || !Array.isArray(json.t)) { setSettled({ key: requestKey, data: null, error: 'No chart data' }); return; }
-        const points: ChartPoint[] = json.t.map((t: number, i: number) => ({ time: t, value: parseFloat(json.c[i]) || 0 }));
-        setSettled({ key: requestKey, data: points, error: null });
-      })
-      .catch(e => { if (!cancelled) setSettled({ key: requestKey, data: null, error: e.message }); });
-
-    return () => { cancelled = true; };
-  }, [resourceAddress, timeframe, requestKey]);
-
-  const current = settled?.key === requestKey ? settled : null;
-  return { data: current?.data ?? null, isLoading: Boolean(requestKey) && !current, error: current?.error ?? null };
+function toPoints(json: UdfResponse): ChartPoint[] {
+  if (json.s !== 'ok' || !Array.isArray(json.t)) throw new Error('No chart data');
+  return json.t.map((t, i) => ({ time: t, value: parseFloat(String(json.c?.[i])) || 0 }));
 }
 
 export function TokenChart({ resourceAddress, defaultTimeframe = '30d', height = 260 }: { resourceAddress: string; defaultTimeframe?: string; height?: number }) {
@@ -57,7 +34,14 @@ export function TokenChart({ resourceAddress, defaultTimeframe = '30d', height =
   const roRef = useRef<ResizeObserver | null>(null);
   const [timeframe, setTimeframe] = useState(defaultTimeframe);
   const [chartReady, setChartReady] = useState(false);
-  const { data, isLoading, error } = useChartData(resourceAddress, timeframe);
+  // Pinned to the render that changed the timeframe: `useFetch` keys off the URL,
+  // and a `now` recomputed every render would refetch forever.
+  const url = useMemo(() => {
+    const cfg = TIMEFRAME_CONFIG[timeframe] ?? TIMEFRAME_CONFIG['7d']!;
+    const now = Math.floor(Date.now() / 1000);
+    return `https://api.ociswap.com/udf/history?symbol=${resourceAddress}&resolution=${cfg.resolution}&from=${now - cfg.seconds}&to=${now}&countback=${cfg.countback}&currencyCode=USD`;
+  }, [resourceAddress, timeframe]);
+  const { data, isLoading, error } = useFetch<ChartPoint[]>(url, { transform: toPoints });
 
   useEffect(() => {
     if (!containerRef.current) return;

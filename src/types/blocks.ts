@@ -19,7 +19,11 @@ export interface CodeTabsBlock extends BaseBlock { type: 'codeTabs'; tabs: CodeT
 export interface StatItem { id: string; value: string; label: string; suffix?: string; }
 export interface StatsBlock extends BaseBlock { type: 'stats'; items: StatItem[]; columns: 2 | 3 | 4; }
 export interface TestimonialBlock extends BaseBlock { type: 'testimonial'; quote: string; author: string; role?: string; avatarUrl?: string; }
-export interface LinkGridLink { label: string; href: string; }
+// A link is a link: `wiki-formant/blocks` declares this exact shape. Its
+// neighbours there are NOT ours — `CodeTab.language` is optional and `StatItem`
+// has no `id` — so those two stay declared above.
+export type { LinkGridLink } from 'wiki-formant/blocks';
+import type { LinkGridLink } from 'wiki-formant/blocks';
 export interface LinkGridGroup { id: string; heading: string; description?: string; links: LinkGridLink[]; }
 export interface LinkGridBlock extends BaseBlock { type: 'linkGrid'; intro?: string; groups: LinkGridGroup[]; }
 export interface TipJarBlock extends BaseBlock { type: 'tipJar'; address: string; label?: string; message?: string; }

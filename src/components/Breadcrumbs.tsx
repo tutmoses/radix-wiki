@@ -28,5 +28,3 @@ export function Breadcrumbs({ path, suffix }: BreadcrumbsProps) {
     </nav>
   );
 }
-
-export default Breadcrumbs;

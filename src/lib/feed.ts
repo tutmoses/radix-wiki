@@ -5,27 +5,21 @@
 // same 47 of 64 lines — including, verbatim, the comment explaining why the
 // apostrophe escapes numerically.
 //
-// What stays here is the walk: a switch over this repo's block union, where a
-// new block type is a compile error until it is handled.
+// What stays here is the walk — a switch over this repo's block union, where a
+// new block type is a compile error until it is handled — and the two rules
+// /blog.xml, /week-in-review.xml and /api/announce had each written for
+// themselves: what a blog row is as an item, and how a recap is numbered.
 //
 // One behaviour changes in adopting it. `lastBuildDate` now comes from the
 // newest item rather than `new Date()`, which this file stamped on every
 // request — telling every poller the feed had changed when it had not.
 
 import type { Block, AtomicBlock } from '@/types/blocks';
-import { BASE_URL } from '@/lib/utils';
-import { absolutise as absolutiseFrom, escXml } from 'wiki-formant/feed';
+import { BASE_URL, getContentSnippet, pageUrl } from '@/lib/utils';
+import { ogImageUrl } from '@/lib/og';
+import { absolutise as absolutiseFrom, clampWords, escXml, type FeedItem } from 'wiki-formant/feed';
 
-export {
-  cdata,
-  clampWords,
-  escXml,
-  FEED_HEADERS,
-  renderFeed,
-  renderItem,
-  type FeedChannel,
-  type FeedItem,
-} from 'wiki-formant/feed';
+export { FEED_HEADERS, renderFeed } from 'wiki-formant/feed';
 
 /** Blog posts carry a `metadata.date` ("2026-08-02" or "2026/03/15"); fall back to the row's createdAt. */
 export function publishedAt(metadata: unknown, createdAt: Date): Date {
@@ -71,7 +65,7 @@ function renderAtomic(block: AtomicBlock): string {
 }
 
 /** The stored blocks as one HTML string, for `content:encoded`. */
-export function blocksToFeedHtml(content: unknown): string {
+function blocksToFeedHtml(content: unknown): string {
   if (!Array.isArray(content)) return '';
   const html = (content as Block[]).map(block => {
     if (block.type === 'infobox') return block.blocks.map(renderAtomic).join('');
@@ -79,4 +73,32 @@ export function blocksToFeedHtml(content: unknown): string {
     return renderAtomic(block as AtomicBlock);
   }).join('\n');
   return absolutise(html);
+}
+
+/** A blog row as a feed item, with a branded 1200x630 card from the existing OG
+ *  endpoint so no post travels imageless. `over` is the series feed's relabelling
+ *  of the title it numbers — the card keeps the page's own. */
+export function feedItem(
+  p: { slug: string; title: string; content: unknown; metadata: unknown; bannerImage: string | null; date: Date },
+  over?: { title?: string; categories?: string[] },
+): FeedItem {
+  const description = clampWords((p.metadata as Record<string, string> | null)?.excerpt || getContentSnippet(p.content));
+  return {
+    title: p.title,
+    url: pageUrl('blog', p.slug),
+    description,
+    date: p.date,
+    image: ogImageUrl({ title: p.title, description, tagPath: 'blog', banner: p.bannerImage }),
+    html: blocksToFeedHtml(p.content),
+    ...over,
+  };
+}
+
+/** Recaps oldest first, each carrying its issue number: the chronological rank
+ *  among its siblings, so #1 is the oldest. scripts/week-in-review.mjs agrees. */
+export function recapIssues<T extends { slug: string; metadata: unknown; createdAt: Date }>(recaps: T[]) {
+  return recaps
+    .map(p => ({ ...p, date: publishedAt(p.metadata, p.createdAt) }))
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .map((p, i) => ({ ...p, issue: i + 1 }));
 }

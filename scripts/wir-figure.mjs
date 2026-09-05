@@ -13,12 +13,13 @@
 // render writes brand-assets/wir/wir-<week>.{svg,png,block.html}; the PNG doubles as
 // the announcement tweet's media card. embed is idempotent (keyed on
 // data-graphic="wir-ledger") and safe to re-run after a re-render.
-import pg from 'pg';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { config } from 'dotenv';
-import { uid, cuid, AUTHOR_ID, isLockedPage } from './seed-utils.mjs';
+import {
+  isLockedPage, argOf, fmt as fmtOr, compact as compactOr, delta, withClient, embedFigure,
+} from './seed-utils.mjs';
 import { C, MONO, t, wrap, paras, card, sectionLabel, frame, figureBlock, renderPngs } from '../brand-assets/kit.mjs';
 
 config({ path: new URL('../.env', import.meta.url) });
@@ -32,28 +33,11 @@ const EN = '–';
 
 const [mode, ...rest] = process.argv.slice(2);
 const DRY = process.argv.includes('--dry-run');
-const argOf = (flag) => { const i = process.argv.indexOf(flag); return i >= 0 ? process.argv[i + 1] : null; };
 
-const fmt = (n, digits = 0) =>
-  n == null || !isFinite(n) ? '' : n.toLocaleString('en-US', { maximumFractionDigits: digits });
-function compact(n) {
-  if (n == null || !isFinite(n)) return '';
-  const a = Math.abs(n);
-  if (a >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
-  if (a >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
-  if (a >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
-  return fmt(n);
-}
-/** Same discipline as network-snapshot.mjs: an absent or stale prior yields no delta. */
-function delta(now, was, { percent = true, gapDays = 0, staleDays = 10 } = {}) {
-  if (was == null || now == null || !isFinite(was) || !isFinite(now) || was === 0) return '';
-  if (gapDays > staleDays) return '';
-  const diff = now - was;
-  if (diff === 0) return 'no change';
-  const sign = diff > 0 ? '+' : '−';
-  const mag = Math.abs(diff);
-  return percent ? `${sign}${((mag / Math.abs(was)) * 100).toFixed(1)}%` : `${sign}${compact(mag)}`;
-}
+// A missing reading leaves the figure blank: the dash the prose tools print would
+// read as a value inside a stat card.
+const fmt = (n, digits) => fmtOr(n, digits, '');
+const compact = (n) => compactOr(n, '');
 const pct = (f) => {
   const p = f * 100;
   return `${Number.isInteger(p) ? p : p.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}%`;
@@ -193,7 +177,7 @@ function wirFigure(snap, prior, series, dev, devPrior) {
     yC = ry + 12;
   }
 
-  // ---- the repositories, when dev-snapshot.mjs has a reading for this week
+  // ---- the repositories, when capture-dev has a reading for this week
   if (dev) {
     yC += 26;
     b += sectionLabel(L, yC, 'THE WEEK IN THE REPOSITORIES');
@@ -225,16 +209,6 @@ function wirFigure(snap, prior, series, dev, devPrior) {
     : `Read live from the Radix Gateway at epoch ${fmt(snap.epoch)}, state version ${fmt(snap.stateVersion)}.`;
   if (note.length > 118) console.warn(`  warn: footer note is ${note.length} chars and will collide with the domain mark`);
   return { W, H, svg: frame(W, H, 'The Week on the Ledger', `WEEK ENDING ${snap.week}`, note, b) };
-}
-
-// ---------------------------------------------------------------- embed block
-
-function figureBlockHtml(week, svgRaw, snap) {
-  return figureBlock(svgRaw, {
-    marker: MARKER,
-    label: `The week on the Radix ledger, week ending ${week}`,
-    caption: `The week on the Radix ledger ${EN} read at epoch ${fmt(snap.epoch)}, state version ${fmt(snap.stateVersion)}.`,
-  });
 }
 
 // ---------------------------------------------------------------- operations
@@ -269,11 +243,15 @@ async function render(client) {
   const devs = state?.dev || [];
   const dev = devs.find((x) => x.week === week) || null;
   const devPrior = dev ? devs[devs.indexOf(dev) - 1] || null : null;
-  if (!dev) console.log('  note: no repository reading for this week (node scripts/dev-snapshot.mjs capture)');
+  if (!dev) console.log('  note: no repository reading for this week (node scripts/network-snapshot.mjs capture-dev)');
 
   const { W, H, svg } = wirFigure(snap, prior, series, dev, devPrior);
   await renderPngs([{ file: `wir-${week}`, W, H, svg }], OUT);
-  fs.writeFileSync(resolve(OUT, `wir-${week}.block.html`), figureBlockHtml(week, svg, snap));
+  fs.writeFileSync(resolve(OUT, `wir-${week}.block.html`), figureBlock(svg, {
+    marker: MARKER,
+    label: `The week on the Radix ledger, week ending ${week}`,
+    caption: `The week on the Radix ledger ${EN} read at epoch ${fmt(snap.epoch)}, state version ${fmt(snap.stateVersion)}.`,
+  }));
   console.log(`wrote brand-assets/wir/wir-${week}.{svg,png,block.html}`);
   console.log('Open the PNG and check it before embedding or attaching it anywhere.');
 }
@@ -298,58 +276,29 @@ async function embed(client) {
   const html = fs.readFileSync(blockPath, 'utf8');
   if (/\u00a0/.test(html)) throw new Error('literal U+00A0 in the figure block');
 
-  const blocks = JSON.parse(JSON.stringify(page.content || []));
-  const marker = `data-graphic="${MARKER}"`;
-  const has = (b, s) => b.type === 'content' && typeof b.text === 'string' && b.text.includes(s);
-  const at = blocks.findIndex((b) => has(b, marker));
-
-  let action;
-  if (at >= 0) {
-    if (blocks[at].text === html) { console.log(`${slug}: figure unchanged, no write`); return; }
-    blocks[at] = { ...blocks[at], text: html };
-    action = `replaced [${at}]`;
-  } else {
+  const res = await embedFigure(client, page, {
+    marker: MARKER,
+    html,
     // After the ledger section if the essay has one; otherwise above Sources; then above the nav.
-    const ledger = blocks.findIndex((b) => has(b, '>The week on the ledger'));
-    const sources = blocks.findIndex((b) => has(b, '<h2>Sources'));
-    const nav = blocks.findIndex((b) => has(b, 'Radix Week in Review series:'));
-    const pos = ledger >= 0 ? ledger + 1 : sources >= 0 ? sources : nav >= 0 ? nav : blocks.length;
-    blocks.splice(pos, 0, { id: uid(), type: 'content', text: html });
-    action = `inserted [${pos}]`;
-  }
-
-  const [maj, min] = String(page.version || '1.0.0').split('.');
-  const version = `${maj}.${Number(min) + 1}.0`;
-  console.log(`  ${DRY ? '[dry] ' : ''}${slug}  v${page.version} -> v${version}  ${action}`);
-  if (DRY) return;
-  const now = new Date().toISOString();
-  const json = JSON.stringify(blocks);
-  await client.query('BEGIN');
-  await client.query('UPDATE pages SET content = $1, version = $2, updated_at = $3 WHERE id = $4',
-    [json, version, now, page.id]);
-  await client.query(
-    `INSERT INTO revisions (id, page_id, content, title, version, change_type, author_id, message, created_at)
-     VALUES ($1,$2,$3,$4,$5,'minor',$6,$7,$8)`,
-    [cuid(), page.id, json, page.title, version, AUTHOR_ID,
-     `Add the week-on-the-ledger figure for ${week}.`, now]);
-  await client.query('COMMIT');
+    place: (blocks) => {
+      const has = (b, s) => b.type === 'content' && typeof b.text === 'string' && b.text.includes(s);
+      const ledger = blocks.findIndex((b) => has(b, '>The week on the ledger'));
+      const sources = blocks.findIndex((b) => has(b, '<h2>Sources'));
+      const nav = blocks.findIndex((b) => has(b, 'Radix Week in Review series:'));
+      return ledger >= 0 ? ledger + 1 : sources >= 0 ? sources : nav >= 0 ? nav : blocks.length;
+    },
+    message: `Add the week-on-the-ledger figure for ${week}.`,
+    dry: DRY,
+  });
+  if (!res) { console.log(`${slug}: figure unchanged, no write`); return; }
+  console.log(`  ${DRY ? '[dry] ' : ''}${slug}  v${page.version} -> v${res.version}  ${res.action}`);
 }
 
-const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, ssl: { rejectUnauthorized: false } });
-const client = await pool.connect();
-try {
+await withClient(async (client) => {
   if (mode === 'render') await render(client);
   else if (mode === 'embed') await embed(client);
   else {
     console.error('Usage: node scripts/wir-figure.mjs <render|embed> [--week YYYY-MM-DD | <slug>] [--dry-run]');
     process.exit(1);
   }
-} catch (e) {
-  try { await client.query('ROLLBACK'); } catch {}
-  console.error('ERROR:', e.message);
-  process.exitCode = 1;
-} finally {
-  client.release();
-  await pool.end();
-}
+});

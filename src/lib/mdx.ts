@@ -5,34 +5,14 @@
 import { pagePath } from '@/lib/utils';
 import { htmlToMarkdown } from '@/lib/markdown';
 import { BANNER_LABELS } from '@/lib/content';
-import type { Block, AtomicBlock, ContentBlock, ColumnsBlock, InfoboxBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock } from '@/types/blocks';
-
-function convertContentBlock(block: ContentBlock): string {
-  return htmlToMarkdown(block.text);
-}
-
-function convertRecentPagesBlock(block: RecentPagesBlock): string {
-  const props = block.tagPath ? ` tagPath="${block.tagPath}"` : '';
-  return `<RecentPages limit={${block.limit}}${props} />`;
-}
-
-function convertPageListBlock(block: PageListBlock): string {
-  return `<PageList pageIds={${JSON.stringify(block.pageIds)}} />`;
-}
-
-function convertAssetPriceBlock(block: AssetPriceBlock): string {
-  const props: string[] = [];
-  if (block.resourceAddress) props.push(`resourceAddress="${block.resourceAddress}"`);
-  if (block.showChange) props.push('showChange');
-  return `<AssetPrice ${props.join(' ')} />`;
-}
+import type { Block, AtomicBlock, ColumnsBlock, InfoboxBlock } from '@/types/blocks';
 
 function convertAtomicBlock(block: AtomicBlock): string {
   switch (block.type) {
-    case 'content': return convertContentBlock(block);
-    case 'recentPages': return convertRecentPagesBlock(block);
-    case 'pageList': return convertPageListBlock(block);
-    case 'assetPrice': return convertAssetPriceBlock(block);
+    case 'content': return htmlToMarkdown(block.text);
+    case 'recentPages': return `<RecentPages limit={${block.limit}}${block.tagPath ? ` tagPath="${block.tagPath}"` : ''} />`;
+    case 'pageList': return `<PageList pageIds={${JSON.stringify(block.pageIds)}} />`;
+    case 'assetPrice': return `<AssetPrice ${[block.resourceAddress && `resourceAddress="${block.resourceAddress}"`, block.showChange && 'showChange'].filter(Boolean).join(' ')} />`;
     case 'rssFeed': return `<RssFeed url="${block.url}" limit={${block.limit || 20}} />`;
     case 'codeTabs': return block.tabs.map(t => `\`\`\`${t.language}\n${t.code}\n\`\`\``).join('\n\n');
     case 'stats': return block.items.map(i => `**${i.value}** ${i.label}`).join(' · ');

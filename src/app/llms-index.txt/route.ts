@@ -4,18 +4,13 @@
 // that used to make /llms.txt heavy; agents that want the full map fetch it
 // here, and /llms-full.txt has the complete text of every page.
 
-import { type NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
+import { SECTION_NAMES, corpusRoute, pageLine } from '@/lib/llms';
 import { BASE_URL } from '@/lib/utils';
-import { SECTION_NAMES, pageLine, corpusValidators, notModified, textHeaders } from '@/lib/llms';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
-  const { etag, lastModified } = await corpusValidators();
-  const cached = notModified(request, etag, lastModified);
-  if (cached) return cached;
-
+export const GET = corpusRoute(async () => {
   const pages = await prisma.page.findMany({
     select: { title: true, tagPath: true, slug: true, content: true },
     where: { tagPath: { not: '' } },
@@ -36,7 +31,7 @@ export async function GET(request: NextRequest) {
     sectionLines.push(`## ${name}`, '', ...group.map(pageLine), '');
   }
 
-  const lines = [
+  return [
     `# RADIX Wiki — Complete Page Index`,
     '',
     `> Every page on ${BASE_URL} (${pages.length} pages), grouped by section,`,
@@ -45,7 +40,5 @@ export async function GET(request: NextRequest) {
     `> Individual pages in markdown: append .md to any page URL`,
     '',
     ...sectionLines,
-  ];
-
-  return new NextResponse(lines.join('\n'), { headers: textHeaders(etag, lastModified) });
-}
+  ].join('\n');
+});

@@ -9,7 +9,7 @@ import dynamic from 'next/dynamic';
 import { ArrowLeft, Save, Trash2, Link2, X } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Button, Input, StatusCard } from '@/components/ui';
-import { useAuth, useStore } from '@/hooks';
+import { useAuth, useClickOutside, useStore } from '@/hooks';
 import { pagePath, slugify } from '@/lib/utils';
 import { findInfobox } from '@/components/BlockRenderer';
 import { isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, XRD_NOT_A_FEE, type MetadataKeyDefinition } from '@/lib/tags';
@@ -79,11 +79,27 @@ function parseAssignee(raw: string): string {
   try { return JSON.parse(raw).name || raw; } catch { return raw; }
 }
 
-function UserPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [query, setQuery] = useState(() => parseAssignee(value));
-  const [results, setResults] = useState<{ id: string; displayName: string | null; shortAddress: string }[]>([]);
+type UserOption = { id: string; displayName: string | null; shortAddress: string };
+
+/**
+ * The user typeahead. Both places that name a person — the `user` metadata field
+ * and the allowed-editors list — are this control; they differ only in what the
+ * input keeps after a pick, which is what `onPick` returns.
+ */
+function UserSearch({ initial = '', placeholder, exclude, onPick, onClear }: {
+  initial?: string;
+  placeholder: string;
+  /** Already chosen, so they are not offered a second time. */
+  exclude?: UserOption[];
+  /** Returns the text the input keeps: the picked name, or '' to reset for the next pick. */
+  onPick: (user: UserOption) => string;
+  /** The input was emptied by hand. */
+  onClear?: () => void;
+}) {
+  const [query, setQuery] = useState(initial);
+  const [results, setResults] = useState<UserOption[]>([]);
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useClickOutside<HTMLDivElement>(useCallback(() => setOpen(false), []));
 
   useEffect(() => {
     if (query.length < 2) return;
@@ -95,26 +111,20 @@ function UserPicker({ value, onChange }: { value: string; onChange: (v: string) 
 
   // Derived rather than cleared from the effect: a short query has no results by
   // definition, so there is nothing to synchronise.
-  const visibleResults = query.length < 2 ? [] : results;
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  const visibleResults = query.length < 2 ? [] : results.filter(u => !exclude?.some(e => e.id === u.id));
 
   return (
     <div ref={ref} className="relative">
       <Input
         value={query}
-        onChange={e => { setQuery(e.target.value); setOpen(true); if (!e.target.value) onChange(''); }}
+        onChange={e => { setQuery(e.target.value); setOpen(true); if (!e.target.value) onClear?.(); }}
         onFocus={() => setOpen(true)}
-        placeholder="Search users..."
+        placeholder={placeholder}
       />
       {open && visibleResults.length > 0 && (
         <div className="user-picker-dropdown">
           {visibleResults.map(u => (
-            <button key={u.id} className="user-picker-option" onClick={() => { const name = u.displayName || u.shortAddress; setQuery(name); onChange(JSON.stringify({ id: u.id, name, address: u.shortAddress })); setOpen(false); }}>
+            <button key={u.id} className="user-picker-option" onClick={() => { setQuery(onPick(u)); setOpen(false); }}>
               <span className="font-medium">{u.displayName || 'Anonymous'}</span>
               <span className="text-text-muted text-xs">{u.shortAddress}</span>
             </button>
@@ -190,9 +200,11 @@ function MetadataFields({ metadataKeys, metadata, onChange, invalidKeys = [] }: 
                 className="font-mono"
               />
             ) : type === 'user' ? (
-              <UserPicker
-                value={metadata[key] || ''}
-                onChange={v => updateField(key, v)}
+              <UserSearch
+                initial={parseAssignee(metadata[key] || '')}
+                placeholder="Search users..."
+                onPick={u => { const name = u.displayName || u.shortAddress; updateField(key, JSON.stringify({ id: u.id, name, address: u.shortAddress })); return name; }}
+                onClear={() => updateField(key, '')}
               />
             ) : (
               <Input
@@ -211,36 +223,10 @@ function MetadataFields({ metadataKeys, metadata, onChange, invalidKeys = [] }: 
 
 // ========== EDITOR WHITELIST ==========
 function EditorWhitelist({ editors, onAdd, onRemove }: {
-  editors: { id: string; displayName: string | null; shortAddress: string }[];
-  onAdd: (user: { id: string; displayName: string | null; shortAddress: string }) => void;
+  editors: UserOption[];
+  onAdd: (user: UserOption) => void;
   onRemove: (id: string) => void;
 }) {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<{ id: string; displayName: string | null; shortAddress: string }[]>([]);
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (query.length < 2) return;
-    const controller = new AbortController();
-    fetch(`/api/users/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
-      .then(r => r.json())
-      .then((users: { id: string; displayName: string | null; shortAddress: string }[]) =>
-        setResults(users.filter(u => !editors.some(e => e.id === u.id))))
-      .catch(() => {});
-    return () => controller.abort();
-  }, [query, editors]);
-
-  // Derived rather than cleared from the effect: a short query has no results by
-  // definition, so there is nothing to synchronise.
-  const visibleResults = query.length < 2 ? [] : results;
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
   return (
     <div className="metadata-panel">
       <h4 className="text-small font-medium text-text-muted m-0!">Allowed Editors</h4>
@@ -254,24 +240,7 @@ function EditorWhitelist({ editors, onAdd, onRemove }: {
           ))}
         </div>
       )}
-      <div ref={ref} className="relative">
-        <Input
-          value={query}
-          onChange={e => { setQuery(e.target.value); setOpen(true); }}
-          onFocus={() => setOpen(true)}
-          placeholder="Search users to add..."
-        />
-        {open && visibleResults.length > 0 && (
-          <div className="user-picker-dropdown">
-            {visibleResults.map(u => (
-              <button key={u.id} className="user-picker-option" onClick={() => { onAdd(u); setQuery(''); setOpen(false); }}>
-                <span className="font-medium">{u.displayName || 'Anonymous'}</span>
-                <span className="text-text-muted text-xs">{u.shortAddress}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <UserSearch placeholder="Search users to add..." exclude={editors} onPick={u => { onAdd(u); return ''; }} />
     </div>
   );
 }
@@ -291,7 +260,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const [metadata, setMetadata] = useState<PageMetadata>({});
   const [editSlug, setEditSlug] = useState(slug);
   const [editorIds, setEditorIds] = useState<string[]>([]);
-  const [editors, setEditors] = useState<{ id: string; displayName: string | null; shortAddress: string }[]>([]);
+  const [editors, setEditors] = useState<UserOption[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);

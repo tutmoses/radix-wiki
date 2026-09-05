@@ -21,18 +21,11 @@
 import { createTaxonomy, defaultHref } from 'wiki-formant/taxonomy';
 import { getMetadataKeys } from '@/lib/tags';
 
-export {
-  DEFAULT_ALPHA_INDEX_MIN_PAGES as ALPHA_INDEX_MIN_PAGES,
-  firstLetter,
-  toggleFilter,
-  type Control,
-  type Facet,
-  type FacetControlGroup,
-  type FacetFilters,
-  type FacetValue,
-  type MetadataKeyDefinition,
-  type RelatedRanking,
-  type SharedFacet,
+export type {
+  Control,
+  FacetControlGroup,
+  FacetFilters,
+  SharedFacet,
 } from 'wiki-formant/taxonomy';
 
 // The one place the category URL contract lives. This wiki mounts its
@@ -46,11 +39,8 @@ const taxonomy = createTaxonomy({
 });
 
 export const {
-  facetKeys,
   facetFilters,
   filterPages,
-  buildFacets,
-  alphaIndex,
   rankRelated,
   metadataRows,
   // The rail's rows, with every href already built through `categoryHref`.

@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/prisma/client';
 import { unstable_cache } from 'next/cache';
 
-export const WEIGHTS = { page: 150, edit: 80, contribution: 80, comment: 70, tenure: 50 } as const;
+const WEIGHTS = { page: 150, edit: 80, contribution: 80, comment: 70, tenure: 50 } as const;
 
 export interface ScoreInput {
   pages: number;

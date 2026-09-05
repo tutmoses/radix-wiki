@@ -5,8 +5,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { create } from 'zustand';
+import QRCode from 'qrcode';
 import { isValidTagPath } from '@/lib/tags';
-import type { WikiPage, AuthSession, RadixWalletData, WikiNotification } from '@/types';
+import type { AuthSession, RadixWalletData, WikiNotification } from '@/types';
 
 // ========== CLICK OUTSIDE HOOK ==========
 
@@ -44,9 +45,29 @@ export function useFetch<T>(url: string | null | undefined, opts?: { transform?:
   return { data, isLoading, error };
 }
 
-// ========== VIEWPORT HOOK ==========
+// ========== ACCOUNT QR HOOK ==========
 
+const RADIX_ACCOUNT_RE = /^account_(rdx|tdx_2_)1[a-z0-9]{50,}$/;
 
+/** The tip-jar QR code, shared by the block view and its editor. */
+export function useAccountQr(rawAddress: string | undefined) {
+  const [rendered, setRendered] = useState<string | null>(null);
+  const address = (rawAddress || '').trim();
+  const isValid = RADIX_ACCOUNT_RE.test(address);
+
+  useEffect(() => {
+    if (!isValid) return;
+    let active = true;
+    QRCode.toString(address, { type: 'svg', errorCorrectionLevel: 'M', margin: 1, color: { dark: '#1a1d29', light: '#ffffff' } })
+      .then(svg => { if (active) setRendered(svg); })
+      .catch(() => { if (active) setRendered(null); });
+    return () => { active = false; };
+  }, [address, isValid]);
+
+  // Masked here instead of cleared from the effect, so an invalid address never
+  // shows the previous address's code.
+  return { address, isValid, qr: isValid ? rendered : null };
+}
 
 // ========== PAGE PATH HOOK ==========
 
@@ -216,82 +237,3 @@ export const useAuth = () => {
   } : null, [session]);
   return useMemo(() => ({ user, isAuthenticated, isConnected, walletData }), [user, isAuthenticated, isConnected, walletData]);
 };
-
-// ========== PAGES HOOK ==========
-
-type PageMode = 
-  | { type: 'single'; tagPath: string; slug: string }
-  | { type: 'recent'; tagPath?: string; limit: number; sort?: 'updatedAt' | 'title' }
-  | { type: 'byIds'; pageIds: string[] };
-
-type SingleResult = { page: WikiPage | null; status: 'loading' | 'found' | 'notfound' | 'error' };
-type ListResult = { pages: WikiPage[]; isLoading: boolean };
-
-export function usePages(mode: { type: 'single'; tagPath: string; slug: string }): SingleResult;
-export function usePages(mode: { type: 'recent'; tagPath?: string; limit: number; sort?: 'updatedAt' | 'title' }): ListResult;
-export function usePages(mode: { type: 'byIds'; pageIds: string[] }): ListResult;
-export function usePages(mode: PageMode): SingleResult | ListResult {
-  const [pages, setPages] = useState<WikiPage[]>([]);
-  const [page, setPage] = useState<WikiPage | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [status, setStatus] = useState<'loading' | 'found' | 'notfound' | 'error'>('loading');
-
-  // Callers pass `mode` as an inline object literal, so it is a new reference on
-  // every render and cannot be a dependency itself. Flatten it to a primitive key
-  // instead — one value the linter can check, covering every field used below.
-  const modeKey =
-    mode.type === 'single' ? `single:${mode.tagPath}/${mode.slug}`
-    : mode.type === 'recent' ? `recent:${mode.tagPath || ''}:${mode.limit}:${mode.sort || 'updatedAt'}`
-    : `byIds:${mode.pageIds.join(',')}`;
-
-  // Memoize mode properties to prevent unnecessary re-fetches
-  const modeConfig = useMemo(() => {
-    if (mode.type === 'single') {
-      return { type: 'single' as const, tagPath: mode.tagPath, slug: mode.slug, key: `${mode.tagPath}/${mode.slug}` };
-    }
-    if (mode.type === 'recent') {
-      return { type: 'recent' as const, tagPath: mode.tagPath, limit: mode.limit, sort: mode.sort || 'updatedAt', key: `${mode.tagPath || ''}:${mode.limit}:${mode.sort || 'updatedAt'}` };
-    }
-    return { type: 'byIds' as const, pageIds: mode.pageIds, key: mode.pageIds.join(',') };
-    // modeKey is the complete dependency: every `mode` field read above is folded
-    // into it, and `mode` itself is a new object literal on every render, so
-    // listing its fields would defeat the memo rather than tighten it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modeKey]);
-
-  useEffect(() => {
-    if (modeConfig.type === 'byIds' && !modeConfig.pageIds.length) {
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    if (modeConfig.type === 'single') setStatus('loading');
-
-    (async () => {
-      try {
-        if (modeConfig.type === 'single') {
-          const res = await fetch(`/api/wiki/${modeConfig.tagPath}/${modeConfig.slug}`);
-          if (res.ok) { setPage(await res.json()); setStatus('found'); }
-          else setStatus(res.status === 404 ? 'notfound' : 'error');
-        } else if (modeConfig.type === 'recent') {
-          const params = new URLSearchParams({ pageSize: modeConfig.limit.toString() });
-          if (modeConfig.tagPath) params.set('tagPath', modeConfig.tagPath);
-          if (modeConfig.sort) params.set('sort', modeConfig.sort);
-          const res = await fetch(`/api/wiki?${params}`);
-          if (res.ok) setPages((await res.json()).items || []);
-        } else {
-          const res = await fetch(`/api/wiki/by-ids?ids=${modeConfig.pageIds.join(',')}`);
-          if (res.ok) setPages(await res.json());
-        }
-      } catch {
-        if (modeConfig.type === 'single') setStatus('error');
-      } finally {
-        setIsLoading(false);
-      }
-    })();
-  }, [modeConfig]);
-
-  if (mode.type === 'single') return { page, status };
-  return { pages, isLoading };
-}

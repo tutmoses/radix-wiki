@@ -74,100 +74,111 @@ function parseCurrentContext(pathname: string): { tagPath: string; slug: string 
   return null;
 }
 
-// ===== Telegram Section =====
+// ===== Telegram =====
 
-function TelegramSection() {
-  const pathname = usePathname();
+const postTelegram = (body: object) => fetch('/api/telegram', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body),
+});
+
+/**
+ * The `/api/telegram` client, shared by the settings panel and the header's
+ * watch toggle. Two copies of the same four calls had already drifted: the
+ * header's unsubscribe patched its local state instead of re-reading, so a
+ * subscription changed elsewhere left the toggle on the previous answer.
+ *
+ * `enabled` is false where there is nothing to ask about — the page-tools menu
+ * opens for anonymous readers and off-page routes too.
+ */
+export function useTelegram(enabled = true) {
   const [state, setState] = useState<TelegramState | null>(null);
   const [loading, setLoading] = useState(true);
   const [deepLink, setDeepLink] = useState<string | null>(null);
-  const [subscribing, setSubscribing] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const showToast = useStore(s => s.showToast);
 
-  const context = parseCurrentContext(pathname);
-
-  const fetchState = useCallback(async () => {
+  const refresh = useCallback(async () => {
     const res = await fetch('/api/telegram');
-    if (res.ok) {
-      const data: TelegramState = await res.json();
-      setState(data);
-      return data.connected;
-    }
-    return false;
+    if (!res.ok) return false;
+    const data: TelegramState = await res.json();
+    setState(data);
+    return data.connected;
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     // Declared inside the effect, mirroring useFetch: the load owns its own
     // cancellation rather than settling into a component that has unmounted.
     const load = async () => {
-      await fetchState();
+      await refresh();
       if (!cancelled) setLoading(false);
     };
-    load();
+    load().catch(() => {});
     return () => { cancelled = true; if (pollRef.current) clearInterval(pollRef.current); };
-  }, [fetchState]);
+  }, [enabled, refresh]);
 
-  const handleConnect = async () => {
-    const res = await fetch('/api/telegram', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.deepLink) {
-        setDeepLink(data.deepLink);
-        pollRef.current = setInterval(async () => {
-          const connected = await fetchState();
-          if (connected) {
-            setDeepLink(null);
-            if (pollRef.current) clearInterval(pollRef.current);
-            showToast('Telegram connected!');
-          }
-        }, 3000);
-      }
-    }
+  const connect = async () => {
+    const res = await postTelegram({});
+    const link = res.ok ? (await res.json()).deepLink : null;
+    if (!link) return;
+    setDeepLink(link);
+    pollRef.current = setInterval(async () => {
+      if (!await refresh()) return;
+      setDeepLink(null);
+      if (pollRef.current) clearInterval(pollRef.current);
+      showToast('Telegram connected!');
+    }, 3000);
   };
+
+  const subscribe = async (tagPath: string, pageSlug: string | null, events: string[]) => {
+    const { ok } = await postTelegram({ tagPath, ...(pageSlug && { pageSlug }), events });
+    if (ok) await refresh();
+    return ok;
+  };
+
+  const unsubscribe = async (id: string) => {
+    const { ok } = await fetch(`/api/telegram?id=${id}`, { method: 'DELETE' });
+    if (ok) await refresh();
+    return ok;
+  };
+
+  const disconnect = async () => {
+    const { ok } = await fetch('/api/telegram', { method: 'DELETE' });
+    if (ok) setState({ connected: false, chatId: null, subscriptions: [] });
+    return ok;
+  };
+
+  return { state, loading, deepLink, connect, subscribe, unsubscribe, disconnect };
+}
+
+function TelegramSection() {
+  const pathname = usePathname();
+  const { state, loading, deepLink, connect, subscribe, unsubscribe, disconnect } = useTelegram();
+  const [subscribing, setSubscribing] = useState(false);
+  const showToast = useStore(s => s.showToast);
+
+  const context = parseCurrentContext(pathname);
 
   const handleSubscribe = async () => {
     if (!context) return;
     setSubscribing(true);
-    const res = await fetch('/api/telegram', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tagPath: context.tagPath,
-        ...(context.slug && { pageSlug: context.slug }),
-        // A section subscriber wants the new pages most of all; without
-        // `page.created` a subscription to `blog` never delivered an issue.
-        events: context.slug
-          ? ['page.updated', 'comment.created']
-          : ['page.created', 'page.updated', 'comment.created'],
-      }),
-    });
-    if (res.ok) {
-      await fetchState();
-      showToast(`Subscribed to ${context.label}`);
-    }
+    // A section subscriber wants the new pages most of all; without
+    // `page.created` a subscription to `blog` never delivered an issue.
+    const events = context.slug
+      ? ['page.updated', 'comment.created']
+      : ['page.created', 'page.updated', 'comment.created'];
+    if (await subscribe(context.tagPath, context.slug, events)) showToast(`Subscribed to ${context.label}`);
     setSubscribing(false);
   };
 
   const handleUnsubscribe = async (id: string) => {
-    const res = await fetch(`/api/telegram?id=${id}`, { method: 'DELETE' });
-    if (res.ok) {
-      await fetchState();
-      showToast('Unsubscribed');
-    }
+    if (await unsubscribe(id)) showToast('Unsubscribed');
   };
 
   const handleDisconnect = async () => {
-    const res = await fetch('/api/telegram', { method: 'DELETE' });
-    if (res.ok) {
-      setState({ connected: false, chatId: null, subscriptions: [] });
-      showToast('Telegram disconnected');
-    }
+    if (await disconnect()) showToast('Telegram disconnected');
   };
 
   if (loading) return null;
@@ -249,7 +260,7 @@ function TelegramSection() {
         </div>
       ) : (
         <div className="telegram-connect">
-          <Button variant="ghost" size="sm" onClick={handleConnect}>Connect Telegram</Button>
+          <Button variant="ghost" size="sm" onClick={connect}>Connect Telegram</Button>
         </div>
       )}
     </div>

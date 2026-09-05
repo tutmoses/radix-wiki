@@ -10,6 +10,7 @@
 
 import { BASE_URL } from '@/lib/utils';
 import { SERVER_INFO } from '@/lib/mcp-tools';
+import { BLOCK_TYPES } from '@/lib/block-utils';
 
 const rolaAuth = [{ rolaBearer: [] as string[] }];
 
@@ -29,7 +30,9 @@ const block = {
   required: ['id', 'type'],
   properties: {
     id: { type: 'string', format: 'uuid' },
-    type: { type: 'string', enum: ['content', 'infobox', 'columns', 'recentPages', 'pageList', 'assetPrice'] },
+    // Derived, because a hand-listed enum drifted: it named six of the fourteen
+    // types the write path actually accepts.
+    type: { type: 'string', enum: BLOCK_TYPES },
     text: { type: 'string', description: 'Semantic HTML (content blocks)' },
   },
   additionalProperties: true,

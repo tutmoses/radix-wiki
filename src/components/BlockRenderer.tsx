@@ -2,12 +2,11 @@
 
 'use client';
 
-import { useState, useEffect, useRef, memo, useMemo, useCallback, Fragment } from 'react';
+import { useState, useEffect, useRef, memo, useMemo, Fragment } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Clock, FileText, User, Copy, Check, AlertTriangle, Megaphone, CalendarClock, type LucideIcon } from 'lucide-react';
-import QRCode from 'qrcode';
-import { cn, formatRelativeTime, formatDate, generateBannerSvg, getContentSnippet, pagePath } from '@/lib/utils';
+import { Clock, FileText, Copy, Check, AlertTriangle, Megaphone, CalendarClock, type LucideIcon } from 'lucide-react';
+import { cn, formatRelativeTime, generateBannerSvg, getContentSnippet, pagePath } from '@/lib/utils';
 import { findTagByPath } from '@/lib/tags';
 import { safeLinkHref } from 'wiki-formant/validation';
 // The rendered-article passes are `wiki-formant/dom`, shared with caper. The
@@ -16,11 +15,11 @@ import { safeLinkHref } from 'wiki-formant/validation';
 // twice more in the editor's node views.
 import { activateTabGroups, addCopyButtons, hydrateTweetEmbeds, onTweetResize, sizeTweetEmbeds } from 'wiki-formant/dom';
 import { processHtml } from '@/lib/html';
-import { usePages, useFetch } from '@/hooks';
+import { useAccountQr, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
 import type { WikiPage, PageMetadata } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock, LinkGridBlock, TipJarBlock, ReferencesBlock, BannerBlock, BannerVariant, StatsBlock, TestimonialBlock } from '@/types/blocks';
-import { getMetadataKeys, type MetadataKeyDefinition } from '@/lib/tags';
+import { getMetadataKeys } from '@/lib/tags';
 import { metadataRows } from '@/lib/taxonomy';
 import { TokenChart } from '@/components/charts/TokenChart';
 import { formatPriceSubscript } from '@/components/charts/format';
@@ -65,23 +64,24 @@ const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; com
 
 // ========== BLOCK VIEW COMPONENTS ==========
 function RecentPagesBlockView({ block }: { block: RecentPagesBlock }) {
-  const { pages, isLoading } = usePages({ type: 'recent', tagPath: block.tagPath, limit: block.limit });
-  const display = pages.length ? pages : block.resolvedPages || [];
+  const params = new URLSearchParams({ pageSize: String(block.limit) });
+  if (block.tagPath) params.set('tagPath', block.tagPath);
+  params.set('sort', 'updatedAt');
+  const { data, isLoading } = useFetch<WikiPage[]>(`/api/wiki?${params}`, { transform: d => d.items || [] });
+  const display = data?.length ? data : block.resolvedPages || [];
   if (isLoading && !display.length) return <div className="recent-pages-grid">{Array.from({ length: Math.min(block.limit, 3) }, (_, i) => <div key={i} className="h-32 skeleton" />)}</div>;
   if (!display.length) return <p className="text-text-muted">No pages found.</p>;
   return <div className="recent-pages-grid">{display.map(p => <PageCard key={p.id} page={p} />)}</div>;
 }
 
-function PageListFetcher({ block }: { block: PageListBlock }) {
-  const { pages, isLoading } = usePages({ type: 'byIds', pageIds: block.pageIds });
-  if (isLoading) return <div className="row-md"><div className="flex-1 h-20 skeleton" /></div>;
-  if (!pages.length) return <p className="text-text-muted">No pages selected.</p>;
-  return <div className="row-md flex-wrap">{pages.map(p => <PageCard key={p.id} page={p} compact />)}</div>;
-}
-
 function PageListBlockView({ block }: { block: PageListBlock }) {
-  if (!block.resolvedPages) return <PageListFetcher block={block} />;
-  const pages = block.resolvedPages;
+  // A server-resolved list never fetches, and `useFetch(null)` reports isLoading
+  // false — so the skeleton below cannot flash over a list that already exists.
+  const { data, isLoading } = useFetch<WikiPage[]>(
+    block.resolvedPages || !block.pageIds.length ? null : `/api/wiki?ids=${block.pageIds.join(',')}`,
+  );
+  const pages = block.resolvedPages || data || [];
+  if (isLoading) return <div className="row-md"><div className="flex-1 h-20 skeleton" /></div>;
   if (!pages.length) return <p className="text-text-muted">No pages selected.</p>;
   return <div className="row-md flex-wrap">{pages.map(p => <PageCard key={p.id} page={p} compact />)}</div>;
 }
@@ -336,35 +336,18 @@ function LinkGridBlockView({ block }: { block: LinkGridBlock }) {
   );
 }
 
-const RADIX_ACCOUNT_RE = /^account_(rdx|tdx_2_)1[a-z0-9]{50,}$/;
-
 function TipJarBlockView({ block }: { block: TipJarBlock }) {
-  const [renderedQr, setRenderedQr] = useState<string | null>(null);
   // `useCopy` from `wiki-formant/react`. The version here had no rejection
   // handler, so a denied clipboard left the button saying "Copied".
   const { copied, copy } = useCopy();
-  const address = (block.address || '').trim();
-  const isValid = RADIX_ACCOUNT_RE.test(address);
-
-  useEffect(() => {
-    if (!isValid) return;
-    let active = true;
-    QRCode.toString(address, { type: 'svg', errorCorrectionLevel: 'M', margin: 1, color: { dark: '#1a1d29', light: '#ffffff' } })
-      .then(svg => { if (active) setRenderedQr(svg); })
-      .catch(() => { if (active) setRenderedQr(null); });
-    return () => { active = false; };
-  }, [address, isValid]);
-
-  // Masked at render instead of cleared from the effect, so an invalid address
-  // never shows the previous address's code.
-  const qrSvg = isValid ? renderedQr : null;
+  const { address, isValid, qr } = useAccountQr(block.address);
 
   return (
     <div className="tip-jar">
       {block.label && <div className="tip-jar-label">{block.label}</div>}
       {block.message && <p className="tip-jar-message">{block.message}</p>}
-      {isValid && qrSvg ? (
-        <div className="tip-jar-qr" dangerouslySetInnerHTML={{ __html: qrSvg }} />
+      {qr ? (
+        <div className="tip-jar-qr" dangerouslySetInnerHTML={{ __html: qr }} />
       ) : (
         <div className="tip-jar-placeholder">{address && !isValid ? 'Not a valid Radix account address.' : 'No tip address set.'}</div>
       )}
@@ -497,5 +480,3 @@ export function BlockRenderer({ content, className }: { content: Block[] | unkno
     </div>
   );
 }
-
-export default BlockRenderer;

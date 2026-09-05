@@ -20,17 +20,10 @@ import {
 } from 'wiki-formant/revisions';
 import type { Block, ContentBlock } from '@/types/blocks';
 
-export {
-  bump,
-  compareVersions,
-  formatVersion,
-  incrementVersion,
-  parseVersion,
-} from 'wiki-formant/versioning';
-export type { ChangeType, SemVer } from 'wiki-formant/versioning';
+export { formatVersion, incrementVersion, parseVersion } from 'wiki-formant/versioning';
 
 /** The history view renders both sides, so the leaf diff is the raw HTML. */
-export interface ContentDiff {
+interface ContentDiff {
   from: string;
   to: string;
 }

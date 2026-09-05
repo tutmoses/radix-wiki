@@ -4,7 +4,7 @@
 // byte-identical copy. What stays here is the client-side redirect hop, which
 // needs this app's own API route.
 
-export { toMapEmbedUrl, mapsEmbedUrl } from 'wiki-formant/maps';
+export { toMapEmbedUrl } from 'wiki-formant/maps';
 
 import { toMapEmbedUrl, isShortMapUrl } from 'wiki-formant/maps';
 

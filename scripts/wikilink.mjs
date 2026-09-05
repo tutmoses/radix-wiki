@@ -23,9 +23,9 @@
 //   node scripts/wikilink.mjs developers --dry-run --verbose
 //   node scripts/wikilink.mjs contents/tech
 
-import pg from 'pg';
 import { config } from 'dotenv';
-import { cuid, AUTHOR_ID, isLockedPage } from './seed-utils.mjs';
+import { bump } from 'wiki-formant/versioning';
+import { cuid, AUTHOR_ID, isLockedPage, withClient } from './seed-utils.mjs';
 import { readFileSync } from 'node:fs';
 config();
 
@@ -241,11 +241,7 @@ function scopes(blocks) {
 const claimedIn = (blocks) => new Set(
   blocks.flatMap(b => [...b.text.matchAll(/href="(\/[^"]+)"/g)].map(m => m[1])));
 
-const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, ssl: { rejectUnauthorized: false } });
-const client = await pool.connect();
-
-try {
+await withClient(async (client) => {
   // Hidden tag paths are wiki-internal surfaces, and the maintenance log under
   // contents/tech/operations is re-rendered from metadata.state on every sweep —
   // linking its prose is work the next run silently throws away.
@@ -285,8 +281,7 @@ try {
     if (!added.length) continue;
     touched++; totalLinks += added.length;
 
-    const [maj, min, patch] = page.version.split('.').map(Number);
-    const version = `${maj}.${min}.${patch + 1}`;
+    const version = bump(page.version, 'patch');
     console.log(`  ${DRY ? '[dry] ' : ''}${path.padEnd(48)} v${page.version} -> v${version}  +${added.length}`);
     if (VERBOSE) for (const a of added) console.log(`        ${a.text.padEnd(26)} -> ${a.href}`);
     if (CONTEXTS) for (const a of added) console.log(`        [${a.text}] …${a.context}…`);
@@ -304,11 +299,4 @@ try {
   }
 
   console.log(`\n  ${DRY ? '[dry] ' : ''}${totalLinks} links across ${touched}/${rows.length} pages${skippedLocked ? `, ${skippedLocked} locked` : ''}`);
-} catch (err) {
-  await client.query('ROLLBACK').catch(() => {});
-  console.error(err);
-  process.exitCode = 1;
-} finally {
-  client.release();
-  await pool.end();
-}
+});

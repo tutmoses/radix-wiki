@@ -73,7 +73,7 @@ async function fetchAllMetadata(address: string): Promise<Map<string, string>> {
   const items = await paginatedGatewayFetch<[string, string]>(
     '/state/entity/page/metadata/',
     { address },
-    (data) => ((data as { items?: MetadataItem[] }).items ?? [])
+    (data) => ((data.items ?? []) as MetadataItem[])
       .filter(item => item.value?.typed?.type === 'String')
       .map(item => [item.key, item.value.typed.value] as [string, string]),
     'ledger',
@@ -81,8 +81,7 @@ async function fetchAllMetadata(address: string): Promise<Map<string, string>> {
   return new Map(items);
 }
 
-export async function readAnchorFromLedger(accountAddress: string): Promise<LedgerAnchor | null> {
-  const metadata = await fetchAllMetadata(accountAddress);
+function parseAnchor(metadata: Map<string, string>): LedgerAnchor | null {
   const raw = metadata.get(ANCHOR_KEY);
   if (!raw) return null;
   try {
@@ -90,6 +89,10 @@ export async function readAnchorFromLedger(accountAddress: string): Promise<Ledg
   } catch {
     return null;
   }
+}
+
+export async function readAnchorFromLedger(accountAddress: string): Promise<LedgerAnchor | null> {
+  return parseAnchor(await fetchAllMetadata(accountAddress));
 }
 
 function parseMdxFrontmatter(mdx: string): { title: string; tagPath: string; slug: string; version: string } | null {
@@ -104,33 +107,32 @@ function parseMdxFrontmatter(mdx: string): { title: string; tagPath: string; slu
   return { title: get('title'), tagPath, slug, version: get('version') };
 }
 
-export async function readAllPagesFromLedger(accountAddress: string): Promise<RestoredPage[]> {
-  const metadata = await fetchAllMetadata(accountAddress);
+function parsePages(metadata: Map<string, string>): RestoredPage[] {
   const pages: RestoredPage[] = [];
   const seen = new Set<string>();
 
   for (const [key] of metadata) {
     if (!key.startsWith(PAGE_PREFIX)) continue;
-    const withoutPrefix = key.slice(PAGE_PREFIX.length);
-    const baseSlug = withoutPrefix.replace(/:\d+$/, '');
+    const baseSlug = key.slice(PAGE_PREFIX.length).replace(/:\d+$/, '');
     if (seen.has(baseSlug)) continue;
     seen.add(baseSlug);
 
-    try {
-      const baseKey = `${PAGE_PREFIX}${baseSlug}`;
-      let mdx = '';
-      for (let i = 0; ; i++) {
-        const chunk = metadata.get(`${baseKey}:${i}`);
-        if (!chunk) break;
-        mdx += chunk;
-      }
-      if (!mdx) continue;
-      const parsed = parseMdxFrontmatter(mdx);
-      if (parsed) pages.push({ ...parsed, mdx });
-    } catch (err) {
-      console.error(`[ledger] Failed to parse ${key}:`, err);
+    let mdx = '';
+    for (let i = 0; ; i++) {
+      const chunk = metadata.get(`${PAGE_PREFIX}${baseSlug}:${i}`);
+      if (!chunk) break;
+      mdx += chunk;
     }
+    if (!mdx) continue;
+    const parsed = parseMdxFrontmatter(mdx);
+    if (parsed) pages.push({ ...parsed, mdx });
   }
 
   return pages;
+}
+
+/** Anchor plus every backed-up page, off one metadata read — /recover needs both. */
+export async function readLedgerBackup(accountAddress: string): Promise<{ anchor: LedgerAnchor | null; pages: RestoredPage[] }> {
+  const metadata = await fetchAllMetadata(accountAddress);
+  return { anchor: parseAnchor(metadata), pages: parsePages(metadata) };
 }
