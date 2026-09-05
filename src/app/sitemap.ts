@@ -6,7 +6,13 @@ import { isValidTagPath, tagPaths } from '@/lib/tags';
 import { SITEMAP_PAGES } from '@/lib/static-pages';
 import { BASE_URL, pageUrl } from '@/lib/utils';
 
-export const dynamic = 'force-dynamic';
+// `revalidate` alone, not `force-dynamic` beside it. The two contradict each
+// other and force-dynamic wins, so this route was rebuilt per request and
+// served uncached — which is why radix.wiki was the only origin of the three
+// whose sitemap carried no ETag, while caper's (identical config, minus the
+// force-dynamic) does. The validator itself comes from the edge caching a
+// prerendered response, so it appears on deploy rather than under `next start`.
+// Hourly is the right freshness for a document listing pages, not per-request.
 export const revalidate = 3600;
 
 const HIGH_PRIORITY_PATHS = ['contents/tech/research', 'contents/tech/releases', 'contents/tech/core-protocols', 'contents/tech/core-concepts'];
