@@ -297,23 +297,6 @@ function collectionLd(name: string, url: string, items: ({ title: string; tagPat
 }
 
 /**
- * `leafTitle` names the final crumb. findTagByPath resolves category segments
- * but returns null for a page slug, which left the last crumb showing a
- * de-hyphenated slug ("cerberus consensus") instead of the page title.
- */
-function breadcrumbLd(path: string[], leafTitle?: string) {
-  const items = [{ '@type': 'ListItem' as const, position: 1, name: 'Home', item: BASE_URL }];
-  for (let i = 0; i < path.length; i++) {
-    const segments = path.slice(0, i + 1);
-    const isLeaf = i === path.length - 1;
-    const tag = findTagByPath(segments);
-    const name = tag?.name || (isLeaf && leafTitle) || segments[i]!.replace(/-/g, ' ');
-    items.push({ '@type': 'ListItem', position: i + 2, name, item: `${BASE_URL}/${segments.join('/')}` });
-  }
-  return { '@type': 'BreadcrumbList', itemListElement: items };
-}
-
-/**
  * Whether a page's blocks contain a link to exactly `href`. Matched against the
  * block texts rather than `JSON.stringify(content)`: the serialised form escapes
  * the quotes this depends on, so the closing quote never matches and every path
@@ -392,7 +375,6 @@ export default async function DynamicPage({ params, searchParams }: Props) {
       return (
         <>
           <JsonLd data={collectionLd(categoryName, categoryUrl, pages, tag?.description)} />
-          <JsonLd data={breadcrumbLd(tagSegments)} />
           <Suspense fallback={<PageSkeleton />}><IdeasView tagPath={tagSegments} pages={pages} sort={ideasSort} /></Suspense>
         </>
       );
@@ -456,7 +438,6 @@ export default async function DynamicPage({ params, searchParams }: Props) {
       <>
         {hub && <JsonLd data={articleLd(hub, categoryUrl)} />}
         <JsonLd data={collectionLd(categoryName, categoryUrl, pages.length ? pages : allSubcategories, tag?.description)} />
-        <JsonLd data={breadcrumbLd(tagSegments)} />
         <CategoryView
           tagPath={tagSegments} pages={pages} sort={sort} total={all.length}
           facetGroups={facetControls(parsed.tagPath, all, state)} filters={filters}
@@ -498,7 +479,6 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   return (
     <>
       {page && <JsonLd data={articleLd(page, pageUrl)} />}
-      <JsonLd data={breadcrumbLd(pathSegments, page?.title)} />
       <PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} related={related} series={series} nowMs={nowMs} />
     </>
   );

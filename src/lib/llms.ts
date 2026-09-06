@@ -6,8 +6,12 @@
 // other wikis. What stays here is the part that is this wiki's: which
 // aggregate defines a corpus revision, and how a page row becomes a bullet.
 
-import { type NextRequest, NextResponse } from 'next/server';
-import { corpusEtag, notModified, textHeaders, cleanSnippet, pageLine as formantPageLine } from 'wiki-formant/http';
+import {
+  cleanSnippet,
+  corpusEtag,
+  corpusRoute as sharedCorpusRoute,
+  pageLine as formantPageLine,
+} from 'wiki-formant/http';
 import { NOT_HIDDEN } from '@/lib/wiki';
 import { prisma } from '@/lib/prisma/client';
 import { TAG_HIERARCHY, tagPaths } from '@/lib/tags';
@@ -17,21 +21,15 @@ import { CHARTS_PAGES } from '@/lib/static-pages';
 import type { Block } from '@/types/blocks';
 
 /**
- * A GET handler serving `build()` under the corpus ETag — or a 304 instead.
+ * This wiki's three corpus depths, bound to the shared route factory.
  *
- * `depth` is part of the seed. Without it the three depths served one identical
- * ETag between them, which is legal (a tag is scoped to its URI) and still
- * wrong in the case that matters: an edit to one depth's own preamble moves no
- * page row, so the tag would not move and the stale document would be served
- * until something else in the corpus changed.
+ * The factory is `wiki-formant/http` — the `validators -> notModified ->
+ * textHeaders` dance it replaces was written out at nine call sites across the
+ * three repos. What stays here is the one thing that is this wiki's: which
+ * aggregate defines a corpus revision, which `corpusValidators` below answers.
  */
-export function corpusRoute(depth: string, build: () => Promise<string>) {
-  return async (request: NextRequest) => {
-    const { etag, lastModified } = await corpusValidators(depth);
-    const cached = notModified(request, etag, lastModified);
-    return cached ?? new NextResponse(await build(), { headers: textHeaders(etag, lastModified) });
-  };
-}
+export const corpusRoute = (depth: string, build: () => Promise<string>) =>
+  sharedCorpusRoute(() => corpusValidators(depth), build);
 
 /** One page as a corpus section, with the size the caller has to budget for. */
 export interface CorpusSection {

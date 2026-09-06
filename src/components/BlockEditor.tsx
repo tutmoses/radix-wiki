@@ -4,24 +4,18 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo, memo, type ReactNode } from 'react';
 import { useAccountQr, useClickOutside } from '@/hooks';
-import { useEditor, EditorContent, type Editor } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import TiptapLink from '@tiptap/extension-link';
-import TiptapImage from '@tiptap/extension-image';
-import TiptapTable from '@tiptap/extension-table';
-import TiptapTableRow from '@tiptap/extension-table-row';
-import TiptapTableCell from '@tiptap/extension-table-cell';
-import TiptapTableHeader from '@tiptap/extension-table-header';
-import Placeholder from '@tiptap/extension-placeholder';
+import { EditorContent, type Editor } from '@tiptap/react';
+import { TABLE_ACTIONS, insertEmbed, useWikiEditor } from 'wiki-formant/editor';
 import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, LayoutGrid, Info, Rss, QrCode, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock, CODE_LANGS, DEFAULT_LANG } from '@/lib/block-utils';
-import { toMapEmbedUrl, resolveMapUrl } from '@/lib/map-utils';
+import { resolveMapUrl } from '@/lib/map-utils';
 import { Button, Input, Dropdown } from '@/components/ui';
 import { Iframe, YouTube, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock } from '@/lib/tiptap/extensions';
 import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column, LinkGridBlock, LinkGridGroup, TipJarBlock, ReferencesBlock, ReferenceItem, BannerBlock, BannerVariant } from '@/types/blocks';
 
-// ========== UTILITIES ==========
+// The upload endpoint and how a failure is surfaced are this app's, so the
+// hook takes the uploader rather than owning one.
 async function uploadImage(file: File): Promise<string | null> {
   const formData = new FormData();
   formData.append('file', file);
@@ -32,30 +26,11 @@ async function uploadImage(file: File): Promise<string | null> {
   } catch { alert('Upload failed'); return null; }
 }
 
-// ========== RICH TEXT EDITOR ==========
-function insertEmbed(e: Editor, url: string) {
-  const yt = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-  if (yt) { e.chain().focus().setYoutubeVideo({ src: url }).run(); return; }
-  const tw = url.match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/);
-  if (tw) { e.chain().focus().insertContent({ type: 'twitterEmbed', attrs: { tweetId: tw[1], url } }).run(); return; }
-  const mapSrc = toMapEmbedUrl(url);
-  if (mapSrc) { e.chain().focus().insertContent({ type: 'mapEmbed', attrs: { src: mapSrc, url } }).run(); return; }
-  if (/maps\.app\.goo\.gl|goo\.gl\/maps/.test(url)) {
-    e.chain().focus().insertContent({ type: 'mapEmbed', attrs: { src: 'about:blank', url } }).run();
-    resolveMapUrl(url).then(src => {
-      if (!src) return;
-      const { doc } = e.state;
-      doc.descendants((node, pos) => {
-        if (node.type.name === 'mapEmbed' && node.attrs.url === url && node.attrs.src === 'about:blank') {
-          e.chain().setNodeSelection(pos).updateAttributes('mapEmbed', { src }).run();
-          return false;
-        }
-      });
-    });
-    return;
-  }
-  e.chain().focus().insertContent({ type: 'iframe', attrs: { src: url } }).run();
-}
+// The upload POST, the paste scrubber, the embed dispatch, the extension set
+// and the editor's own state are `wiki-formant/editor`, shared with caper,
+// which had written all five character for character. Each repo carried
+// exactly one half of a two-part bug — the mid-render ref write here, the
+// missing blur flush there — and the shared hook carries both fixes.
 
 type UrlPromptKind = 'link' | 'embed';
 
@@ -77,71 +52,32 @@ const TOOLBAR_BUTTONS: { key: string; icon: LucideIcon; active?: string | [strin
   { key: 'tabs', icon: LayoutList, active: 'tabGroup', action: e => e.chain().focus().insertContent({ type: 'tabGroup', content: [{ type: 'tabItem', attrs: { title: 'Tab 1' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Content for tab 1' }] }] }, { type: 'tabItem', attrs: { title: 'Tab 2' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Content for tab 2' }] }] }] }).run() },
 ];
 
-const TABLE_ACTIONS: [string, string, boolean?][] = [['addColumnAfter', '+Col'], ['addRowAfter', '+Row'], ['deleteColumn', '-Col', true], ['deleteRow', '-Row', true], ['deleteTable', '-Tbl', true]];
 
 function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [urlPrompt, setUrlPrompt] = useState<UrlPromptKind | null>(null);
   const [urlValue, setUrlValue] = useState('');
-  const initialValueRef = useRef(value);
-  const onChangeRef = useRef(onChange);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  // Written after render, not during: a ref mutated mid-render can tear under
-  // concurrent rendering. Only read from events and timeouts, which run later.
-  useEffect(() => { onChangeRef.current = onChange; });
 
-  const extensions = useMemo(() => [
-    StarterKit.configure({ heading: { levels: [2, 3, 4] }, codeBlock: false }),
-    TiptapLink.configure({ openOnClick: false, HTMLAttributes: { class: 'link' } }),
-    TiptapImage.configure({ inline: false, allowBase64: true, HTMLAttributes: { class: 'rounded-lg max-w-full' } }),
-    YouTube.configure({ controls: true, nocookie: true, modestBranding: true }),
-    TiptapTable.configure({ resizable: false, HTMLAttributes: { class: 'tiptap-table' } }),
-    TiptapTableRow, TiptapTableCell.configure({ HTMLAttributes: { class: 'p-2' } }),
-    TiptapTableHeader.configure({ HTMLAttributes: { class: 'p-2 font-semibold bg-surface-1' } }),
-    Iframe, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock, Placeholder.configure({ placeholder }),
-  ], [placeholder]);
+  // This wiki's own nodes, built from its class names and icons. Memoised
+  // because a fresh array would tear the editor down and lose the selection.
+  const nodes = useMemo(() => [YouTube, Iframe, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock], []);
 
-  const cleanPastedHtml = useCallback((html: string) => {
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    doc.querySelectorAll('style, script, meta, link, svg, canvas, noscript').forEach(el => el.remove());
-    doc.querySelectorAll('*').forEach(el => {
-      el.removeAttribute('style'); el.removeAttribute('class'); el.removeAttribute('id');
-      Array.from(el.attributes).forEach(attr => { if (!['href', 'src', 'alt'].includes(attr.name)) el.removeAttribute(attr.name); });
-    });
-    return doc.body.innerHTML;
-  }, []);
-
-  const editor = useEditor({
-    extensions,
-    editorProps: { attributes: { class: 'outline-none focus:outline-none prose prose-invert min-h-20' }, transformPastedHTML: cleanPastedHtml },
-    onUpdate: ({ editor }) => { clearTimeout(debounceRef.current); debounceRef.current = setTimeout(() => onChangeRef.current(editor.getHTML()), 150); },
-    immediatelyRender: false,
-    onCreate: ({ editor }) => { if (initialValueRef.current) queueMicrotask(() => editor.commands.setContent(initialValueRef.current)); },
+  const { editor, fileInputRef, isUploading, handleFileChange, triggerUpload, isActive } = useWikiEditor({
+    value,
+    onChange,
+    placeholder,
+    nodes,
+    proseClass: 'prose prose-invert',
+    uploadImage,
   });
-
-  useEffect(() => () => clearTimeout(debounceRef.current), []);
-  useEffect(() => { if (!editor || editor.isFocused) return; const currentHtml = editor.getHTML(); if (currentHtml !== value) editor.commands.setContent(value); }, [value, editor]);
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !editor) return;
-    setIsUploading(true);
-    const url = await uploadImage(file);
-    if (url) editor.chain().focus().setImage({ src: url }).run();
-    setIsUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const isActive = (a?: string | [string, Record<string, unknown>]) => a ? (Array.isArray(a) ? editor?.isActive(a[0], a[1]) : editor?.isActive(a)) : false;
 
   const applyUrl = () => {
     const url = urlValue.trim();
     if (editor && url && urlPrompt) {
       if (urlPrompt === 'link') editor.chain().focus().setLink({ href: url }).run();
-      else insertEmbed(editor, url);
+      else insertEmbed(editor, url, { resolveMapUrl });
     }
-    setUrlPrompt(null); setUrlValue('');
+    setUrlPrompt(null);
+    setUrlValue('');
   };
 
   return (
@@ -151,7 +87,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
         <div className="toolbar">
           {TOOLBAR_BUTTONS.map(({ key, icon: Icon, active, action, prompt }) => (
             <button key={key} type="button"
-              onClick={() => prompt ? (setUrlPrompt(urlPrompt === prompt ? null : prompt), setUrlValue('')) : action?.(editor, () => fileInputRef.current?.click())}
+              onClick={() => prompt ? (setUrlPrompt(urlPrompt === prompt ? null : prompt), setUrlValue('')) : action?.(editor, triggerUpload)}
               className={cn('toolbar-btn', (isActive(active) || (!!prompt && urlPrompt === prompt)) && 'bg-accent text-text-inverted')} title={key}><Icon size={14} /></button>
           ))}
           {editor.isActive('table') && (

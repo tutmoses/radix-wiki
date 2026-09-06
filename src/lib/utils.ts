@@ -7,6 +7,13 @@ import { decodeEntities } from '@/lib/content';
 
 export const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 
+// The deterministic pair behind the generative banner is `wiki-formant`,
+// shared with caper, which held the same two character for character — the
+// comment that used to sit on `seededRandom` here recorded that its two guards
+// had been ported from that copy, which is a copy documenting itself as one.
+export { hashStr, seededRandom } from 'wiki-formant';
+import { hashStr, seededRandom } from 'wiki-formant';
+
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
 }
@@ -131,23 +138,6 @@ const DEFAULT_PALETTE: [string, string, string] = ['#3b1520', '#c06a73', '#ff9da
 /** [dark base, mid accent, bright accent] for a tag path, falling back to the default palette. */
 export function paletteFor(tagPath: string): [string, string, string] {
   return Object.entries(CATEGORY_PALETTES).find(([k]) => tagPath.startsWith(k))?.[1] ?? DEFAULT_PALETTE;
-}
-
-export function hashStr(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-
-// Lehmer/Park-Miller, seeded by an integer, so a title always lays its banner
-// out the same way. The two guards are caper's, which had them and this copy did
-// not: without the modulo the seed can exceed the modulus, and without the
-// `<= 0` correction a seed of 0 sticks the generator at 0 forever — every call
-// returns the same number and the banner degenerates to a single point.
-export function seededRandom(seed: number): () => number {
-  let s = seed % 2147483647;
-  if (s <= 0) s += 2147483646;
-  return () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
 }
 
 const svgCache = new Map<string, string>();

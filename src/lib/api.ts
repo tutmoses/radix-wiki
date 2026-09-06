@@ -49,19 +49,11 @@ export function cachedJson<T>(data: T, headers: Record<string, string> = CACHE.s
 
 // ---- rate limiting ----
 
-/**
- * The one MCP rate-limit number. `initialize`'s instructions, the OpenAPI spec
- * and /.well-known/mcp.json all read this rather than restating it, so the
- * route enforces exactly what the documents claim.
- */
-export const MCP_RATE_LIMIT_PER_MIN = 60;
-export const MCP_RATE_LIMIT_TEXT = `${MCP_RATE_LIMIT_PER_MIN} requests per minute per IP`;
-
-/** The budget as `mcpResponse` takes it, so the route states it once. */
-export const MCP_RATE_LIMIT: RateLimitOptions = {
-  capacity: MCP_RATE_LIMIT_PER_MIN,
-  refillPerSec: MCP_RATE_LIMIT_PER_MIN / 60,
-};
+// The MCP budget is `wiki-formant/rate-limit`, shared with the other agent
+// surfaces: `initialize`'s instructions, the OpenAPI spec and
+// /.well-known/mcp.json all read it, so the route enforces exactly what the
+// documents claim — and all three repos had written the same three lines.
+export { MCP_RATE_LIMIT, MCP_RATE_LIMIT_PER_MIN, MCP_RATE_LIMIT_TEXT } from 'wiki-formant/rate-limit';
 
 // The bucket itself is `wiki-formant/rate-limit`, shared with the other agent
 // surfaces — this was the third copy of it in the workspace. What stays here is

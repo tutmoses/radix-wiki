@@ -668,7 +668,7 @@ function PageViewContent({ page, related, series, sections, listing, nowMs }: { 
   return (
     <article className="stack">
       <Banner src={page.bannerImage} title={page.title} tagPath={page.tagPath}>
-        <Breadcrumbs path={[...page.tagPath.split('/'), page.slug].filter(Boolean)} />
+        <Breadcrumbs path={[...page.tagPath.split('/'), page.slug].filter(Boolean)} leafTitle={page.title} />
         <h1 id={slugify(page.title)} className="m-0!">{page.title}</h1>
       </Banner>
       {showInfobox ? (

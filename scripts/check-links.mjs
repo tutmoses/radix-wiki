@@ -22,6 +22,22 @@
 import { readdirSync } from 'fs';
 import { config } from 'dotenv';
 import { withClient } from './seed-utils.mjs';
+// The probe engine is `wiki-formant/link-check`, shared with caper. Each repo
+// had learned a different half of the same lesson — this one knew that npmjs
+// 403s a script, that an expired cert is not a dead host and that a YouTube
+// /embed/ URL 200s for a deleted video; caper's knew that a connect refusal is
+// usually concurrency and that serialising per hostname is the fix. Both halves
+// now apply on every run, in both repos.
+import {
+  YOUTUBE_EMBED,
+  extractEmbeds as htmlEmbeds,
+  extractLinks as htmlLinks,
+  mapLimit,
+  probeExternal,
+  probeUrl,
+  probeYouTube,
+  unverifiableReason,
+} from 'wiki-formant/link-check';
 
 config({ path: new URL('../.env', import.meta.url) });
 
@@ -29,38 +45,15 @@ const args = process.argv.slice(2);
 const asJson = args.includes('--json');
 const prefix = args.find((a) => !a.startsWith('--')) || '';
 const CONCURRENCY = 12;
-const TIMEOUT_MS = 12_000;
-
-const linkRegex = /<a\s+[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi;
-const embedRegex = /<(iframe|img)\b[^>]*?\ssrc="([^"]*)"/gi;
-
-const youtubeEmbedRegex = /^https?:\/\/(?:www\.)?(?:youtube-nocookie\.com|youtube\.com)\/embed\/([\w-]+)/;
-// The same video cited as a LINK rather than an iframe. youtu.be/<id> 303s and
-// youtube.com/watch?v=<id> 200s for deleted and private videos alike, so an anchor
-// carrying a dead video is invisible to a status check — 55 of them had gone unprobed
-// corpus-wide until run 353 resolved them and found 7 unwatchable.
-const youtubeWatchRegex = /^https?:\/\/(?:(?:www\.)?youtube\.com\/(?:watch\?(?:[^#]*&)?v=|shorts\/|live\/)|youtu\.be\/)([\w-]{6,})/;
 
 // Hosts that answer 200 with a JS loader shell regardless of whether the deck /
 // store / dataset behind the query string still exists. A status check on these
-// is meaningless, so report them as unverifiable rather than healthy.
+// is meaningless, so report them as unverifiable rather than healthy. The list is
+// this wiki's; the matcher is shared.
 const UNVERIFIABLE_EMBED_HOSTS = new Map([
   ['radixrolodex.com', '630-byte module loader — 200 says nothing about the deck ID'],
   ['widgets.sociablekit.com', 'widget shell rendering only "Shopify Store" — 200 says nothing about the store ID'],
 ]);
-
-function unverifiableReason(url) {
-  let host;
-  try {
-    host = new URL(url).hostname.replace(/^www\./, '');
-  } catch {
-    return null;
-  }
-  for (const [h, reason] of UNVERIFIABLE_EMBED_HOSTS) {
-    if (host === h || host.endsWith(`.${h}`)) return reason;
-  }
-  return null;
-}
 
 // Routes parsePath() resolves without a backing page (src/lib/wiki.ts).
 const STATIC_PATHS = ['/', '/leaderboard', '/welcome', '/rewards', '/search', '/maintenance', '/charts', '/charts/validators', '/charts/tokens',
@@ -122,12 +115,15 @@ const LINK_ROT_EXEMPT = new Set(['/contents/tech/operations/wiki-maintenance-log
 const ENTITIES = { amp: '&', '#38': '&', lt: '<', gt: '>', quot: '"', apos: "'", '#39': "'" };
 const decodeAttr = (s) => s.replace(/&(amp|lt|gt|quot|apos|#38|#39);/g, (_, e) => ENTITIES[e]);
 
-function extractLinks(blocks, acc = { external: [], internal: [], embeds: [] }) {
+// The two regexes are `wiki-formant/link-check` (`extractLinks` /
+// `extractEmbeds`, on one HTML fragment). What stays here is the BLOCK WALK —
+// this repo's container types — and the internal/external split, which depends
+// on what counts as a path on this site.
+function collectLinks(blocks, acc = { external: [], internal: [], embeds: [] }) {
   for (const block of blocks || []) {
     if (block?.type === 'content' && block.text) {
-      let m;
-      while ((m = linkRegex.exec(block.text)) !== null) {
-        const href = decodeAttr(m[1]);
+      for (const { href: raw } of htmlLinks(block.text)) {
+        const href = decodeAttr(raw);
         if (href.startsWith('http')) acc.external.push(href);
         // Strip the trailing slash, but never down to the empty string: a bare "/"
         // is the homepage, which STATIC_PATHS declares as "/". Run 277 rewrote the
@@ -136,111 +132,25 @@ function extractLinks(blocks, acc = { external: [], internal: [], embeds: [] }) 
         // broken internal link to "" (run 290).
         else if (href.startsWith('/')) acc.internal.push(href.split('#')[0].replace(/(.)\/$/, '$1'));
       }
-      linkRegex.lastIndex = 0;
-      while ((m = embedRegex.exec(block.text)) !== null) {
-        const [, kind, rawSrc] = m;
+      for (const { kind, url: rawSrc } of htmlEmbeds(block.text)) {
         const src = decodeAttr(rawSrc);
-        if (src.startsWith('http')) acc.embeds.push({ kind: kind.toLowerCase(), url: src });
+        if (src.startsWith('http')) acc.embeds.push({ kind, url: src });
       }
-      embedRegex.lastIndex = 0;
     }
-    if (block?.type === 'infobox' && Array.isArray(block.blocks)) extractLinks(block.blocks, acc);
+    if (block?.type === 'infobox' && Array.isArray(block.blocks)) collectLinks(block.blocks, acc);
     if (block?.type === 'columns' && Array.isArray(block.columns)) {
-      for (const col of block.columns) extractLinks(col.blocks, acc);
+      for (const col of block.columns) collectLinks(col.blocks, acc);
     }
   }
   return acc;
 }
 
-// npmjs.com serves 403 to scripted requests regardless of whether the package exists,
-// which made every @radixdlt/* link a permanent false positive. Ask the registry instead.
-function probeUrlFor(url) {
-  const npm = url.match(/^https:\/\/(?:www\.)?npmjs\.com\/package\/(.+?)\/?$/);
-  return npm ? `https://registry.npmjs.org/${npm[1]}` : url;
-}
-
-async function probe(url) {
-  const target = probeUrlFor(url);
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  try {
-    let res = await fetch(target, { method: 'HEAD', redirect: 'follow', signal: ctrl.signal });
-    // Some hosts reject HEAD; retry with GET before believing a 4xx/5xx.
-    if (res.status >= 400) {
-      res = await fetch(target, { method: 'GET', redirect: 'follow', signal: ctrl.signal });
-    }
-    return {
-      url,
-      status: res.status,
-      ok: res.status < 400,
-      contentType: (res.headers.get('content-type') || '').split(';')[0].trim(),
-      bytes: Number(res.headers.get('content-length') || 0),
-    };
-  } catch (err) {
-    return { url, status: 0, ok: false, ...describeFailure(err) };
-  } finally {
-    clearTimeout(t);
-  }
-}
-
-// TLS-verification failures are NOT death. On 22 August 2026 the Let's Encrypt cert
-// on consultation.mountain-top.live — the Radix DAO's own consultation platform, cited
-// 20 times across 7 pages — expired at 13:47 UTC and every one of those citations
-// started reading as `status: 0, "fetch failed"`, indistinguishable from a vanished
-// host. Behind the interstitial the site answered 200 with 9,485 bytes. undici buries
-// the real reason in err.cause, so surface it and label the cert case: a run that
-// cannot tell an expired cert from a dead domain will eventually strip good citations
-// over a lapsed renewal (run 290).
-const TLS_CODES = new Set([
-  'CERT_HAS_EXPIRED',
-  'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
-  'DEPTH_ZERO_SELF_SIGNED_CERT',
-  'SELF_SIGNED_CERT_IN_CHAIN',
-  'ERR_TLS_CERT_ALTNAME_INVALID',
-]);
-
-function describeFailure(err) {
-  if (err.name === 'AbortError') return { error: 'timeout' };
-  const code = err.cause?.code || err.code;
-  const error = code ? `${err.message} (${code})` : err.message;
-  return TLS_CODES.has(code)
-    ? { error, tls: code, note: 'TLS verification failed — the host may well be serving fine behind the interstitial; confirm before touching the citation' }
-    : { error };
-}
-
-// A YouTube /embed/<id> URL answers 200 for private, deleted and playback-restricted
-// videos alike, so HEADing it can never spot a dead hero video. oEmbed does:
-//   200 → public and embeddable | 404 → deleted | 401/403 → private or embedding disabled
-async function probeYouTube(videoId) {
-  const oembed = `https://www.youtube.com/oembed?url=https%3A//www.youtube.com/watch%3Fv%3D${videoId}&format=json`;
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(oembed, { method: 'GET', redirect: 'follow', signal: ctrl.signal });
-    if (res.status === 404) return { status: 404, ok: false, reason: 'deleted' };
-    if (res.status === 401 || res.status === 403) return { status: res.status, ok: false, reason: 'restricted (private or embedding disabled)' };
-    return { status: res.status, ok: res.status < 400 };
-  } catch (err) {
-    return { status: 0, ok: false, ...describeFailure(err) };
-  } finally {
-    clearTimeout(t);
-  }
-}
-
-// An external anchor gets the same treatment as an embed when it names a video: the
-// citation is only good if a reader can watch it, and only oEmbed can say so.
-async function probeExternal(url) {
-  const yt = url.match(youtubeWatchRegex);
-  if (yt) return { url, videoId: yt[1], ...(await probeYouTube(yt[1])) };
-  return probe(url);
-}
-
 async function probeEmbed({ kind, url }) {
-  const yt = url.match(youtubeEmbedRegex);
+  const yt = url.match(YOUTUBE_EMBED);
   if (yt) return { kind, url, videoId: yt[1], ...(await probeYouTube(yt[1])) };
 
-  const { status, ok, error, contentType, bytes } = await probe(url);
-  const unverifiable = ok ? unverifiableReason(url) : null;
+  const { status, ok, error, contentType, bytes } = await probeUrl(url);
+  const unverifiable = ok ? unverifiableReason(url, UNVERIFIABLE_EMBED_HOSTS) : null;
   return { kind, url, status, ok, error, contentType, bytes, ...(unverifiable ? { unverifiable, reason: unverifiable } : {}) };
 }
 
@@ -255,19 +165,6 @@ function imageDrift({ kind, url, ok, bytes }) {
   if (!/\.public\.blob\.vercel-storage\.com\//.test(url)) return 'hosted off-site — outside the standard and can rot without warning';
   if (bytes > MAX_STANDARD_BYTES) return `${(bytes / 1024).toFixed(0)}KB — over the ${MAX_STANDARD_BYTES / 1024}KB standard`;
   return null;
-}
-
-async function mapLimit(items, limit, fn) {
-  const out = [];
-  let i = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (i < items.length) {
-      const idx = i++;
-      out[idx] = await fn(items[idx]);
-    }
-  });
-  await Promise.all(workers);
-  return out;
 }
 
 await withClient(async (client) => {
@@ -296,7 +193,7 @@ await withClient(async (client) => {
     const path = `/${row.tag_path}/${row.slug}`;
     if (LINK_ROT_EXEMPT.has(path)) continue;
     const blocks = Array.isArray(row.content) ? row.content : [];
-    const { external, internal, embeds } = extractLinks(blocks);
+    const { external, internal, embeds } = collectLinks(blocks);
     for (const u of new Set(external)) {
       if (!externalToPages.has(u)) externalToPages.set(u, []);
       externalToPages.get(u).push(path);

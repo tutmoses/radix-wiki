@@ -2,13 +2,25 @@
 
 'use client';
 
-import { useState, useEffect, useRef, memo, useMemo, Fragment } from 'react';
+import { useEffect, useRef, memo, useMemo, Fragment } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, FileText, Copy, Check, AlertTriangle, Megaphone, CalendarClock, type LucideIcon } from 'lucide-react';
 import { cn, formatRelativeTime, generateBannerSvg, getContentSnippet, pagePath } from '@/lib/utils';
 import { findTagByPath } from '@/lib/tags';
-import { safeLinkHref } from 'wiki-formant/validation';
+// codeTabs / columns / linkGrid / references / stats / banner are
+// `wiki-formant/block-views`, shared with caper, which had written all six
+// character for character — the class names included. The SWITCH stays here:
+// the block union is this repo's, so a new type has to be a compile error
+// rather than a silent blank.
+import {
+  BannerView,
+  CodeTabsView,
+  ColumnsView,
+  LinkGridView,
+  ReferencesView,
+  StatsView,
+} from 'wiki-formant/block-views';
 // The rendered-article passes are `wiki-formant/dom`, shared with caper. The
 // copy-button injector there was byte-identical to the one this file held, down
 // to the SVG path data, and the Twitter origin was written out here as well as
@@ -18,7 +30,7 @@ import { processHtml } from '@/lib/html';
 import { useAccountQr, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
 import type { WikiPage, PageMetadata } from '@/types';
-import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, ContentBlock, CodeTabsBlock, LinkGridBlock, TipJarBlock, ReferencesBlock, BannerBlock, BannerVariant, StatsBlock, TestimonialBlock } from '@/types/blocks';
+import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, InfoboxBlock, AtomicBlock, ContentBlock, TipJarBlock, BannerVariant, TestimonialBlock } from '@/types/blocks';
 import { getMetadataKeys } from '@/lib/tags';
 import { metadataRows } from '@/lib/taxonomy';
 import { TokenChart } from '@/components/charts/TokenChart';
@@ -165,37 +177,6 @@ function RssFeedBlockView({ block }: { block: RssFeedBlock }) {
   );
 }
 
-function CodeTabsBlockView({ block }: { block: CodeTabsBlock }) {
-  const [activeTab, setActiveTab] = useState(0);
-
-  return (
-    <div className="code-tabs">
-      <div className="code-tabs-list">
-        {block.tabs.map((tab, i) => (
-          <button key={i} className={cn('code-tabs-btn', i === activeTab && 'code-tabs-btn-active')} onClick={() => setActiveTab(i)}>{tab.label}</button>
-        ))}
-      </div>
-      {block.tabs.map((tab, i) => (
-        <div key={i} className={i === activeTab ? 'block' : 'hidden'} dangerouslySetInnerHTML={{ __html: tab.code }} />
-      ))}
-    </div>
-  );
-}
-
-function ColumnsBlockView({ block }: { block: ColumnsBlock }) {
-  const gapClass = { sm: 'gap-2', md: 'gap-4', lg: 'gap-6' }[block.gap || 'md'];
-  const alignClass = { start: 'items-start', center: 'items-center', end: 'items-end', stretch: 'items-stretch' }[block.align || 'start'];
-  return (
-    <div className={cn('columns-layout', gapClass, alignClass)}>
-      {block.columns.map(col => (
-        <div key={col.id} className="column-view">
-          {(col.blocks || []).map(bl => <Fragment key={bl.id}>{renderBlockView(bl)}</Fragment>)}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function linkify(v: string): string {
   const href = /^https?:\/\//.test(v) ? v : `https://${v}`;
   return `<a href="${href}" target="_blank" rel="noopener" class="link break-all">${v.replace(/^https?:\/\/(www\.)?/, '')}</a>`;
@@ -313,29 +294,6 @@ const ContentBlockView = memo(function ContentBlockView({ html }: { html: string
   return processedHtml.trim() ? <div ref={ref} className="prose-content" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: processedHtml }} /> : null;
 });
 
-function LinkGridBlockView({ block }: { block: LinkGridBlock }) {
-  return (
-    <div className="link-grid">
-      {block.intro && <p>{block.intro}</p>}
-      {(block.groups || []).map(group => (
-        <section key={group.id} className="link-grid-group">
-          <h3>{group.heading}</h3>
-          {group.description && <div className="link-grid-group-description" dangerouslySetInnerHTML={{ __html: group.description }} />}
-          <div className="link-grid-pills">
-            {(group.links || []).map((link, i) => {
-              const href = safeLinkHref(link.href);
-              if (!href) return null;
-              return /^https?:\/\//.test(href)
-                ? <a key={i} href={href} target="_blank" rel="noopener">{link.label}</a>
-                : <Link key={i} href={href}>{link.label}</Link>;
-            })}
-          </div>
-        </section>
-      ))}
-    </div>
-  );
-}
-
 function TipJarBlockView({ block }: { block: TipJarBlock }) {
   // `useCopy` from `wiki-formant/react`. The version here had no rejection
   // handler, so a denied clipboard left the button saying "Copied".
@@ -371,53 +329,6 @@ const BANNER_META: Record<BannerVariant, { label: string; message: string; icon:
   coi: { label: 'Conflict of interest', message: 'A major contributor to this article may have a close connection with its subject. It may need additional review for a neutral point of view.', icon: AlertTriangle },
 };
 
-function BannerBlockView({ block }: { block: BannerBlock }) {
-  const meta = BANNER_META[block.variant] ?? BANNER_META.cleanup;
-  const Icon = meta.icon;
-  return (
-    <div className={cn('editorial-banner', `editorial-banner-${block.variant}`)} role="note">
-      <Icon size={18} className="editorial-banner-icon" />
-      <p className="editorial-banner-body"><strong>{meta.label}.</strong> {block.text?.trim() || meta.message}</p>
-    </div>
-  );
-}
-
-function ReferencesBlockView({ block }: { block: ReferencesBlock }) {
-  const items = block.items || [];
-  if (!items.length) return null;
-  return (
-    <section className="references-block" aria-labelledby="references-heading">
-      <h2 id="references-heading">{block.title || 'References'}</h2>
-      <ol className="references-list">
-        {items.map((item, i) => (
-          <li key={item.id} id={`ref-${i + 1}`} className="reference-item">
-            <a href={`#cite-${i + 1}`} className="ref-backlink" aria-label="Back to citation">↑</a>{' '}
-            <span dangerouslySetInnerHTML={{ __html: processHtml(item.text) }} />
-            {safeLinkHref(item.url) && <> <a href={safeLinkHref(item.url)!} target="_blank" rel="noopener" className="reference-link" aria-label="Open source">↗</a></>}
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
-/** A row of measured figures. The Week in Review carries one every issue, so the
- *  numbers are a block the editor can hold rather than a hand-built table. */
-function StatsBlockView({ block }: { block: StatsBlock }) {
-  const items = block.items || [];
-  if (!items.length) return null;
-  return (
-    <div className={cn('stat-grid', `stat-grid-${block.columns || 4}`)}>
-      {items.map(item => (
-        <div key={item.id} className="stat-card">
-          <span className="stat-value">{item.value}{item.suffix && <span className="stat-suffix">{item.suffix}</span>}</span>
-          <span className="stat-label">{item.label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /** One quotation, attributed. Quoting a person is the cheapest way a recap can
  *  carry a voice that is not its own, and it was being typed as plain prose. */
 function TestimonialBlockView({ block }: { block: TestimonialBlock }) {
@@ -434,20 +345,37 @@ function TestimonialBlockView({ block }: { block: TestimonialBlock }) {
 
 function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
   switch (block.type) {
-    case 'stats': return <StatsBlockView block={block} />;
+    case 'stats': return <StatsView items={block.items} columns={block.columns ?? 4} />;
     case 'testimonial': return <TestimonialBlockView block={block} />;
     case 'content': return <ContentBlockView html={block.text} />;
     case 'recentPages': return <RecentPagesBlockView block={block} />;
     case 'pageList': return <PageListBlockView block={block} />;
     case 'assetPrice': return <AssetPriceBlockView block={block} />;
     case 'rssFeed': return <RssFeedBlockView block={block} />;
-    case 'codeTabs': return <CodeTabsBlockView block={block} />;
-    case 'columns': return <ColumnsBlockView block={block} />;
+    case 'codeTabs': return <CodeTabsView tabs={block.tabs} />;
+    case 'columns':
+      return (
+        <ColumnsView columns={block.columns} gap={block.gap} align={block.align} render={renderBlockView} />
+      );
     case 'infobox': return <InfoboxBlockView block={block} />;
-    case 'linkGrid': return <LinkGridBlockView block={block} />;
+    case 'linkGrid': return <LinkGridView groups={block.groups} intro={block.intro} link={Link} />;
     case 'tipJar': return <TipJarBlockView block={block} />;
-    case 'references': return <ReferencesBlockView block={block} />;
-    case 'banner': return <BannerBlockView block={block} />;
+    case 'references':
+      return (
+        <ReferencesView items={block.items} title={block.title || 'References'} processHtml={processHtml} />
+      );
+    case 'banner': {
+      const meta = BANNER_META[block.variant] ?? BANNER_META.cleanup;
+      const Icon = meta.icon;
+      return (
+        <BannerView
+          variant={block.variant}
+          text={block.text}
+          meta={meta}
+          icon={<Icon size={18} className="editorial-banner-icon" />}
+        />
+      );
+    }
   }
 }
 

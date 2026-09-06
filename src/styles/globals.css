@@ -321,7 +321,13 @@
   .spinner { @apply inline-block rounded-full border-2 border-current border-t-transparent animate-[spin_0.6s_linear_infinite]; }
 
   /* ===== BREADCRUMBS (STRUCTURE.md D8 canonical) ===== */
-  .breadcrumbs { @apply flex flex-wrap items-center gap-1 text-small text-text-muted; }
+  /* The trail is a <nav> wrapping an <ol> — a breadcrumb trail IS an ordered
+     list, and assistive technology announces it as one. The flex lives on the
+     list, not the landmark, so the separators (<li aria-hidden>) lay out with
+     the crumbs rather than around them. */
+  .breadcrumbs { @apply text-small text-text-muted; }
+  .breadcrumbs ol { @apply flex flex-wrap items-center gap-1; }
+  .breadcrumbs .separator { @apply text-text-muted select-none; }
   .breadcrumb-link { @apply capitalize text-text-muted no-underline hover:text-accent; }
   .breadcrumb-current { @apply capitalize text-text; }
 
@@ -382,8 +388,8 @@
 
   /* ===== SIDEBAR ===== */
   .sidebar { @apply sticky top-[var(--header-height)] h-[calc(100dvh-var(--header-height))] bg-surface-0 border-r border-border-muted shrink-0 overflow-hidden transition-all duration-200; }
-  .sidebar-open { width: var(--sidebar-width); }
-  .sidebar-closed { width: 0; }
+  .sidebar--open { width: var(--sidebar-width); }
+  .sidebar--closed { width: 0; }
   /* Before the remembered state is known, skip the animation: a rail the reader
      left closed should already be closed on first paint, not slide shut. */
   /* The attribute is written by wiki-formant's boot script before first paint
@@ -392,8 +398,8 @@
      cannot read localStorage. */
   html[data-sidebar='closed'] .sidebar { width: 0; }
   html[data-sidebar='open'] .sidebar { width: var(--sidebar-width); }
-  .sidebar-instant { transition: none; }
-  .sidebar-scroll { @apply flex flex-col h-full overflow-y-auto w-[var(--sidebar-width)] pb-24; }
+  .sidebar--instant { transition: none; }
+  .sidebar__scroll { @apply flex flex-col h-full overflow-y-auto w-[var(--sidebar-width)] pb-24; }
   .sidebar-label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3; }
 
   /* Nav items */
