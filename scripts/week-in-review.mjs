@@ -175,6 +175,7 @@ function renderIndex(state, recaps) {
       `<tr><th>Open predictions</th><td>${open.length}</td></tr>` +
       `<tr><th>Resolved</th><td>${done.length}</td></tr>` +
       `<tr><th>Hit rate</th><td>${rate}</td></tr>` +
+      (state.scoring ? `<tr><th>Scoring</th><td>${esc(state.scoring)}</td></tr>` : '') +
       `<tr><th>Tracking since</th><td>${esc(since)}</td></tr>` +
       `<tr><th>Feed</th><td><a href="${FEED_PATH}" rel="noopener">RSS</a></td></tr>` +
       `</tbody></table>` }] },
@@ -186,6 +187,11 @@ function renderIndex(state, recaps) {
       `because it turned out badly, and nothing is recorded that has no date and no check.</p>` },
     { id: uid(), type: 'content', text:
       `<h2>Open predictions</h2>` +
+      // A standing caveat over the whole table — why a check cannot be run at all,
+      // rather than what one claim now reads. Held in state, not hand-written onto
+      // the block: the run that added the halt note in September wrote it straight
+      // into the rendered HTML and the next sync would have silently deleted it.
+      (state.openNote ? `<p id="halt-and-scoring">${state.openNote}</p>` : '') +
       (openRows.length
         ? table(['Claim', 'Who', 'Due by', 'How it gets checked', 'Recorded'], openRows)
         : '<p>Nothing outstanding.</p>') },
