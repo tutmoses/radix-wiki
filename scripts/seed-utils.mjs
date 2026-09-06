@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 import { config } from 'dotenv';
 import { bump } from 'wiki-formant/versioning';
+import { validateLinkGroups, validateReferenceItems } from 'wiki-formant/validation';
 config();
 
 export const uid = () => randomUUID();
@@ -71,6 +72,46 @@ const _lockedPages = () => {
 };
 export const LOCKED_PAGES = _lockedPages();
 export const isLockedPage = (tagPath, slug) => LOCKED_PAGES.has(`${tagPath}/${slug}`);
+
+/**
+ * Refuse block content whose URL-bearing leaves are mis-shaped, before it reaches
+ * the database.
+ *
+ * The app's `validateBlocks` already rejects exactly this, and it is the reason
+ * the defect only ever arrives by this route: it lives in
+ * `src/lib/block-utils.ts`, and no `.mjs` script can import a TypeScript module,
+ * so every direct-DB write skips it. The two leaf validators underneath it ship
+ * compiled in the package, and they cover the half that fails silently --
+ * `LinkGridView` and `ReferencesView` DROP an entry whose URL fails
+ * `safeLinkHref` rather than rendering it inert, so a one-field slip
+ * (`{ label, url }` for a link, whose real shape is `{ label, href }`) shows up
+ * as a group heading with no pills and nothing anywhere reports it.
+ *
+ * Throws rather than returning false: `withClient` turns a throw into a rollback
+ * and a non-zero exit, and a script that skips a page quietly is how this reached
+ * five published issues before anyone looked at one.
+ */
+export function assertLinkShapes(blocks, where = 'content') {
+  const bad = [];
+  const leaf = (b, path) => {
+    if (!b || typeof b !== 'object') return;
+    if (b.type === 'linkGrid')
+      for (const [gi, g] of (b.groups || []).entries())
+        for (const [li, l] of (g?.links || []).entries())
+          if (!validateLinkGroups([{ id: '', heading: '', links: [l] }]))
+            bad.push(`${path}.groups[${gi}].links[${li}] "${l?.label ?? '(no label)'}" `
+              + `has fields {${Object.keys(l || {}).sort().join(', ')}} -- LinkGridLink is { label, href }`);
+    if (b.type === 'references' && !validateReferenceItems(b.items))
+      bad.push(`${path}.items -- ReferenceItem is { id, text, url? }`);
+  };
+  (blocks || []).forEach((b, i) => {
+    leaf(b, `[${i}]`);
+    if (b?.type === 'infobox') (b.blocks || []).forEach((n, j) => leaf(n, `[${i}].blocks[${j}]`));
+    if (b?.type === 'columns') (b.columns || []).forEach((c, ci) =>
+      (c?.blocks || []).forEach((n, j) => leaf(n, `[${i}].columns[${ci}].blocks[${j}]`)));
+  });
+  if (bad.length) throw new Error(`${where}: ${bad.length} mis-shaped link(s)\n  ` + bad.join('\n  '));
+}
 
 /**
  * Run `fn` against a connected client, then release the client and the pool.
@@ -154,6 +195,7 @@ export async function insertPages(pages, defaultTagPath, revisionMessage = 'Init
         [tagPath, page.slug],
       );
       if (existing.rows.length > 0) { skipped++; continue; }
+      assertLinkShapes(page.content, `${tagPath}/${page.slug}`);
 
       const id = cuid();
       const now = new Date().toISOString();

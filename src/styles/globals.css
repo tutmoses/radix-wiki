@@ -442,6 +442,17 @@
   .section-divider { @apply pt-6 border-t border-border; }
 
   /* ===== PAGE META (foot line) ===== */
+  /* The sequential read at the foot of an article, rendered by `PageNav` from
+     wiki-formant/react-server. The `--end` modifiers are the shared convention
+     both wikis' stylesheets implement; the alignment used to be two inline
+     utilities here, which is the composition `check-classes` exists to name. */
+  .page-nav { @apply pt-8 border-t border-border grid grid-cols-2 gap-4; }
+  .page-nav-link { @apply flex flex-col gap-2 p-4 rounded-lg bg-surface-1 hover:bg-surface-2 transition-colors; }
+  .page-nav-link--end { @apply text-right; }
+  .page-nav-label { @apply flex items-center gap-2 text-text-muted text-small; }
+  .page-nav-label--end { @apply justify-end; }
+  .page-nav-title { @apply font-medium transition-colors line-clamp-1; }
+
   .page-meta { @apply flex items-center flex-wrap gap-x-4 gap-y-2 pt-6 border-t border-border-muted text-small text-text-muted; }
 
   /* ===== CATEGORY HERO ===== */

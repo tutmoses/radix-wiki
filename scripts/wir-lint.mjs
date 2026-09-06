@@ -15,6 +15,7 @@
 
 import fs from 'node:fs';
 import { config } from 'dotenv';
+import { safeLinkHref } from 'wiki-formant/validation';
 import { argOf, withClient } from './seed-utils.mjs';
 
 config({ path: new URL('../.env', import.meta.url) });
@@ -56,14 +57,31 @@ const RUBRICS = [
 const stripTags = (h) => h.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const words = (s) => (s ? s.split(/\s+/).filter(Boolean).length : 0);
 
-/** Flatten every HTML-bearing field in the block tree, in document order. */
-function htmlOf(blocks) {
+/**
+ * Flatten every HTML-bearing field in the block tree, in document order, and
+ * collect any linkGrid link that carries no usable `href`.
+ *
+ * Both halves matter. A link stored as `{ id, label, url }` -- the ReferenceItem
+ * shape, one field off -- is DROPPED by `LinkGridView`, so the group renders as a
+ * heading with no pills and the page looks merely sparse. Written as
+ * `href="${l.href}"` this function turned that into the literal string
+ * `href="undefined"`, which matches no scheme and so counted toward neither the
+ * internal nor the outbound floor: the lint ran green over a rubric whose links
+ * were all dead. Blocks written straight to the database never meet
+ * `validateBlocks`, which rejects exactly this, so the lint is the only pass
+ * that sees them.
+ */
+function htmlOf(blocks, badLinks) {
   const out = [];
   const atomic = (b) => {
     if (!b) return;
     if (typeof b.text === 'string') out.push(b.text);
     if (b.type === 'references') for (const i of b.items || []) out.push(`${i.text}${i.url ? `<a href="${i.url}"></a>` : ''}`);
-    if (b.type === 'linkGrid') for (const g of b.groups || []) for (const l of g.links || []) out.push(`<a href="${l.href}">${l.label}</a>`);
+    if (b.type === 'linkGrid') for (const g of b.groups || []) for (const l of g.links || []) {
+      const href = safeLinkHref(l?.href);
+      if (href) out.push(`<a href="${href}">${l.label}</a>`);
+      else badLinks.push({ heading: g.heading, label: l?.label, keys: Object.keys(l || {}).sort().join('+') });
+    }
     if (b.type === 'testimonial') out.push(`<blockquote>${b.quote}</blockquote>`);
     if (b.type === 'stats') for (const i of b.items || []) out.push(`${i.label} ${i.value}`);
     // A pageList is a link into the corpus even though it stores ids, not hrefs.
@@ -78,7 +96,8 @@ function htmlOf(blocks) {
 }
 
 function analyse(blocks) {
-  const parts = htmlOf(blocks);
+  const badLinks = [];
+  const parts = htmlOf(blocks, badLinks);
   const html = parts.join('\n');
   const json = JSON.stringify(blocks);
 
@@ -102,7 +121,7 @@ function analyse(blocks) {
 
   return {
     html, json, internal, outbound: outboundUniq, telegramCount: telegram.length, outboundTotal: outbound.length,
-    h2, h3, types,
+    h2, h3, types, badLinks,
     wordCount: words(stripTags(html)),
     figures: (html.match(/data-graphic=|<svg|<img /gi) || []).length,
     quotes: (html.match(/<blockquote/gi) || []).length,
@@ -126,6 +145,13 @@ function lint(name, blocks) {
     `internal wiki links ${a.internal.length} < ${RULES.minInternalLinks} (series furniture excluded)`);
   req(a.outbound.length >= RULES.minOutboundLinks,
     `distinct outbound sources ${a.outbound.length} < ${RULES.minOutboundLinks}`);
+
+  // A dropped link is worse than a missing one: the heading still promises a
+  // rubric. Name the shape, because the failure is always a field-name slip.
+  for (const b of a.badLinks) {
+    fail.push(`linkGrid link has no usable href: "${b.label ?? '(no label)'}" under "${b.heading}" `
+      + `(fields: ${b.keys || 'none'}) -- LinkGridLink is { label, href }`);
+  }
 
   // --- sourcing balance. A recap sourced mostly from Telegram cannot be checked by
   // a reader who is not in the channel, and the links die with the message.

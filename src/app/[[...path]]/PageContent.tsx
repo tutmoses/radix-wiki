@@ -619,7 +619,7 @@ function SeeAlso({ pages, tagPath, sharedFacet }: { pages: RelatedPage[]; tagPat
 }
 
 // ========== PAGE VIEW (Read-only) ==========
-function PageViewContent({ page, related, series, sections, listing, nowMs }: { page: WikiPage; related: RelatedPages; series: PageRef | null; sections?: ReactNode; listing?: ReactNode; nowMs: number }) {
+function PageViewContent({ page, related, series, sections, listing, pageNav, nowMs }: { page: WikiPage; related: RelatedPages; series: PageRef | null; sections?: ReactNode; listing?: ReactNode; pageNav?: ReactNode; nowMs: number }) {
   const { isAuthenticated } = useAuth();
   // Contributor stats belong to the page's *subject* — the explicit
   // metadata.subjectUserId pointer set on profile pages (community bios,
@@ -640,6 +640,7 @@ function PageViewContent({ page, related, series, sections, listing, nowMs }: { 
     <>
       <SeeAlso pages={related.pages} tagPath={page.tagPath} sharedFacet={related.sharedFacet} />
       {subjectUserId && <UserStats userId={subjectUserId} />}
+      {pageNav}
       <PageMeta page={page} />
       <Discussion pageId={page.id} tagPath={page.tagPath} />
       {isAuthenticated && (
@@ -687,12 +688,12 @@ function PageViewContent({ page, related, series, sections, listing, nowMs }: { 
 }
 
 // ========== PAGE VIEW WRAPPER ==========
-export function PageView({ page, tagPath, slug, isEditMode, related = { pages: [], sharedFacet: null }, series = null, nowMs }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; related?: RelatedPages; series?: PageRef | null; /** Server clock, so the freshness notice cannot differ between SSR and hydration. */ nowMs: number }) {
+export function PageView({ page, tagPath, slug, isEditMode, related = { pages: [], sharedFacet: null }, series = null, pageNav, nowMs }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; related?: RelatedPages; series?: PageRef | null; /** Server-rendered, so the foot nav stays out of this client bundle. */ pageNav?: ReactNode; nowMs: number }) {
   const { isAuthenticated } = useAuth();
 
   const viewPath = pagePath(tagPath, slug);
 
   if (isEditMode && !isAuthenticated) return <StatusCard status="authRequired" backHref={viewPath} />;
   if (!page) return <LazyPageEditor tagPath={tagPath} slug={slug} />;
-  return isEditMode ? <LazyPageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} related={related} series={series} nowMs={nowMs} />;
+  return isEditMode ? <LazyPageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} related={related} series={series} pageNav={pageNav} nowMs={nowMs} />;
 }

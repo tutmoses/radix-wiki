@@ -1,7 +1,7 @@
 // src/app/[[...path]]/page.tsx
 
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { notFound, redirect } from 'next/navigation';
 import { parsePath, getHomepage, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getEcosystemPageByAsset } from '@/lib/wiki';
 import { getMaintenanceQueues } from '@/lib/maintenance';
@@ -26,7 +26,10 @@ import ChartsOverview from '@/components/charts/ChartsOverview';
 import ValidatorsView from '@/components/charts/ValidatorsView';
 import TokensView from '@/components/charts/TokensView';
 import TokenDetailView from '@/components/charts/TokenDetailView';
-import { BASE_URL, categoryLabel, clampSnippet, getContentSnippet } from '@/lib/utils';
+import { BASE_URL, categoryLabel, clampSnippet, getContentSnippet, pagePath } from '@/lib/utils';
+import Link from 'next/link';
+import { PageNav } from 'wiki-formant/react-server';
+import { adjacentPages } from 'wiki-formant/pagination';
 import { ogMetadata, ogImageUrl } from '@/lib/og';
 import { articleType, aboutEntity, articleLearningProps } from '@/lib/entity-ld';
 import { getTokenDetail } from '@/lib/radix/tokens';
@@ -463,13 +466,21 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   }
   const page = parsed.suffix === 'edit' ? rawPage : await withProcessedContent(rawPage);
   let related: RelatedPages = { pages: [], sharedFacet: null };
+  let pageNav: ReactNode = null;
   if (page && parsed.suffix !== 'edit') {
-    const siblings = (await getCategoryPages(parsed.tagPath)).filter(p => p.slug !== parsed.slug);
-    const ranked = rankRelated(page, siblings, parsed.tagPath);
+    // One ordered fetch, two readers. The ranked panel wants this page removed;
+    // the foot nav wants it left in, because the sequence it walks is the one
+    // the section listing already shows and it finds itself in that sequence.
+    // No adjacency query: prev/next costs nothing beyond the call already here.
+    const ordered = await getCategoryPages(parsed.tagPath);
+    const ranked = rankRelated(page, ordered.filter(p => p.slug !== parsed.slug), parsed.tagPath);
     related = {
       pages: ranked.pages.map(p => ({ id: p.id, title: p.title, slug: p.slug, tagPath: p.tagPath, snippet: clampSnippet(p.snippet, 100) })),
       sharedFacet: ranked.sharedFacet,
     };
+    const { prev, next } = adjacentPages(ordered, p => p.slug === parsed.slug);
+    const ref = (p: typeof prev) => (p ? { title: p.title, href: pagePath(p.tagPath, p.slug) } : null);
+    pageNav = <PageNav link={Link} prev={ref(prev)} next={ref(next)} />;
   }
   // The topic this page is part of, unless this page *is* it.
   const mainArticle = getMainArticle(parsed.tagPath);
@@ -479,7 +490,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   return (
     <>
       {page && <JsonLd data={articleLd(page, pageUrl)} />}
-      <PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} related={related} series={series} nowMs={nowMs} />
+      <PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} related={related} series={series} pageNav={pageNav} nowMs={nowMs} />
     </>
   );
 }
