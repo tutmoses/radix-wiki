@@ -14,7 +14,7 @@ function statCards(stats: NetworkStats) {
   return [
     { icon: Server, value: String(stats.activeValidatorCount), label: `Active validators, of ${stats.registeredValidatorCount} registered` },
     { icon: Coins, value: formatXrd(stats.totalStake), label: 'Total stake' },
-    { icon: Activity, value: formatXrd(stats.xrdSupply), label: 'XRD supply' },
+    { icon: Activity, value: formatXrd(stats.xrdSupply), label: '$XRD supply' },
     { icon: Activity, value: formatCompact(stats.currentEpoch), label: 'Epoch' },
     { icon: Activity, value: formatCompact(stats.ledgerStateVersion), label: 'State version' },
   ];

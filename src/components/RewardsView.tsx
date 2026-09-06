@@ -107,7 +107,7 @@ export default function RewardsView() {
           <div className="h-10 skeleton rounded" />
         ) : data && (
           <>
-            <p className="text-2xl font-bold text-accent">{Math.floor(data.treasury.balance).toLocaleString()} XRD</p>
+            <p className="text-2xl font-bold text-accent">{Math.floor(data.treasury.balance).toLocaleString()} $XRD</p>
             <p className="text-small text-text-muted font-mono truncate">{data.treasury.address}</p>
           </>
         )}
@@ -127,7 +127,7 @@ export default function RewardsView() {
               <th className="p-3">Editor</th>
               <th className="p-3 text-right">Points</th>
               <th className="p-3 text-right">Share</th>
-              <th className="p-3 text-right">XRD</th>
+              <th className="p-3 text-right">$XRD</th>
             </tr>
           </thead>
           <tbody>
@@ -184,7 +184,7 @@ export default function RewardsView() {
             <thead>
               <tr className="text-left text-small text-text-muted border-b border-surface-2">
                 <th className="p-3">Date</th>
-                <th className="p-3 text-right">Total XRD</th>
+                <th className="p-3 text-right">Total $XRD</th>
                 <th className="p-3 text-right">Editors</th>
                 <th className="p-3">Tx Hash</th>
               </tr>

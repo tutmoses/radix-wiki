@@ -18,7 +18,7 @@ export function formatPercent(n: number | undefined, digits = 2): string {
 }
 
 export function formatXrd(n: number): string {
-  return formatCompact(n, { suffix: ' XRD' });
+  return formatCompact(n, { suffix: ' $XRD' });
 }
 
 export function formatUsd(n: number | undefined): string {

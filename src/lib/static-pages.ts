@@ -26,13 +26,13 @@ export interface StaticPage {
 
 /** Declaration order is the sitemap's order. */
 export const STATIC_PAGES: Record<string, StaticPage> = {
-  homepage: { path: '', title: 'Radix Wiki: XRD, Scrypto & the Radix DLT Crypto Ecosystem', description: 'The community-maintained wiki for Radix DLT – XRD, the Radix Engine, Scrypto smart contracts, Cerberus consensus, validators, staking, and the DeFi ecosystem.', absoluteTitle: true, imageTitle: 'RADIX Wiki' },
+  homepage: { path: '', title: 'Radix Wiki: $XRD, Scrypto & the Radix DLT Crypto Ecosystem', description: 'The community-maintained wiki for Radix DLT – $XRD, the Radix Engine, Scrypto smart contracts, Cerberus consensus, validators, staking, and the DeFi ecosystem.', absoluteTitle: true, imageTitle: 'RADIX Wiki' },
   charts: { path: 'charts', title: 'Charts', description: 'Live Radix network statistics, validator directory, and ecosystem token analytics — successor to RadixCharts.', llmsDescription: 'Live Radix network statistics, validator directory, and ecosystem token analytics.', changeFrequency: 'daily', priority: 0.7 },
   'charts-validators': { path: 'charts/validators', title: 'Validators', description: 'Sortable directory of all Radix validators with stake, fee, and ownership data.', changeFrequency: 'daily', priority: 0.7 },
   'charts-tokens': { path: 'charts/tokens', title: 'Tokens', description: 'Top tokens on Radix ranked by total value locked, with price, volume, and 24h change.', changeFrequency: 'daily', priority: 0.7 },
   welcome: { path: 'welcome', title: 'Welcome', description: 'Get started with RADIX Wiki — connect your Radix wallet and begin contributing to the decentralized knowledge base.', changeFrequency: 'monthly', priority: 0.5 },
   leaderboard: { path: 'leaderboard', title: 'Leaderboard', description: 'Top RADIX.wiki contributors ranked by contribution points.', changeFrequency: 'monthly', priority: 0.5 },
-  rewards: { path: 'rewards', title: 'Rewards', description: 'Track contributor rewards and XRD airdrop eligibility on RADIX Wiki.', changeFrequency: 'monthly', priority: 0.5 },
+  rewards: { path: 'rewards', title: 'Rewards', description: 'Track contributor rewards and $XRD airdrop eligibility on RADIX Wiki.', changeFrequency: 'monthly', priority: 0.5 },
   // Both titles already carry the site name, so the template doubles it —
   // "Search — RADIX Wiki | RADIX Wiki". Left as it renders today. Maintenance is
   // a work queue, hidden the way Wikipedia hides its maintenance categories.

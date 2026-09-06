@@ -401,7 +401,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   return (
     <div className="stack">
       <Banner src={bannerImage} title="Homepage">
-        <h1 className="sr-only">Radix (XRD) – The Radix DLT Crypto Wiki</h1>
+        <h1 className="sr-only">Radix ($XRD) – The Radix DLT Crypto Wiki</h1>
       </Banner>
       {infobox && infoboxHasContent(infobox) ? (
         <div className="page-with-infobox">
@@ -514,22 +514,23 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
   const pathStr = tagPath.join('/');
   const tag = findTagByPath(tagPath);
   const categoryName = categoryLabel(tag?.name ?? '') || tagPath.at(-1) || 'this category';
-  const controls = (
-    <div className="row-md">
-      <SubscribeRow tagPath={pathStr} />
-      <NewPageControl tagPath={pathStr} />
-    </div>
-  );
+  const controlItems = <><SubscribeRow tagPath={pathStr} /><NewPageControl tagPath={pathStr} /></>;
+  const controls = <div className="row-md">{controlItems}</div>;
+  // A hub's banner already titles the page and the results bar below already
+  // names what the listing holds, so the heading there would be a second title
+  // over a rule — the controls ride the slot alone.
   const listing = total > 0 && (
     <CategoryListing
       tagPath={tagPath} pages={pages} sort={sort} total={total}
       facetGroups={facetGroups} filters={filters} letters={letters} letter={letter}
-      heading={
+      heading={hub ? (
+        <div className="row-md justify-end empty:hidden">{controlItems}</div>
+      ) : (
         <div className="spread">
           <h2 id="pages-in-this-category" className="m-0!">Pages in {categoryName}</h2>
           {controls}
         </div>
-      }
+      )}
     />
   );
   // A hub page has no heading row of its own — the banner carries the title — so

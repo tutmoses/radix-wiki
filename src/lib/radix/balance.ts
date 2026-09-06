@@ -66,7 +66,7 @@ export async function requireBalance(session: AuthSession, action: BalanceAction
       ok: false,
       response: NextResponse.json({
         ok: false,
-        error: 'Your XRD balance cannot be read right now: the Radix Gateway is not answering. This is not a judgement about your wallet — try again shortly.',
+        error: 'Your $XRD balance cannot be read right now: the Radix Gateway is not answering. This is not a judgement about your wallet — try again shortly.',
       }, { status: 503 }),
     };
   }
