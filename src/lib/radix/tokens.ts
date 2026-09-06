@@ -151,7 +151,7 @@ type OciStatistics = {
 async function _fetchDexStats(): Promise<DexStats | null> {
   const d = await ociswap<OciStatistics>('/statistics', 'dex-stats');
   if (!d) return null;
-  // XRD-denominated throughout: the native unit needs no price oracle to be true later.
+  // $XRD-denominated throughout: the native unit needs no price oracle to be true later.
   return {
     volume7dXrd: num(d?.volume?.xrd?.['7d']),
     swaps7d: num(d?.event_counts?.swap?.['7d']),

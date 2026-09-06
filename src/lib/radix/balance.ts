@@ -9,7 +9,7 @@ import type { AuthSession } from '@/types';
 
 export type BalanceAction = { type: 'create' | 'edit' | 'comment'; tagPath: string };
 
-/** Total XRD across every fungible vault an account holds. */
+/** Total $XRD across every fungible vault an account holds. */
 export async function getXrdBalance(address: string, label = 'balance'): Promise<number> {
   const amounts = await paginatedGatewayFetch<number, { items?: { amount: string }[] }>(
     '/state/entity/page/fungible-vaults/',
@@ -57,7 +57,7 @@ export async function requireBalance(session: AuthSession, action: BalanceAction
   const required = getXrdRequired(action.type, action.tagPath);
 
   // An unread balance is not a balance of zero. Before this, a Gateway that would not
-  // answer told the holder of 100,000 XRD that they held none and were short by 50,000.
+  // answer told the holder of 100,000 $XRD that they held none and were short by 50,000.
   let balance: number;
   try {
     balance = await getXrdBalance(user.radixAddress);

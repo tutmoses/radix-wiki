@@ -13,7 +13,7 @@
 // Ledger data comes from /api/charts/snapshot rather than the Gateway directly, so this
 // script and /charts share one parser. A second fee parser is how /charts came to publish
 // the stored validator fee instead of the charged one, for months, across 59% of staked
-// XRD. Override the origin with SNAPSHOT_ORIGIN=http://localhost:3000 when testing.
+// $XRD. Override the origin with SNAPSHOT_ORIGIN=http://localhost:3000 when testing.
 //
 // `capture-dev` is the other half of the same week: the recap read the ledger every week
 // and never read the code, which is half the ecosystem missing. It parks repository

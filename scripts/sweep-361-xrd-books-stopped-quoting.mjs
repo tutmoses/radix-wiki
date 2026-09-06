@@ -1,4 +1,4 @@
-// Run 361 (contents/resources rotation). Two of the six XRD spot books stopped
+// Run 361 (contents/resources rotation). Two of the six $XRD spot books stopped
 // quoting during the network halt, and the surviving four quote two different
 // prices because arbitrage between them runs through a stopped ledger.
 // Measured 2026-09-03 23:06 UTC from each venue's own public API.

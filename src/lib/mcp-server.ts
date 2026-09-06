@@ -388,7 +388,7 @@ async function login(args: Record<string, unknown>) {
 // ========== WRITE HANDLERS ==========
 //
 // Writes forward to the REST wiki API carrying the caller's bearer token, so
-// ROLA auth, XRD balance gating, locked/author-only checks, block validation,
+// ROLA auth, $XRD balance gating, locked/author-only checks, block validation,
 // semver bumping, the revision entry, and cache revalidation all stay in the
 // one handler that already owns them. Nothing about the write path is
 // reimplemented here — this is a transport, not a second implementation.

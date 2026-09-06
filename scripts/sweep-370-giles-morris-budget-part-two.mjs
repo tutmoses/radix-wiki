@@ -5,7 +5,7 @@
  * it were the end of the series. A second part went up on 25 August, read in full at
  * https://gilesmorris.me/my-blog/radix-midao-budgeting-part-2/ on 5 September 2026, and it drops
  * the assumption part one rested on: instead of large holders donating staking rewards to the DAO,
- * it asks whether the Foundation's 2 billion XRD reserve can carry the network on its own. That
+ * it asks whether the Foundation's 2 billion $XRD reserve can carry the network on its own. That
  * matters more now than it did in August, with mainnet halted and no funded development in view.
  *
  * All figures below are the post's own, quoted as his rather than asserted by this wiki.

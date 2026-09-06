@@ -1,7 +1,7 @@
 // src/app/api/announce/route.ts — tell the subscribers an issue exists.
 //
 // Blog pages are seeded by scripts that write `pages` and `revisions` over a raw
-// connection, which is the right call for auth and XRD gating but means the
+// connection, which is the right call for auth and $XRD gating but means the
 // webhook and Telegram fan-out in lib/webhooks.ts never fires. A published issue
 // reached nobody: no webhook, no Telegram, only whoever polled the feed. This is
 // the one call a publish script makes afterwards to close that gap.

@@ -270,7 +270,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const isAuthor = user && page?.authorId === user.id;
   const metadataKeys = getMetadataKeys(tagPath.split('/'));
 
-  // State the XRD gate before any writing happens, not as a 403 after save.
+  // State the $XRD gate before any writing happens, not as a 403 after save.
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/auth/gate?type=${isCreating ? 'create' : 'edit'}&tagPath=${encodeURIComponent(tagPath)}`)

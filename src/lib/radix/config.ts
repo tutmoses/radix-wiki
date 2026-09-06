@@ -16,7 +16,7 @@ const STOKENET = RADIX_CONFIG.networkId === 2;
 /** The Gateway serving the configured network. */
 export const GATEWAY_URL = STOKENET ? 'https://stokenet.radixdlt.com' : 'https://mainnet.radixdlt.com';
 
-/** The XRD resource on the configured network. */
+/** The $XRD resource on the configured network. */
 export const XRD_ADDRESS = STOKENET
   ? 'resource_tdx_2_1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxtfd2jc'
   : 'resource_rdx1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxradxrd';

@@ -32,7 +32,7 @@ export interface GatewayEntity {
  * The Gateway declined to answer a read. Distinct from an empty answer: when mainnet
  * halted on 31 August 2026 the Gateway returned 500 `NotSyncedUpError` to every state
  * read, `paginatedGatewayFetch` returned its empty accumulator, and /charts published
- * "0 active validators securing 0 XRD" stamped with a real epoch and state version —
+ * "0 active validators securing 0 $XRD" stamped with a real epoch and state version —
  * because the stamp comes from `/status/gateway-status`, which keeps answering from
  * the frozen ledger. An unavailable read must never be summable.
  */

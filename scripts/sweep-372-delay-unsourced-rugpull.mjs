@@ -17,7 +17,7 @@
  * What replaces it is what can be read today. The Ociswap public API answers
  * for this resource while the Radix Gateway does not, so the market state is
  * checkable: read 2026-09-05 at 19:13 UTC, the DELAY pool holds 281,840,197
- * DELAY against 344,029 XRD, about $226 in all, on seven-day volume of $2.90
+ * DELAY against 344,029 $XRD, about $226 in all, on seven-day volume of $2.90
  * and a price of $0.00000044, ranked 66th on that venue. The same record dates
  * the token's Ociswap listing to 17 December 2024, the month the Ecosystem
  * Asset Fund started buying it. That is a market nobody is trading, stated
