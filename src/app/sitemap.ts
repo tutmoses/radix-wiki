@@ -30,7 +30,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     orderBy: { updatedAt: 'desc' },
   });
 
-  const categoryPaths = tagPaths().map(t => t.path);
+  // The root tag is the homepage, already the first row — as a category it
+  // came out a second time, at `${BASE_URL}/`.
+  const categoryPaths = tagPaths().map(t => t.path).filter(Boolean);
 
   // Newest page under each category → real lastModified (pages already ordered updatedAt desc)
   const catModified = new Map<string, Date>();
@@ -39,26 +41,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (latest) catModified.set(path, latest.updatedAt);
   }
 
+  // The homepage moves when any page does. A lastmod that reads "now" on every
+  // fetch is one Google learns to disregard, and it disregards the honest ones
+  // with it — so the static routes below carry none rather than a fake one.
+  const latest = pages[0]?.updatedAt ?? new Date();
+
+  // Only pages that can be indexed belong here. The text indexes and the two
+  // feeds were listed too, and Search Console filed all five under "crawled,
+  // currently not indexed" — the one thing a sitemap row can do for a document
+  // that is not a page. Each stays discoverable where it was found before:
+  // the feeds and llms-full.txt are <link rel="alternate"> in the layout, and
+  // llms.txt is the address every agent tries first.
   return [
-    { url: BASE_URL, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
-    // The plain-text agent surface. Only the text indexes belong here — the
-    // .md twins would be duplicate content beside their canonical pages.
-    { url: `${BASE_URL}/llms.txt`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.5 },
-    { url: `${BASE_URL}/llms-index.txt`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.4 },
-    { url: `${BASE_URL}/llms-full.txt`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.4 },
-    // The feeds are the only syndication surface the site has. Leaving them out of
-    // the sitemap left browser auto-discovery as the sole route to them.
-    { url: `${BASE_URL}/blog.xml`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.5 },
-    { url: `${BASE_URL}/week-in-review.xml`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.6 },
+    { url: BASE_URL, lastModified: latest, changeFrequency: 'daily', priority: 1 },
     ...categoryPaths.map(path => ({
       url: `${BASE_URL}/${path}`,
-      lastModified: catModified.get(path) ?? new Date(),
+      lastModified: catModified.get(path) ?? latest,
       changeFrequency: 'weekly' as const,
       priority: 0.8,
     })),
     ...SITEMAP_PAGES.map(p => ({
       url: `${BASE_URL}/${p.path}`,
-      lastModified: new Date(),
       changeFrequency: p.changeFrequency,
       priority: p.priority,
     })),

@@ -88,6 +88,31 @@ const nextConfig: NextConfig = {
       { source: '/talent-pool/dan-hughes', destination: '/community/dan-hughes', permanent: true },
       { source: '/community/radix-accountability-council', destination: '/ecosystem/radix-accountability-council', permanent: true },
       { source: '/community/hydraswap', destination: '/ecosystem/hydraswap', permanent: true },
+      // Search Console's 404 list, 2026-09-06: URLs Google still holds whose page
+      // moved rather than went. The rest of that list — talent-pool, the culled
+      // community shells, retired proposals — has no successor and stays a 404.
+      { source: '/charts-validators', destination: '/charts/validators', permanent: true },
+      { source: '/charts-tokens', destination: '/charts/tokens', permanent: true },
+      { source: '/contents/history/history-of-radix', destination: '/contents/history', permanent: true },
+      { source: '/ecosystem/radix-desktop-tool', destination: '/developers/tools/radix-desktop-tool', permanent: true },
+      { source: '/contents/tech/comparison', destination: '/contents/tech/comparisons', permanent: true },
+      { source: '/contents/tech/comparison/polkadot', destination: '/contents/tech/comparisons/radix-vs-polkadot', permanent: true },
+      // The ideas board was reseeded as the DAO transition's work queue; these are
+      // the proposals that became a card, at the card's slug.
+      { source: '/ideas/xian-protocol-upgrade', destination: '/ideas/dao-xian-protocol-upgrade', permanent: true },
+      { source: '/ideas/consultations-v2', destination: '/ideas/dao-governance-app-consultation-v2', permanent: true },
+      { source: '/ideas/rfc-migrate-radix-developer-documentation-to-radixwiki', destination: '/ideas/dao-migrate-dev-docs-wiki', permanent: true },
+      { source: '/ideas/rfc-mini-season-2-of-radix-rewards-during-foundation-handover', destination: '/ideas/dao-radix-rewards-mini-season-2', permanent: true },
+      { source: '/ideas/dao-treasury-custody', destination: '/ideas/dao-xrd-custody', permanent: true },
+      // DeSci lives on caper.network now, same slugs.
+      { source: '/contents/tech/desci', destination: 'https://caper.network/wiki/desci', permanent: true },
+      { source: '/contents/tech/desci/:slug(desci-and-radix|desci-funding|ip-nfts)', destination: 'https://caper.network/wiki/desci/:slug', permanent: true },
+      { source: '/ecosystem/:slug(vitadao|psydao|athenadao|bio-xyz|genomesdao|gitcoin-desci|molecule|ultrarare-bio)', destination: 'https://caper.network/wiki/desci/ecosystem/:slug', permanent: true },
+      // The legacy docs mirrored docs.radixdlt.com, whose pages still answer at
+      // the same final slug (10 of 12 sampled). The two that do not 404 there
+      // instead of here, which is no worse.
+      { source: '/developers/legacy-docs', destination: 'https://docs.radixdlt.com/', permanent: true },
+      { source: '/developers/legacy-docs/:path*/:last', destination: 'https://docs.radixdlt.com/docs/:last', permanent: true },
     ];
   },
 

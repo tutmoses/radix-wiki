@@ -22,6 +22,10 @@ type PathParams = { path?: string[] };
 
 const INITIAL_VERSION = '1.0.0';
 
+/** A twin is the page again in another format: a search engine that reads
+ *  one has the page already. Without this Google indexed `.md` beside the HTML. */
+const TWIN_ROBOTS = { 'X-Robots-Tag': 'noindex' };
+
 /** A page and its first revision, in one transaction — POST for an article, PUT
  *  for the homepage row when it does not exist yet. */
 type NewPage = Pick<Prisma.PageUncheckedCreateInput, 'tagPath' | 'slug' | 'bannerImage' | 'metadata'>
@@ -76,6 +80,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
         headers: {
           'Content-Type': 'text/mdx; charset=utf-8',
           'Content-Disposition': `attachment; filename="${page.slug || 'homepage'}.mdx"`,
+          ...TWIN_ROBOTS,
         },
       });
     }
@@ -190,7 +195,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       return (
         notModified(request, etag, lastModified) ??
         new NextResponse(md, {
-          headers: markdownHeaders(lastModified, { etag, extra: CACHE.medium }),
+          headers: markdownHeaders(lastModified, { etag, extra: { ...CACHE.medium, ...TWIN_ROBOTS } }),
         })
       );
     }

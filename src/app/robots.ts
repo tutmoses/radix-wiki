@@ -33,14 +33,31 @@ export default function robots(): MetadataRoute.Robots {
   // needs its own disallow — omitting it grants that agent unrestricted access.
   // The aiAllow entries still win over `/api/` by longest-match precedence,
   // which is what keeps /api/mcp and /api/wiki/ reachable for agents.
-  const disallow = ['/api/', ...pageVariantDisallow];
+  // `_rsc=` is the React Server Components payload a <Link> prefetches. A
+  // crawler that renders the page runs those prefetches too, and Search
+  // Console's crawl stats put them at 43% of Googlebot's requests here against
+  // 10% for HTML — every rail link on every page, fetched again as its own URL.
+  // Nothing that reads robots.txt can use one.
+  const rscDisallow = ['/*?_rsc=', '/*&_rsc='];
+  const disallow = ['/api/', ...pageVariantDisallow, ...rscDisallow];
   // The roster is `wiki-formant/crawlers`, shared with src/proxy.ts, which used
   // to keep a second and different list of the same thing. Five agents the proxy
   // measured — Bytespider, CCBot, cohere-ai, Claude-Web, Meta-ExternalFetcher —
   // had no group here at all, so by the rule above they were granted whatever
   // `*` grants. They now get the same group as every other AI agent.
+  // Search engines get the HTML site and nothing else. The `*` group keeps the
+  // machine surface open to an agent it has never heard of, which is right for
+  // an agent and wrong for Google: it was spending its crawl on `/api/wiki/`
+  // JSON and on the `.md` twins, each the page it already has in another
+  // format. A named group replaces `*` for the agent it names rather than
+  // extending it, so every disallow is listed again.
+  const searchEngines = ['Googlebot', 'Bingbot'].map(userAgent => ({
+    userAgent,
+    allow: '/',
+    disallow: ['/api/', '/*.md$', ...pageVariantDisallow, ...rscDisallow],
+  }));
   return {
-    rules: aiCrawlerRules({ allow: '/', disallow, aiAllow }),
+    rules: [...aiCrawlerRules({ allow: '/', disallow, aiAllow }), ...searchEngines],
     sitemap: `${BASE_URL}/sitemap.xml`,
   };
 }

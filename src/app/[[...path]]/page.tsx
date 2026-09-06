@@ -454,6 +454,9 @@ export default async function DynamicPage({ params, searchParams }: Props) {
 
   if (parsed.type === 'history') {
     const data = await getPageHistory(parsed.tagPath, parsed.slug) as HistoryData;
+    // No page, no history. The empty view answered 200 for any slug at all, and
+    // Search Console filed the revision views of deleted pages as soft 404s.
+    if (!data) notFound();
     // The homepage's own history is `''`/`''` — the same call, told to head itself
     // "Homepage History" and to reach the root API route.
     return <Suspense fallback={<PageSkeleton />}><HistoryView data={data} tagPath={parsed.tagPath} slug={parsed.slug} isHomepage={!parsed.tagPath && !parsed.slug} /></Suspense>;
