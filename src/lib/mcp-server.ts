@@ -13,7 +13,7 @@ import { prisma } from '@/lib/prisma/client';
 import { BASE_URL, categoryLabel, pageUrl, pagePath } from '@/lib/utils';
 import { NOT_HIDDEN, orderByIds, searchPageIds, summarizePage, SUMMARY_SELECT } from '@/lib/wiki';
 import { listEnvelope } from 'wiki-formant/pagination';
-import { MCP_RATE_LIMIT_TEXT } from '@/lib/api';
+import { MCP_RATE_LIMIT, MCP_RATE_LIMIT_TEXT } from '@/lib/api';
 import { extractText } from '@/lib/content';
 import { buildLlmsTxt, corpusSections } from '@/lib/llms';
 import { TAG_HIERARCHY, getMetadataKeys, type TagNode } from '@/lib/tags';
@@ -459,6 +459,7 @@ export function serverConfig(auth: string | null): McpServerConfig {
     })),
     resources: RESOURCES,
     prompts: PROMPTS,
+    rateLimit: MCP_RATE_LIMIT,
     docsUrl: `${BASE_URL}/AGENTS.md`,
     onCall: (req, body) => trackMcpCall(req, SERVER_INFO.name, body),
   };

@@ -57,6 +57,12 @@ export function cachedJson<T>(data: T, headers: Record<string, string> = CACHE.s
 export const MCP_RATE_LIMIT_PER_MIN = 60;
 export const MCP_RATE_LIMIT_TEXT = `${MCP_RATE_LIMIT_PER_MIN} requests per minute per IP`;
 
+/** The budget as `mcpResponse` takes it, so the route states it once. */
+export const MCP_RATE_LIMIT: RateLimitOptions = {
+  capacity: MCP_RATE_LIMIT_PER_MIN,
+  refillPerSec: MCP_RATE_LIMIT_PER_MIN / 60,
+};
+
 // The bucket itself is `wiki-formant/rate-limit`, shared with the other agent
 // surfaces — this was the third copy of it in the workspace. What stays here is
 // the Next binding: reading the request headers and shaping the 429.
@@ -71,12 +77,6 @@ export function checkRateLimit(
 ): Response | null {
   const limit = rateLimit(clientKey(prefix, request.headers), opts);
   return limit.ok ? null : rateLimitedResponse(limit.retryAfterSec);
-}
-
-/** The verdict itself, for a caller that has to shape its own refusal — an MCP
- *  endpoint owes a JSON-RPC envelope, not this one's plain JSON body. */
-export function rateLimitVerdict(request: NextRequest, prefix: string, opts: RateLimitOptions) {
-  return rateLimit(clientKey(prefix, request.headers), opts);
 }
 
 // `Response`, not `NextResponse`: the shared helpers in `wiki-formant/http`
