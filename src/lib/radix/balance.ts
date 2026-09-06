@@ -55,7 +55,21 @@ export async function requireBalance(session: AuthSession, action: BalanceAction
   }
 
   const required = getXrdRequired(action.type, action.tagPath);
-  const balance = await getXrdBalance(user.radixAddress);
+
+  // An unread balance is not a balance of zero. Before this, a Gateway that would not
+  // answer told the holder of 100,000 XRD that they held none and were short by 50,000.
+  let balance: number;
+  try {
+    balance = await getXrdBalance(user.radixAddress);
+  } catch {
+    return {
+      ok: false,
+      response: NextResponse.json({
+        ok: false,
+        error: 'Your XRD balance cannot be read right now: the Radix Gateway is not answering. This is not a judgement about your wallet — try again shortly.',
+      }, { status: 503 }),
+    };
+  }
 
   if (balance >= required) return { ok: true, user, balance };
 

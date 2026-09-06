@@ -25,11 +25,18 @@ function nakamoto(stakes: number[]): number {
 }
 
 export async function GET() {
-  const [stats, validators, dex] = await Promise.all([
-    getNetworkStats(),
-    getValidators(),
-    getDexStats(),
-  ]);
+  let stats, validators, dex;
+  try {
+    [stats, validators, dex] = await Promise.all([getNetworkStats(), getValidators(), getDexStats()]);
+  } catch (err) {
+    // 200-with-zeros is the one answer this route must never give: the weekly snapshot
+    // stores whatever it returns, so an unreadable ledger would enter the wiki's record
+    // as a week in which the network had no validators and no stake.
+    return NextResponse.json(
+      { error: 'ledger unavailable', reason: err instanceof Error ? err.message : String(err) },
+      { status: 503 },
+    );
+  }
 
   // `active` is the consensus set (active_in_epoch); `registered` is the wider set that has
   // registered and holds stake. They are different numbers and mean different things.

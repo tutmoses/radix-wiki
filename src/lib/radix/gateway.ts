@@ -28,6 +28,21 @@ export interface GatewayEntity {
   [key: string]: unknown;
 }
 
+/**
+ * The Gateway declined to answer a read. Distinct from an empty answer: when mainnet
+ * halted on 31 August 2026 the Gateway returned 500 `NotSyncedUpError` to every state
+ * read, `paginatedGatewayFetch` returned its empty accumulator, and /charts published
+ * "0 active validators securing 0 XRD" stamped with a real epoch and state version —
+ * because the stamp comes from `/status/gateway-status`, which keeps answering from
+ * the frozen ledger. An unavailable read must never be summable.
+ */
+export class GatewayUnavailableError extends Error {
+  constructor(readonly path: string, readonly label: string) {
+    super(`Radix Gateway did not answer ${path} (${label})`);
+    this.name = 'GatewayUnavailableError';
+  }
+}
+
 /** Single POST to the Radix Gateway. Returns parsed JSON, or null on failure. */
 export async function postGateway<T>(
   path: string,
@@ -57,7 +72,11 @@ export async function postGateway<T>(
   }
 }
 
-/** Paginated POST to Radix Gateway. Accumulates results across pages. */
+/**
+ * Paginated POST to Radix Gateway. Accumulates results across pages.
+ * Throws `GatewayUnavailableError` if any page goes unanswered, so a caller can never
+ * mistake "the Gateway refused" for "the set is empty" — or, worse, publish the sum.
+ */
 export async function paginatedGatewayFetch<TItem, TPage extends GatewayPage = GatewayPage>(
   path: string,
   body: Record<string, unknown>,
@@ -72,7 +91,7 @@ export async function paginatedGatewayFetch<TItem, TPage extends GatewayPage = G
 
   do {
     const data = await postGateway<TPage>(path, { ...body, ...(cursor && { cursor }) }, label);
-    if (!data) return items;
+    if (!data) throw new GatewayUnavailableError(path, label);
     items.push(...extract(data));
     cursor = nextCursor(data) ?? undefined;
   } while (cursor);

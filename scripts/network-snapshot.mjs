@@ -311,6 +311,17 @@ await withClient(async (client) => {
     if (!res.ok) throw new Error(`snapshot route ${res.status} at ${ORIGIN}`);
     const reading = await res.json();
 
+    // The route answers 503 when the ledger is unreadable, but a reading with no validators
+    // in it is not a week worth recording whatever the status code says — it is the shape a
+    // silent failure takes, and this page's whole value is that its series can be trusted.
+    if (!(reading.active > 0) || !(reading.totalStake > 0)) {
+      throw new Error(
+        `refusing to store an empty reading (active ${reading.active}, stake ${reading.totalStake}).\n` +
+        `  The Gateway is answering /status but not /state — mainnet is halted or the Gateway is behind.\n` +
+        `  Nothing is written; run capture again once state reads resolve.`,
+      );
+    }
+
     const page = await load(client);
     const state = meta(page).state ?? {};
     const snapshots = [...(state.snapshots || [])];
@@ -341,6 +352,19 @@ await withClient(async (client) => {
     else if (gap > 10) console.log(`  prior reading is ${gap} days old: too stale to compare.`);
 
     await persist(client, page, cap({ ...state, snapshots }), `Ledger reading for the week ending ${week}`);
+
+  } else if (mode === 'drop') {
+    // Repair, for a reading that should never have been stored. The 2026-09-06 run recorded
+    // zero validators and zero stake because the Gateway answered /status while refusing
+    // /state; the guard above stops that recurring, and this removes the one that landed.
+    const week = rest.find((a) => !a.startsWith('--'));
+    if (!week) throw new Error('drop requires <week>, e.g. 2026-09-06');
+    const page = await load(client);
+    if (!page) throw new Error(`${TAG}/${SLUG} not found`);
+    const state = meta(page).state ?? {};
+    const snapshots = (state.snapshots || []).filter((s) => s.week !== week);
+    if (snapshots.length === (state.snapshots || []).length) { console.log(`  no reading for ${week}`); return; }
+    await persist(client, page, cap({ ...state, snapshots }), `Remove the unreadable ${week} reading: the Gateway refused state reads and zero was recorded as a measurement`);
 
   } else if (mode === 'capture-dev') {
     const page = await load(client);

@@ -20,6 +20,28 @@ export interface NetworkStats {
   lastUpdated: string;
 }
 
+/** Where the ledger stands, from the one endpoint that answers while state reads do not. */
+export interface LedgerStatus {
+  epoch: number;
+  stateVersion: number;
+  network: string;
+  /** Timestamp of the last round the network agreed. Dates a halt to the second. */
+  lastRoundAt?: string;
+}
+
+/** `/status/gateway-status` alone: no state reads, so it survives a halted network. */
+export const getLedgerStatus = cache(async (): Promise<LedgerStatus | null> => {
+  const status = await postGateway<GatewayPage>('/status/gateway-status', {}, 'gateway-status');
+  const state = status?.ledger_state as (GatewayPage['ledger_state'] & { proposer_round_timestamp?: string }) | undefined;
+  if (!state) return null;
+  return {
+    epoch: state.epoch ?? 0,
+    stateVersion: state.state_version ?? 0,
+    network: state.network ?? 'mainnet',
+    lastRoundAt: state.proposer_round_timestamp,
+  };
+});
+
 const _getNetworkStats = unstable_cache(
   async (): Promise<NetworkStats> => {
     const [validators, status, xrd] = await Promise.all([

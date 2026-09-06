@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { Server, ArrowLeft } from 'lucide-react';
 import { getValidators } from '@/lib/radix/validators';
 import { ValidatorsTable } from './ValidatorsTable';
+import LedgerUnavailable from './LedgerUnavailable';
 import { formatXrd } from './format';
 
 export default async function ValidatorsView() {
-  const validators = await getValidators();
-  const total = validators.reduce((s, v) => s + v.totalStake, 0);
-  const active = validators.filter(v => v.isRegistered && v.totalStake > 0).length;
+  const validators = await getValidators().catch(() => null);
+  const total = validators?.reduce((s, v) => s + v.totalStake, 0) ?? 0;
+  const active = validators?.filter(v => v.isRegistered && v.totalStake > 0).length ?? 0;
 
   return (
     <div className="stack">
@@ -21,11 +22,15 @@ export default async function ValidatorsView() {
           <Server size={24} className="text-accent" />
           <h1>Validators</h1>
         </div>
-        <p className="text-text-muted">
-          {active} active validators securing {formatXrd(total)} in total stake. Click any column to sort.
-        </p>
+        {validators && (
+          <p className="text-text-muted">
+            {active} active validators securing {formatXrd(total)} in total stake. Click any column to sort.
+          </p>
+        )}
       </div>
-      <ValidatorsTable validators={validators} />
+      {validators
+        ? <ValidatorsTable validators={validators} />
+        : <LedgerUnavailable what="The validator directory" />}
     </div>
   );
 }
