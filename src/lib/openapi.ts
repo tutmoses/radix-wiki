@@ -187,7 +187,7 @@ export const SPEC = {
       post: {
         summary: 'Create a page',
         description:
-          'Some tag paths are XRD-balance-gated or author-only; required metadata keys vary by tag path (errors name any missing). Slug derives from the title when omitted.',
+          'Some tag paths are $XRD-balance-gated or author-only; required metadata keys vary by tag path (errors name any missing). Slug derives from the title when omitted.',
         security: rolaAuth,
         requestBody: {
           required: true,

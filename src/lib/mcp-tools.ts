@@ -204,7 +204,7 @@ export const TOOLS: McpToolSpec[] = [
     name: 'create_page',
     title: 'Create a page',
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-    description: 'Create a new Radix Wiki page. Requires a ROLA bearer token — see https://radix.wiki/AGENTS.md for the challenge-sign-verify flow. Call get_categories first for a valid tagPath. Some paths are balance-gated (blog needs 50,000 XRD). Earns contribution points.',
+    description: 'Create a new Radix Wiki page. Requires a ROLA bearer token — see https://radix.wiki/AGENTS.md for the challenge-sign-verify flow. Call get_categories first for a valid tagPath. Some paths are balance-gated (blog needs 50,000 $XRD). Earns contribution points.',
     auth: 'rola',
     inputSchema: {
       type: 'object',

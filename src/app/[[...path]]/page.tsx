@@ -28,6 +28,7 @@ import TokensView from '@/components/charts/TokensView';
 import TokenDetailView from '@/components/charts/TokenDetailView';
 import { BASE_URL, categoryLabel, clampSnippet, getContentSnippet, pagePath } from '@/lib/utils';
 import Link from 'next/link';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { PageNav } from 'wiki-formant/react-server';
 import { adjacentPages } from 'wiki-formant/pagination';
 import { ogMetadata, ogImageUrl } from '@/lib/og';
@@ -480,7 +481,15 @@ export default async function DynamicPage({ params, searchParams }: Props) {
     };
     const { prev, next } = adjacentPages(ordered, p => p.slug === parsed.slug);
     const ref = (p: typeof prev) => (p ? { title: p.title, href: pagePath(p.tagPath, p.slug) } : null);
-    pageNav = <PageNav link={Link} prev={ref(prev)} next={ref(next)} />;
+    pageNav = (
+      <PageNav
+        link={Link}
+        prev={ref(prev)}
+        next={ref(next)}
+        prevGlyph={<ArrowLeft size={14} />}
+        nextGlyph={<ArrowRight size={14} />}
+      />
+    );
   }
   // The topic this page is part of, unless this page *is* it.
   const mainArticle = getMainArticle(parsed.tagPath);

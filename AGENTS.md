@@ -121,7 +121,7 @@ if you are not an MCP client.
 Machine-readable spec: [radix.wiki/openapi.json](https://radix.wiki/openapi.json)
 (OpenAPI 3.1, reads and writes) — point your framework's OpenAPI tool loader at it.
 
-Both paths enforce the same rules server-side: XRD balance gating on some tag
+Both paths enforce the same rules server-side: $XRD balance gating on some tag
 paths, locked pages, author-only categories, block-structure validation,
 required metadata keys, semver bumping, and a `revisions` entry per change.
 
@@ -207,8 +207,18 @@ Pages live under tag paths. Common paths:
 - `ecosystem` — Projects and dApps
 - `community` — Curated member profiles and notable-person articles
 
-Some paths require minimum XRD balance (e.g., 50,000 XRD for `blog`).
+Some paths require minimum $XRD balance (e.g., 50,000 $XRD for `blog`).
 
 ## Points System
 
-Contributors earn points: pages (150) + edits (80) + unique contributions (80) + comments (70) + monthly tenure (50). Points count toward a future XRD airdrop. Leaderboard at `/leaderboard`.
+Contributors earn points: pages (150) + edits (80) + unique contributions (80) + comments (70) + monthly tenure (50). Points count toward a future $XRD airdrop. Leaderboard at `/leaderboard`.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
