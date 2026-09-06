@@ -70,17 +70,18 @@ export const TOOLS: McpToolSpec[] = [
     title: 'Read a page',
     description:
       'Read one page in full: its extracted text, current version number, update date and declared metadata. '
-      + 'Takes the tagPath and slug that every listing returns — not a URL and not a title. '
+      + 'Takes either the single `path` a listing returns or the tagPath/slug pair it splits into — not a URL and not a title. '
       + 'A wrong pair is answered with the tools that find a right one rather than an empty result. '
       + 'For the whole article set at once use get_full_corpus, and for a page as markdown fetch its URL with `.md` appended.',
     annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
       properties: {
+        path: { type: 'string', description: 'The whole path in one string, e.g. "contents/tech/core-concepts/utxo-model" — the form every listing returns as `url`. Use this or the tagPath/slug pair.' },
         tagPath: { type: 'string', description: 'Tag path (e.g. "contents/tech/core-concepts")' },
         slug: { type: 'string', description: 'Page slug (e.g. "utxo-model")' },
       },
-      required: ['tagPath', 'slug'],
+      requireOneOf: ['path', 'slug'],
     },
     skill: {
       id: 'read',
@@ -137,10 +138,20 @@ export const TOOLS: McpToolSpec[] = [
     title: 'Whole corpus',
     description:
       'Every article as one plain-text document, for bulk ingestion rather than reading. '
-      + 'This is megabytes and far larger than a context window — take it only when you are indexing the wiki, never to answer a single question. '
-      + 'Search or list first; the same corpus is also served, cacheably and with an ETag, at /llms-full.txt.',
+      + 'PREFLIGHT FIRST: call it with sizeOnly=true for the exact character count, a token estimate and the per-branch breakdown — the whole corpus is several times a context window. '
+      + 'Then pull it with `maxChars` (default 200000, max 1000000), or narrow it with `tagPath` to take one branch at a time. '
+      + 'Truncation is page-aligned and honest: `truncated`, `omittedPages` and `nextSkip` say exactly where to resume (pass skip=nextSkip). '
+      + 'Search or list first if you have a question; the same corpus is also served, cacheably and with an ETag, at /llms-full.txt.',
     annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-    inputSchema: { type: 'object', properties: {} },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sizeOnly: { type: 'boolean', description: 'Return sizes and breakdowns only, no document. Do this before the first real pull.' },
+        tagPath: { type: 'string', description: 'Restrict to one branch and its descendants, e.g. "contents/tech". Omit for everything.' },
+        maxChars: { type: 'number', description: 'Character budget for `document` (default 200000, max 1000000)' },
+        skip: { type: 'number', description: 'Resume from this page index — pass the `nextSkip` from the previous truncated call (default 0)' },
+      },
+    },
   },
   {
     name: 'get_ideas_board',

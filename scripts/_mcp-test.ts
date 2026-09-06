@@ -50,11 +50,15 @@ const MCP = t.endpoint;
   // 327 KB blob in its metadata column put all three over 350 KB — roughly
   // 90k tokens — and every assertion below still passed, because none of them
   // weighed the answer.
+  // Everything else a caller can invoke with no arguments is weighed
+  // automatically — which is how the 3.3 MB `get_full_corpus` that took no
+  // parameters sat outside this list for as long as it did.
   await payloadBudget(t, [
-    { name: 'list_pages' },
-    { name: 'get_recent_changes' },
     { name: 'search_wiki', args: { query: 'radix' } },
-    { name: 'get_categories' },
+    { name: 'get_page', args: { path: 'ecosystem/radix-blue-balls' } },
+    // Bulk ingestion is deliberately larger than a read: `maxChars` defaults to
+    // 200k and the envelope around it has to fit too.
+    { name: 'get_full_corpus', maxBytes: 260_000 },
   ]);
 
   // ---- tools ---------------------------------------------------------------
@@ -63,6 +67,10 @@ const MCP = t.endpoint;
   const toolNames = (list.result?.tools ?? []).map(t => t.name);
   const expected = ['search_wiki', 'get_page', 'list_pages', 'get_categories', 'get_recent_changes', 'get_full_corpus', 'get_ideas_board', 'get_challenge', 'login', 'create_page', 'edit_page'];
   check('tools/list', expected.every(n => toolNames.includes(n)), `${toolNames.length} tools: ${toolNames.join(', ')}`);
+
+  const prompts = await rpc('prompts/list');
+  check('prompts/list', (prompts.result?.prompts?.length ?? 0) >= 5,
+    `${prompts.result?.prompts?.length ?? 0} prompts: ${(prompts.result?.prompts ?? []).map(x => x.name).join(', ')}`);
 
   const cats = payload(await call('get_categories')) as { categories?: Array<{ path: string }>; totalPages?: number };
   check('get_categories', (cats?.categories?.length ?? 0) > 0, `${cats?.categories?.length} categories, ${cats?.totalPages} pages`);
@@ -73,6 +81,11 @@ const MCP = t.endpoint;
 
   const page = payload(await call('get_page', { tagPath: first?.tagPath ?? '', slug: first?.slug ?? '' })) as { title?: string; content?: string };
   check('get_page', !!page?.title, `"${page?.title}" ${page?.content?.length ?? 0} chars`);
+
+  // The single-string form every listing already hands back, so an agent that
+  // has just read one does not have to split it to call this.
+  const byPath = payload(await call('get_page', { path: `${first?.tagPath}/${first?.slug}` })) as { title?: string };
+  check('get_page(path)', byPath?.title === page?.title, `path form === tagPath/slug form ("${byPath?.title}")`);
   check('entities decoded', !/&(mdash|ndash|ldquo|rsquo|nbsp);/.test(page?.content ?? ''), 'no literal &mdash;/&nbsp; in extracted text');
 
   const listed = payload(await call('list_pages', { pageSize: 5 })) as { pages?: unknown[]; total?: number };
@@ -84,14 +97,25 @@ const MCP = t.endpoint;
   const ideas = payload(await call('get_ideas_board')) as { columns?: unknown[]; totalCards?: number };
   check('get_ideas_board', Array.isArray(ideas?.columns), `${ideas?.totalCards} cards in ${ideas?.columns?.length} columns`);
 
-  const corpus = payload(await call('get_full_corpus')) as string;
-  check('get_full_corpus', typeof corpus === 'string' && corpus.length > 10_000, `${(corpus?.length ?? 0).toLocaleString()} chars`);
+  const size = payload(await call('get_full_corpus', { sizeOnly: true })) as { characters?: number; totalPages?: number; branches?: unknown[] };
+  check('get_full_corpus(sizeOnly)', (size?.characters ?? 0) > 10_000 && Array.isArray(size?.branches),
+    `${size?.totalPages} pages, ${(size?.characters ?? 0).toLocaleString()} chars, ${size?.branches?.length} branches`);
+
+  const slice = payload(await call('get_full_corpus', { maxChars: 20_000 })) as { document?: string; truncated?: boolean; nextSkip?: number; includedPages?: number };
+  const bounded = (slice?.document?.length ?? 0) <= 21_000 && slice?.truncated === true && typeof slice?.nextSkip === 'number';
+  check('get_full_corpus(bounded)', bounded,
+    `${(slice?.document?.length ?? 0).toLocaleString()} chars for maxChars=20,000, ${slice?.includedPages} pages, nextSkip=${slice?.nextSkip}`);
+
+  const resumed = payload(await call('get_full_corpus', { maxChars: 20_000, skip: slice?.nextSkip ?? 0 })) as { skip?: number; document?: string };
+  check('get_full_corpus(resumes)', resumed?.skip === slice?.nextSkip && resumed?.document !== slice?.document, `skip=${resumed?.skip} returns a different slice`);
 
   const res = await rpc('resources/read', { uri: 'radix-wiki://categories' });
   check('resources/read', !!res.result?.contents?.[0]?.text, `categories resource ${(res.result?.contents?.[0]?.text ?? '').length} chars`);
 
   // ---- teaching errors -----------------------------------------------------
   console.log(`\n=== teaching errors ===`);
+  const nought = payload(await call('search_wiki', { query: 'zzzqqqnotathing' })) as { total?: number; note?: string };
+  check('nought hits teach', nought?.total === 0 && !!nought?.note, nought?.note?.slice(0, 80) ?? 'no note on an empty result');
   const missing = await call('search_wiki', {});
   const missingText = missing.result?.content?.[0]?.text ?? '';
   check('arg validation', !!missing.result?.isError && missingText.includes('"query"') && missingText.includes('Expected schema'), missingText.split('\n')[0] ?? '');
@@ -131,6 +155,14 @@ const MCP = t.endpoint;
     );
     check('.md is real markdown', !/<(Infobox|RecentPages|PageList|AssetPrice|Column)/.test(mdBody) && !mdBody.includes('. $1'), 'no JSX component tags, no $1 artifacts');
   }
+
+  // The plain-GET lane's commonest mistake, and the one an agent that guessed a
+  // URL meets. `Page not found` gave it nothing to retry from.
+  const guessed = await fetch(`${BASE}/contents/tech/zzz-not-a-page.md`);
+  const guessedBody = await guessed.text();
+  check('a wrong .md teaches',
+    guessed.status === 404 && guessedBody.includes('llms-index.txt') && guessedBody.includes('zzz-not-a-page'),
+    `${guessed.status} ${guessedBody.slice(0, 90)}`);
 
   // Every surface an agent recrawls, not only the ones that already passed.
   await conditionalGetChecks(t, [

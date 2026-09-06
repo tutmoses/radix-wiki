@@ -15,12 +15,12 @@ import { NOT_HIDDEN, orderByIds, searchPageIds, summarizePage, SUMMARY_SELECT } 
 import { listEnvelope } from 'wiki-formant/pagination';
 import { MCP_RATE_LIMIT_TEXT } from '@/lib/api';
 import { extractText } from '@/lib/content';
-import { buildFullCorpus, buildLlmsTxt } from '@/lib/llms';
+import { buildLlmsTxt, corpusSections } from '@/lib/llms';
 import { TAG_HIERARCHY, getMetadataKeys, type TagNode } from '@/lib/tags';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 import { RADIX_CONFIG } from '@/lib/radix/config';
 import { trackMcpCall } from '@/lib/track';
-import { McpToolError, type McpServerConfig, type McpResource } from 'wiki-formant/mcp';
+import { McpToolError, type McpServerConfig, type McpPrompt, type McpResource } from 'wiki-formant/mcp';
 import type { Block } from '@/types/blocks';
 
 const INSTRUCTIONS = [
@@ -50,6 +50,41 @@ const RESOURCES: McpResource[] = [
     description: 'Tag hierarchy with descriptions and page counts.',
     mimeType: 'application/json',
     read: async () => JSON.stringify(await get_categories(), null, 2),
+  },
+];
+
+// ========== PROMPTS ==========
+//
+// Tools are what an agent reaches for once it has a question; prompts are what
+// a person clicks when they do not have one yet. Each one names the call order
+// outright rather than restating the question — the model reading it holds the
+// tool list already, and nothing in that list says which tool to try first.
+
+const PROMPTS: McpPrompt[] = [
+  {
+    name: 'what_is_radix',
+    description: 'What is Radix, and what makes it different from other layer-1s?',
+    text: 'Explain Radix DLT and what distinguishes it. Start with get_categories to see how the wiki is organised, then search_wiki for "Cerberus" and "asset-oriented", and read the most relevant pages with get_page. Cite each page URL you use.',
+  },
+  {
+    name: 'orient_me',
+    description: 'Show me what this wiki covers',
+    text: 'Call get_categories, then list_pages on the two or three largest branches, and summarise what the Radix Wiki covers and where the depth is. Do not call get_full_corpus.',
+  },
+  {
+    name: 'whats_changed',
+    description: "What has changed on the wiki recently, and what is the DAO working on?",
+    text: 'Call get_recent_changes for the last 30 days and get_ideas_board, then summarise what has moved on the wiki and what the working groups have in flight. Group by theme, not by date.',
+  },
+  {
+    name: 'ingest_the_wiki',
+    description: 'Ingest the whole wiki into my own index',
+    text: 'I want the whole corpus. Call get_full_corpus with sizeOnly=true first and tell me the size and the per-branch breakdown, then pull it in maxChars slices, following nextSkip until truncated is false. Say what the cacheable /llms-full.txt alternative would cost instead.',
+  },
+  {
+    name: 'write_a_page',
+    description: 'Walk me through contributing a page with my own Radix key',
+    text: 'Walk me through creating a wiki page as an agent: call get_challenge, explain exactly what I have to sign and with which key, then what login returns and how create_page carries it. Do not fabricate a signature — stop at the point where my key is needed.',
   },
 ];
 
@@ -96,17 +131,33 @@ async function search_wiki(args: { query: string; tagPath?: string; page?: numbe
   const results = ids.length
     ? await prisma.page.findMany({ where: { id: { in: ids } }, select: { id: true, ...SUMMARY_SELECT } })
     : [];
-  return listEnvelope(orderByIds(results, ids).map(p => summarizePage(p, query, headlines.get(p.id))), total, page, size);
+  return listEnvelope(
+    orderByIds(results, ids).map(p => summarizePage(p, query, headlines.get(p.id))),
+    total, page, size,
+    `Nothing matches "${query}"${tagPath ? ` under "${tagPath}"` : ''}. Search is keyword, not semantic: try one distinctive word rather than a phrase${tagPath ? ', or drop the tagPath filter' : ''}, or call get_categories to see what the wiki actually covers.`,
+  );
 }
 
-async function get_page(args: { tagPath: string; slug: string }) {
+/**
+ * The pair, from either spelling. Every listing hands back a `url`, so an agent
+ * that has just read one holds the whole path as a single string and had to
+ * split it by hand to call this — the sibling wiki already took either form.
+ */
+function pagePair(args: { path?: string; tagPath?: string; slug?: string }) {
+  if (args.slug) return { tagPath: args.tagPath ?? '', slug: args.slug };
+  const parts = (args.path ?? '').replace(/^\/+|\/+$/g, '').split('/');
+  return { tagPath: parts.slice(0, -1).join('/'), slug: parts[parts.length - 1] ?? '' };
+}
+
+async function get_page(args: { path?: string; tagPath?: string; slug?: string }) {
+  const { tagPath, slug } = pagePair(args);
   const p = await prisma.page.findUnique({
-    where: { tagPath_slug: { tagPath: args.tagPath, slug: args.slug } },
+    where: { tagPath_slug: { tagPath, slug } },
     select: FULL_SELECT,
   });
   if (!p) {
     throw new McpToolError(
-      `No page at tagPath "${args.tagPath}", slug "${args.slug}". Find valid paths with search_wiki, list_pages, or get_categories.`,
+      `No page at tagPath "${tagPath}", slug "${slug}". Find valid paths with search_wiki, list_pages, or get_categories.`,
     );
   }
   return {
@@ -127,7 +178,10 @@ async function list_pages(args: { tagPath?: string; sort?: string; page?: number
     prisma.page.findMany({ where, select: SUMMARY_SELECT, orderBy, skip: (page - 1) * size, take: size }),
     prisma.page.count({ where }),
   ]);
-  return listEnvelope(results.map(page => summarizePage(page)), total, page, size);
+  return listEnvelope(
+    results.map(page => summarizePage(page)), total, page, size,
+    `No pages at tagPath "${tagPath}". Call get_categories for the tag paths that exist.`,
+  );
 }
 
 async function get_categories() {
@@ -153,10 +207,86 @@ async function get_recent_changes(args: { days?: number; limit?: number }) {
   return { days, count: pages.length, pages: pages.map(page => summarizePage(page)) };
 }
 
-// The same walk /llms-full.txt serves. The document header stays this tool's
-// own — its clients parse it, and the URL's carries a licence grant instead.
-const get_full_corpus = () => buildFullCorpus(pageCount =>
-  `# Radix Wiki — Full Content\n\n> ${pageCount} pages, generated ${new Date().toISOString().split('T')[0]}`);
+/**
+ * The same walk /llms-full.txt serves, sliced to something a caller can hold.
+ *
+ * This took no arguments and answered with the whole corpus: 3.3 MB, some
+ * 827,000 tokens, in one tool result, on a server whose own payload budget is
+ * 120 KB. A URL can afford that because a fetch streams to disk under an ETag;
+ * a tool result lands in a context window. The bound, the preflight and the
+ * page-aligned resume are the sibling wiki's contract, field for field, so an
+ * agent that has ingested one already knows how to ingest this one.
+ */
+async function get_full_corpus(args: { sizeOnly?: boolean; tagPath?: string; maxChars?: number; skip?: number }) {
+  const clamp = (v: unknown, def: number, min: number, max: number) =>
+    Number.isFinite(Number(v)) ? Math.min(max, Math.max(min, Math.trunc(Number(v)))) : def;
+  const tagPath = args.tagPath?.trim() || undefined;
+  const maxChars = clamp(args.maxChars, 200_000, 1_000, 1_000_000);
+  const skip = clamp(args.skip, 0, 0, 1_000_000);
+
+  const docs = await corpusSections(tagPath);
+  const characters = docs.reduce((sum, d) => sum + d.chars, 0);
+  const head = {
+    scope: 'Radix Wiki',
+    ...(tagPath ? { tagPath } : {}),
+    totalPages: docs.length,
+    characters,
+    estimatedTokens: Math.round(characters / 4),
+    tokenNote: 'estimatedTokens is characters/4, a rough guide only.',
+  };
+
+  if (args.sizeOnly) {
+    const branches = new Map<string, { pages: number; chars: number }>();
+    for (const d of docs) {
+      const b = branches.get(d.tagPath) ?? { pages: 0, chars: 0 };
+      branches.set(d.tagPath, { pages: b.pages + 1, chars: b.chars + d.chars });
+    }
+    return {
+      ...head,
+      branches: [...branches.entries()].map(([path, b]) => ({ path, ...b })).sort((a, b) => b.chars - a.chars),
+      largestPages: [...docs].sort((a, b) => b.chars - a.chars).slice(0, 5).map(({ path, chars }) => ({ path, chars })),
+      hint: 'Pull with maxChars, or one branch at a time with tagPath. get_page is cheaper for a handful of pages, and /llms-full.txt serves the same corpus cacheably.',
+    };
+  }
+
+  const parts: string[] = [];
+  let used = 0;
+  let index = skip;
+  let clippedPage: string | undefined;
+  for (; index < docs.length; index++) {
+    const d = docs[index]!;
+    if (used + d.chars > maxChars) {
+      // A page bigger than the whole budget would stall paging forever, so
+      // clip it and move the cursor past it.
+      if (!parts.length) {
+        parts.push(`${d.section.slice(0, maxChars)}\n\n[…page clipped at maxChars…]`);
+        clippedPage = d.path;
+        used = maxChars;
+        index++;
+      }
+      break;
+    }
+    parts.push(d.section);
+    used += d.chars;
+  }
+  const truncated = index < docs.length;
+  return {
+    ...head,
+    skip,
+    includedPages: parts.length,
+    includedChars: used,
+    truncated,
+    ...(truncated ? { omittedPages: docs.length - index, nextSkip: index } : {}),
+    ...(clippedPage ? { clippedPage } : {}),
+    document: [
+      `# Radix Wiki — Full Content`,
+      ``,
+      `> ${docs.length} pages${tagPath ? ` under ${tagPath}` : ''}, generated ${new Date().toISOString().split('T')[0]}`,
+      ``,
+      ...parts,
+    ].join('\n\n'),
+  };
+}
 
 async function get_ideas_board(args: { category?: string; workingGroup?: string }) {
   const pages = await prisma.page.findMany({
@@ -314,7 +444,7 @@ export function serverConfig(auth: string | null): McpServerConfig {
     list_pages: args => list_pages(args as Parameters<typeof list_pages>[0]),
     get_categories,
     get_recent_changes: args => get_recent_changes(args as Parameters<typeof get_recent_changes>[0]),
-    get_full_corpus,
+    get_full_corpus: args => get_full_corpus(args as Parameters<typeof get_full_corpus>[0]),
     get_ideas_board: args => get_ideas_board(args as Parameters<typeof get_ideas_board>[0]),
     get_challenge,
     login,
@@ -328,6 +458,7 @@ export function serverConfig(auth: string | null): McpServerConfig {
       name, title, description, inputSchema, annotations, handler: handlers[name]!,
     })),
     resources: RESOURCES,
+    prompts: PROMPTS,
     docsUrl: `${BASE_URL}/AGENTS.md`,
     onCall: (req, body) => trackMcpCall(req, SERVER_INFO.name, body),
   };

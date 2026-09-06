@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
-import { slugify, pageUrl } from '@/lib/utils';
+import { slugify, pageUrl, pagePath, BASE_URL } from '@/lib/utils';
 import { isValidTagPath, isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys } from '@/lib/tags';
 import { requireBalance } from '@/lib/radix/balance';
 import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, cachedJson, CACHE, type RouteContext } from '@/lib/api';
@@ -16,7 +16,7 @@ import { pageToMarkdown } from '@/lib/markdown';
 import type { WikiPageInput, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
 import { deliverWebhooks } from '@/lib/webhooks';
-import { corpusEtag, markdownHeaders, notModified } from 'wiki-formant/http';
+import { corpusEtag, markdownHeaders, notModified, teachingNotFound } from 'wiki-formant/http';
 
 type PathParams = { path?: string[] };
 
@@ -145,7 +145,21 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
 
     if (!page && parsed.type === 'homepage') return cachedJson(null);
     // The one 404 that is worth caching: a missing page is a hot path for crawlers.
-    if (!page) return cachedJson({ error: 'Page not found' }, CACHE.short, 404);
+    // It teaches for the same reason the MCP lane's does — this is the answer an
+    // agent that guessed a `.md` URL gets, and `Page not found` gave it nothing
+    // to retry from.
+    if (!page) {
+      return teachingNotFound(
+        `No page at "${pagePath(parsed.tagPath, parsed.slug)}".`,
+        {
+          index: `${BASE_URL}/llms-index.txt`,
+          search: `${BASE_URL}/api/wiki?q=<term>`,
+          categories: `${BASE_URL}/api/wiki?tagPath=`,
+          note: 'Every page URL takes a ".md" suffix for its markdown twin. Paths are tagPath + slug, e.g. "contents/tech/core-concepts/utxo-model".',
+        },
+        CACHE.short['Cache-Control'],
+      );
+    }
 
     // Agent-friendly text format: the `.md` twin, Accept negotiation, or an
     // explicit ?format=text. Real markdown, no component tags — dynamic

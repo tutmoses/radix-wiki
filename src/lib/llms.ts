@@ -33,23 +33,43 @@ export function corpusRoute(depth: string, build: () => Promise<string>) {
   };
 }
 
+/** One page as a corpus section, with the size the caller has to budget for. */
+export interface CorpusSection {
+  path: string;
+  tagPath: string;
+  chars: number;
+  section: string;
+}
+
 /**
- * The complete text of every page, newest first, under the caller's own
- * preamble — the body of /llms-full.txt and of the MCP `get_full_corpus` tool,
- * which differ only in that preamble.
+ * Every page as one section, newest first.
+ *
+ * Split out of `buildFullCorpus` because /llms-full.txt takes the corpus whole
+ * under an ETag while `get_full_corpus` has to hand a model a slice it can
+ * actually hold — and to slice it, something has to know where the page
+ * boundaries and their sizes are.
  */
-export async function buildFullCorpus(header: (pageCount: number) => string): Promise<string> {
+export async function corpusSections(tagPath?: string): Promise<CorpusSection[]> {
   const pages = await prisma.page.findMany({
     select: { title: true, tagPath: true, slug: true, content: true, updatedAt: true },
-    where: { tagPath: { not: '', ...NOT_HIDDEN } },
+    where: {
+      tagPath: tagPath
+        ? { startsWith: tagPath, not: '', ...NOT_HIDDEN }
+        : { not: '', ...NOT_HIDDEN },
+    },
     orderBy: { updatedAt: 'desc' },
   });
-  const sections = pages.map(p => {
+  return pages.map(p => {
     const body = extractText((p.content as unknown as Block[]) || []);
     const snippet = getContentSnippet(p.content);
-    return `## ${p.title}\n\nURL: ${pageUrl(p.tagPath, p.slug)}\nUpdated: ${p.updatedAt.toISOString().split('T')[0]}\n${snippet ? `Summary: ${cleanSnippet(snippet)}\n` : ''}\n${body}`;
+    const section = `## ${p.title}\n\nURL: ${pageUrl(p.tagPath, p.slug)}\nUpdated: ${p.updatedAt.toISOString().split('T')[0]}\n${snippet ? `Summary: ${cleanSnippet(snippet)}\n` : ''}\n${body}`;
+    return { path: `${p.tagPath}/${p.slug}`, tagPath: p.tagPath, chars: section.length, section };
   });
-  return [header(pages.length), ...sections].join('\n\n');
+}
+
+export async function buildFullCorpus(header: (pageCount: number) => string): Promise<string> {
+  const docs = await corpusSections();
+  return [header(docs.length), ...docs.map(d => d.section)].join('\n\n');
 }
 
 /** Display-name lookup from top-level TAG_HIERARCHY slugs (emoji prefix stripped) */
