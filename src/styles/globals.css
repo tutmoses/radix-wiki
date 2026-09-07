@@ -326,7 +326,7 @@
      list, not the landmark, so the separators (<li aria-hidden>) lay out with
      the crumbs rather than around them. */
   .breadcrumbs { @apply text-small text-text-muted; }
-  .breadcrumbs ol { @apply flex flex-wrap items-center gap-1; }
+  .breadcrumbs ol { @apply flex flex-wrap items-center gap-1 list-none pl-0; }
   .breadcrumbs .separator { @apply text-text-muted select-none; }
   .breadcrumb-link { @apply capitalize text-text-muted no-underline hover:text-accent; }
   .breadcrumb-current { @apply capitalize text-text; }
@@ -557,7 +557,7 @@
 
   /* ===== SEE ALSO ===== */
   .see-also { @apply mt-8 pt-6 border-t border-border-muted flex flex-col gap-3; }
-  .see-also-grid { @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3; }
+  .see-also-grid { @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 list-none pl-0; }
   .see-also-card { @apply flex flex-col gap-1 p-3 bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5; }
 
   /* ===== CATEGORY GRID ===== */
