@@ -2,6 +2,10 @@
 
 import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
+import {
+  proseSql, escapeLikeTerm, HEADLINE_OPTIONS, FTS_RANK_NORMALIZATION,
+} from 'wiki-formant/search';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma/client';
 import { getContentSnippet, getMatchSnippet, pageUrl } from '@/lib/utils';
 import { decodeEntities } from '@/lib/content';
@@ -410,9 +414,19 @@ export async function searchPageIds(
   query: string,
   { tagPath = null, skip = 0, take = 25 }: { tagPath?: string | null; skip?: number; take?: number } = {},
 ): Promise<{ ids: string[]; total: number; headlines: Map<string, string> }> {
-  const term = query.trim().replace(/[\\%_]/g, char => `\\${char}`);
+  const term = escapeLikeTerm(query);
   if (!term) return { ids: [], total: 0, headlines: new Map() };
   const like = `%${term}%`;
+
+  // The prose expression, and the generated column's, both come from
+  // `wiki-formant/search` — it was written out four times in this repo (once in
+  // `scripts/fts-ddl.mjs`, three times below) and each copy asked the next
+  // editor to keep it in step. They did not: caper found that
+  // `jsonb_path_query_array(...)::text` renders a JSON array literal, so the
+  // array's own syntax scored as prose, fixed its two copies, and these four
+  // stayed behind.
+  const prose = Prisma.raw(proseSql('p.content'));
+  const proseUnqualified = Prisma.raw(proseSql());
 
   const rows = await prisma.$queryRaw<{ id: string; rank: number; headline: string | null; total: bigint }[]>`
     WITH q AS (SELECT websearch_to_tsquery('english', ${query.trim()}) AS tsq),
@@ -421,18 +435,16 @@ export async function searchPageIds(
              CASE WHEN p.title ILIKE ${`${term}%`} THEN 0
                   WHEN p.title ILIKE ${like} THEN 1
                   WHEN p.tag_path <> ALL(${HIDDEN_TAG_PATHS}::text[])
-                   AND regexp_replace(translate(jsonb_path_query_array(p.content, '$.**.text')::text, chr(160), ' '),
-                                      '<[^>]*>|&nbsp;', ' ', 'g') ILIKE ${like} THEN 2
+                   AND ${prose} ILIKE ${like} THEN 2
                   ELSE 3 END AS rank,
-             ts_rank_cd(p.search_tsv, q.tsq, 32) AS fts_rank
+             ts_rank_cd(p.search_tsv, q.tsq, ${FTS_RANK_NORMALIZATION}) AS fts_rank
         FROM pages p CROSS JOIN q
        WHERE p.tag_path <> ''
          AND (${tagPath}::text IS NOT NULL OR p.tag_path <> ALL(${HIDDEN_TAG_PATHS}::text[]))
          AND (${tagPath}::text IS NULL OR p.tag_path = ${tagPath})
          AND (p.title ILIKE ${like}
               OR (p.tag_path <> ALL(${HIDDEN_TAG_PATHS}::text[])
-                  AND (regexp_replace(translate(jsonb_path_query_array(p.content, '$.**.text')::text, chr(160), ' '),
-                                      '<[^>]*>|&nbsp;', ' ', 'g') ILIKE ${like}
+                  AND (${prose} ILIKE ${like}
                        OR (q.tsq IS NOT NULL AND p.search_tsv @@ q.tsq))))
     ),
     paged AS (
@@ -445,10 +457,8 @@ export async function searchPageIds(
        LIMIT ${take} OFFSET ${skip}
     )
     SELECT id, rank, total,
-           CASE WHEN rank = 3 THEN ts_headline('english',
-                  regexp_replace(translate(jsonb_path_query_array(content, '$.**.text')::text, chr(160), ' '),
-                                 '<[^>]*>|&nbsp;', ' ', 'g'),
-                  tsq, 'MaxWords=32, MinWords=16, ShortWord=3, MaxFragments=1, StartSel="", StopSel=""')
+           CASE WHEN rank = 3 THEN ts_headline('english', ${proseUnqualified}, tsq,
+                  ${HEADLINE_OPTIONS})
                 END AS headline
       FROM paged
   `;

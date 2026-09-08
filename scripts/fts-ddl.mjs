@@ -30,30 +30,38 @@
 
 import pg from 'pg';
 import { config } from 'dotenv';
+import { searchTsvSql } from 'wiki-formant/search';
 config();
-
-// Must match the prose expression in `searchPageIds` exactly, or the literal
-// tier and the full-text tier will disagree about what counts as prose.
-const PROSE = `regexp_replace(translate(jsonb_path_query_array(content,'$.**.text')::text, chr(160),' '),'<[^>]*>|&nbsp;',' ','g')`;
 
 const url = process.env.DATABASE_URL.replace(':6543', ':5432').replace(/\?.*$/, '');
 const c = new pg.Client({ connectionString: url, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 15000 });
 await c.connect();
 const q = (s) => c.query(s).then(r => r.rows);
 
-const exists = await q(`select 1 from information_schema.columns where table_name='pages' and column_name='search_tsv'`);
-if (exists.length) {
-  console.log('search_tsv already present — skipping ALTER');
-} else {
-  // Title at weight A, prose at weight B, so a title hit outranks a body hit
-  // inside the full-text tier as well as across tiers.
-  await q(`ALTER TABLE pages ADD COLUMN search_tsv tsvector
-    GENERATED ALWAYS AS (
-      setweight(to_tsvector('english', coalesce(title,'')), 'A') ||
-      setweight(to_tsvector('english', coalesce(${PROSE}, '')), 'B')
+// Title at weight A, prose at weight B, so a title hit outranks a body hit
+// inside the full-text tier as well as across tiers. The expression comes from
+// the package because `searchPageIds` reads it from there too, and the two must
+// agree exactly or the literal tier and the full-text tier disagree about what
+// counts as prose.
+const GENERATED = searchTsvSql();
+
+// This used to skip whenever the column existed, which made the script
+// idempotent about the column and blind to its EXPRESSION — a changed prose
+// expression re-ran clean and changed nothing, leaving the stale one in the
+// database with no signal. That is exactly the state this repo was in when the
+// JSON-punctuation fix landed in the package. Rebuild instead: the column is
+// derived data, regenerated from `content`, so dropping it loses nothing, and
+// DROP+ADD in one transaction means no reader sees the table without it.
+// Postgres normalises the stored expression (adds casts, reformats), so
+// comparing it to this string can only produce false rebuilds — an
+// unconditional rebuild on a hand-run script is cheaper than a lying compare.
+await q('BEGIN');
+await q(`ALTER TABLE pages DROP COLUMN IF EXISTS search_tsv`);
+await q(`ALTER TABLE pages ADD COLUMN search_tsv tsvector
+    GENERATED ALWAYS AS (${GENERATED}
     ) STORED`);
-  console.log('added generated column search_tsv');
-}
+await q('COMMIT');
+console.log('rebuilt generated column search_tsv');
 await q(`CREATE INDEX IF NOT EXISTS pages_search_tsv_idx ON pages USING GIN (search_tsv)`);
 console.log('GIN index present');
 
