@@ -131,12 +131,6 @@ export const TAG_HIERARCHY: TagNode[] = [
       { key: 'open positions', label: 'Open Positions:', type: 'text' },
     ],
     xrd: { create: 20_000 } },
-  { name: '👥 Community', slug: 'community', sort: 'recent',
-    description: 'Profiles of the people behind Radix — founders, core contributors, and active community members shaping the ecosystem.',
-    metadataKeys: [
-      { key: 'X', label: 'X:', type: 'url' },
-    ],
-  },
   { name: '✍️ Blog', slug: 'blog', sort: 'newest',
     description: 'Long-form essays and analysis from the RADIX Wiki community — protocol commentary, ecosystem deep-dives, and editorial pieces.',
     metadataKeys: [{ key: 'date', label: 'Published:', type: 'date' }], xrd: { create: 50_000 } },

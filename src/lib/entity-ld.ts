@@ -139,14 +139,6 @@ export function aboutEntity(
     };
   }
 
-  // Contributor and working-group profiles.
-  if (root === 'community') {
-    const x = md.X ?? md.x;
-    const profile = x ? absoluteHttpUrl(x) : null;
-    if (!profile) return null;
-    return { '@type': 'Person', name: title, sameAs: [profile] };
-  }
-
   // Conferences, hackathons, and milestones.
   if (root === 'contents' && child === 'history') {
     const date = isoDate(md.date);

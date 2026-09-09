@@ -128,7 +128,6 @@ const CATEGORY_PALETTES: Record<string, [string, string, string]> = {
   'contents/tech':    ['#1e1b4b', '#4f46e5', '#818cf8'], // indigo
   'developers':       ['#052e16', '#059669', '#6ee7b7'], // emerald
   'ecosystem':        ['#451a03', '#d97706', '#fcd34d'], // amber
-  'community':        ['#500724', '#db2777', '#f9a8d4'], // pink
   'blog':             ['#450a0a', '#dc2626', '#fca5a5'], // red
   'contents/history': ['#2e1065', '#7c3aed', '#c4b5fd'], // purple
   'ideas':            ['#083344', '#0891b2', '#67e8f9'], // cyan
