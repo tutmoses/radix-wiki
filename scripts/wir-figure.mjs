@@ -69,7 +69,7 @@ function biggestStakeMove(snap, prior, gapDays) {
 
 function statCard(x, y, w, label, value, wow, sub) {
   let s = card(x, y, w, 78);
-  s += t(x + 14, y + 23, label, { size: 10, w: 700, fill: C.muted, ls: '0.1em' });
+  s += t(x + 14, y + 23, label, { size: 11, w: 700, fill: C.muted, ls: '0.1em' });
   s += t(x + 14, y + 49, value, { size: 19, w: 700, fill: C.text, font: MONO });
   // A stable metric reads as stable by silence; only a real change earns a chip.
   if (wow && wow !== 'no change') s += t(x + w - 14, y + 49, wow, { size: 11.5, w: 700, fill: C.getaway, font: MONO, anchor: 'end' });
@@ -79,14 +79,16 @@ function statCard(x, y, w, label, value, wow, sub) {
 
 /** Build the figure for one snapshot (with an optional comparable prior + series). */
 function wirFigure(snap, prior, series, dev, devPrior) {
-  const W = 920, L = 48, R = W - 48, w = R - L;
+  // 760 is the width figureBlock displays at; a 920 canvas shrinks every label by a fifth.
+  const W = 760, L = 48, R = W - 48, w = R - L;
   const gapDays = prior ? Math.round((new Date(snap.week) - new Date(prior.week)) / 86400000) : 0;
   const d = (now, was, o = {}) => delta(now, was, { ...o, gapDays });
   const oci = snap.ociswap || {};
   let b = '';
 
   // ---- stat cards
-  const gap = 14, cw = (w - 3 * gap) / 4, y0 = 134;
+  // Two rows of two: four across at 760 clips the longer labels.
+  const gap = 14, rowGap = 12, cw = (w - gap) / 2, y0 = 134, y1 = y0 + 78 + rowGap;
   const supplyShare = snap.xrdSupply ? `${((snap.totalStake / snap.xrdSupply) * 100).toFixed(1)}% of all XRD` : '';
   b += statCard(L, y0, cw, 'STAKED XRD', compact(snap.totalStake),
     d(snap.totalStake, prior?.totalStake), supplyShare);
@@ -98,27 +100,27 @@ function wirFigure(snap, prior, series, dev, devPrior) {
       netMove ? `of ${signed(netMove)} network-wide` : 'by a single validator')
     : statCard(L + cw + gap, y0, cw, 'REGISTERED VALIDATORS', `${snap.registered}`, '',
       `${snap.active} of them in the active set`);
-  b += statCard(L + 2 * (cw + gap), y0, cw, 'A THIRD OF STAKE', `${snap.nakamoto} validators`,
+  b += statCard(L, y1, cw, 'A THIRD OF STAKE', `${snap.nakamoto} validators`,
     d(snap.nakamoto, prior?.nakamoto, { percent: false }), `top 10 hold ${snap.top10Share}%`);
-  b += statCard(L + 3 * (cw + gap), y0, cw, 'OCISWAP 7D VOLUME', `${compact(oci.volume7dXrd)} XRD`,
+  b += statCard(L + cw + gap, y1, cw, 'OCISWAP 7D VOLUME', `${compact(oci.volume7dXrd)} XRD`,
     d(oci.volume7dXrd, prior?.ociswap?.volume7dXrd), `${fmt(oci.swaps7d)} swaps`);
 
-  // ---- two panels: stake concentration | fees in motion
-  const yB = y0 + 78 + 38;
-  const lw = 470, rx = L + lw + 30, rw = w - lw - 30;
+  // ---- two stacked sections: stake concentration, then fees in motion.
+  // Side by side at 760 leaves the fee cards narrower than their own text, so each
+  // section takes the full width and the figure grows downward instead.
+  const yB = y1 + 78 + 38;
+  const feeWrap = 86;
 
   const feeText = `${fmt(snap.feeDivergentCount)} validators charge a fee different from the one stored in their substate ${EN} ${fmt(snap.feeDivergentActiveCount)} of them active, with ${compact(snap.feeDivergentActiveStake)} XRD staked.`;
   const pend = (snap.pendingFeeChanges || []).slice(0, 3);
-  const feeLines = wrap(feeText, 44).length;
-  const rightH = 24 + feeLines * 18 + 10 + (pend.length ? pend.length * 46 : 24);
+  const feeLines = wrap(feeText, feeWrap).length;
 
   b += sectionLabel(L, yB, 'STAKE CONCENTRATION');
   const bars = (snap.top25 || []).slice(0, 12).map((v) => v[1]);
   let leftH = 0;
   if (bars.length) {
-    // Balance the columns: the chart absorbs the height the fee cards occupy.
-    const chH = Math.min(160, Math.max(104, rightH - 64));
-    const chY = yB + 18, bw = (lw - 11 * 6) / 12, max = Math.max(...bars);
+    const chH = 150;
+    const chY = yB + 18, bw = (w - 11 * 6) / 12, max = Math.max(...bars);
     bars.forEach((stake, i) => {
       const h = Math.max(6, (stake / max) * chH);
       const x = L + i * (bw + 6), y = chY + chH - h;
@@ -129,25 +131,26 @@ function wirFigure(snap, prior, series, dev, devPrior) {
     b += t(L, chY + chH + 40, `Largest ${compact(bars[0])} XRD ${EN} twelfth ${compact(bars[11] ?? bars[bars.length - 1])} XRD.`, { size: 11, fill: C.muted });
     leftH = 18 + chH + 46;
   } else {
-    b += paras(L, yB + 26, `${snap.nakamoto} validators hold a third of all staked XRD; the top 10 hold ${snap.top10Share}%. Per-validator stakes were not kept for this week.`, 58, { size: 12.5, lh: 19 });
+    b += paras(L, yB + 26, `${snap.nakamoto} validators hold a third of all staked XRD; the top 10 hold ${snap.top10Share}%. Per-validator stakes were not kept for this week.`, 74, { size: 12.5, lh: 19 });
     leftH = 26 + 3 * 19;
   }
 
-  b += sectionLabel(rx, yB, 'FEES IN MOTION');
-  b += paras(rx, yB + 24, feeText, 44, { size: 12, lh: 18 });
-  let py = yB + 24 + feeLines * 18 + 10;
+  const yF = yB + leftH + 24;
+  b += sectionLabel(L, yF, 'FEES IN MOTION');
+  b += paras(L, yF + 24, feeText, feeWrap, { size: 12, lh: 18 });
+  let py = yF + 24 + feeLines * 18 + 10;
   if (pend.length) {
     pend.forEach((p) => {
-      b += card(rx, py, rw, 40);
-      b += t(rx + 12, py + 17, p.name, { size: 11.5, w: 700, fill: C.text });
-      b += t(rx + 12, py + 32, `${pct(p.currentFee)} → ${pct(p.fee)} at epoch ${fmt(p.epoch)} · ${compact(p.stake)} XRD staked`, { size: 10.5, fill: C.jupiter, font: MONO });
+      b += card(L, py, w, 40);
+      b += t(L + 12, py + 17, p.name, { size: 11.5, w: 700, fill: C.text });
+      b += t(L + 12, py + 32, `${pct(p.currentFee)} → ${pct(p.fee)} at epoch ${fmt(p.epoch)} · ${compact(p.stake)} XRD staked`, { size: 11, fill: C.jupiter, font: MONO });
       py += 46;
     });
   } else {
-    b += t(rx, py + 8, 'No fee changes queued on the ledger.', { size: 11.5, fill: C.muted });
+    b += t(L, py + 8, 'No fee changes queued on the ledger.', { size: 11.5, fill: C.muted });
     py += 24;
   }
-  const yBEnd = Math.max(yB + leftH, py);
+  const yBEnd = py;
 
   // ---- series strip, only once there are two comparable readings
   let yC = yBEnd + 12;
@@ -173,7 +176,7 @@ function wirFigure(snap, prior, series, dev, devPrior) {
       b += t(x0 + clean.length * (bw + 5) + 8, ry + 15, compact(clean[clean.length - 1]), { size: 11, w: 700, fill: stroke, font: MONO });
       ry += 34;
     }
-    b += t(L + 170, ry + 2, `${series[0].week} → ${series[series.length - 1].week}, one reading per week`, { size: 9.5, fill: C.muted });
+    b += t(L + 170, ry + 2, `${series[0].week} → ${series[series.length - 1].week}, one reading per week`, { size: 11, fill: C.muted });
     yC = ry + 12;
   }
 
@@ -182,7 +185,7 @@ function wirFigure(snap, prior, series, dev, devPrior) {
     yC += 26;
     b += sectionLabel(L, yC, 'THE WEEK IN THE REPOSITORIES');
     const dy = yC + 18;
-    const dcw = (w - 3 * gap) / 4;
+    const dcw = (w - gap) / 2, dy2 = dy + 78 + rowGap;
     const dd = (now, was) => (devPrior && was ? d(now, was) : '');
     b += statCard(L, dy, dcw, 'COMMITS', fmt(dev.commits), dd(dev.commits, devPrior?.commits),
       `${dev.contributors} contributor${dev.contributors === 1 ? '' : 's'}`);
@@ -193,21 +196,21 @@ function wirFigure(snap, prior, series, dev, devPrior) {
     const busiest = Object.values(dev.repos || {}).length
       ? [...dev.repos].filter((r) => !r.error).sort((a2, b2) => b2.commits - a2.commits)[0]
       : null;
-    b += statCard(L + 2 * (dcw + gap), dy, dcw, 'BUSIEST REPOSITORY',
+    b += statCard(L, dy2, dcw, 'BUSIEST REPOSITORY',
       busiest ? busiest.label : '\u2014', '', busiest ? `${fmt(busiest.commits)} commits` : '');
     const activeDays = Math.max(0, ...(dev.repos || []).filter((r) => !r.error).map((r) => r.activeDays || 0));
-    b += statCard(L + 3 * (dcw + gap), dy, dcw, 'DAYS WITH A COMMIT', `${activeDays} of 7`, '',
+    b += statCard(L + dcw + gap, dy2, dcw, 'DAYS WITH A COMMIT', `${activeDays} of 7`, '',
       `${(dev.repos || []).filter((r) => !r.error && r.commits > 0).length} active repos`);
-    yC = dy + 78;
+    yC = dy2 + 78;
   }
 
   const H = yC + 62;
-  // The footer is one line between the left margin and the domain mark; past about
-  // 118 characters it runs under the mark. Keep both variants inside that.
+  // The footer is one line between the left margin and the domain mark; on a 760
+  // canvas it runs under the mark past about 95 characters. Keep both variants inside that.
   const note = dev
-    ? `Ledger at epoch ${fmt(snap.epoch)}, state version ${fmt(snap.stateVersion)}. Repositories from GitHub, ${dev.since} to ${dev.until}.`
+    ? `Epoch ${fmt(snap.epoch)}, state version ${fmt(snap.stateVersion)}. Repositories ${dev.since} to ${dev.until}.`
     : `Read live from the Radix Gateway at epoch ${fmt(snap.epoch)}, state version ${fmt(snap.stateVersion)}.`;
-  if (note.length > 118) console.warn(`  warn: footer note is ${note.length} chars and will collide with the domain mark`);
+  if (note.length > 95) console.warn(`  warn: footer note is ${note.length} chars and will collide with the domain mark`);
   return { W, H, svg: frame(W, H, 'The Week on the Ledger', `WEEK ENDING ${snap.week}`, note, b) };
 }
 
