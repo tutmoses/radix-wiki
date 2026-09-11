@@ -9,7 +9,7 @@ import { isValidTagPath, isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAu
 import { requireBalance } from '@/lib/radix/balance';
 import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, type BlockChange } from '@/lib/versioning';
-import { parsePath, orderByIds, searchPageIds, summarizePage, resolveBlockData, loadPageHistory, AUTHOR_SELECT, PAGE_INCLUDE, PAGE_LIST_SELECT, SUMMARY_SELECT } from '@/lib/wiki';
+import { parsePath, orderByIds, searchPageIds, summarizePage, resolveBlockData, loadPageHistory, AUTHOR_SELECT, NOT_HIDDEN, PAGE_INCLUDE, PAGE_LIST_SELECT, SUMMARY_SELECT } from '@/lib/wiki';
 import { validateBlocks } from '@/lib/block-utils';
 import { blocksToMdx } from '@/lib/mdx';
 import { pageToMarkdown } from '@/lib/markdown';
@@ -106,8 +106,12 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       const tagPath = searchParams.get('tagPath');
       const sort = searchParams.get('sort') || 'updatedAt';
 
-      const where: Prisma.PageWhereInput = {};
-      if (tagPath) where.tagPath = tagPath;
+      // The same rule getRecentPages applies server-side: a listing that names a
+      // path gets that path, hidden or not; one that names none is asking what
+      // changed on the wiki, and the answer to that is article space. Without
+      // it the recentPages widget re-fetched here on hydration and put the
+      // maintenance log back on top of the server-rendered list.
+      const where: Prisma.PageWhereInput = { tagPath: tagPath ?? NOT_HIDDEN };
 
       if (q) {
         // The GET-only twin of MCP search_wiki: identical ranking (titles ahead
