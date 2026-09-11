@@ -92,6 +92,11 @@ export function frame(W, H, title, tag, note, body) {
   g += t(104, 50, BRAND.eyebrow, { size: 11, w: 700, fill: C.getaway, ls: '0.16em' });
   g += t(104, 80, title, { size: 30, w: 700, fill: C.text, ls: '-0.01em' });
   if (tag) g += t(W - 48, 80, tag, { size: 12, w: 700, fill: C.muted, anchor: 'end', ls: '0.06em', font: MONO });
+  // Title and tag share one line and neither wraps, so on a 760 canvas a long pair
+  // silently overlaps. Approximate both and say so rather than shipping the collision.
+  if (tag && 104 + title.length * 16.2 > W - 48 - tag.length * 7.92 - 24) {
+    console.warn(`  warn: "${title}" and "${tag}" overlap in the header at W=${W}; shorten one`);
+  }
   g += `<line x1="48" y1="104" x2="${W - 48}" y2="104" stroke="${C.hair}" stroke-width="1"/>`;
   g += body;
   const fy = H - 40;
