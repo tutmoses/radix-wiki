@@ -324,11 +324,17 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   // page near the staleness boundary could disagree between SSR and hydration.
   const nowMs = Date.now();
   const { path } = await params;
-  const query = await searchParams;
   const str = (v: string | string[] | undefined) => (typeof v === 'string' ? v : undefined);
-  const sortParam = str(query.sort);
-  const q = str(query.q);
   const parsed = parsePath(path);
+
+  // `searchParams` is deliberately NOT awaited here. It is a dynamic API, and
+  // touching it anywhere in this render marks the whole route dynamic — which
+  // it was: every article re-rendered from the database on every request while
+  // `generateStaticParams` prebuilt a manifest nothing ever read and
+  // `revalidate` governed a cache nothing ever wrote. Two branches out of a
+  // dozen actually read a query string, so each awaits it for itself and the
+  // rest prerender. Any new `await searchParams` above a branch undoes this for
+  // the whole wiki; check `next build` still reports this route as SSG.
 
   if (parsed.type === 'invalid') notFound();
 
@@ -336,7 +342,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   // instead of rendering a duplicate article at a noindex URL.
   if (parsed.type === 'mdx') redirect(parsed.slug ? `/api/wiki/${parsed.tagPath}/${parsed.slug}/mdx` : '/api/wiki/mdx');
 
-  if (parsed.type === 'search') return <SearchView query={q ?? ''} />;
+  if (parsed.type === 'search') return <SearchView query={str((await searchParams).q) ?? ''} />;
   if (parsed.type === 'maintenance') return <MaintenanceView queues={await getMaintenanceQueues()} />;
   if (parsed.type === 'leaderboard') return <LeaderboardView />;
   if (parsed.type === 'welcome') return <WelcomeView />;
@@ -371,6 +377,12 @@ export default async function DynamicPage({ params, searchParams }: Props) {
       const hub = await getCategoryHub(parsed.tagPath);
       if (hub) return <PageView page={hub} tagPath={parsed.tagPath} slug="" isEditMode nowMs={nowMs} />;
     }
+
+    // The facet bar, the sort control and the A-Z index all live on this
+    // branch, so this is where the query string is read. See the note at the
+    // top of the render.
+    const query = await searchParams;
+    const sortParam = str(query.sort);
 
     if (isIdeasPath(parsed.tagPath)) {
       const defaultSort = getSortOrder(tagSegments);
