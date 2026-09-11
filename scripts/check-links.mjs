@@ -225,7 +225,10 @@ await withClient(async (client) => {
         body: '{}',
         signal: AbortSignal.timeout(15000),
       });
-      if (res.status < 400) { r.ok = true; r.postStatus = res.status; }
+      // Anything but a 404/410 proves the endpoint is routed: /state/entity/details
+      // rejects an empty body with a 400 and /state/validators/list answers 500 while
+      // the Gateway is stale behind the halt, and both were still reported dead.
+      if (res.status !== 404 && res.status !== 410) { r.ok = true; r.postStatus = res.status; }
     } catch { /* leave it flagged */ }
   });
   const brokenExternal = results
