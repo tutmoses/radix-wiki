@@ -16,6 +16,7 @@ import { pageToMarkdown } from '@/lib/markdown';
 import type { WikiPageInput, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
 import { deliverWebhooks } from '@/lib/webhooks';
+import { trackSearch } from '@/lib/track';
 import { corpusEtag, markdownHeaders, notModified, teachingNotFound } from 'wiki-formant/http';
 
 type PathParams = { path?: string[] };
@@ -113,6 +114,11 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
         // of body prose) and row-identical results via the same summarizer.
         const { ids, total, headlines } = await searchPageIds(q, { tagPath, skip: (page - 1) * pageSize, take: pageSize });
         const matches = ids.length ? await prisma.page.findMany({ where: { id: { in: ids } }, select: { id: true, ...SUMMARY_SELECT } }) : [];
+        // The only place a reader's own question is countable. `cachedJson`
+        // below puts a 30s edge cache in front of this, so a repeated query
+        // inside that window fires once — which is the debounce this wants
+        // anyway, not a gap in the measurement.
+        trackSearch(request, q, total);
         return cachedJson(paginatedResponse(orderByIds(matches, ids).map(p => summarizePage(p, q, headlines.get(p.id))), total, page, pageSize));
       }
 
