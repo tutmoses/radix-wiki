@@ -211,6 +211,23 @@ await withClient(async (client) => {
 
   const externalUrls = [...externalToPages.keys()];
   const results = await mapLimit(externalUrls, CONCURRENCY, probeExternal);
+  // A 405 is the one status that proves the resource exists: the server routed the
+  // request and rejected the method. The checker HEADs and GETs, so every POST-only
+  // API endpoint the wiki cites answers 405 and got reported dead — the Gateway's
+  // /status/gateway-status has been re-flagged on every developers rotation since
+  // run 366 while the sweep itself POSTs it for readings. Re-probe those with POST.
+  const methodRejected = results.filter((r) => !r.ok && r.status === 405);
+  await mapLimit(methodRejected, CONCURRENCY, async (r) => {
+    try {
+      const res = await fetch(r.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+        signal: AbortSignal.timeout(15000),
+      });
+      if (res.status < 400) { r.ok = true; r.postStatus = res.status; }
+    } catch { /* leave it flagged */ }
+  });
   const brokenExternal = results
     .filter((r) => !r.ok)
     .map((r) => ({ ...r, pages: externalToPages.get(r.url) }));
