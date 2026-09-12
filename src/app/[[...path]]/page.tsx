@@ -37,6 +37,8 @@ import { articleType, aboutEntity, articleLearningProps } from '@/lib/entity-ld'
 import { getTokenDetail } from '@/lib/radix/tokens';
 import type { Block } from '@/types/blocks';
 import type { WikiPage } from '@/types';
+import { BLOCK_SHAPE, leafBlocks } from '@/lib/block-shape';
+import { someBlock } from 'wiki-formant/blocks';
 
 export async function generateStaticParams() {
   const pages = await prisma.page.findMany({ select: { tagPath: true, slug: true } });
@@ -200,13 +202,10 @@ async function withProcessedContent<T extends { content: unknown; metadata?: unk
 
 function countWords(blocks: unknown): number {
   if (!Array.isArray(blocks)) return 0;
-  let text = '';
-  for (const b of blocks) {
-    if (b?.type === 'content' && typeof b.text === 'string') text += ' ' + b.text.replace(/<[^>]+>/g, '');
-    if (b?.type === 'infobox' && Array.isArray(b.blocks)) text += ' ' + b.blocks.filter((c: any) => c?.type === 'content').map((c: any) => (c.text || '').replace(/<[^>]+>/g, '')).join(' ');
-    if (b?.type === 'columns' && Array.isArray(b.columns)) for (const col of b.columns) if (Array.isArray(col?.blocks)) text += ' ' + col.blocks.filter((c: any) => c?.type === 'content').map((c: any) => (c.text || '').replace(/<[^>]+>/g, '')).join(' ');
-  }
-  return text.trim().split(/\s+/).filter(Boolean).length;
+  const text = leafBlocks(blocks as Block[])
+    .map(b => (b.type === 'content' ? (b.text || '').replace(/<[^>]+>/g, '') : ''))
+    .join(' ');
+  return text.split(/\s+/).filter(Boolean).length;
 }
 
 function JsonLd({ data }: { data: Record<string, unknown> | null }) {
@@ -222,27 +221,20 @@ function JsonLd({ data }: { data: Record<string, unknown> | null }) {
 function citationsFrom(content: unknown): Record<string, unknown>[] {
   const out: Record<string, unknown>[] = [];
 
-  // References blocks are usually top-level, but infobox/columns can nest them,
-  // so walk containers the same way processBlocks does.
-  const walk = (blocks: unknown) => {
-    if (!Array.isArray(blocks)) return;
-    for (const block of blocks) {
-      if (block?.type === 'infobox') { walk(block.blocks); continue; }
-      if (block?.type === 'columns') { (block.columns ?? []).forEach((c: { blocks?: unknown }) => walk(c?.blocks)); continue; }
-      if (block?.type !== 'references' || !Array.isArray(block.items)) continue;
-      for (const ref of block.items) {
-        const text = typeof ref?.text === 'string' ? ref.text.replace(/<[^>]+>/g, '').trim() : '';
-        if (!text) continue;
-        out.push({
-          '@type': 'CreativeWork',
-          name: text.slice(0, 250),
-          ...(typeof ref.url === 'string' && ref.url && { url: ref.url }),
-        });
-      }
+  // References blocks are usually top-level, but infobox/columns can nest them.
+  if (!Array.isArray(content)) return out;
+  for (const block of leafBlocks(content as Block[])) {
+    if (block.type !== 'references') continue;
+    for (const ref of block.items ?? []) {
+      const text = typeof ref?.text === 'string' ? ref.text.replace(/<[^>]+>/g, '').trim() : '';
+      if (!text) continue;
+      out.push({
+        '@type': 'CreativeWork',
+        name: text.slice(0, 250),
+        ...(typeof ref.url === 'string' && ref.url && { url: ref.url }),
+      });
     }
-  };
-
-  walk(content);
+  }
   return out.slice(0, 50);
 }
 
@@ -309,12 +301,11 @@ function collectionLd(name: string, url: string, items: ({ title: string; tagPat
  */
 function linksTo(content: unknown, href: string): boolean {
   const needle = `href="${href}"`;
-  const walk = (blocks: unknown): boolean => Array.isArray(blocks) && blocks.some((b: any) => {
-    if (b?.type === 'infobox') return walk(b.blocks);
-    if (b?.type === 'columns') return (b.columns ?? []).some((c: { blocks?: unknown }) => walk(c?.blocks));
-    return typeof b?.text === 'string' && b.text.includes(needle);
-  });
-  return walk(content);
+  return Array.isArray(content) && someBlock(
+    content as Block[],
+    b => 'text' in b && typeof b.text === 'string' && b.text.includes(needle),
+    BLOCK_SHAPE.containers,
+  );
 }
 
 const VALID_SORTS = new Set<string>(['title', 'newest', 'oldest', 'recent']);

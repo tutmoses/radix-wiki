@@ -1,9 +1,10 @@
 // src/lib/block-utils.ts - Shared block constants and utilities
 
-import type { Block, BlockType, AtomicBlock } from '@/types/blocks';
+import type { Block, BlockType } from '@/types/blocks';
 import { createBlockValidator, duplicateBlockIds, validateLinkGroups, validateReferenceItems } from 'wiki-formant/validation';
 import { Clock, FileText, Columns, TrendingUp, Pencil, Info, Rss, Code2, BarChart3, MessageSquareQuote, LayoutGrid, QrCode, ListOrdered, AlertTriangle, type LucideIcon } from 'lucide-react';
 import { someBlock } from 'wiki-formant/blocks';
+import { BLOCK_SHAPE } from '@/lib/block-shape';
 
 export const CODE_LANGS = ['javascript', 'typescript', 'css', 'json', 'bash', 'python', 'rust', 'sql', 'html', 'xml', 'jsx', 'tsx', 'markdown', 'yaml', 'toml'] as const;
 export const DEFAULT_LANG = 'rust';
@@ -118,20 +119,3 @@ export function hasCodeBlocksInContent(content: Block[]): boolean {
     BLOCK_SHAPE.containers,
   );
 }
-
-/**
- * This wiki's two container types, for the shared tree walk. Written once here
- * rather than at each call site, which is where the three-branch version used to
- * be re-derived per pass.
- */
-export const BLOCK_SHAPE = {
-  containers: (block: Block) =>
-    block.type === 'infobox' ? [block.blocks as Block[]]
-    : block.type === 'columns' ? block.columns.map(col => col.blocks as Block[])
-    : null,
-  rebuild: (block: Block, groups: Block[][]): Block =>
-    block.type === 'infobox' ? { ...block, blocks: groups[0] as AtomicBlock[] }
-    : block.type === 'columns'
-      ? { ...block, columns: block.columns.map((col, i) => ({ ...col, blocks: groups[i] as AtomicBlock[] })) }
-      : block,
-};

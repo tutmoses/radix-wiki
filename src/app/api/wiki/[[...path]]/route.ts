@@ -10,7 +10,7 @@ import { isValidTagPath, isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAu
 import { requireBalance } from '@/lib/radix/balance';
 import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, type BlockChange } from '@/lib/versioning';
-import { parsePath, orderByIds, searchPageIds, summarizePage, resolveBlockData, loadPageHistory, AUTHOR_SELECT, NOT_HIDDEN, PAGE_INCLUDE, PAGE_LIST_SELECT, SUMMARY_SELECT } from '@/lib/wiki';
+import { parsePath, orderByIds, searchPages, resolveBlockData, loadPageHistory, AUTHOR_SELECT, NOT_HIDDEN, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
 import { validateBlocks } from '@/lib/block-utils';
 import { blocksToMdx } from '@/lib/mdx';
 import { pageToMarkdown } from '@/lib/markdown';
@@ -116,15 +116,14 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
 
       if (q) {
         // The GET-only twin of MCP search_wiki: identical ranking (titles ahead
-        // of body prose) and row-identical results via the same summarizer.
-        const { ids, total, headlines } = await searchPageIds(q, { tagPath, skip: (page - 1) * pageSize, take: pageSize });
-        const matches = ids.length ? await prisma.page.findMany({ where: { id: { in: ids } }, select: { id: true, ...SUMMARY_SELECT } }) : [];
+        // of body prose) and row-identical results, because both call `searchPages`.
+        const { items, total } = await searchPages(q, { tagPath, page, size: pageSize });
         // The only place a reader's own question is countable. `cachedJson`
         // below puts a 30s edge cache in front of this, so a repeated query
         // inside that window fires once — which is the debounce this wants
         // anyway, not a gap in the measurement.
         trackSearch(request, q, total);
-        return cachedJson(paginatedResponse(orderByIds(matches, ids).map(p => summarizePage(p, q, headlines.get(p.id))), total, page, pageSize));
+        return cachedJson(paginatedResponse(items, total, page, pageSize));
       }
 
       const orderBy = sort === 'title' ? { title: 'asc' as const } : { updatedAt: 'desc' as const };

@@ -30,6 +30,7 @@ import { pageUrl } from '@/lib/utils';
 import { SITE_URL } from '@/lib/site';
 import type { Block, AtomicBlock } from '@/types/blocks';
 import { ccBy40 } from 'wiki-formant/license';
+import { BLOCK_SHAPE } from '@/lib/block-shape';
 
 // The grant, its name and the credit line, from `wiki-formant/license` — the
 // same four fields the other two wikis had each written out. Only the site's own
@@ -101,8 +102,7 @@ export function atomicToMarkdown(block: AtomicBlock): string {
 export function blocksToMarkdown(blocks: Block[]): string {
   return renderBlockTree<Block>(blocks, {
     atomic: b => (b.type === 'infobox' || b.type === 'columns' ? '' : atomicToMarkdown(b)),
-    containers: b =>
-      b.type === 'infobox' ? [b.blocks] : b.type === 'columns' ? b.columns.map(c => c.blocks) : null,
+    containers: BLOCK_SHAPE.containers,
   });
 }
 

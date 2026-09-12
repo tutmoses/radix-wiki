@@ -14,6 +14,7 @@ export { stripHtml };
 export { BANNER_LABELS } from 'wiki-formant/text';
 
 import { BANNER_LABELS } from 'wiki-formant/text';
+import { BLOCK_SHAPE } from '@/lib/block-shape';
 
 function atomicText(block: Block | AtomicBlock): string {
   switch (block.type) {
@@ -27,12 +28,9 @@ function atomicText(block: Block | AtomicBlock): string {
 
 /** The page as prose. Containers flatten in document order. */
 export function extractText(blocks: Block[]): string {
-  return renderBlockTree<Block | AtomicBlock>(blocks, {
+  return renderBlockTree<Block>(blocks, {
     atomic: atomicText,
-    containers: b =>
-      b.type === 'infobox' ? [b.blocks]
-      : b.type === 'columns' ? b.columns.map(col => col.blocks)
-      : null,
+    containers: BLOCK_SHAPE.containers,
     // Prose, not typesetting: a single newline inside a container.
     groupSeparator: '\n',
   });

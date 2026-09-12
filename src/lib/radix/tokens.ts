@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
 import { entityDetails, num, readMetadata } from './gateway';
+import { DASHBOARD_URL, OCISWAP_API } from './config';
 
 export interface TokenSummary {
   address: string;
@@ -30,7 +31,7 @@ async function ociswap<T>(path: string, label: string): Promise<T | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10_000);
   try {
-    const res = await fetch(`https://api.ociswap.com${path}`, { cache: 'no-store', signal: controller.signal });
+    const res = await fetch(`${OCISWAP_API}${path}`, { cache: 'no-store', signal: controller.signal });
     if (!res.ok) {
       console.error(`[${label}] OciSwap ${res.status}`);
       return null;
@@ -124,7 +125,7 @@ async function _getTokenDetailRaw(address: string): Promise<TokenDetail | null> 
     description: readMetadata(entity?.metadata, 'description'),
     infoUrl: readMetadata(entity?.metadata, 'info_url'),
     ociswapUrl: `https://ociswap.com/tokens/${address}`,
-    dashboardUrl: `https://dashboard.radixdlt.com/resource/${address}`,
+    dashboardUrl: `${DASHBOARD_URL}/resource/${address}`,
   };
 }
 

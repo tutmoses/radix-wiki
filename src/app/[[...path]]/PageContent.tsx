@@ -8,7 +8,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { ArrowLeft, ArrowRight, Save, Plus, Upload, X, Image as ImageIcon, ArrowDownAZ, CalendarPlus, RefreshCw, Rss, SlidersHorizontal } from 'lucide-react';
-import { BlockRenderer, findInfobox, infoboxHasContent, InfoboxSidebar } from '@/components/BlockRenderer';
+import { BlockRenderer, findInfobox, infoboxHasContent, InfoboxSidebar, PageThumb } from '@/components/BlockRenderer';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { LinkPreview } from '@/components/LinkPreview';
@@ -461,13 +461,7 @@ function CategoryListing({ tagPath, pages, sort, total, facetGroups, filters, le
               {pages.map(p => (
                 <Link key={p.id} href={pagePath(p.tagPath, p.slug)}>
                   <Card interactive className="h-full overflow-hidden p-0!">
-                    <div className="page-card-thumb">
-                      {p.bannerImage ? (
-                        <Image src={p.bannerImage} alt={p.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
-                      ) : (
-                        <Image src={generateBannerSvg(p.title, p.tagPath)} alt={p.title} fill className="object-cover" unoptimized />
-                      )}
-                    </div>
+                    <PageThumb page={p} />
                     <div className="page-card-body">
                       <div className="spread">
                         <h3 className="m-0!">{p.title}</h3>

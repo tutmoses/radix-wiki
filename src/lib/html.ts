@@ -10,7 +10,7 @@ import { normaliseLinks } from 'wiki-formant/links';
 import { slugify } from '@/lib/utils';
 import type { Block } from '@/types/blocks';
 import { mapBlockTree } from 'wiki-formant/blocks';
-import { BLOCK_SHAPE } from '@/lib/block-utils';
+import { BLOCK_SHAPE } from '@/lib/block-shape';
 
 /** Process HTML content for display: heading ids + anchors, link normalisation, alt attrs. */
 export function processHtml(html: string, citedRefs?: Set<number>): string {

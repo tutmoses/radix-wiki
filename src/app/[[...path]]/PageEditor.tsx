@@ -10,13 +10,14 @@ import { ArrowLeft, Save, Trash2, Link2, X } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Button, Input, StatusCard } from '@/components/ui';
 import { useAuth, useClickOutside, useStore } from '@/hooks';
-import { pagePath, slugify } from '@/lib/utils';
+import { cn, pagePath, slugify } from '@/lib/utils';
 import { findInfobox } from '@/components/BlockRenderer';
 import { isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, XRD_NOT_A_FEE, type MetadataKeyDefinition } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
 import { Banner } from './PageContent';
 import type { WikiPage, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
+import { useTypeahead } from 'wiki-formant/react';
 
 const BlockEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.BlockEditor), {
   ssr: false,
@@ -81,6 +82,9 @@ function parseAssignee(raw: string): string {
 
 type UserOption = { id: string; displayName: string | null; shortAddress: string };
 
+const fetchUsers = (q: string, signal: AbortSignal): Promise<UserOption[]> =>
+  fetch(`/api/users/search?q=${encodeURIComponent(q)}`, { signal }).then(r => r.json());
+
 /**
  * The user typeahead. Both places that name a person — the `user` metadata field
  * and the allowed-editors list — are this control; they differ only in what the
@@ -96,22 +100,26 @@ function UserSearch({ initial = '', placeholder, exclude, onPick, onClear }: {
   /** The input was emptied by hand. */
   onClear?: () => void;
 }) {
-  const [query, setQuery] = useState(initial);
-  const [results, setResults] = useState<UserOption[]>([]);
   const [open, setOpen] = useState(false);
+  // Read through a ref so the fetcher stays stable: `useTypeahead` re-runs its
+  // search whenever the fetcher changes identity.
+  const excludeRef = useRef(exclude);
+  useEffect(() => { excludeRef.current = exclude; }, [exclude]);
+  const search = useCallback(
+    (q: string, signal: AbortSignal) =>
+      fetchUsers(q, signal).then(users => users.filter(u => !excludeRef.current?.some(e => e.id === u.id))),
+    [],
+  );
+  const pick = (user: UserOption) => { setQuery(onPick(user)); setOpen(false); };
+  const { query, setQuery, items, highlight, setHighlight, onKeyDown, combobox } = useTypeahead<UserOption>({
+    fetch: search,
+    onPick: user => pick(user),
+    onEscape: () => setOpen(false),
+    minLength: 2,
+  });
+  useEffect(() => { setQuery(initial); }, [initial, setQuery]);
   const ref = useClickOutside<HTMLDivElement>(useCallback(() => setOpen(false), []));
-
-  useEffect(() => {
-    if (query.length < 2) return;
-    const controller = new AbortController();
-    fetch(`/api/users/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
-      .then(r => r.json()).then(setResults).catch(() => {});
-    return () => controller.abort();
-  }, [query]);
-
-  // Derived rather than cleared from the effect: a short query has no results by
-  // definition, so there is nothing to synchronise.
-  const visibleResults = query.length < 2 ? [] : results.filter(u => !exclude?.some(e => e.id === u.id));
+  const aria = combobox(undefined, open && items.length > 0);
 
   return (
     <div ref={ref} className="relative">
@@ -119,12 +127,21 @@ function UserSearch({ initial = '', placeholder, exclude, onPick, onClear }: {
         value={query}
         onChange={e => { setQuery(e.target.value); setOpen(true); if (!e.target.value) onClear?.(); }}
         onFocus={() => setOpen(true)}
+        onKeyDown={onKeyDown}
         placeholder={placeholder}
+        {...aria.inputProps}
       />
-      {open && visibleResults.length > 0 && (
-        <div className="user-picker-dropdown">
-          {visibleResults.map(u => (
-            <button key={u.id} className="user-picker-option" onClick={() => { setQuery(onPick(u)); setOpen(false); }}>
+      {open && items.length > 0 && (
+        <div className="user-picker-dropdown" {...aria.listProps}>
+          {items.map((u, i) => (
+            <button
+              key={u.id}
+              type="button"
+              className={cn('user-picker-option', i === highlight && 'search-result-active')}
+              onMouseEnter={() => setHighlight(i)}
+              onClick={() => pick(u)}
+              {...aria.optionProps(i)}
+            >
               <span className="font-medium">{u.displayName || 'Anonymous'}</span>
               <span className="text-text-muted text-xs">{u.shortAddress}</span>
             </button>

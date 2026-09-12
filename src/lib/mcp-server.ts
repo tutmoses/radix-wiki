@@ -12,7 +12,7 @@
 import { prisma } from '@/lib/prisma/client';
 import { categoryLabel, pageUrl, pagePath } from '@/lib/utils';
 import { SITE_URL } from '@/lib/site';
-import { NOT_HIDDEN, orderByIds, searchPageIds, summarizePage, SUMMARY_SELECT } from '@/lib/wiki';
+import { NOT_HIDDEN, searchPages, summarizePage, SUMMARY_SELECT } from '@/lib/wiki';
 import { listEnvelope } from 'wiki-formant/pagination';
 import { MCP_RATE_LIMIT, MCP_RATE_LIMIT_TEXT } from '@/lib/api';
 import { extractText } from '@/lib/content';
@@ -128,12 +128,9 @@ function buildCategoryTree(nodes: TagNode[], counts: Map<string, number>, parent
 async function search_wiki(args: { query: string; tagPath?: string; page?: number; pageSize?: number }) {
   const { query, tagPath, page = 1, pageSize = 20 } = args;
   const size = Math.min(pageSize, 50);
-  const { ids, total, headlines } = await searchPageIds(query, { tagPath, skip: (page - 1) * size, take: size });
-  const results = ids.length
-    ? await prisma.page.findMany({ where: { id: { in: ids } }, select: { id: true, ...SUMMARY_SELECT } })
-    : [];
+  const { items, total } = await searchPages(query, { tagPath, page, size });
   return listEnvelope(
-    orderByIds(results, ids).map(p => summarizePage(p, query, headlines.get(p.id))),
+    items,
     total, page, size,
     `Nothing matches "${query}"${tagPath ? ` under "${tagPath}"` : ''}. Search is keyword, not semantic: try one distinctive word rather than a phrase${tagPath ? ', or drop the tagPath filter' : ''}, or call get_categories to see what the wiki actually covers.`,
   );

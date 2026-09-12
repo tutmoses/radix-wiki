@@ -7,6 +7,7 @@ import { Upload, Download, CheckCircle, AlertCircle, ExternalLink, Loader2 } fro
 import { useFetch, useAuth, useStore } from '@/hooks';
 import { Dropdown } from '@/components/ui';
 import type { RestoredPage, LedgerAnchor } from '@/lib/radix/ledger';
+import { DASHBOARD_URL } from '@/lib/radix/config';
 
 interface LedgerStatus {
   anchor: LedgerAnchor | null;
@@ -104,7 +105,7 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
     }
   }
 
-  const explorerBase = 'https://dashboard.radixdlt.com/transaction/';
+  const explorerBase = `${DASHBOARD_URL}/transaction/`;
   const busy = stage === 'preparing' || stage === 'signing';
 
   return (

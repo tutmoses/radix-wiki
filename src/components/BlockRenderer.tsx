@@ -34,8 +34,22 @@ import { TokenChart } from '@/components/charts/TokenChart';
 import { formatPriceSubscript } from '@/components/charts/format';
 import { useCopy } from 'wiki-formant/react';
 import { BANNER_LABELS } from 'wiki-formant/text';
+import { OCISWAP_API } from '@/lib/radix/config';
 
 // ========== PAGE CARD ==========
+/** A page card's banner: the page's own image, or its generated one. */
+export function PageThumb({ page }: { page: Pick<WikiPage, 'title' | 'tagPath' | 'bannerImage'> }) {
+  return (
+    <div className="page-card-thumb">
+      {page.bannerImage ? (
+        <Image src={page.bannerImage} alt={page.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
+      ) : (
+        <Image src={generateBannerSvg(page.title, page.tagPath)} alt={page.title} fill className="object-cover" unoptimized />
+      )}
+    </div>
+  );
+}
+
 const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; compact?: boolean }) {
   const leafTag = findTagByPath(page.tagPath.split('/'));
   const href = pagePath(page.tagPath, page.slug);
@@ -52,13 +66,7 @@ const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; com
   return (
     <Link href={href} className="group">
       <div className="page-card">
-        <div className="page-card-thumb">
-          {page.bannerImage ? (
-            <Image src={page.bannerImage} alt={page.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
-          ) : (
-            <Image src={generateBannerSvg(page.title, page.tagPath)} alt={page.title} fill className="object-cover" unoptimized />
-          )}
-        </div>
+        <PageThumb page={page} />
         <div className="page-card-body">
           <span className="page-card-title">{page.title}</span>
           {(() => { const snippet = page.snippet ?? getContentSnippet(page.content); return snippet && <p className="page-card-snippet">{snippet}</p>; })()}
@@ -106,7 +114,7 @@ function transformPrice(json: any): PriceData {
 
 function useResourcePrice(resourceAddress?: string) {
   return useFetch<PriceData>(
-    resourceAddress ? `https://api.ociswap.com/tokens/${resourceAddress}` : null,
+    resourceAddress ? `${OCISWAP_API}/tokens/${resourceAddress}` : null,
     { transform: transformPrice, interval: 60000 },
   );
 }

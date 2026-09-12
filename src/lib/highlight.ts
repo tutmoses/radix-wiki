@@ -6,7 +6,7 @@ import rehypeStringify from 'rehype-stringify';
 import rehypePrettyCode from 'rehype-pretty-code';
 import type { Block, AtomicBlock, CodeTabsBlock } from '@/types/blocks';
 import { mapBlockTreeAsync } from 'wiki-formant/blocks';
-import { BLOCK_SHAPE } from '@/lib/block-utils';
+import { BLOCK_SHAPE } from '@/lib/block-shape';
 
 const processor = unified()
   .use(rehypeParse, { fragment: true })

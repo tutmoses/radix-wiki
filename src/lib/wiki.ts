@@ -11,9 +11,10 @@ import { getContentSnippet, getMatchSnippet, pageUrl } from '@/lib/utils';
 import { decodeEntities } from '@/lib/content';
 import { isValidTagPath, getSortOrder, getMetadataKeys, HIDDEN_TAG_PATHS, type SortOrder } from '@/lib/tags';
 import type { WikiPage, IdeasPage } from '@/types';
-import type { Block, RecentPagesBlock, PageListBlock, RssFeedBlock, ColumnsBlock } from '@/types/blocks';
+import type { Block, RecentPagesBlock, PageListBlock, RssFeedBlock } from '@/types/blocks';
 import { computeRevisionDiff } from '@/lib/versioning';
 import { STATIC_PATH_TYPES } from '@/lib/static-pages';
+import { leafBlocks } from '@/lib/block-shape';
 
 // ========== PRISMA QUERY FRAGMENTS ==========
 export const AUTHOR_SELECT = { select: { id: true, displayName: true, shortAddress: true, avatarUrl: true } } as const;
@@ -498,23 +499,26 @@ const getFeedItems = cached('getFeedItems',
   },
 );
 
+/** A ranked page of search results: the rows `search_wiki` and `GET /api/wiki?q=` both return. */
+export async function searchPages(query: string, { tagPath, page, size }: { tagPath?: string | null; page: number; size: number }) {
+  const { ids, total, headlines } = await searchPageIds(query, { tagPath, skip: (page - 1) * size, take: size });
+  const rows = ids.length
+    ? await prisma.page.findMany({ where: { id: { in: ids } }, select: { id: true, ...SUMMARY_SELECT } })
+    : [];
+  return { items: orderByIds(rows, ids).map(p => summarizePage(p, query, headlines.get(p.id))), total };
+}
+
 /** Pre-resolve recentPages, pageList, and rssFeed blocks server-side to avoid client waterfalls. */
 export async function resolveBlockData(blocks: Block[]): Promise<Block[]> {
   const recentPending: { block: RecentPagesBlock; promise: Promise<any[]> }[] = [];
   const listPending: { block: PageListBlock; promise: Promise<any[]> }[] = [];
   const feedPending: { block: RssFeedBlock; promise: Promise<any[]> }[] = [];
 
-  function collect(list: (Block | import('@/types/blocks').AtomicBlock)[]) {
-    for (const b of list) {
-      if (b.type === 'recentPages') recentPending.push({ block: b, promise: getRecentPages(b.tagPath, b.limit) });
-      else if (b.type === 'pageList') listPending.push({ block: b as PageListBlock, promise: getPagesByIds((b as PageListBlock).pageIds) });
-      else if (b.type === 'rssFeed') feedPending.push({ block: b as RssFeedBlock, promise: getFeedItems((b as RssFeedBlock).url, (b as RssFeedBlock).limit || 20) });
-      else if (b.type === 'columns') for (const col of (b as ColumnsBlock).columns) collect(col.blocks);
-      else if (b.type === 'infobox') collect((b as import('@/types/blocks').InfoboxBlock).blocks);
-    }
+  for (const b of leafBlocks(blocks)) {
+    if (b.type === 'recentPages') recentPending.push({ block: b, promise: getRecentPages(b.tagPath, b.limit) });
+    else if (b.type === 'pageList') listPending.push({ block: b, promise: getPagesByIds(b.pageIds) });
+    else if (b.type === 'rssFeed') feedPending.push({ block: b, promise: getFeedItems(b.url, b.limit || 20) });
   }
-
-  collect(blocks);
   if (!recentPending.length && !listPending.length && !feedPending.length) return blocks;
 
   const [recentResults, listResults, feedResults] = await Promise.all([

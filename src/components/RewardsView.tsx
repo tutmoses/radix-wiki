@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Gift, Download, CheckCircle, ExternalLink } from 'lucide-react';
 import { useFetch, useAuth } from '@/hooks';
 import { Button } from '@/components/ui';
+import { DASHBOARD_URL } from '@/lib/radix/config';
 
 interface EditorShare {
   id: string;
@@ -197,7 +198,7 @@ export default function RewardsView() {
                   <td className="p-3 text-right">{a.editorCount}</td>
                   <td className="p-3 font-mono text-small truncate max-w-48">
                     {a.txHash ? (
-                      <a href={`https://dashboard.radixdlt.com/transaction/${a.txHash}`} target="_blank" rel="noopener" className="row gap-1 text-accent">
+                      <a href={`${DASHBOARD_URL}/transaction/${a.txHash}`} target="_blank" rel="noopener" className="row gap-1 text-accent">
                         {a.txHash.slice(0, 16)}... <ExternalLink size={12} />
                       </a>
                     ) : '—'}

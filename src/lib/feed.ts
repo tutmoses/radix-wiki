@@ -19,6 +19,7 @@ import { getContentSnippet, pageUrl } from '@/lib/utils';
 import { SITE_URL } from '@/lib/site';
 import { ogImageUrl } from '@/lib/og';
 import { absolutise as absolutiseFrom, clampWords, escXml, type FeedItem } from 'wiki-formant/feed';
+import { leafBlocks } from '@/lib/block-shape';
 
 export { FEED_HEADERS, renderFeed } from 'wiki-formant/feed';
 
@@ -68,12 +69,7 @@ function renderAtomic(block: AtomicBlock): string {
 /** The stored blocks as one HTML string, for `content:encoded`. */
 function blocksToFeedHtml(content: unknown): string {
   if (!Array.isArray(content)) return '';
-  const html = (content as Block[]).map(block => {
-    if (block.type === 'infobox') return block.blocks.map(renderAtomic).join('');
-    if (block.type === 'columns') return block.columns.flatMap(c => c.blocks.map(renderAtomic)).join('');
-    return renderAtomic(block as AtomicBlock);
-  }).join('\n');
-  return absolutise(html);
+  return absolutise(leafBlocks(content as Block[]).map(renderAtomic).join('\n'));
 }
 
 /** A blog row as a feed item, with a branded 1200x630 card from the existing OG

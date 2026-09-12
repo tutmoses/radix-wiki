@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useFetch } from '@/hooks';
 import { formatPriceSubscript } from './format';
+import { OCISWAP_API } from '@/lib/radix/config';
 
 const TIMEFRAME_CONFIG: Record<string, { resolution: string; seconds: number; countback: number }> = {
   '24h': { resolution: '60', seconds: 86400, countback: 24 },
@@ -39,7 +40,7 @@ export function TokenChart({ resourceAddress, defaultTimeframe = '30d', height =
   const url = useMemo(() => {
     const cfg = TIMEFRAME_CONFIG[timeframe] ?? TIMEFRAME_CONFIG['7d']!;
     const now = Math.floor(Date.now() / 1000);
-    return `https://api.ociswap.com/udf/history?symbol=${resourceAddress}&resolution=${cfg.resolution}&from=${now - cfg.seconds}&to=${now}&countback=${cfg.countback}&currencyCode=USD`;
+    return `${OCISWAP_API}/udf/history?symbol=${resourceAddress}&resolution=${cfg.resolution}&from=${now - cfg.seconds}&to=${now}&countback=${cfg.countback}&currencyCode=USD`;
   }, [resourceAddress, timeframe]);
   const { data, isLoading, error } = useFetch<ChartPoint[]>(url, { transform: toPoints });
 

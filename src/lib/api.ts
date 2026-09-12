@@ -1,7 +1,6 @@
 // src/lib/api.ts - Shared API utilities
 
 import { NextRequest, NextResponse } from 'next/server';
-import { rateLimit, clientKey, rateLimitedResponse, type RateLimitOptions } from 'wiki-formant/rate-limit';
 import { getSession } from '@/lib/auth';
 import { requireBalance, type BalanceAction } from '@/lib/radix/balance';
 import type { AuthSession } from '@/types';
@@ -54,22 +53,6 @@ export function cachedJson<T>(data: T, headers: Record<string, string> = CACHE.s
 // /.well-known/mcp.json all read it, so the route enforces exactly what the
 // documents claim — and all three repos had written the same three lines.
 export { MCP_RATE_LIMIT, MCP_RATE_LIMIT_PER_MIN, MCP_RATE_LIMIT_TEXT } from 'wiki-formant/rate-limit';
-
-// The bucket itself is `wiki-formant/rate-limit`, shared with the other agent
-// surfaces — this was the third copy of it in the workspace. What stays here is
-// the Next binding: reading the request headers and shaping the 429.
-
-/** Per-IP gate for anonymous route handlers. Returns a ready-to-return 429
- *  when the caller is over budget, or null to proceed. `capacity` is the peak
- *  burst; `refillPerSec` the sustained rate. */
-export function checkRateLimit(
-  request: NextRequest,
-  prefix: string,
-  opts: RateLimitOptions,
-): Response | null {
-  const limit = rateLimit(clientKey(prefix, request.headers), opts);
-  return limit.ok ? null : rateLimitedResponse(limit.retryAfterSec);
-}
 
 // `Response`, not `NextResponse`: the shared helpers in `wiki-formant/http`
 // answer with web-standard responses — a 304 from `notModified`, a descriptor

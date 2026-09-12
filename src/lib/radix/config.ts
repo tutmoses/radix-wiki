@@ -20,3 +20,9 @@ export const GATEWAY_URL = STOKENET ? 'https://stokenet.radixdlt.com' : 'https:/
 export const XRD_ADDRESS = STOKENET
   ? 'resource_tdx_2_1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxtfd2jc'
   : 'resource_rdx1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxradxrd';
+
+/** OciSwap's public API, behind token prices and the price charts. */
+export const OCISWAP_API = 'https://api.ociswap.com';
+
+/** The Radix Dashboard, where a transaction or a resource links out to. */
+export const DASHBOARD_URL = 'https://dashboard.radixdlt.com';
