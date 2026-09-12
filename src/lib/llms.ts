@@ -24,9 +24,8 @@ import type { Block } from '@/types/blocks';
 /**
  * This wiki's three corpus depths, bound to the shared route factory.
  *
- * The factory is `wiki-formant/http` — the `validators -> notModified ->
- * textHeaders` dance it replaces was written out at nine call sites across the
- * three repos. What stays here is the one thing that is this wiki's: which
+ * The factory is `wiki-formant/http`. What stays here is the one thing that is
+ * this wiki's: which
  * aggregate defines a corpus revision, which `corpusValidators` below answers.
  */
 export const corpusRoute = (depth: string, build: () => Promise<string>) =>

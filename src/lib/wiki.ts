@@ -419,12 +419,7 @@ export async function searchPageIds(
   const like = `%${term}%`;
 
   // The prose expression, and the generated column's, both come from
-  // `wiki-formant/search` — it was written out four times in this repo (once in
-  // `scripts/fts-ddl.mjs`, three times below) and each copy asked the next
-  // editor to keep it in step. They did not: caper found that
-  // `jsonb_path_query_array(...)::text` renders a JSON array literal, so the
-  // array's own syntax scored as prose, fixed its two copies, and these four
-  // stayed behind.
+  // `wiki-formant/search`.
   const prose = Prisma.raw(proseSql('p.content'));
   const proseUnqualified = Prisma.raw(proseSql());
 

@@ -21,10 +21,7 @@ import {
   ReferencesView,
   StatsView,
 } from 'wiki-formant/block-views';
-// The rendered-article passes are `wiki-formant/dom`, shared with caper. The
-// copy-button injector there was byte-identical to the one this file held, down
-// to the SVG path data, and the Twitter origin was written out here as well as
-// twice more in the editor's node views.
+// The rendered-article passes are `wiki-formant/dom`, shared with caper.
 import { activateTabGroups, addCopyButtons, hydrateTweetEmbeds, onTweetResize, sizeTweetEmbeds } from 'wiki-formant/dom';
 import { processHtml } from '@/lib/html';
 import { useAccountQr, useFetch } from '@/hooks';
@@ -200,7 +197,7 @@ function formatMetadataValue(value: string, type: string): string {
 }
 
 // Which keys appear, in what order, and which of them link is `metadataRows` —
-// the shared derivation, so this table and caper's cannot drift apart again. A
+// the shared derivation, so this table and caper's cannot drift apart. A
 // row carries an `href` exactly when its key is a facet the category view
 // already filters and counts, which is what makes the row the way into that set
 // (Wikipedia's linked infobox fields) off the one URL contract every facet chip

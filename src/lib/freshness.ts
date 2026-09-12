@@ -3,11 +3,10 @@
 // The staleness rule is `wiki-formant/freshness`, shared with caper. What stays
 // here is turning a verdict into this repo's BannerBlock.
 //
-// `nowMs` is threaded in from a server component rather than read here. This
-// used to call Date.now() during a 'use client' render, so a page sitting near
-// the 180-day boundary could be stale on the server and fresh in the browser —
-// a hydration mismatch. caper had already fixed this; adopting its signature is
-// how the fix arrives here.
+// `nowMs` is threaded in from a server component rather than read here. Reading
+// Date.now() during a 'use client' render would let a page near the 180-day
+// boundary be stale on the server and fresh in the browser, a hydration
+// mismatch.
 
 import { freshnessNotice, isStale, type FreshnessInput } from 'wiki-formant/freshness';
 import type { BannerBlock } from '@/types/blocks';

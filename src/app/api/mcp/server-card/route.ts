@@ -21,10 +21,8 @@ import serverManifest from '../../../../../server.json';
 export const revalidate = 86400;
 
 // Projected from server.json, the registry manifest that already single-sources
-// the version. It used to retype `title` and `description` as literals here, so
-// the site served two different descriptions of the same server with nothing
-// comparing them — the manifest's and this one's. The manifest wins, because it
-// is the copy the registry publishes.
+// the version, so the site serves one description of this server. The manifest
+// wins because it is the copy the registry publishes.
 const SERVER_CARD = serverCard(serverManifest, MCP_PROTOCOL_VERSIONS);
 
 export async function GET(request: Request) {

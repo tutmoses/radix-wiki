@@ -1,8 +1,8 @@
 // src/app/llms-index.txt/route.ts — the exhaustive page index.
 //
-// Every page with a one-line excerpt, grouped by section. This is the listing
-// that used to make /llms.txt heavy; agents that want the full map fetch it
-// here, and /llms-full.txt has the complete text of every page.
+// Every page with a one-line excerpt, grouped by section. It is kept out of
+// /llms.txt so that stays light; agents that want the full map fetch it here,
+// and /llms-full.txt has the complete text of every page.
 
 import { prisma } from '@/lib/prisma/client';
 import { NOT_HIDDEN } from '@/lib/wiki';

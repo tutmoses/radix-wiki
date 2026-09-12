@@ -13,13 +13,9 @@ import type { WikiPage } from '@/types';
 // ---- the shared leaf types --------------------------------------------------
 //
 // `wiki-formant/blocks` owns these five, and the shared views in
-// `wiki-formant/block-views` render them. This file used to REDECLARE four of
-// them, with a comment explaining that the package's versions were not quite
-// ours — `CodeTab.language` is optional there, `StatItem` carries no `id`. That
-// reasoning is how a shared type stops being shared: two declarations of one
-// shape, free to drift, with only prose holding them together.
-//
-// So they are DERIVED now. The intersection adds the identity an editor needs
+// `wiki-formant/block-views` render them. They are DERIVED, never redeclared:
+// two declarations of one shape are free to drift, with only prose holding
+// them together. The intersection adds the identity an editor needs
 // (a stable React key that is not the array index) and re-narrows the fields
 // this wiki is stricter about. Every narrowing below is a deliberate difference
 // from the package, stated once, in the place a reader looks for it — and a

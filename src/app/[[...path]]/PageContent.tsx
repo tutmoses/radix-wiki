@@ -590,8 +590,7 @@ export type RelatedPages = { pages: RelatedPage[]; sharedFacet: SharedFacet | nu
 
 /**
  * The heading *is* the link: it names what these five have in common and opens
- * the filtered category holding the rest. The sentence that used to sit under it
- * only restated the infobox row that now carries the same link.
+ * the filtered category holding the rest.
  */
 function SeeAlso({ pages, tagPath, sharedFacet }: { pages: RelatedPage[]; tagPath: string; sharedFacet?: SharedFacet | null }) {
   if (!pages.length) return null;

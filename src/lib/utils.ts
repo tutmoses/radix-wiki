@@ -7,9 +7,7 @@ import { decodeEntities } from '@/lib/content';
 import { SITE_URL } from '@/lib/site';
 
 // The deterministic pair behind the generative banner is `wiki-formant`,
-// shared with caper, which held the same two character for character — the
-// comment that used to sit on `seededRandom` here recorded that its two guards
-// had been ported from that copy, which is a copy documenting itself as one.
+// shared with caper.
 export { hashStr, seededRandom } from 'wiki-formant';
 import { hashStr, seededRandom } from 'wiki-formant';
 
@@ -98,9 +96,8 @@ export function getContentSnippet(content: unknown, maxLen = 150): string {
 }
 
 /** Shorten a snippet a list row already carries. List rows ship one 150-char snippet
- *  instead of their article, so the callers that used to ask getContentSnippet for a
- *  tighter cut (the related-pages rail wants 100) re-cut that string rather than the
- *  content it no longer has. */
+ *  instead of their article, so a caller wanting a tighter cut (the related-pages
+ *  rail wants 100) re-cuts that string. */
 export function clampSnippet(snippet: string | null | undefined, maxLen: number): string {
   if (!snippet) return '';
   return snippet.length > maxLen ? snippet.slice(0, maxLen).trimEnd() + '…' : snippet;

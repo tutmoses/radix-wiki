@@ -1,14 +1,9 @@
 // src/lib/tiptap/extensions.tsx — this wiki's binding of the shared editor nodes.
 //
-// The nodes themselves are `wiki-formant/tiptap`, shared with caper, which had
-// written the same file. Both copies had drifted, in opposite directions: this
-// one had grown tabs caper lacked, caper had extracted the Twitter helper this
-// one still wrote out three times. Neither was behind, so neither looked like
-// the one to fix.
-//
-// What stays here is the only part that was ever this wiki's: the class tokens,
-// the icon set, the language list, and the API route a shortened map URL has to
-// be resolved through.
+// The nodes themselves are `wiki-formant/tiptap`, shared with caper. What stays
+// here is the part that is this wiki's: the class tokens, the icon set, the
+// language list, and the API route a shortened map URL has to be resolved
+// through.
 
 'use client';
 

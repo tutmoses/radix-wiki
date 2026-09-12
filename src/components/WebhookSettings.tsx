@@ -84,9 +84,7 @@ const postTelegram = (body: object) => fetch('/api/telegram', {
 
 /**
  * The `/api/telegram` client, shared by the settings panel and the header's
- * watch toggle. Two copies of the same four calls had already drifted: the
- * header's unsubscribe patched its local state instead of re-reading, so a
- * subscription changed elsewhere left the toggle on the previous answer.
+ * watch toggle.
  *
  * `enabled` is false where there is nothing to ask about — the page-tools menu
  * opens for anonymous readers and off-page routes too.

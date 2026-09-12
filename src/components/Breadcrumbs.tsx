@@ -5,12 +5,9 @@
 // the one thing that is this wiki's: turning a tag path into labelled crumbs
 // through `findTagByPath`.
 //
-// THE JSON-LD MOVED HERE WITH THE MARKUP, AND THAT IS THE POINT. It used to be
-// built by a `breadcrumbLd()` in the route module, three files away from the
-// component that rendered the visible trail — and the two had already
-// disagreed: the structured data opened with a Home item the rendered trail
-// never showed, which is precisely the mismatch Google drops a rich result for.
-// One component now emits both, so they cannot drift again.
+// One component emits both the visible trail and its JSON-LD, so they cannot
+// disagree. Structured data that opens with an item the rendered trail never
+// shows is precisely the mismatch Google drops a rich result for.
 
 import Link from 'next/link';
 import { Breadcrumbs as SharedBreadcrumbs } from 'wiki-formant/react-server';

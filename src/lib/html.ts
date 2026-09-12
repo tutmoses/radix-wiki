@@ -1,10 +1,9 @@
 // src/lib/html.ts — HTML post-processing for wiki content rendering.
 //
-// The two routines this used to spell out — heading ids and anchor
-// normalisation — are `wiki-formant/headings` and `wiki-formant/links`, shared
-// with caper, which had written out the same ones. What stays here is this
-// wiki's own decisions: which slug rule its published anchors were minted
-// under, its own host, and the h1 demotion.
+// Heading ids and anchor normalisation are `wiki-formant/headings` and
+// `wiki-formant/links`, shared with caper. What stays here is this wiki's own
+// decisions: which slug rule its published anchors were minted under, its own
+// host, and the h1 demotion.
 
 import { injectHeadingIds } from 'wiki-formant/headings';
 import { normaliseLinks } from 'wiki-formant/links';

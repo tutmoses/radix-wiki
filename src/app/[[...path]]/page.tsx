@@ -320,9 +320,9 @@ function linksTo(content: unknown, href: string): boolean {
 const VALID_SORTS = new Set<string>(['title', 'newest', 'oldest', 'recent']);
 
 export default async function DynamicPage({ params, searchParams }: Props) {
-  // Read the clock once, here on the server, and hand it to the views. The
-  // freshness notice used to call Date.now() inside a 'use client' render, so a
-  // page near the staleness boundary could disagree between SSR and hydration.
+  // Read the clock once, here on the server, and hand it to the views. Read
+  // inside a 'use client' render, a page near the staleness boundary could
+  // disagree between SSR and hydration.
   const nowMs = Date.now();
   const { path } = await params;
   const str = (v: string | string[] | undefined) => (typeof v === 'string' ? v : undefined);

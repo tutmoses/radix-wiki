@@ -45,12 +45,8 @@ const TableOfContents = () => (
 );
 
 /**
- * The category list, expanding only the branch the reader is in. It used to be
- * top-level only, because every category page drew its children as cards and a
- * tree here made a third copy on screen next to those and the breadcrumbs. The
- * cards are gone from the pages whose article already routes to its own
- * sections, and this is where that navigation belongs: it persists while
- * reading a guide, where the card grid never reached.
+ * The category list, expanding only the branch the reader is in. It persists
+ * while reading a guide, which a card grid on the category page cannot.
  *
  * Only the active trail opens, so the rail shows one section's children rather
  * than the whole hierarchy, and the deepest matching node is the one marked

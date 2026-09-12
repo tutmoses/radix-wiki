@@ -1,16 +1,11 @@
 // src/lib/versioning.ts — page revision semver and the diff behind the bump.
 //
-// Both halves are `wiki-formant` now: the arithmetic is `wiki-formant/versioning`
-// and the block-tree walk is `wiki-formant/revisions`, shared with caper, which
-// had written the same `extractBlocks` character for character.
+// Both halves are `wiki-formant`: the arithmetic is `wiki-formant/versioning`
+// and the block-tree walk is `wiki-formant/revisions`, shared with caper.
 //
 // What stays here is what is this repo's: the shape of its containers, the leaf
 // diff its history view renders, and the positional signature its four call
 // sites already use.
-//
-// The shared walk also drops something this file used to carry: two Maps keyed
-// by a recursive JSON.stringify of every block, rebuilt on every save and read
-// by nothing. Matching is by id and always was.
 
 import {
   computeRevisionDiff as sharedRevisionDiff,

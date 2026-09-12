@@ -40,9 +40,9 @@ const RESOURCES: McpResource[] = [
     name: 'RADIX Wiki LLM Briefing',
     description: 'Narrative briefing document with investment thesis, technical overview, and page index.',
     mimeType: 'text/plain',
-    // Built in-process. This used to fetch `${SITE_URL}/llms.txt` — a round
-    // trip out of the datacentre to reach a function in the same process,
-    // which also served null whenever the deploy it called was cold or down.
+    // Built in-process rather than fetched from `${SITE_URL}/llms.txt`, which
+    // would be a round trip out of the datacentre to reach a function in the
+    // same process, and null whenever the deploy it called was cold or down.
     read: () => buildLlmsTxt(),
   },
   {

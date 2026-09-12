@@ -115,8 +115,7 @@ function SearchResultRow({ page, query, active, onSelect, onHover, optionProps }
   optionProps: ComboboxOptionProps;
 }) {
   return (
-    // The row used to carry a bare `aria-selected`, which is not an attribute a
-    // plain button takes. The listbox contract is `wiki-formant/combobox` now.
+    // The listbox contract is `wiki-formant/combobox`.
     <button type="button" onClick={() => onSelect(page)} onMouseEnter={onHover}
       className={cn('search-result', active && 'search-result-active')} {...optionProps}>
       <div className="font-medium truncate"><Highlight text={page.title} query={query} /></div>

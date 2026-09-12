@@ -1,7 +1,7 @@
 // src/lib/map-utils.ts — map embed URL resolution.
 //
-// The URL parsing is `wiki-formant/maps`, shared with caper, which held a
-// byte-identical copy. What stays here is the client-side redirect hop, which
+// The URL parsing is `wiki-formant/maps`, shared with caper. What stays here
+// is the client-side redirect hop, which
 // needs this app's own API route.
 
 export { toMapEmbedUrl } from 'wiki-formant/maps';

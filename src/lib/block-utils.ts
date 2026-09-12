@@ -54,12 +54,12 @@ export const duplicateBlock = (block: Block): Block => duplicateBlockIds(block, 
 // --- Block validation ---
 //
 // The walk (id/type gate, container branch, the two nested item validators) is
-// `wiki-formant/validation`, shared with caper, which had written the same one.
+// `wiki-formant/validation`, shared with caper.
 // Only the switch below is this repo's — its block type set is.
 //
-// `okUrl` arrives with it: reference and link-grid URLs used to be accepted as
-// any string here, where caper already rejected non-http(s)/mailto schemes at
-// the write path. React 19 neutralises a `javascript:` href at render time, so
+// `okUrl` arrives with it: reference and link-grid URLs outside http(s) and
+// mailto are rejected at the write path. React 19 neutralises a `javascript:`
+// href at render time, so
 // this is defence in depth rather than a fix for a live hole -- but a URL that
 // can never render safely is better rejected than stored.
 
