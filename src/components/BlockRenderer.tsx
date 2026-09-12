@@ -36,6 +36,7 @@ import { metadataRows } from '@/lib/taxonomy';
 import { TokenChart } from '@/components/charts/TokenChart';
 import { formatPriceSubscript } from '@/components/charts/format';
 import { useCopy } from 'wiki-formant/react';
+import { BANNER_LABELS } from 'wiki-formant/text';
 
 // ========== PAGE CARD ==========
 const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; compact?: boolean }) {
@@ -320,13 +321,15 @@ function TipJarBlockView({ block }: { block: TipJarBlock }) {
 }
 
 // ========== EDITORIAL NOTICES ==========
-const BANNER_META: Record<BannerVariant, { label: string; message: string; icon: LucideIcon }> = {
-  stub: { label: 'Stub', message: 'This article is a stub. You can help RADIX Wiki by expanding it.', icon: FileText },
-  unsourced: { label: 'Needs citations', message: 'This article needs additional citations for verification. Please help improve it by adding references to reliable sources.', icon: AlertTriangle },
-  outdated: { label: 'May be outdated', message: 'Some information here may be out of date. Please help update it to reflect the current state of the Radix ecosystem.', icon: CalendarClock },
-  promotional: { label: 'Written like an advertisement', message: 'This article may read like an advertisement. Please help rewrite it from a neutral point of view.', icon: Megaphone },
-  cleanup: { label: 'Needs cleanup', message: 'This article may require cleanup to meet RADIX Wiki quality standards.', icon: AlertTriangle },
-  coi: { label: 'Conflict of interest', message: 'A major contributor to this article may have a close connection with its subject. It may need additional review for a neutral point of view.', icon: AlertTriangle },
+// The label is `BANNER_LABELS`, the same string the editor and the text exports
+// print. Only the message and the icon are this wiki's.
+const BANNER_META: Record<BannerVariant, { message: string; icon: LucideIcon }> = {
+  stub: { message: 'This article is a stub. You can help RADIX Wiki by expanding it.', icon: FileText },
+  unsourced: { message: 'This article needs additional citations for verification. Please help improve it by adding references to reliable sources.', icon: AlertTriangle },
+  outdated: { message: 'Some information here may be out of date. Please help update it to reflect the current state of the Radix ecosystem.', icon: CalendarClock },
+  promotional: { message: 'This article may read like an advertisement. Please help rewrite it from a neutral point of view.', icon: Megaphone },
+  cleanup: { message: 'This article may require cleanup to meet RADIX Wiki quality standards.', icon: AlertTriangle },
+  coi: { message: 'A major contributor to this article may have a close connection with its subject. It may need additional review for a neutral point of view.', icon: AlertTriangle },
 };
 
 /** One quotation, attributed. Quoting a person is the cheapest way a recap can
@@ -365,13 +368,13 @@ function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
         <ReferencesView items={block.items} title={block.title || 'References'} processHtml={processHtml} />
       );
     case 'banner': {
-      const meta = BANNER_META[block.variant] ?? BANNER_META.cleanup;
-      const Icon = meta.icon;
+      const variant = BANNER_META[block.variant] ? block.variant : 'cleanup';
+      const { message, icon: Icon } = BANNER_META[variant];
       return (
         <BannerView
           variant={block.variant}
           text={block.text}
-          meta={meta}
+          meta={{ label: BANNER_LABELS[variant], message }}
           icon={<Icon size={18} className="editorial-banner-icon" />}
         />
       );

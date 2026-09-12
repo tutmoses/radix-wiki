@@ -41,15 +41,13 @@ const decode = decodeEntities;
 // block renderers below read unchanged.
 const inline = inlineToMarkdown;
 
-// Re-exported: src/lib/mdx.ts converts authored HTML through this module.
-export { htmlToMarkdown };
-
 type ResolvedPage = { title: string; tagPath: string; slug: string };
 
 const pageLinks = (pages: ResolvedPage[]) =>
   linkList(pages.map(p => ({ label: p.title, href: pageUrl(p.tagPath, p.slug) })));
 
-function atomicToMarkdown(block: AtomicBlock): string {
+/** One leaf as markdown. The MDX export reuses it for every static leaf. */
+export function atomicToMarkdown(block: AtomicBlock): string {
   switch (block.type) {
     case 'content':
       return htmlToMarkdown(block.text);

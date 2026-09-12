@@ -3,26 +3,19 @@
 // is real markdown with no component tags, from src/lib/markdown.ts.
 
 import { pagePath } from '@/lib/utils';
-import { htmlToMarkdown } from '@/lib/markdown';
-import { BANNER_LABELS } from '@/lib/content';
+import { atomicToMarkdown } from '@/lib/markdown';
 import type { Block, AtomicBlock, ColumnsBlock, InfoboxBlock } from '@/types/blocks';
 
+// Only the live widgets differ from the `.md` twin: they become component tags.
+// Every static leaf is the twin's own serializer, so the two exports cannot
+// disagree about a code fence or an entity.
 function convertAtomicBlock(block: AtomicBlock): string {
   switch (block.type) {
-    case 'content': return htmlToMarkdown(block.text);
     case 'recentPages': return `<RecentPages limit={${block.limit}}${block.tagPath ? ` tagPath="${block.tagPath}"` : ''} />`;
     case 'pageList': return `<PageList pageIds={${JSON.stringify(block.pageIds)}} />`;
     case 'assetPrice': return `<AssetPrice ${[block.resourceAddress && `resourceAddress="${block.resourceAddress}"`, block.showChange && 'showChange'].filter(Boolean).join(' ')} />`;
     case 'rssFeed': return `<RssFeed url="${block.url}" limit={${block.limit || 20}} />`;
-    case 'codeTabs': return block.tabs.map(t => `\`\`\`${t.language}\n${t.code}\n\`\`\``).join('\n\n');
-    case 'stats': return block.items.map(i => `**${i.value}** ${i.label}`).join(' · ');
-    case 'testimonial': return `> "${block.quote}"\n> — ${block.author}${block.role ? `, ${block.role}` : ''}`;
-    case 'linkGrid': return block.groups.map(g =>
-      `**${g.heading}**\n\n${g.links.map(l => `- [${l.label}](${l.href})`).join('\n')}`
-    ).join('\n\n');
-    case 'tipJar': return `**${block.label || 'Tip the author'}**${block.message ? `\n\n${block.message}` : ''}${block.address ? `\n\nRadix: \`${block.address}\`` : ''}`;
-    case 'banner': return `> **[${BANNER_LABELS[block.variant]}]** ${block.text?.trim() || ''}`.trim();
-    case 'references': return `## ${block.title || 'References'}\n\n${block.items.map((it, i) => `${i + 1}. ${htmlToMarkdown(it.text)}${it.url ? ` — ${it.url}` : ''}`).join('\n')}`;
+    default: return atomicToMarkdown(block);
   }
 }
 
@@ -67,7 +60,8 @@ interface PageData {
 export function blocksToMdx(page: PageData): string {
   const blocks = Array.isArray(page.content) ? page.content as Block[] : [];
 
-  // Build frontmatter
+  // Not `wiki-formant/markdown`'s frontmatter: the ledger restore in
+  // @/lib/radix/ledger reads `path` and `version` back out of this header.
   const frontmatter: Record<string, string | undefined> = {
     title: page.title,
     path: pagePath(page.tagPath ?? '', page.slug ?? ''),

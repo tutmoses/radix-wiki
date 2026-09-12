@@ -6,13 +6,14 @@ import { useState, useCallback, useEffect, useRef, useMemo, memo, type ReactNode
 import { useAccountQr, useClickOutside } from '@/hooks';
 import { EditorContent, type Editor } from '@tiptap/react';
 import { TABLE_ACTIONS, insertEmbed, useWikiEditor } from 'wiki-formant/editor';
+import { BANNER_VARIANTS } from 'wiki-formant/text';
 import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, LayoutGrid, Info, Rss, QrCode, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock, CODE_LANGS, DEFAULT_LANG } from '@/lib/block-utils';
 import { resolveMapUrl } from '@/lib/map-utils';
 import { Button, Input, Dropdown } from '@/components/ui';
 import { Iframe, YouTube, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock } from '@/lib/tiptap/extensions';
-import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column, LinkGridBlock, LinkGridGroup, TipJarBlock, ReferencesBlock, ReferenceItem, BannerBlock, BannerVariant } from '@/types/blocks';
+import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column, LinkGridBlock, LinkGridGroup, TipJarBlock, ReferencesBlock, ReferenceItem, BannerBlock } from '@/types/blocks';
 
 // The upload endpoint and how a failure is surfaced are this app's, so the
 // hook takes the uploader rather than owning one.
@@ -339,15 +340,6 @@ function TipJarBlockEdit({ block, onUpdate }: BlockProps<TipJarBlock>) {
     </EditWrapper>
   );
 }
-
-const BANNER_VARIANTS: { value: BannerVariant; label: string }[] = [
-  { value: 'stub', label: 'Stub' },
-  { value: 'unsourced', label: 'Needs citations' },
-  { value: 'outdated', label: 'May be outdated' },
-  { value: 'promotional', label: 'Reads like an ad' },
-  { value: 'cleanup', label: 'Needs cleanup' },
-  { value: 'coi', label: 'Conflict of interest' },
-];
 
 function BannerBlockEdit({ block, onUpdate }: BlockProps<BannerBlock>) {
   return (
