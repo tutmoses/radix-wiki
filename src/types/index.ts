@@ -1,6 +1,6 @@
 // src/types/index.ts
 
-import type { User, Page, Revision, Comment, Notification, Prisma } from '@prisma/client';
+import type { User, Page, Comment, Notification, Prisma } from '@prisma/client';
 
 // Auth types. The session and the wallet proof are shaped by the stack that
 // produces them, which is now `wiki-formant/rola`; re-exported here so the rest

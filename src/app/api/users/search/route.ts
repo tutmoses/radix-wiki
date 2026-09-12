@@ -2,7 +2,7 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { json, errors, handleRoute } from '@/lib/api';
+import { json, handleRoute } from '@/lib/api';
 
 export async function GET(request: NextRequest) {
   return handleRoute(async () => {

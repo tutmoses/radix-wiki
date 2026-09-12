@@ -7,7 +7,7 @@
 import { prisma } from '@/lib/prisma/client';
 import { NOT_HIDDEN } from '@/lib/wiki';
 import { SECTION_NAMES, corpusRoute, pageLine } from '@/lib/llms';
-import { BASE_URL } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,9 +37,9 @@ export const GET = corpusRoute('llms-index', async () => {
   return [
     `# RADIX Wiki — Complete Page Index`,
     '',
-    `> Every page on ${BASE_URL} (${pages.length} pages), grouped by section,`,
-    `> most recently updated first. Compact site map: ${BASE_URL}/llms.txt`,
-    `> Full text of every page: ${BASE_URL}/llms-full.txt`,
+    `> Every page on ${SITE_URL} (${pages.length} pages), grouped by section,`,
+    `> most recently updated first. Compact site map: ${SITE_URL}/llms.txt`,
+    `> Full text of every page: ${SITE_URL}/llms-full.txt`,
     `> Individual pages in markdown: append .md to any page URL`,
     '',
     ...sectionLines,

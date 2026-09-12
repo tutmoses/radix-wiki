@@ -8,7 +8,7 @@
 // A module rather than a route body so anything that needs to quote the spec
 // reads the object, the way acuiq2's does.
 
-import { BASE_URL } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 import { SERVER_INFO } from '@/lib/mcp-tools';
 import { BLOCK_TYPES } from '@/lib/block-utils';
 
@@ -71,11 +71,11 @@ export const SPEC = {
     version: SERVER_INFO.version,
     description:
       'REST API for RADIX.wiki, the community-maintained knowledge base for Radix DLT. Reads are open. Writes require a ROLA bearer token — see the signing walkthrough at ' +
-      `${BASE_URL}/AGENTS.md. MCP-speaking agents should prefer the MCP server at ${BASE_URL}/api/mcp (this API backs its tools, so semantics are identical). ` +
+      `${SITE_URL}/AGENTS.md. MCP-speaking agents should prefer the MCP server at ${SITE_URL}/api/mcp (this API backs its tools, so semantics are identical). ` +
       `Content is CC BY 4.0.`,
     license: { name: 'CC BY 4.0 (content)', url: 'https://creativecommons.org/licenses/by/4.0/' },
   },
-  servers: [{ url: BASE_URL }],
+  servers: [{ url: SITE_URL }],
   components: {
     securitySchemes: {
       rolaBearer: {
@@ -84,7 +84,7 @@ export const SPEC = {
         bearerFormat: 'JWT',
         description:
           'ROLA (Radix On-Ledger Authentication) session token from the challenge-sign-verify flow: GET /api/auth/challenge, sign with the account\'s Ed25519 key, POST /api/auth. ' +
-          `Full spec: ${BASE_URL}/AGENTS.md`,
+          `Full spec: ${SITE_URL}/AGENTS.md`,
       },
     },
     schemas: { Block: block, Page: page, PaginatedPages: paginated },

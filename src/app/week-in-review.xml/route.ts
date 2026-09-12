@@ -7,7 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { BASE_URL } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 import { feedItem, recapIssues, renderFeed, FEED_HEADERS } from '@/lib/feed';
 import { RECAP_PREFIX, SERIES_SLUG, issueLabel, scoreline, type LedgerState } from '@/lib/week-in-review';
 import { licenseNote } from 'wiki-formant/license';
@@ -38,9 +38,9 @@ export async function GET() {
 
   return new NextResponse(renderFeed({
     title: 'Radix Week in Review',
-    link: `${BASE_URL}/blog/${SERIES_SLUG}`,
+    link: `${SITE_URL}/blog/${SERIES_SLUG}`,
     description: `The week in the Radix ecosystem, read against the ledger. ${scoreline(state)}`,
     copyright: licenseNote(WIKI_LICENSE),
-    self: `${BASE_URL}/week-in-review.xml`,
+    self: `${SITE_URL}/week-in-review.xml`,
   }, items), { headers: FEED_HEADERS });
 }

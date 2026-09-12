@@ -9,7 +9,7 @@
 import { injectHeadingIds } from 'wiki-formant/headings';
 import { normaliseLinks } from 'wiki-formant/links';
 import { slugify } from '@/lib/utils';
-import type { Block, AtomicBlock } from '@/types/blocks';
+import type { Block } from '@/types/blocks';
 import { mapBlockTree } from 'wiki-formant/blocks';
 import { BLOCK_SHAPE } from '@/lib/block-utils';
 

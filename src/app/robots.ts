@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { BASE_URL } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 import { aiCrawlerRules } from 'wiki-formant/crawlers';
 
 export default function robots(): MetadataRoute.Robots {
@@ -58,6 +58,6 @@ export default function robots(): MetadataRoute.Robots {
   }));
   return {
     rules: [...aiCrawlerRules({ allow: '/', disallow, aiAllow }), ...searchEngines],
-    sitemap: `${BASE_URL}/sitemap.xml`,
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

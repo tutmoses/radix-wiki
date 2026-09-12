@@ -5,7 +5,7 @@
 
 import { descriptorResponse } from 'wiki-formant/http';
 import { agentCard, skillsFromTools } from 'wiki-formant/well-known';
-import { BASE_URL } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 
 // Skills come from the MCP tool manifest, so the card can never advertise a
@@ -13,18 +13,18 @@ import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 const AGENT_CARD = agentCard({
   name: 'Radix Wiki',
   description: 'Community-maintained knowledge base for Radix DLT — the layer-1 blockchain with linear scalability and asset-oriented smart contracts.',
-  url: BASE_URL,
+  url: SITE_URL,
   version: SERVER_INFO.version,
   skills: skillsFromTools(TOOLS),
   license: { name: 'CC-BY-4.0', url: 'https://creativecommons.org/licenses/by/4.0/', scope: 'content' },
   extra: {
-    mcpServerCard: `${BASE_URL}/api/mcp/server-card`,
-    openapiUrl: `${BASE_URL}/openapi.json`,
+    mcpServerCard: `${SITE_URL}/api/mcp/server-card`,
+    openapiUrl: `${SITE_URL}/openapi.json`,
     securitySchemes: {
       rola: {
         type: 'custom',
         description: 'Radix On-Ledger Authentication — Ed25519 keypair signed challenge. Required by the create_page and edit_page tools.',
-        documentationUrl: `${BASE_URL}/AGENTS.md`,
+        documentationUrl: `${SITE_URL}/AGENTS.md`,
       },
     },
   },

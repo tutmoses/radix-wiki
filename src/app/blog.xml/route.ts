@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { BASE_URL } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 import { feedItem, publishedAt, renderFeed, FEED_HEADERS } from '@/lib/feed';
 import { licenseNote } from 'wiki-formant/license';
 import { WIKI_LICENSE } from '@/lib/markdown';
@@ -23,9 +23,9 @@ export async function GET() {
 
   return new NextResponse(renderFeed({
     title: 'RADIX.wiki Blog',
-    link: `${BASE_URL}/blog`,
+    link: `${SITE_URL}/blog`,
     description: 'Community blog of RADIX.wiki, the knowledge base for Radix DLT.',
     copyright: licenseNote(WIKI_LICENSE),
-    self: `${BASE_URL}/blog.xml`,
+    self: `${SITE_URL}/blog.xml`,
   }, items), { headers: FEED_HEADERS });
 }

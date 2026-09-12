@@ -15,7 +15,7 @@
 import Link from 'next/link';
 import { Breadcrumbs as SharedBreadcrumbs } from 'wiki-formant/react-server';
 import { findTagByPath } from '@/lib/tags';
-import { BASE_URL } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 
 interface BreadcrumbsProps {
   path: string[];
@@ -46,5 +46,5 @@ export function Breadcrumbs({ path, leafTitle, suffix }: BreadcrumbsProps) {
     ...(suffix ? [{ label: suffix.replace(/-/g, ' ') }] : []),
   ];
 
-  return <SharedBreadcrumbs items={items} base={BASE_URL} link={Link} />;
+  return <SharedBreadcrumbs items={items} base={SITE_URL} link={Link} />;
 }

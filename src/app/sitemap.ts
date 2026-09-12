@@ -4,7 +4,8 @@ import type { MetadataRoute } from 'next';
 import { prisma } from '@/lib/prisma/client';
 import { isValidTagPath, tagPaths } from '@/lib/tags';
 import { SITEMAP_PAGES } from '@/lib/static-pages';
-import { BASE_URL, pageUrl } from '@/lib/utils';
+import { pageUrl } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 
 // `revalidate` alone, not `force-dynamic` beside it. The two contradict each
 // other and force-dynamic wins, so this route was rebuilt per request and
@@ -31,7 +32,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   });
 
   // The root tag is the homepage, already the first row — as a category it
-  // came out a second time, at `${BASE_URL}/`.
+  // came out a second time, at `${SITE_URL}/`.
   const categoryPaths = tagPaths().map(t => t.path).filter(Boolean);
 
   // Newest page under each category → real lastModified (pages already ordered updatedAt desc)
@@ -53,15 +54,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // the feeds and llms-full.txt are <link rel="alternate"> in the layout, and
   // llms.txt is the address every agent tries first.
   return [
-    { url: BASE_URL, lastModified: latest, changeFrequency: 'daily', priority: 1 },
+    { url: SITE_URL, lastModified: latest, changeFrequency: 'daily', priority: 1 },
     ...categoryPaths.map(path => ({
-      url: `${BASE_URL}/${path}`,
+      url: `${SITE_URL}/${path}`,
       lastModified: catModified.get(path) ?? latest,
       changeFrequency: 'weekly' as const,
       priority: 0.8,
     })),
     ...SITEMAP_PAGES.map(p => ({
-      url: `${BASE_URL}/${p.path}`,
+      url: `${SITE_URL}/${p.path}`,
       changeFrequency: p.changeFrequency,
       priority: p.priority,
     })),

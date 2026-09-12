@@ -8,12 +8,12 @@
 import { NextRequest } from 'next/server';
 import { mcpResponse, mcpOptions, mcpGet } from 'wiki-formant/mcp';
 import { serverConfig } from '@/lib/mcp-server';
-import { BASE_URL } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
 
 export const OPTIONS = mcpOptions;
-export const GET = () => mcpGet(`${BASE_URL}/AGENTS.md`);
+export const GET = () => mcpGet(`${SITE_URL}/AGENTS.md`);
 
 // The budget is declared on the config (`MCP_RATE_LIMIT` in @/lib/api) and
 // enforced by `mcpResponse`: the JSON-RPC refusal, the pre-parse ordering and

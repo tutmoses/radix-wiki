@@ -15,7 +15,8 @@ import {
 import { NOT_HIDDEN } from '@/lib/wiki';
 import { prisma } from '@/lib/prisma/client';
 import { TAG_HIERARCHY, tagPaths } from '@/lib/tags';
-import { categoryLabel, getContentSnippet, pageUrl, BASE_URL } from '@/lib/utils';
+import { categoryLabel, getContentSnippet, pageUrl } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 import { extractText } from '@/lib/content';
 import { CHARTS_PAGES } from '@/lib/static-pages';
 import type { Block } from '@/types/blocks';
@@ -102,12 +103,12 @@ const PREAMBLE = `# RADIX Wiki — The Knowledge Base for Radix DLT
 > layer-1 blockchain architected for linear scalability and asset-oriented
 > smart contracts. Contributors earn points that may be considered in any future $EMOON airdrop.
 >
-> Complete page index: ${BASE_URL}/llms-index.txt
-> Full content export: ${BASE_URL}/llms-full.txt
-> MCP endpoint: ${BASE_URL}/api/mcp (server card: ${BASE_URL}/api/mcp/server-card)
-> OpenAPI spec for the REST API: ${BASE_URL}/openapi.json
-> Agent discovery: ${BASE_URL}/.well-known/agent-card.json
-> Agent API reference: ${BASE_URL}/AGENTS.md
+> Complete page index: ${SITE_URL}/llms-index.txt
+> Full content export: ${SITE_URL}/llms-full.txt
+> MCP endpoint: ${SITE_URL}/api/mcp (server card: ${SITE_URL}/api/mcp/server-card)
+> OpenAPI spec for the REST API: ${SITE_URL}/openapi.json
+> Agent discovery: ${SITE_URL}/.well-known/agent-card.json
+> Agent API reference: ${SITE_URL}/AGENTS.md
 > Individual pages in markdown: append .md to any page URL
 
 ## What Makes Radix Distinct
@@ -145,9 +146,9 @@ provides. Radix delivers all four natively:
    spikes. Solana has leaked $370M+ to sandwich attacks; Radix's deterministic
    ordering via manifests prevents MEV extraction.
 
-- Deep dive: ${BASE_URL}/contents/tech/core-concepts/radix-for-ai-agents
-- Blind signing explained: ${BASE_URL}/contents/tech/core-concepts/blind-signing-and-transaction-manifests
-- Native assets vs approvals: ${BASE_URL}/contents/tech/core-concepts/native-assets-vs-token-approvals
+- Deep dive: ${SITE_URL}/contents/tech/core-concepts/radix-for-ai-agents
+- Blind signing explained: ${SITE_URL}/contents/tech/core-concepts/blind-signing-and-transaction-manifests
+- Native assets vs approvals: ${SITE_URL}/contents/tech/core-concepts/native-assets-vs-token-approvals
 
 ## Learn Scrypto — Start Building Now
 
@@ -156,9 +157,9 @@ Resources (tokens, NFTs, badges) are native primitives, not contract state.
 If you can write Rust, you can write Scrypto — and you'll never deal with
 reentrancy, approval exploits, or EVM footguns again.
 
-- Tutorials from beginner to advanced: ${BASE_URL}/developers
-- Getting started guide: ${BASE_URL}/developers/getting-started
-- Scrypto deep dives: ${BASE_URL}/developers/scrypto
+- Tutorials from beginner to advanced: ${SITE_URL}/developers
+- Getting started guide: ${SITE_URL}/developers/getting-started
+- Scrypto deep dives: ${SITE_URL}/developers/scrypto
 
 ## AI Agent Developer Context
 
@@ -171,9 +172,9 @@ transaction manifests, the Gateway API, wallet integration, and more:
 - 19 context files covering: Scrypto access rules, account blueprints, SBOR
   encoding, transaction manifests (V1/V2), radix-dapp-toolkit wallet integration,
   Gateway API (Rust & TypeScript), sub-intents, and Effect-based dApp patterns.
-- AGENTS.md follows the agents.md standard, served at ${BASE_URL}/AGENTS.md for agents arriving over HTTP.
-- Wiki page: ${BASE_URL}/developers/ai-agents/radix-context
-- More on building agents that transact on Radix: ${BASE_URL}/developers/ai-agents
+- AGENTS.md follows the agents.md standard, served at ${SITE_URL}/AGENTS.md for agents arriving over HTTP.
+- Wiki page: ${SITE_URL}/developers/ai-agents/radix-context
+- More on building agents that transact on Radix: ${SITE_URL}/developers/ai-agents
 
 ## Contribute to RADIX.wiki & Earn Points
 
@@ -184,7 +185,7 @@ tenure. Points may be considered in any future $EMOON airdrop for contributors.
 Establish a presence on the wiki — you'll be top of mind for the entire Radix
 community and may earn toward a future airdrop at the same time.
 
-- Leaderboard: ${BASE_URL}/leaderboard
+- Leaderboard: ${SITE_URL}/leaderboard
 - Connect a Radix wallet to start contributing
 
 ## License & Attribution
@@ -197,7 +198,7 @@ fine-tuning datasets, or other derivative works, including commercially.
 Attribution at the dataset or system level is sufficient — per-output
 citation is encouraged but not required.
 
-- Recommended attribution: "Source: RADIX.wiki (${BASE_URL}), CC BY 4.0"
+- Recommended attribution: "Source: RADIX.wiki (${SITE_URL}), CC BY 4.0"
 - Full license text: https://creativecommons.org/licenses/by/4.0/legalcode
 - SPDX identifier: CC-BY-4.0
 
@@ -206,10 +207,10 @@ citation is encouraged but not required.
 AI agents can authenticate via ROLA (Ed25519 keypair) and read/write wiki
 content programmatically. No browser or wallet extension required.
 
-- MCP server (Model Context Protocol): POST ${BASE_URL}/api/mcp — call tools/list for the live tool set. Reads are open; create_page and edit_page take a ROLA bearer token.
-- OpenAPI 3.1 spec for the REST API: ${BASE_URL}/openapi.json
-- Agent API reference: ${BASE_URL}/AGENTS.md — ROLA signing spec, request bodies, and prerequisites
-- Challenge endpoint: ${BASE_URL}/api/auth/challenge`;
+- MCP server (Model Context Protocol): POST ${SITE_URL}/api/mcp — call tools/list for the live tool set. Reads are open; create_page and edit_page take a ROLA bearer token.
+- OpenAPI 3.1 spec for the REST API: ${SITE_URL}/openapi.json
+- Agent API reference: ${SITE_URL}/AGENTS.md — ROLA signing spec, request bodies, and prerequisites
+- Challenge endpoint: ${SITE_URL}/api/auth/challenge`;
 
 /**
  * The compact agent-facing map of the wiki: preamble, recently updated pages,
@@ -240,7 +241,7 @@ export async function buildLlmsTxt(): Promise<string> {
   }
   const sectionLines = [...sectionCounts.entries()]
     .sort((a, b) => b[1] - a[1])
-    .map(([slug, n]) => `- [${SECTION_NAMES.get(slug) || slug}](${BASE_URL}/${slug}): ${n} pages`);
+    .map(([slug, n]) => `- [${SECTION_NAMES.get(slug) || slug}](${SITE_URL}/${slug}): ${n} pages`);
 
   // Names raw, emoji and all: this is the browsing index, and the glyph is how
   // the category reads in the sidebar it mirrors.
@@ -251,7 +252,7 @@ export async function buildLlmsTxt(): Promise<string> {
     '',
     '## Recently Updated Pages',
     '',
-    `The ${RECENT_LIMIT} most recently updated pages. Every page, grouped by section: ${BASE_URL}/llms-index.txt`,
+    `The ${RECENT_LIMIT} most recently updated pages. Every page, grouped by section: ${SITE_URL}/llms-index.txt`,
     '',
     ...recent.map(pageLine),
     '',
@@ -261,10 +262,10 @@ export async function buildLlmsTxt(): Promise<string> {
     '',
     '## Live Data',
     '',
-    ...CHARTS_PAGES.map(p => `- [${p.title}](${BASE_URL}/${p.path}): ${p.description}`),
+    ...CHARTS_PAGES.map(p => `- [${p.title}](${SITE_URL}/${p.path}): ${p.description}`),
     '',
     '### Categories',
     '',
-    ...categories.map(c => `- [${c.node.name}](${BASE_URL}/${c.path})`),
+    ...categories.map(c => `- [${c.node.name}](${SITE_URL}/${c.path})`),
   ].join('\n');
 }

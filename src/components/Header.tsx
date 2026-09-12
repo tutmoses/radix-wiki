@@ -4,7 +4,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Search, Menu, X, Loader2, LogOut, ChevronDown, Edit, History, User, FileCode, Bell, Webhook, Database, MoreVertical, Quote, Link2, Check, Eye, EyeOff } from 'lucide-react';
 import { useCopy, useSidebar, useTypeahead } from 'wiki-formant/react';
 import type { ComboboxOptionProps } from 'wiki-formant/combobox';
@@ -15,7 +15,7 @@ import type { PageSummary } from '@/lib/wiki';
 import Highlight from '@/components/Highlight';
 import { Button, Dropdown } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
-import type { WikiPage, WikiNotification } from '@/types';
+import type { WikiNotification } from '@/types';
 import type { LedgerAnchor } from '@/lib/radix/ledger';
 import { WebhookSettings, useTelegram } from '@/components/WebhookSettings';
 import { LedgerDropdown } from '@/components/LedgerBackupView';
@@ -202,9 +202,7 @@ function PageToolsDropdown({ onClose, historyPath, mdxPath, tagPath, slug, isPag
 export function Header() {
   const router = useRouter();
   const { isAuthenticated, user, walletData } = useAuth();
-  const isConnected = useStore(s => s.isConnected);
   const isLoading = useStore(s => s.isLoading);
-  const rdtReady = useStore(s => s.rdtReady);
   const logout = useStore(s => s.logout);
   const connect = useStore(s => s.connect);
   // Shared with the rail through wiki-formant's SidebarProvider.

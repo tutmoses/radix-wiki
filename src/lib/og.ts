@@ -1,7 +1,7 @@
 // src/lib/og.ts — single source for the social card of every URL on the wiki.
 
 import type { Metadata } from 'next';
-import { BASE_URL } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 
 export const SITE_NAME = 'RADIX Wiki';
 const SITE_HANDLE = '@RadixWiki';
@@ -21,7 +21,7 @@ export function ogImageUrl({ title, description, tagPath, banner }: {
   if (tagPath) params.set('tagPath', tagPath);
   if (banner) params.set('banner', banner);
   const query = params.toString();
-  return query ? `${BASE_URL}/og?${query}` : `${BASE_URL}/og`;
+  return query ? `${SITE_URL}/og?${query}` : `${SITE_URL}/og`;
 }
 
 interface OgArticle {

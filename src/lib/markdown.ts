@@ -26,14 +26,15 @@ import {
   linkList,
 } from 'wiki-formant/blocks';
 import { BANNER_LABELS } from '@/lib/content';
-import { BASE_URL, pageUrl } from '@/lib/utils';
+import { pageUrl } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 import type { Block, AtomicBlock } from '@/types/blocks';
 import { ccBy40 } from 'wiki-formant/license';
 
 // The grant, its name and the credit line, from `wiki-formant/license` — the
 // same four fields the other two wikis had each written out. Only the site's own
 // identity is passed in.
-export const WIKI_LICENSE = ccBy40({ siteName: 'Radix Wiki', siteUrl: BASE_URL });
+export const WIKI_LICENSE = ccBy40({ siteName: 'Radix Wiki', siteUrl: SITE_URL });
 
 const decode = decodeEntities;
 
@@ -70,7 +71,7 @@ export function atomicToMarkdown(block: AtomicBlock): string {
     case 'recentPages':
       return block.resolvedPages?.length
         ? pageLinks(block.resolvedPages)
-        : `_Dynamic page list — live at ${block.tagPath ? `${BASE_URL}/${block.tagPath}` : BASE_URL}_`;
+        : `_Dynamic page list — live at ${block.tagPath ? `${SITE_URL}/${block.tagPath}` : SITE_URL}_`;
 
     case 'pageList':
       return block.resolvedPages?.length
@@ -83,7 +84,7 @@ export function atomicToMarkdown(block: AtomicBlock): string {
         : `_Live feed: ${block.url}_`;
 
     case 'assetPrice':
-      return `_Live asset price widget — ${block.resourceAddress ? `${BASE_URL}/charts/tokens/${block.resourceAddress}` : `${BASE_URL}/charts`}_`;
+      return `_Live asset price widget — ${block.resourceAddress ? `${SITE_URL}/charts/tokens/${block.resourceAddress}` : `${SITE_URL}/charts`}_`;
 
     case 'testimonial':
       return `> "${decode(block.quote)}"\n> — ${block.author}${block.role ? `, ${block.role}` : ''}`;

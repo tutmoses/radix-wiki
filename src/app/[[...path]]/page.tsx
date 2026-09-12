@@ -26,7 +26,8 @@ import ChartsOverview from '@/components/charts/ChartsOverview';
 import ValidatorsView from '@/components/charts/ValidatorsView';
 import TokensView from '@/components/charts/TokensView';
 import TokenDetailView from '@/components/charts/TokenDetailView';
-import { BASE_URL, categoryLabel, clampSnippet, getContentSnippet, pagePath } from '@/lib/utils';
+import { categoryLabel, clampSnippet, getContentSnippet, pagePath } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { PageNav } from 'wiki-formant/react-server';
@@ -68,7 +69,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (parsed.type === 'token-detail' && parsed.tokenAddress) {
     const token = await getTokenDetail(parsed.tokenAddress);
     if (!token) notFound();
-    const canonical = `${BASE_URL}/charts/tokens/${parsed.tokenAddress}`;
+    const canonical = `${SITE_URL}/charts/tokens/${parsed.tokenAddress}`;
     const label = token.symbol || token.name || 'Token';
     const fullName = token.name && token.symbol && token.name !== token.symbol ? `${token.name} (${token.symbol})` : (token.name || token.symbol || 'Token');
     const title = `${label} — Token on Radix`;
@@ -83,7 +84,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const staticPage = STATIC_PAGES[parsed.type];
   if (staticPage) {
     const { path: staticPath, title, description, noindex, absoluteTitle, imageTitle } = staticPage;
-    const url = staticPath ? `${BASE_URL}/${staticPath}` : BASE_URL;
+    const url = staticPath ? `${SITE_URL}/${staticPath}` : SITE_URL;
     return {
       title: absoluteTitle ? { absolute: title } : title,
       description,
@@ -109,7 +110,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title, description,
       ...ogMetadata({
         title, description,
-        url: `${BASE_URL}/${parsed.tagPath}`, tagPath: parsed.tagPath,
+        url: `${SITE_URL}/${parsed.tagPath}`, tagPath: parsed.tagPath,
         banner: hub?.bannerImage,
       }),
     };
@@ -122,7 +123,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: `${label} — RADIX Wiki`,
       description: `${label} view on RADIX Wiki.`,
       robots: NOINDEX_ROBOTS,
-      alternates: { canonical: `${BASE_URL}/${parsed.tagPath}/${parsed.slug}`.replace(/\/+$/, '') || BASE_URL },
+      alternates: { canonical: `${SITE_URL}/${parsed.tagPath}/${parsed.slug}`.replace(/\/+$/, '') || SITE_URL },
     };
   }
 
@@ -138,7 +139,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: 'New page — RADIX Wiki',
       description: 'Create a new page on RADIX Wiki.',
       robots: NOINDEX_ROBOTS,
-      alternates: { canonical: `${BASE_URL}/${parsed.tagPath}/${parsed.slug}` },
+      alternates: { canonical: `${SITE_URL}/${parsed.tagPath}/${parsed.slug}` },
     };
   }
 
@@ -154,7 +155,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       ? `${title}${sectionName ? ` — a ${sectionName} article` : ''} on RADIX Wiki, the community-maintained knowledge base for the Radix DLT ecosystem.`
       : 'RADIX Wiki — community-maintained knowledge base for Radix DLT, the layer-1 blockchain with linear scalability and asset-oriented smart contracts.');
   const segments = path?.length ? path.join('/') : '';
-  const canonical = segments ? `${BASE_URL}/${segments}` : BASE_URL;
+  const canonical = segments ? `${SITE_URL}/${segments}` : SITE_URL;
 
   return {
     title,
@@ -269,9 +270,9 @@ function articleLd(page: WikiPage, url: string) {
       '@type': 'Person',
       name: page.author?.displayName || 'Anonymous',
     },
-    publisher: { '@type': 'Organization', name: 'RADIX Wiki', url: BASE_URL, logo: { '@type': 'ImageObject', url: `${BASE_URL}/logo.png` } },
+    publisher: { '@type': 'Organization', name: 'RADIX Wiki', url: SITE_URL, logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` } },
     image,
-    isPartOf: { '@type': 'WebSite', name: 'RADIX Wiki', url: BASE_URL },
+    isPartOf: { '@type': 'WebSite', name: 'RADIX Wiki', url: SITE_URL },
     inLanguage: 'en',
     license: 'https://creativecommons.org/licenses/by/4.0/',
     ...(page.version && { version: page.version }),
@@ -287,14 +288,14 @@ function collectionLd(name: string, url: string, items: ({ title: string; tagPat
     '@type': 'CollectionPage',
     name, url,
     ...(description && { description }),
-    isPartOf: { '@type': 'WebSite', name: 'RADIX Wiki', url: BASE_URL },
+    isPartOf: { '@type': 'WebSite', name: 'RADIX Wiki', url: SITE_URL },
     mainEntity: {
       '@type': 'ItemList',
       numberOfItems: items.length,
       itemListElement: items.slice(0, 50).map((item, i) => ({
         '@type': 'ListItem',
         position: i + 1,
-        ...('href' in item ? { url: `${BASE_URL}${item.href}`, name: item.name } : { url: `${BASE_URL}/${item.tagPath}/${item.slug}`, name: item.title }),
+        ...('href' in item ? { url: `${SITE_URL}${item.href}`, name: item.name } : { url: `${SITE_URL}/${item.tagPath}/${item.slug}`, name: item.title }),
       })),
     },
   };
@@ -369,7 +370,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
     const tagSegments = parsed.tagPath.split('/');
     const tag = findTagByPath(tagSegments);
     const categoryName = categoryLabel(tag?.name ?? '') || tagSegments.at(-1)?.replace(/-/g, ' ') || 'Category';
-    const categoryUrl = `${BASE_URL}/${parsed.tagPath}`;
+    const categoryUrl = `${SITE_URL}/${parsed.tagPath}`;
 
     // `/<category>/edit` edits the hub article where one exists; categories
     // without a hub keep falling through to the listing.
@@ -510,7 +511,7 @@ export default async function DynamicPage({ params, searchParams }: Props) {
   const mainArticle = getMainArticle(parsed.tagPath);
   const series = mainArticle && mainArticle !== `${parsed.tagPath}/${parsed.slug}` ? await getPageRef(mainArticle) : null;
   const pathSegments = [...parsed.tagPath.split('/'), parsed.slug];
-  const pageUrl = `${BASE_URL}/${pathSegments.join('/')}`;
+  const pageUrl = `${SITE_URL}/${pathSegments.join('/')}`;
   return (
     <>
       {page && <JsonLd data={articleLd(page, pageUrl)} />}

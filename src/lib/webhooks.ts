@@ -6,7 +6,8 @@
 
 import { createHmac, randomBytes } from 'crypto';
 import { prisma } from '@/lib/prisma/client';
-import { BASE_URL, pageUrl, shortenAddress } from '@/lib/utils';
+import { pageUrl, shortenAddress } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 
 export type WebhookEvent = 'page.created' | 'page.updated' | 'page.deleted' | 'comment.created';
 
@@ -33,7 +34,7 @@ interface Notification {
 
 /** The homepage row carries no tag path, and its URL is the site root, not a path. */
 const notificationUrl = (page: Notification['page']): string =>
-  page.tagPath ? pageUrl(page.tagPath, page.slug) : BASE_URL;
+  page.tagPath ? pageUrl(page.tagPath, page.slug) : SITE_URL;
 
 const escapeHtml = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

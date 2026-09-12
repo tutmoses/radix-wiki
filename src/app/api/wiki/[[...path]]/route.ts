@@ -4,7 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
-import { slugify, pageUrl, pagePath, BASE_URL } from '@/lib/utils';
+import { slugify, pageUrl, pagePath } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 import { isValidTagPath, isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys } from '@/lib/tags';
 import { requireBalance } from '@/lib/radix/balance';
 import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, cachedJson, CACHE, type RouteContext } from '@/lib/api';
@@ -167,9 +168,9 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       return teachingNotFound(
         `No page at "${pagePath(parsed.tagPath, parsed.slug)}".`,
         {
-          index: `${BASE_URL}/llms-index.txt`,
-          search: `${BASE_URL}/api/wiki?q=<term>`,
-          categories: `${BASE_URL}/api/wiki?tagPath=`,
+          index: `${SITE_URL}/llms-index.txt`,
+          search: `${SITE_URL}/api/wiki?q=<term>`,
+          categories: `${SITE_URL}/api/wiki?tagPath=`,
           note: 'Every page URL takes a ".md" suffix for its markdown twin. Paths are tagPath + slug, e.g. "contents/tech/core-concepts/utxo-model".',
         },
         CACHE.short['Cache-Control'],

@@ -10,7 +10,8 @@
 // validation) are `wiki-formant/mcp`, shared with the other wikis.
 
 import { prisma } from '@/lib/prisma/client';
-import { BASE_URL, categoryLabel, pageUrl, pagePath } from '@/lib/utils';
+import { categoryLabel, pageUrl, pagePath } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 import { NOT_HIDDEN, orderByIds, searchPageIds, summarizePage, SUMMARY_SELECT } from '@/lib/wiki';
 import { listEnvelope } from 'wiki-formant/pagination';
 import { MCP_RATE_LIMIT, MCP_RATE_LIMIT_TEXT } from '@/lib/api';
@@ -28,7 +29,7 @@ const INSTRUCTIONS = [
   'Usual sequence: get_categories to orient, search_wiki or list_pages to locate, then get_page to read. Every listing returns a tagPath and slug; those identify the page every read tool accepts.',
   `Reads are open and never authenticate. Rate limit: ${MCP_RATE_LIMIT_TEXT}, shared across all methods.`,
   'Writing without leaving the protocol: get_challenge → sign the ROLA message with your own Ed25519 key → login (returns a Bearer token) → create_page / edit_page with that token as an HTTP `Authorization: Bearer <token>` header on the POSTs carrying the calls.',
-  `Deep reference (ROLA signing spec, REST equivalents, content model): ${BASE_URL}/AGENTS.md (also served at ${BASE_URL}/agents-md). Any page URL + ".md" is its markdown twin.`,
+  `Deep reference (ROLA signing spec, REST equivalents, content model): ${SITE_URL}/AGENTS.md (also served at ${SITE_URL}/agents-md). Any page URL + ".md" is its markdown twin.`,
 ].join('\n');
 
 // ========== RESOURCES ==========
@@ -39,7 +40,7 @@ const RESOURCES: McpResource[] = [
     name: 'RADIX Wiki LLM Briefing',
     description: 'Narrative briefing document with investment thesis, technical overview, and page index.',
     mimeType: 'text/plain',
-    // Built in-process. This used to fetch `${BASE_URL}/llms.txt` — a round
+    // Built in-process. This used to fetch `${SITE_URL}/llms.txt` — a round
     // trip out of the datacentre to reach a function in the same process,
     // which also served null whenever the deploy it called was cold or down.
     read: () => buildLlmsTxt(),
@@ -330,7 +331,7 @@ async function get_ideas_board(args: { category?: string; workingGroup?: string 
   const orphans = cards.filter(c => !known.has(c.rawStatus));
   if (orphans.length) columns.push({ status: 'Uncategorized', count: orphans.length, cards: orphans.map(shape) });
 
-  return { board: 'ideas', url: `${BASE_URL}/ideas`, totalCards: cards.length, columns };
+  return { board: 'ideas', url: `${SITE_URL}/ideas`, totalCards: cards.length, columns };
 }
 
 // ========== AUTH BOOTSTRAP HANDLERS ==========
@@ -342,14 +343,14 @@ async function get_ideas_board(args: { category?: string; workingGroup?: string 
 // that carry subsequent write calls (the CORS allow-list already names it).
 
 async function get_challenge() {
-  const res = await fetch(`${BASE_URL}/api/auth/challenge`);
+  const res = await fetch(`${SITE_URL}/api/auth/challenge`);
   const data = await res.json().catch(() => null) as { challenge?: string; expiresAt?: string; error?: string } | null;
   if (!res.ok || !data?.challenge) throw new McpToolError(data?.error || `Challenge request failed (${res.status})`);
   return {
     challenge: data.challenge,
     expiresAt: data.expiresAt,
     sign: {
-      message: `blake2b-256 of: "R" (ascii) + challenge (hex-decoded) + one length byte of "${RADIX_CONFIG.dAppDefinitionAddress}" + that address (utf-8) + "${BASE_URL}" (utf-8)`,
+      message: `blake2b-256 of: "R" (ascii) + challenge (hex-decoded) + one length byte of "${RADIX_CONFIG.dAppDefinitionAddress}" + that address (utf-8) + "${SITE_URL}" (utf-8)`,
       curve: 'curve25519 (Ed25519); sign the 32-byte hash, hex-encode the signature',
       address: 'your virtual account address derived from the public key — the key must be an on-ledger owner_keys entry for that account',
       then: 'Call login with { challenge, address, publicKey, signature, curve }.',
@@ -358,7 +359,7 @@ async function get_challenge() {
 }
 
 async function login(args: Record<string, unknown>) {
-  const res = await fetch(`${BASE_URL}/api/auth`, {
+  const res = await fetch(`${SITE_URL}/api/auth`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -397,10 +398,10 @@ async function forwardWrite(path: string, method: 'POST' | 'PUT', body: unknown,
   if (!auth) {
     throw new McpToolError(
       'Not authenticated. Call get_challenge, sign the ROLA message with your own key, call login, then resend this call with the returned token as an HTTP `Authorization: Bearer <token>` header.',
-      { flow: ['get_challenge', 'login', 'create_page / edit_page'], reference: `${BASE_URL}/AGENTS.md` },
+      { flow: ['get_challenge', 'login', 'create_page / edit_page'], reference: `${SITE_URL}/AGENTS.md` },
     );
   }
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`${SITE_URL}${path}`, {
     method,
     headers: { 'Content-Type': 'application/json', Authorization: auth },
     body: JSON.stringify(body),
@@ -460,7 +461,7 @@ export function serverConfig(auth: string | null): McpServerConfig {
     resources: RESOURCES,
     prompts: PROMPTS,
     rateLimit: MCP_RATE_LIMIT,
-    docsUrl: `${BASE_URL}/AGENTS.md`,
+    docsUrl: `${SITE_URL}/AGENTS.md`,
     onCall: (req, body) => trackMcpCall(req, SERVER_INFO.name, body),
   };
 }

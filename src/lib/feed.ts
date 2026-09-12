@@ -15,7 +15,8 @@
 // request — telling every poller the feed had changed when it had not.
 
 import type { Block, AtomicBlock } from '@/types/blocks';
-import { BASE_URL, getContentSnippet, pageUrl } from '@/lib/utils';
+import { getContentSnippet, pageUrl } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 import { ogImageUrl } from '@/lib/og';
 import { absolutise as absolutiseFrom, clampWords, escXml, type FeedItem } from 'wiki-formant/feed';
 
@@ -28,7 +29,7 @@ export function publishedAt(metadata: unknown, createdAt: Date): Date {
   return parsed && !isNaN(parsed.getTime()) ? parsed : createdAt;
 }
 
-const absolutise = (html: string) => absolutiseFrom(html, BASE_URL);
+const absolutise = (html: string) => absolutiseFrom(html, SITE_URL);
 
 function renderAtomic(block: AtomicBlock): string {
   switch (block.type) {

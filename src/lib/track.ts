@@ -7,7 +7,7 @@
 // this wiki's domain and the Next deferral.
 
 import { after } from 'next/server';
-import { BASE_URL } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 import { plausibleEvent as send, mcpCallProps, searchQueryProps, plausibleDomain, type PlausibleExtra } from 'wiki-formant/analytics';
 
 // Hostname the Plausible property is registered under.
@@ -49,7 +49,7 @@ export function trackSearch(request: Request, query: string, results: number) {
   const { headers } = request;
   // The referer is the page the reader searched from; the search endpoint's own
   // URL would file every query against /api/wiki.
-  const url = headers.get('referer') || BASE_URL;
+  const url = headers.get('referer') || SITE_URL;
   after(() => plausibleEvent('Search Query', url, props, headers, {
     // A person triggered this, so send their own user agent and let the event
     // join their session. The bot-tracker default would file every search as a

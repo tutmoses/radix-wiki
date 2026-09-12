@@ -12,7 +12,7 @@ import { BlockRenderer, findInfobox, infoboxHasContent, InfoboxSidebar } from '@
 import { UserAvatar } from '@/components/UserAvatar';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { LinkPreview } from '@/components/LinkPreview';
-import { Badge, Button, Card, Input, StatusCard } from '@/components/ui';
+import { Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
 import { categoryLabel, cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet, pagePath } from '@/lib/utils';
 import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder, type TagNode } from '@/lib/tags';

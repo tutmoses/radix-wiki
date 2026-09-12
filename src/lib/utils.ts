@@ -4,8 +4,7 @@ import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { matchSnippet } from 'wiki-formant/text';
 import { decodeEntities } from '@/lib/content';
-
-export const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
+import { SITE_URL } from '@/lib/site';
 
 // The deterministic pair behind the generative banner is `wiki-formant`,
 // shared with caper, which held the same two character for character — the
@@ -73,7 +72,7 @@ export function pagePath(tagPath: string, slug: string): string {
 /** The one absolute URL for a page. Every export that advertises a page URL
  *  (llms.txt family, MCP rows, sitemap, blog.xml) goes through here. */
 export function pageUrl(tagPath: string, slug: string): string {
-  return `${BASE_URL}${pagePath(tagPath, slug)}`;
+  return `${SITE_URL}${pagePath(tagPath, slug)}`;
 }
 
 // ========== CONTENT SNIPPET ==========
