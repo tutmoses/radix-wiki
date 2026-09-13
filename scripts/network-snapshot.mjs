@@ -299,17 +299,32 @@ await withClient(async (client) => {
     process.stdout.write(JSON.stringify(meta(page).state ?? {}, null, 2) + '\n');
 
   } else if (mode === 'capture') {
-    const res = await fetch(`${ORIGIN}/api/charts/snapshot`, { headers: { accept: 'application/json' } });
-    if (res.status === 404) {
-      throw new Error(
-        `no snapshot route at ${ORIGIN} (404).\n` +
-        `  The route ships with the app, so a 404 on radix.wiki means it is not deployed yet.\n` +
-        `  Against a local dev server instead:\n` +
-        `    SNAPSHOT_ORIGIN=http://localhost:3000 node scripts/network-snapshot.mjs capture`,
-      );
+    // The route is ISR-cached, and the first hit after a quiet spell is served the stale copy
+    // while it regenerates: on 2026-09-13 that stored a reading 45 hours old under a correct-
+    // looking epoch. `capturedAt` is stamped by the route, so refuse anything older than ten
+    // minutes and ask again once the regeneration has landed.
+    let reading;
+    for (let attempt = 1; ; attempt++) {
+      const res = await fetch(`${ORIGIN}/api/charts/snapshot`, { headers: { accept: 'application/json' } });
+      if (res.status === 404) {
+        throw new Error(
+          `no snapshot route at ${ORIGIN} (404).\n` +
+          `  The route ships with the app, so a 404 on radix.wiki means it is not deployed yet.\n` +
+          `  Against a local dev server instead:\n` +
+          `    SNAPSHOT_ORIGIN=http://localhost:3000 node scripts/network-snapshot.mjs capture`,
+        );
+      }
+      if (!res.ok) throw new Error(`snapshot route ${res.status} at ${ORIGIN}`);
+      reading = await res.json();
+      const ageMin = (Date.now() - new Date(reading.capturedAt)) / 60000;
+      if (ageMin <= 10) break;
+      if (attempt === 4) throw new Error(`snapshot route keeps serving a reading ${Math.round(ageMin)} minutes old; nothing written`);
+      console.log(`  cached reading is ${Math.round(ageMin)} minutes old; retrying`);
+      await new Promise((r) => setTimeout(r, 8000));
     }
-    if (!res.ok) throw new Error(`snapshot route ${res.status} at ${ORIGIN}`);
-    const reading = await res.json();
+    // Mirrors the guard in src/lib/radix/tokens.ts, for a deployed route that predates it:
+    // a week's volume above the 24B maximum XRD supply is a mispriced pool, not trade.
+    if (reading.ociswap && !(reading.ociswap.volume7dXrd <= 24e9)) reading.ociswap.volume7dXrd = null;
 
     // The route answers 503 when the ledger is unreadable, but a reading with no validators
     // in it is not a week worth recording whatever the status code says — it is the shape a

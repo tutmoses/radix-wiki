@@ -141,6 +141,8 @@ export interface DexStats {
   newPools7d: number;
 }
 
+const XRD_MAX_SUPPLY = 24e9;
+
 /** Only the four figures the dashboard reads; OciSwap sends far more. */
 type XrdSeries = Record<string, unknown>;
 type OciStatistics = {
@@ -153,8 +155,11 @@ async function _fetchDexStats(): Promise<DexStats | null> {
   const d = await ociswap<OciStatistics>('/statistics', 'dex-stats');
   if (!d) return null;
   // $XRD-denominated throughout: the native unit needs no price oracle to be true later.
+  // A week's volume above the 24B maximum supply is Ociswap mispricing a pool, not trade:
+  // on 13 September 2026 it reported 11 quadrillion XRD on 1,296 swaps. NaN serialises as null.
+  const volume = num(d?.volume?.xrd?.['7d']);
   return {
-    volume7dXrd: num(d?.volume?.xrd?.['7d']),
+    volume7dXrd: volume > XRD_MAX_SUPPLY ? NaN : volume,
     swaps7d: num(d?.event_counts?.swap?.['7d']),
     tvlXrd: num(d?.total_value_locked?.xrd?.now),
     newPools7d: num(d?.event_counts?.instantiate_pool?.['7d']),

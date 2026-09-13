@@ -102,8 +102,11 @@ function wirFigure(snap, prior, series, dev, devPrior) {
       `${snap.active} of them in the active set`);
   b += statCard(L, y1, cw, 'A THIRD OF STAKE', `${snap.nakamoto} validators`,
     d(snap.nakamoto, prior?.nakamoto, { percent: false }), `top 10 hold ${snap.top10Share}%`);
-  b += statCard(L + cw + gap, y1, cw, 'OCISWAP 7D VOLUME', `${compact(oci.volume7dXrd)} XRD`,
-    d(oci.volume7dXrd, prior?.ociswap?.volume7dXrd), `${fmt(oci.swaps7d)} swaps`);
+  b += oci.volume7dXrd != null
+    ? statCard(L + cw + gap, y1, cw, 'OCISWAP 7D VOLUME', `${compact(oci.volume7dXrd)} XRD`,
+      d(oci.volume7dXrd, prior?.ociswap?.volume7dXrd), `${fmt(oci.swaps7d)} swaps`)
+    : statCard(L + cw + gap, y1, cw, 'OCISWAP 7D SWAPS', fmt(oci.swaps7d), '',
+      'volume unreadable: Ociswap misprices a pool');
 
   // ---- two stacked sections: stake concentration, then fees in motion.
   // Side by side at 760 leaves the fee cards narrower than their own text, so each
