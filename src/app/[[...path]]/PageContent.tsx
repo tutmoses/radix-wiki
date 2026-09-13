@@ -507,35 +507,21 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
 }) {
   const pathStr = tagPath.join('/');
   const tag = findTagByPath(tagPath);
-  const categoryName = categoryLabel(tag?.name ?? '') || tagPath.at(-1) || 'this category';
   const controlItems = <><SubscribeRow tagPath={pathStr} /><NewPageControl tagPath={pathStr} /></>;
-  const controls = <div className="row-md">{controlItems}</div>;
-  // A hub's banner already titles the page and the results bar below already
-  // names what the listing holds, so the heading there would be a second title
-  // over a rule — the controls ride the slot alone.
+  // The page title already names the category and the results bar names what the
+  // listing holds, so neither the listing nor the section index takes a heading.
+  // A hub's title sits in its banner, so its controls ride above whichever comes first.
+  const hubControls = <div className="row-md justify-end empty:hidden">{controlItems}</div>;
   const listing = total > 0 && (
     <CategoryListing
       tagPath={tagPath} pages={pages} sort={sort} total={total}
       facetGroups={facetGroups} filters={filters} letters={letters} letter={letter}
-      heading={hub ? (
-        <div className="row-md justify-end empty:hidden">{controlItems}</div>
-      ) : (
-        <div className="spread">
-          <h2 id="pages-in-this-category" className="m-0!">Pages in {categoryName}</h2>
-          {controls}
-        </div>
-      )}
+      heading={hub && hubControls}
     />
   );
-  // A hub page has no heading row of its own — the banner carries the title — so
-  // on one that is all sections the controls ride the section heading rather
-  // than disappearing with the listing.
   const sections = subcategories.length > 0 && (
-    <section className="stack-sm">
-      <div className="spread">
-        <h2 id="sections" className="m-0!">Sections in {categoryName}</h2>
-        {hub && !listing && controls}
-      </div>
+    <section className="stack-sm" aria-label="Sections">
+      {hub && !listing && hubControls}
       <SectionIndex subcategories={subcategories} />
     </section>
   );
@@ -561,7 +547,7 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
       <Breadcrumbs path={tagPath} />
       <div className="spread">
         <h1>{tag?.name || tagPath[tagPath.length - 1]}</h1>
-        {controls}
+        <div className="row-md">{controlItems}</div>
       </div>
       <CategoryHero description={tag?.description} mainArticle={mainArticle} />
       {sections}
