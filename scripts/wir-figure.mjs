@@ -167,16 +167,18 @@ function wirFigure(snap, prior, series, dev, devPrior) {
     ];
     let ry = yC + 20;
     for (const [label, vals, stroke, fill] of rows) {
-      const clean = vals.map((v) => (isFinite(v) ? v : 0));
+      // An unreadable week leaves a gap. Drawn as zero it reads as a collapse that never happened.
+      const known = vals.filter((v) => v != null && isFinite(v));
       // Min-max scaled: the strip shows the trend, the numbers live in the cards above.
-      const max = Math.max(...clean), min = Math.min(...clean), span = max - min || 1;
+      const max = Math.max(...known), min = Math.min(...known), span = max - min || 1;
       b += t(L, ry + 15, label, { size: 11, w: 600, fill: C.text2 });
-      const x0 = L + 170, bw = Math.min(42, (w - 170 - 90 - (clean.length - 1) * 5) / clean.length);
-      clean.forEach((v, i) => {
+      const x0 = L + 170, bw = Math.min(42, (w - 170 - 90 - (vals.length - 1) * 5) / vals.length);
+      vals.forEach((v, i) => {
+        if (v == null || !isFinite(v)) return;
         const h = 4 + ((v - min) / span) * 16;
         b += `<rect x="${x0 + i * (bw + 5)}" y="${ry + 19 - h}" width="${bw}" height="${h}" rx="2" fill="${fill}" stroke="${stroke}" stroke-width="1"/>`;
       });
-      b += t(x0 + clean.length * (bw + 5) + 8, ry + 15, compact(clean[clean.length - 1]), { size: 11, w: 700, fill: stroke, font: MONO });
+      b += t(x0 + vals.length * (bw + 5) + 8, ry + 15, compact(vals[vals.length - 1], 'unreadable'), { size: 11, w: 700, fill: stroke, font: MONO });
       ry += 34;
     }
     b += t(L + 170, ry + 2, `${series[0].week} → ${series[series.length - 1].week}, one reading per week`, { size: 11, fill: C.muted });
