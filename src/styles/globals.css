@@ -434,6 +434,7 @@
   .page-card-snippet { @apply text-text-muted line-clamp-2 text-small; }
   .page-card-meta { @apply flex items-center gap-2 flex-wrap mt-auto pt-1; }
   .page-card-compact { @apply flex items-center gap-2 p-3 bg-surface-1 border border-border-muted rounded-lg hover:bg-surface-2 transition-colors; }
+  .page-card-icon { @apply size-8 rounded object-cover shrink-0; }
 
   /* ===== STATUS CARD ===== */
   .status-icon { @apply flex items-center justify-center w-16 h-16 rounded-2xl bg-surface-2 text-text-muted; }

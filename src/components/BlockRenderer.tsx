@@ -57,7 +57,7 @@ const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; com
   if (compact) {
     return (
       <Link href={href} className="page-card-compact">
-        {page.bannerImage ? <Image src={page.bannerImage} alt={page.title} width={32} height={32} className="rounded object-cover shrink-0" /> : <FileText size={16} className="text-accent shrink-0" />}
+        <Image src={page.bannerImage || generateBannerSvg(page.title, page.tagPath)} alt="" width={32} height={32} className="page-card-icon" unoptimized={!page.bannerImage} />
         <span className="group-hover:text-accent transition-colors truncate">{page.title}</span>
       </Link>
     );
