@@ -6,6 +6,7 @@
 //
 // Usage:
 //   node scripts/mark-verified.mjs <tagPath> <slug>     stamp one page
+//   node scripts/mark-verified.mjs <tagPath> ''         stamp a category hub (the empty-slug row)
 //   node scripts/mark-verified.mjs --all <tagPath>      stamp every page under a tag path
 import { withClient } from './seed-utils.mjs';
 
@@ -17,7 +18,7 @@ await withClient(async (client) => {
     if (!b) throw new Error('Usage: node scripts/mark-verified.mjs --all <tagPath>');
     res = await client.query('UPDATE pages SET last_verified_at = $1 WHERE tag_path = $2 OR tag_path LIKE $3', [now, b, `${b}/%`]);
   } else {
-    if (!a || !b) throw new Error('Usage: node scripts/mark-verified.mjs <tagPath> <slug>');
+    if (!a || b === undefined) throw new Error('Usage: node scripts/mark-verified.mjs <tagPath> <slug>');
     res = await client.query('UPDATE pages SET last_verified_at = $1 WHERE tag_path = $2 AND slug = $3', [now, a, b]);
   }
   console.log(`Stamped last_verified_at on ${res.rowCount} page(s).`);
