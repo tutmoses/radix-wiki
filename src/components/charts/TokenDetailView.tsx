@@ -1,11 +1,14 @@
-// src/components/charts/TokenDetailView.tsx — /charts/tokens/<address>
+// src/components/charts/TokenDetailView.tsx – /charts/tokens/<address>
 
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, ArrowRight, ExternalLink } from 'lucide-react';
-import { getTokenDetail } from '@/lib/radix/tokens';
+import { getTokenDetail, getTokenHolders, type TokenHolders } from '@/lib/radix/tokens';
+import { getNetworkStats } from '@/lib/radix/network';
+import { dashboardEntity } from '@/lib/radix/config';
 import { TokenChart } from './TokenChart';
+import { HoldersTable, type HolderRow } from './HoldersTable';
 import { formatUsd, formatPercent, formatCompact, formatPriceSubscript } from './format';
 import { cn, shortenAddress } from '@/lib/utils';
 
@@ -15,9 +18,26 @@ interface WikiPageRef {
   title: string;
 }
 
+/**
+ * Holders as the table shows them. A validator holds the $XRD staked with it, and 59 of the
+ * 100 largest $XRD holders were validators in September 2026, so a validator gets the name
+ * the validator table shows. Accounts and components name themselves and stay addresses.
+ */
+async function holderRows(holders: TokenHolders, supply: number | undefined): Promise<HolderRow[]> {
+  const stats = holders.top.some((h) => h.address.startsWith('validator_')) ? await getNetworkStats().catch(() => null) : null;
+  const names = new Map(stats?.validators.map((v) => [v.address, v.name]));
+  return holders.top.map((h) => ({
+    ...h,
+    ...dashboardEntity(h.address),
+    name: names.get(h.address),
+    share: supply ? h.amount / supply : undefined,
+  }));
+}
+
 export default async function TokenDetailView({ address, wikiPage }: { address: string; wikiPage?: WikiPageRef | null }) {
-  const token = await getTokenDetail(address);
+  const [token, holders] = await Promise.all([getTokenDetail(address), getTokenHolders(address).catch(() => null)]);
   if (!token) notFound();
+  const rows = holders ? await holderRows(holders, token.totalSupply) : null;
 
   const change = token.change24h;
   const positive = (change ?? 0) >= 0;
@@ -72,14 +92,21 @@ export default async function TokenDetailView({ address, wikiPage }: { address: 
           <span className="font-medium">{formatUsd(token.volume24h)}</span>
         </div>
         <div className="surface p-3 stack-xs">
-          <span className="text-small text-text-muted">TVL</span>
-          <span className="font-medium">{formatUsd(token.tvl)}</span>
+          <span className="text-small text-text-muted">Holders</span>
+          <span className="font-medium">{holders ? holders.total.toLocaleString('en-US') : '—'}</span>
         </div>
         <div className="surface p-3 stack-xs">
           <span className="text-small text-text-muted">Total Supply</span>
           <span className="font-medium">{token.totalSupply ? formatCompact(token.totalSupply) : '—'}</span>
         </div>
       </div>
+
+      {rows && rows.length > 0 && (
+        <section className="stack-sm">
+          <h2 className="charts-section-title">Largest holders</h2>
+          <HoldersTable holders={rows} />
+        </section>
+      )}
 
       <div className="surface p-4 stack-sm">
         <span className="text-small text-text-muted">Resource address</span>

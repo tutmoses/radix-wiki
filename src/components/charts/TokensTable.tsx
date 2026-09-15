@@ -33,9 +33,8 @@ const COLUMNS: Column<TokenSummary>[] = [
     cell: t => (t.change24h === undefined ? '—' : `${t.change24h >= 0 ? '+' : ''}${formatPercent(t.change24h)}`),
   },
   { k: 'volume24h', label: 'Volume 24h', className: 'text-right hidden-mobile', num: t => t.volume24h ?? 0, cell: t => formatUsd(t.volume24h) },
-  { k: 'tvl', label: 'TVL', className: 'text-right hidden-mobile', num: t => t.tvl ?? 0, cell: t => formatUsd(t.tvl) },
 ];
 
 export function TokensTable({ tokens, limit }: { tokens: TokenSummary[]; limit?: number }) {
-  return <DataTable rows={tokens} columns={COLUMNS} defaultKey="tvl" rowKey={t => t.address} limit={limit} empty="No tokens found." />;
+  return <DataTable rows={tokens} columns={COLUMNS} defaultKey="volume24h" rowKey={t => t.address} limit={limit} empty="No tokens found." />;
 }

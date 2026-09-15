@@ -1,16 +1,25 @@
-// src/components/charts/ValidatorsView.tsx — /charts/validators
+// src/components/charts/ValidatorsView.tsx – /charts/validators
 
 import Link from 'next/link';
-import { Server, ArrowLeft } from 'lucide-react';
-import { getValidators } from '@/lib/radix/validators';
+import { ArrowLeft, CalendarClock, Coins, Crown, Percent, Scale, Server } from 'lucide-react';
+import { getNetworkStats, type NetworkStats } from '@/lib/radix/network';
 import { ValidatorsTable } from './ValidatorsTable';
 import LedgerUnavailable from './LedgerUnavailable';
-import { formatXrd } from './format';
+import StatGrid, { type Stat } from './StatGrid';
+import { formatPercent, formatXrd } from './format';
+
+function stakingCards({ staking, xrdSupply }: NetworkStats): Stat[] {
+  return [
+    { icon: Coins, value: formatXrd(staking.totalStake), label: `Staked, ${formatPercent((staking.totalStake / xrdSupply) * 100, 1)} of all $XRD` },
+    { icon: Scale, value: String(staking.nakamoto), label: 'Validators holding a third of active stake' },
+    { icon: Crown, value: formatPercent(staking.top10Share), label: 'Of active stake held by the largest 10' },
+    { icon: Percent, value: formatPercent(staking.weightedFee * 100), label: 'Average fee on active stake' },
+    { icon: CalendarClock, value: String(staking.pendingFeeChanges), label: 'Fee changes pending' },
+  ];
+}
 
 export default async function ValidatorsView() {
-  const validators = await getValidators().catch(() => null);
-  const total = validators?.reduce((s, v) => s + v.totalStake, 0) ?? 0;
-  const active = validators?.filter(v => v.isRegistered && v.totalStake > 0).length ?? 0;
+  const stats = await getNetworkStats().catch(() => null);
 
   return (
     <div className="stack">
@@ -22,15 +31,20 @@ export default async function ValidatorsView() {
           <Server size={24} className="text-accent" />
           <h1>Validators</h1>
         </div>
-        {validators && (
+        {stats && (
           <p className="text-text-muted">
-            {active} active validators securing {formatXrd(total)} in total stake. Click any column to sort.
+            {stats.staking.active} of the {stats.staking.registered} registered validators are validating this epoch. Click any column to sort.
           </p>
         )}
       </div>
-      {validators
-        ? <ValidatorsTable validators={validators} />
-        : <LedgerUnavailable what="The validator directory" />}
+      {stats ? (
+        <>
+          <StatGrid stats={stakingCards(stats)} />
+          <ValidatorsTable validators={stats.validators} />
+        </>
+      ) : (
+        <LedgerUnavailable what="The validator directory" />
+      )}
     </div>
   );
 }

@@ -17,7 +17,8 @@ export function formatPercent(n: number | undefined, digits = 2): string {
   return `${n.toFixed(digits)}%`;
 }
 
-export function formatXrd(n: number): string {
+export function formatXrd(n: number | undefined): string {
+  if (n === undefined) return '—';
   return formatCompact(n, { suffix: ' $XRD' });
 }
 

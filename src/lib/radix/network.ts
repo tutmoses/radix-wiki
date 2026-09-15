@@ -1,23 +1,15 @@
-// src/lib/radix/network.ts — Network-level stats via Radix Gateway
+// src/lib/radix/network.ts – Network-level stats via Radix Gateway
 
 import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
 import { XRD_ADDRESS } from './config';
-import { entityDetails, num, postGateway, type GatewayPage } from './gateway';
-import { getValidators } from './validators';
+import { entityDetailsAt, GatewayUnavailableError, num, postGateway, type GatewayPage } from './gateway';
+import { getValidatorSet, summarizeStaking, type StakingSummary, type ValidatorSet } from './validators';
 
-export interface NetworkStats {
-  totalStake: number;
+/** The validator directory, what it adds up to, and the $XRD supply, all read at one state version. */
+export interface NetworkStats extends ValidatorSet {
+  staking: StakingSummary;
   xrdSupply: number;
-  validatorCount: number;
-  /** The consensus active set — the validators actually validating this epoch. */
-  activeValidatorCount: number;
-  /** The wider set that has registered and holds stake. Always larger than the active set. */
-  registeredValidatorCount: number;
-  currentEpoch: number;
-  ledgerStateVersion: number;
-  network: string;
-  lastUpdated: string;
 }
 
 /** Where the ledger stands, from the one endpoint that answers while state reads do not. */
@@ -31,8 +23,7 @@ export interface LedgerStatus {
 
 /** `/status/gateway-status` alone: no state reads, so it survives a halted network. */
 export const getLedgerStatus = cache(async (): Promise<LedgerStatus | null> => {
-  const status = await postGateway<GatewayPage>('/status/gateway-status', {}, 'gateway-status');
-  const state = status?.ledger_state as (GatewayPage['ledger_state'] & { proposer_round_timestamp?: string }) | undefined;
+  const state = (await postGateway<GatewayPage>('/status/gateway-status', {}, 'gateway-status'))?.ledger_state;
   if (!state) return null;
   return {
     epoch: state.epoch ?? 0,
@@ -44,27 +35,16 @@ export const getLedgerStatus = cache(async (): Promise<LedgerStatus | null> => {
 
 const _getNetworkStats = unstable_cache(
   async (): Promise<NetworkStats> => {
-    const [validators, status, xrd] = await Promise.all([
-      getValidators(),
-      postGateway<GatewayPage>('/status/gateway-status', {}, 'gateway-status'),
-      entityDetails(XRD_ADDRESS, 'xrd-entity'),
-    ]);
-
-    return {
-      totalStake: validators.reduce((sum, v) => sum + v.totalStake, 0),
-      xrdSupply: num(xrd?.details?.total_supply),
-      validatorCount: validators.length,
-      // Registered-and-staked is not the active set: Radix validates with the top 100 by
-      // stake, and the chart labelled the wider number "Active validators" for both.
-      activeValidatorCount: validators.filter(v => v.isActive).length,
-      registeredValidatorCount: validators.filter(v => v.isRegistered && v.totalStake > 0).length,
-      currentEpoch: status?.ledger_state?.epoch ?? 0,
-      ledgerStateVersion: status?.ledger_state?.state_version ?? 0,
-      network: status?.ledger_state?.network ?? 'mainnet',
-      lastUpdated: new Date().toISOString(),
-    };
+    const set = await getValidatorSet();
+    // Read at the directory's state version, so the epoch and state version /charts prints
+    // are the ones every figure beside them was read at. A supply that did not arrive throws:
+    // this used to publish 0 beside a real epoch.
+    const xrd = (await entityDetailsAt([XRD_ADDRESS], set.stateVersion, 'xrd-entity')).get(XRD_ADDRESS);
+    const xrdSupply = num(xrd?.details?.total_supply);
+    if (xrdSupply <= 0) throw new GatewayUnavailableError('/state/entity/details', 'xrd-entity');
+    return { ...set, staking: summarizeStaking(set.validators), xrdSupply };
   },
-  ['radix-network-stats-v4'],
+  ['radix-network-stats-v5'],
   { revalidate: 300, tags: ['charts'] },
 );
 

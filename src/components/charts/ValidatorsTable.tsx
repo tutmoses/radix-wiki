@@ -27,8 +27,22 @@ const COLUMNS: Column<Validator>[] = [
     ),
   },
   { k: 'totalStake', label: 'Total Stake', className: 'text-right', cellClass: 'font-medium', num: v => v.totalStake, cell: v => formatXrd(v.totalStake) },
-  { k: 'fee', label: 'Fee', className: 'text-right hidden-mobile', num: v => v.fee, cell: v => formatPercent(v.fee * 100) },
-  { k: 'ownerStake', label: 'Owner Stake', className: 'text-right hidden-mobile', num: v => v.ownerStake, cell: v => formatXrd(v.ownerStake) },
+  { k: 'stakeShare', label: 'Share', className: 'text-right hidden-mobile', num: v => v.stakeShare, cell: v => formatPercent(v.stakeShare * 100) },
+  {
+    k: 'fee', label: 'Fee', className: 'text-right hidden-mobile', num: v => v.fee,
+    cell: v => (
+      <>
+        {formatPercent(v.fee * 100)}
+        {v.feeChange && (
+          <div className="text-xs text-warning" title={`Takes effect at epoch ${v.feeChange.epoch.toLocaleString('en-US')}`}>
+            → {formatPercent(v.feeChange.fee * 100)}{v.feeChange.around && ` around ${v.feeChange.around}`}
+          </div>
+        )}
+      </>
+    ),
+  },
+  { k: 'uptime', label: 'Uptime 7d', className: 'text-right hidden-mobile', num: v => v.uptime ?? -1, cell: v => formatPercent(v.uptime === undefined ? undefined : v.uptime * 100) },
+  { k: 'ownerStake', label: 'Owner Stake', className: 'text-right hidden-mobile', num: v => v.ownerStake ?? -1, cell: v => formatXrd(v.ownerStake) },
 ];
 
 export function ValidatorsTable({ validators, limit }: { validators: Validator[]; limit?: number }) {

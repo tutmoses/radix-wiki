@@ -1,4 +1,4 @@
-// src/app/api/charts/snapshot/route.ts — one week's on-chain reading, for scripts/network-snapshot.mjs
+// src/app/api/charts/snapshot/route.ts – one week's on-chain reading, for scripts/network-snapshot.mjs
 //
 // This route exists so the weekly snapshot and /charts share one implementation. A .mjs
 // script calling the Gateway itself would need its own fee parser, and a second fee parser
@@ -6,28 +6,14 @@
 
 import { NextResponse } from 'next/server';
 import { getNetworkStats } from '@/lib/radix/network';
-import { getValidators } from '@/lib/radix/validators';
 import { getDexStats } from '@/lib/radix/tokens';
 
 export const revalidate = 300;
 
-/** Validators needed to exceed a third of active stake — the threshold that can halt consensus. */
-function nakamoto(stakes: number[]): number {
-  const total = stakes.reduce((a, b) => a + b, 0);
-  if (total <= 0) return 0;
-  const third = total / 3;
-  let running = 0;
-  for (let i = 0; i < stakes.length; i++) {
-    running += stakes[i]!;
-    if (running > third) return i + 1;
-  }
-  return stakes.length;
-}
-
 export async function GET() {
-  let stats, validators, dex;
+  let stats, dex;
   try {
-    [stats, validators, dex] = await Promise.all([getNetworkStats(), getValidators(), getDexStats()]);
+    [stats, dex] = await Promise.all([getNetworkStats(), getDexStats()]);
   } catch (err) {
     // 200-with-zeros is the one answer this route must never give: the weekly snapshot
     // stores whatever it returns, so an unreadable ledger would enter the wiki's record
@@ -38,12 +24,8 @@ export async function GET() {
     );
   }
 
-  // `active` is the consensus set (active_in_epoch); `registered` is the wider set that has
-  // registered and holds stake. They are different numbers and mean different things.
+  const { validators, staking } = stats;
   const active = validators.filter((v) => v.isActive);
-  const activeStakes = active.map((v) => v.totalStake).sort((a, b) => b - a);
-  const activeStake = activeStakes.reduce((a, b) => a + b, 0);
-
   const feeDivergent = validators.filter((v) => Math.abs(v.fee - v.storedFee) > 1e-12);
   const pendingFeeChanges = validators
     .filter((v) => v.feeChange)
@@ -59,20 +41,18 @@ export async function GET() {
 
   return NextResponse.json({
     capturedAt: new Date().toISOString(),
-    epoch: stats.currentEpoch,
-    stateVersion: stats.ledgerStateVersion,
+    epoch: stats.epoch,
+    stateVersion: stats.stateVersion,
     validators: validators.length,
-    registered: validators.filter((v) => v.isRegistered && v.totalStake > 0).length,
-    active: active.length,
-    totalStake: Math.round(stats.totalStake),
-    activeStake: Math.round(activeStake),
+    registered: staking.registered,
+    active: staking.active,
+    totalStake: Math.round(staking.totalStake),
+    activeStake: Math.round(staking.activeStake),
     xrdSupply: Math.round(stats.xrdSupply),
-    nakamoto: nakamoto(activeStakes),
-    top10Share: activeStake > 0
-      ? Number(((activeStakes.slice(0, 10).reduce((a, b) => a + b, 0) / activeStake) * 100).toFixed(2))
-      : 0,
+    nakamoto: staking.nakamoto,
+    top10Share: staking.top10Share,
     ociswap: dex,
-    // Reconciliation inputs for the weekly finding — see the radix-week-in-review skill.
+    // Reconciliation inputs for the weekly finding: see the radix-week-in-review skill.
     feeDivergentCount: feeDivergent.length,
     feeDivergentActiveCount: feeDivergent.filter((v) => v.isActive).length,
     feeDivergentActiveStake: Math.round(

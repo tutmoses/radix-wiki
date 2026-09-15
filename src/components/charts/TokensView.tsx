@@ -1,12 +1,12 @@
-// src/components/charts/TokensView.tsx — /charts/tokens
+// src/components/charts/TokensView.tsx – /charts/tokens
 
 import Link from 'next/link';
 import { Coins, ArrowLeft } from 'lucide-react';
-import { getTopTokens } from '@/lib/radix/tokens';
+import { getTopTokens, TOP_TOKENS_LIMIT } from '@/lib/radix/tokens';
 import { TokensTable } from './TokensTable';
 
 export default async function TokensView() {
-  const tokens = await getTopTokens(100);
+  const tokens = await getTopTokens();
 
   return (
     <div className="stack">
@@ -19,7 +19,7 @@ export default async function TokensView() {
           <h1>Tokens</h1>
         </div>
         <p className="text-text-muted">
-          Top {tokens.length} tokens on Radix by total value locked. Prices and volume from OciSwap.
+          {tokens.length} of OciSwap's {TOP_TOKENS_LIMIT} highest-ranked tokens traded in the last 24 hours, sorted by volume. Prices and volume from OciSwap.
         </p>
       </div>
       <TokensTable tokens={tokens} />

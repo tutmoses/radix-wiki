@@ -1,18 +1,26 @@
-// src/lib/radix/gateway.ts — Shared Radix Gateway fetch helpers (raw HTTP).
+// src/lib/radix/gateway.ts – Shared Radix Gateway fetch helpers (raw HTTP).
 
 import { GATEWAY_URL } from './config';
 
 const TIMEOUT_MS = 10_000;
 
+/** Where a read was answered from. Every state read carries one. */
+export interface LedgerState {
+  epoch?: number;
+  state_version?: number;
+  network?: string;
+  proposer_round_timestamp?: string;
+}
+
 /**
  * A parsed Gateway response. The shape differs per endpoint, so the fields
- * every caller reaches for are declared and the rest stays `unknown` — callers
+ * every caller reaches for are declared and the rest stays `unknown` – callers
  * that need more pass their own page type to `paginatedGatewayFetch`.
  */
 export interface GatewayPage {
   next_cursor?: string | null;
   items?: unknown[];
-  ledger_state?: { epoch?: number; state_version?: number; network?: string };
+  ledger_state?: LedgerState;
   [key: string]: unknown;
 }
 
@@ -23,6 +31,7 @@ export interface GatewayMetadata {
 
 /** One `/state/entity/details` item, as far as this app reads it. */
 export interface GatewayEntity {
+  address?: string;
   metadata?: GatewayMetadata;
   details?: { total_supply?: string;[key: string]: unknown };
   [key: string]: unknown;
@@ -32,8 +41,8 @@ export interface GatewayEntity {
  * The Gateway declined to answer a read. Distinct from an empty answer: when mainnet
  * halted on 31 August 2026 the Gateway returned 500 `NotSyncedUpError` to every state
  * read, `paginatedGatewayFetch` returned its empty accumulator, and /charts published
- * "0 active validators securing 0 $XRD" stamped with a real epoch and state version —
- * because the stamp comes from `/status/gateway-status`, which keeps answering from
+ * "0 active validators securing 0 $XRD" stamped with a real epoch and state version,
+ * because the stamp came from `/status/gateway-status`, which keeps answering from
  * the frozen ledger. An unavailable read must never be summable.
  */
 export class GatewayUnavailableError extends Error {
@@ -75,7 +84,7 @@ export async function postGateway<T>(
 /**
  * Paginated POST to Radix Gateway. Accumulates results across pages.
  * Throws `GatewayUnavailableError` if any page goes unanswered, so a caller can never
- * mistake "the Gateway refused" for "the set is empty" — or, worse, publish the sum.
+ * mistake "the Gateway refused" for "the set is empty", or worse, publish the sum.
  */
 export async function paginatedGatewayFetch<TItem, TPage extends GatewayPage = GatewayPage>(
   path: string,
@@ -88,10 +97,15 @@ export async function paginatedGatewayFetch<TItem, TPage extends GatewayPage = G
 ): Promise<TItem[]> {
   const items: TItem[] = [];
   let cursor: string | undefined;
+  let pin: { at_ledger_state: { state_version: number } } | undefined;
 
   do {
-    const data = await postGateway<TPage>(path, { ...body, ...(cursor && { cursor }) }, label);
+    const data = await postGateway<TPage>(path, { ...body, ...pin, ...(cursor && { cursor }) }, label);
     if (!data) throw new GatewayUnavailableError(path, label);
+    // Later pages read the ledger the first page read. Unpinned, one list can span two
+    // state versions, and an entry that moves between pages is counted twice or not at all.
+    const version = data.ledger_state?.state_version;
+    if (!pin && version) pin = { at_ledger_state: { state_version: version } };
     items.push(...extract(data));
     cursor = nextCursor(data) ?? undefined;
   } while (cursor);
@@ -99,10 +113,29 @@ export async function paginatedGatewayFetch<TItem, TPage extends GatewayPage = G
   return items;
 }
 
+/** Splits a request list to fit a Gateway cap: 20 addresses for entity details, 200 for uptime. */
+export function chunks<T>(items: T[], size: number): T[][] {
+  return Array.from({ length: Math.ceil(items.length / size) }, (_, i) => items.slice(i * size, (i + 1) * size));
+}
+
 /** `/state/entity/details` for one address, unwrapped to its single item. */
 export async function entityDetails(address: string, label: string): Promise<GatewayEntity | null> {
   const data = await postGateway<{ items?: GatewayEntity[] }>('/state/entity/details', { addresses: [address] }, label);
   return data?.items?.[0] ?? null;
+}
+
+/**
+ * `/state/entity/details` for any number of addresses, all read at one state version so they
+ * agree with the read that named them. Throws if any request goes unanswered.
+ */
+export async function entityDetailsAt(addresses: string[], stateVersion: number, label: string): Promise<Map<string, GatewayEntity>> {
+  const pages = await Promise.all(chunks(addresses, 20).map((batch) => postGateway<{ items?: GatewayEntity[] }>(
+    '/state/entity/details',
+    { addresses: batch, at_ledger_state: { state_version: stateVersion } },
+    label,
+  )));
+  if (pages.some((page) => !page)) throw new GatewayUnavailableError('/state/entity/details', label);
+  return new Map(pages.flatMap((page) => page?.items ?? []).map((entity) => [String(entity.address), entity]));
 }
 
 /** A string metadata value: plain, or the first entry of a string array. */

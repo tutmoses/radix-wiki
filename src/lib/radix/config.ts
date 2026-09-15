@@ -26,3 +26,17 @@ export const OCISWAP_API = 'https://api.ociswap.com';
 
 /** The Radix Dashboard, where a transaction or a resource links out to. */
 export const DASHBOARD_URL = 'https://dashboard.radixdlt.com';
+
+const ENTITY_PAGES: Record<string, [kind: string, path: string]> = {
+  account: ['Account', 'account'],
+  validator: ['Validator', 'network-staking'],
+  pool: ['Pool', 'component'],
+  component: ['Component', 'component'],
+};
+
+/** What a ledger address is, read from its prefix, and its page on the Radix Dashboard. */
+export function dashboardEntity(address: string): { kind: string; href: string } {
+  const prefix = address.slice(0, address.indexOf('_'));
+  const [kind, path] = ENTITY_PAGES[prefix] ?? [prefix, 'component'];
+  return { kind, href: `${DASHBOARD_URL}/${path}/${address}` };
+}
