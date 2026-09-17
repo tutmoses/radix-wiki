@@ -693,6 +693,7 @@
   }
 
   /* Infobox sidebar */
+  .infobox-heading { @apply mt-0 border-b-0 text-small font-bold uppercase tracking-wide text-text-muted; }
   .infobox-series { @apply flex flex-col items-center gap-0.5 text-center text-small text-text-muted pb-3 border-b border-border-muted; }
 
   .infobox {
@@ -759,9 +760,27 @@
   .sort-header { @apply inline-flex items-center gap-1 cursor-pointer hover:text-text transition-colors; }
   .sort-header-active { @apply text-text; }
 
-  .token-detail-header { @apply flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border-muted; }
-  .token-detail-price { @apply flex items-center gap-3; }
-  .token-detail-meta { @apply grid grid-cols-2 sm:grid-cols-4 gap-3; }
+  /* /charts/tokens/<address>. Not `.page-with-infobox`, which puts the infobox first on a
+     phone: here the name and price come first, then the infobox, then the chart. */
+  .token-page {
+    @apply grid gap-6;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "summary" "infobox" "body";
+
+    @media (min-width: 768px) {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+      grid-template-rows: auto 1fr;
+      grid-template-areas: "summary infobox" "body infobox";
+    }
+
+    > .infobox { grid-area: infobox; }
+  }
+  .token-summary { grid-area: summary; @apply grid grid-cols-2 xl:grid-cols-4 gap-3; }
+  .token-body { grid-area: body; }
+  .token-card { @apply flex flex-col gap-1 p-4 bg-surface-1 border border-border-muted rounded-lg; }
+  .token-identity { @apply col-span-2 gap-3; }
+  .token-name { @apply mt-0 text-h3 font-semibold; }
+  .address-copy { @apply inline-flex items-center gap-1.5 self-start font-mono text-small text-text-muted hover:text-accent cursor-pointer; }
 
   /* ===== ASSET PRICE ===== */
   .asset-price { @apply bg-surface-1 border border-border-muted rounded-lg p-4 flex items-center gap-4; }

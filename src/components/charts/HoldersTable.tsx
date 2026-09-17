@@ -4,7 +4,7 @@
 
 import { shortenAddress } from '@/lib/utils';
 import { DataTable, type Column } from './DataTable';
-import { formatCompact, formatPercent } from './format';
+import { formatAmount, formatPercent } from './format';
 
 export type HolderRow = {
   address: string;
@@ -27,7 +27,7 @@ const COLUMNS: Column<HolderRow>[] = [
       </>
     ),
   },
-  { k: 'amount', label: 'Amount', className: 'text-right', cellClass: 'font-medium', num: h => h.amount, cell: h => formatCompact(h.amount) },
+  { k: 'amount', label: 'Amount', className: 'text-right', cellClass: 'font-medium', num: h => h.amount, cell: h => formatAmount(h.amount) },
   { k: 'share', label: 'Share of supply', className: 'text-right hidden-mobile', num: h => h.share ?? -1, cell: h => formatPercent(h.share === undefined ? undefined : h.share * 100) },
 ];
 

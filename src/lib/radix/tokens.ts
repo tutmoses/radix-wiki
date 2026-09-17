@@ -2,7 +2,7 @@
 
 import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
-import { GatewayUnavailableError, num, postGateway, readMetadata, type GatewayEntity } from './gateway';
+import { GatewayUnavailableError, num, postGateway, readMetadata, type GatewayEntity, type GatewayMetadata } from './gateway';
 import { DASHBOARD_URL, OCISWAP_API } from './config';
 
 export interface TokenSummary {
@@ -16,11 +16,32 @@ export interface TokenSummary {
   marketCap?: number;
 }
 
+/** One metadata entry the page does not already show as the name, symbol, icon, description or info link. */
+export interface TokenMetadataRow {
+  key: string;
+  values: string[];
+}
+
+/** Who may take one action on a resource, as its role assignment reads. */
+export interface TokenRole {
+  label: string;
+  rule: 'Anyone' | 'Nobody' | 'Restricted';
+  /** The resource whose proof the rule requires, when it requires exactly one. */
+  badge?: string;
+  /** The rule's updater is DenyAll, so the rule can never change. */
+  locked: boolean;
+}
+
 export interface TokenDetail extends TokenSummary {
+  kind: 'Fungible' | 'Non-fungible';
   totalSupply?: number;
+  totalMinted?: number;
+  totalBurned?: number;
   divisibility?: number;
   description?: string;
   infoUrl?: string;
+  metadata: TokenMetadataRow[];
+  roles: TokenRole[];
   ociswapUrl: string;
   dashboardUrl: string;
 }
@@ -96,6 +117,60 @@ export const getTopTokens = cache(async (): Promise<TokenSummary[]> => {
   return _fetchTopTokens();
 });
 
+const SHOWN_METADATA = new Set(['name', 'symbol', 'icon_url', 'description', 'info_url']);
+
+function metadataRows(metadata: GatewayMetadata | undefined): TokenMetadataRow[] {
+  return (metadata?.items ?? []).flatMap(({ key, value }) => {
+    if (SHOWN_METADATA.has(key)) return [];
+    const typed = value?.typed;
+    const values = (Array.isArray(typed?.values) ? typed.values : [typed?.value])
+      .filter((v) => ['string', 'number', 'boolean'].includes(typeof v))
+      .map(String);
+    return values.length ? [{ key, values }] : [];
+  });
+}
+
+type AccessRule = {
+  type?: string;
+  access_rule?: { proof_rule?: { type?: string; requirement?: { resource?: string; non_fungible?: { resource_address?: string } } } };
+};
+type RoleAssignments = {
+  owner?: { rule?: AccessRule; updater?: string };
+  entries?: { role_key?: { name?: string }; assignment?: { resolution?: string; explicit_rule?: AccessRule } }[];
+};
+
+/** The actions a holder cares about, in the order the infobox lists them. Lockers and updaters only qualify these. */
+const ROLES: [name: string, label: string][] = [
+  ['minter', 'Mint'],
+  ['burner', 'Burn'],
+  ['freezer', 'Freeze'],
+  ['recaller', 'Recall'],
+  ['withdrawer', 'Withdraw'],
+  ['depositor', 'Deposit'],
+  ['non_fungible_data_updater', 'Update NFT data'],
+  ['metadata_setter', 'Edit metadata'],
+];
+
+function describeRule(rule: AccessRule | undefined): Pick<TokenRole, 'rule' | 'badge'> {
+  if (rule?.type === 'AllowAll') return { rule: 'Anyone' };
+  if (rule?.type === 'DenyAll') return { rule: 'Nobody' };
+  const proof = rule?.access_rule?.proof_rule;
+  const badge = proof?.type === 'Require' ? proof.requirement?.resource ?? proof.requirement?.non_fungible?.resource_address : undefined;
+  return { rule: 'Restricted', badge };
+}
+
+function roleRows(assignments: RoleAssignments | undefined): TokenRole[] {
+  const owner = assignments?.owner;
+  const rules = new Map((assignments?.entries ?? []).map((e) => [
+    e.role_key?.name,
+    e.assignment?.resolution === 'Owner' ? owner?.rule : e.assignment?.explicit_rule,
+  ]));
+  const ownerRow = owner?.rule ? [{ label: 'Owner', ...describeRule(owner.rule), locked: owner.updater === 'None' }] : [];
+  return ownerRow.concat(ROLES.flatMap(([name, label]) => rules.has(name)
+    ? [{ label, ...describeRule(rules.get(name)), locked: rules.get(`${name}_updater`)?.type === 'DenyAll' }]
+    : []));
+}
+
 async function _getTokenDetailRaw(address: string): Promise<TokenDetail | null> {
   if (!address.startsWith('resource_')) return null;
   const [oci, ledger] = await Promise.all([
@@ -114,8 +189,9 @@ async function _getTokenDetailRaw(address: string): Promise<TokenDetail | null> 
   }
 
   const symbol = summary?.symbol || readMetadata(entity?.metadata, 'symbol') || '';
-  const totalSupply = num(entity?.details?.total_supply);
-  const divisibility = entity?.details?.divisibility;
+  const details = entity?.details;
+  const totalSupply = num(details?.total_supply);
+  const divisibility = details?.divisibility;
 
   return {
     address,
@@ -125,18 +201,25 @@ async function _getTokenDetailRaw(address: string): Promise<TokenDetail | null> 
     price: summary?.price ?? 0,
     change24h: summary?.change24h,
     volume24h: summary?.volume24h,
-    marketCap: summary?.marketCap,
+    // A circulating value above the whole ledger supply at the same price is impossible, and
+    // OciSwap quoted one for hWBTC in September 2026: $717K against 0.0056 tokens worth $336.
+    marketCap: summary?.marketCap && summary.marketCap <= summary.price * totalSupply * 1.01 ? summary.marketCap : undefined,
+    kind: details?.type === 'NonFungibleResource' ? 'Non-fungible' : 'Fungible',
     totalSupply: totalSupply > 0 ? totalSupply : undefined,
+    totalMinted: details?.total_minted === undefined ? undefined : num(details.total_minted),
+    totalBurned: details?.total_burned === undefined ? undefined : num(details.total_burned),
     divisibility: typeof divisibility === 'number' ? divisibility : undefined,
     description: readMetadata(entity?.metadata, 'description'),
     infoUrl: readMetadata(entity?.metadata, 'info_url'),
+    metadata: metadataRows(entity?.metadata),
+    roles: roleRows(details?.role_assignments as RoleAssignments | undefined),
     ociswapUrl: `https://ociswap.com/tokens/${address}`,
     dashboardUrl: `${DASHBOARD_URL}/resource/${address}`,
   };
 }
 
 export const getTokenDetail = cache(
-  unstable_cache(_getTokenDetailRaw, ['radix-token-detail-v2'], { revalidate: 60, tags: ['charts'] }),
+  unstable_cache(_getTokenDetailRaw, ['radix-token-detail-v3'], { revalidate: 60, tags: ['charts'] }),
 );
 
 export interface TokenHolder {

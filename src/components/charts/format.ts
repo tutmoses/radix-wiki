@@ -12,6 +12,14 @@ export function formatCompact(n: number, opts: { prefix?: string; suffix?: strin
   return `${opts.prefix ?? ''}${value}${opts.suffix ?? ''}`;
 }
 
+/**
+ * A token amount: compact from a thousand up, four significant figures below. At two
+ * decimals hWBTC's supply of 0.0056 read as 0.01 and every one of its holders as 0.00.
+ */
+export function formatAmount(n: number): string {
+  return Math.abs(n) >= 1e3 ? formatCompact(n) : n.toLocaleString('en-US', { maximumSignificantDigits: 4 });
+}
+
 export function formatPercent(n: number | undefined, digits = 2): string {
   if (n === undefined || !isFinite(n)) return '—';
   return `${n.toFixed(digits)}%`;
