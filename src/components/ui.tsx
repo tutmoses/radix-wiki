@@ -82,8 +82,9 @@ export function Badge({ className, variant = 'default', ...props }: HTMLAttribut
 
 /**
  * A sortable column header. Spread `useTableSort`'s `headerProps(key)` into it.
- * The arrow is CSS keyed on `aria-sort`, the same markup `sortTables` gives the
- * tables stored in articles. `title` names an icon-only header.
+ * The arrow is CSS keyed on `aria-sort`, the same markup `sortTables` from
+ * `wiki-formant/dom` gives the tables stored in articles. `title` names an
+ * icon-only header.
  */
 export function SortHead<K extends string>({ sortKey, onSort, 'aria-sort': ariaSort, title, className, children }: {
   sortKey: K; onSort: (key: K) => void; 'aria-sort': 'ascending' | 'descending' | 'none';

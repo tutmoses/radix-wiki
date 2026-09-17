@@ -22,8 +22,7 @@ import {
   StatsView,
 } from 'wiki-formant/block-views';
 // The rendered-article passes are `wiki-formant/dom`, shared with caper.
-import { activateTabGroups, addCopyButtons, hydrateTweetEmbeds, onTweetResize, sizeTweetEmbeds } from 'wiki-formant/dom';
-import { sortTables } from '@/lib/table-sort';
+import { activateTabGroups, addCopyButtons, hydrateTweetEmbeds, onTweetResize, sizeTweetEmbeds, sortTables } from 'wiki-formant/dom';
 import { processHtml } from '@/lib/html';
 import { useAccountQr, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
