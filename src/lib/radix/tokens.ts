@@ -192,9 +192,10 @@ type OciStatistics = {
   event_counts?: { swap?: XrdSeries; instantiate_pool?: XrdSeries };
 };
 
-async function _fetchDexStats(): Promise<DexStats | null> {
+async function _fetchDexStats(): Promise<DexStats> {
   const d = await ociswap<OciStatistics>('/statistics', 'dex-stats');
-  if (!d) return null;
+  // Thrown rather than returned, so the cache keeps no failure for its five minutes.
+  if (!d) throw new Error('OciSwap did not answer /statistics');
   // $XRD-denominated throughout: the native unit needs no price oracle to be true later.
   // A week's volume above the 24B maximum supply is Ociswap mispricing a pool, not trade:
   // on 13 September 2026 it reported 11 quadrillion XRD on 1,296 swaps. NaN serialises as null.
@@ -207,6 +208,7 @@ async function _fetchDexStats(): Promise<DexStats | null> {
   };
 }
 
-export const getDexStats = cache(
-  unstable_cache(_fetchDexStats, ['radix-dex-stats-v1'], { revalidate: 300, tags: ['charts'] }),
-);
+const _getDexStatsCached = unstable_cache(_fetchDexStats, ['radix-dex-stats-v2'], { revalidate: 300, tags: ['charts'] });
+
+/** Ociswap's week, or null when it did not answer: the weekly snapshot records that week without it. */
+export const getDexStats = cache((): Promise<DexStats | null> => _getDexStatsCached().catch(() => null));
