@@ -118,12 +118,6 @@ export function chunks<T>(items: T[], size: number): T[][] {
   return Array.from({ length: Math.ceil(items.length / size) }, (_, i) => items.slice(i * size, (i + 1) * size));
 }
 
-/** `/state/entity/details` for one address, unwrapped to its single item. */
-export async function entityDetails(address: string, label: string): Promise<GatewayEntity | null> {
-  const data = await postGateway<{ items?: GatewayEntity[] }>('/state/entity/details', { addresses: [address] }, label);
-  return data?.items?.[0] ?? null;
-}
-
 /**
  * `/state/entity/details` for any number of addresses, all read at one state version so they
  * agree with the read that named them. Throws if any request goes unanswered.

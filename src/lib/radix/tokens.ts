@@ -2,7 +2,7 @@
 
 import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
-import { entityDetails, GatewayUnavailableError, num, postGateway, readMetadata } from './gateway';
+import { GatewayUnavailableError, num, postGateway, readMetadata, type GatewayEntity } from './gateway';
 import { DASHBOARD_URL, OCISWAP_API } from './config';
 
 export interface TokenSummary {
@@ -98,13 +98,20 @@ export const getTopTokens = cache(async (): Promise<TokenSummary[]> => {
 
 async function _getTokenDetailRaw(address: string): Promise<TokenDetail | null> {
   if (!address.startsWith('resource_')) return null;
-  const [oci, entity] = await Promise.all([
+  const [oci, ledger] = await Promise.all([
     ociswap<Record<string, unknown>>(`/tokens/${address}`, 'token-detail'),
-    entityDetails(address, 'token-entity'),
+    postGateway<{ items?: GatewayEntity[] }>('/state/entity/details', { addresses: [address] }, 'token-entity'),
   ]);
 
   const summary = oci ? parseOciToken(oci) : null;
-  if (!summary && !entity) return null;
+  const entity = ledger?.items?.[0];
+  if (!summary && !entity) {
+    // Only the ledger can say a resource does not exist: OciSwap answers 500 for an address
+    // it has never seen. When neither source answered, a returned null was cached and served
+    // ASTRL's page as a 404 on 17 September 2026. Thrown, so the cache keeps no failure.
+    if (!ledger) throw new GatewayUnavailableError('/state/entity/details', 'token-detail');
+    return null;
+  }
 
   const symbol = summary?.symbol || readMetadata(entity?.metadata, 'symbol') || '';
   const totalSupply = num(entity?.details?.total_supply);
@@ -129,7 +136,7 @@ async function _getTokenDetailRaw(address: string): Promise<TokenDetail | null> 
 }
 
 export const getTokenDetail = cache(
-  unstable_cache(_getTokenDetailRaw, ['radix-token-detail'], { revalidate: 60, tags: ['charts'] }),
+  unstable_cache(_getTokenDetailRaw, ['radix-token-detail-v2'], { revalidate: 60, tags: ['charts'] }),
 );
 
 export interface TokenHolder {
