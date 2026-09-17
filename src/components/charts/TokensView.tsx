@@ -16,7 +16,7 @@ export default async function TokensView() {
         </Link>
         <div className="row">
           <Coins size={24} className="text-accent" />
-          <h1>Tokens</h1>
+          <h1 id="tokens">Tokens</h1>
         </div>
         <p className="text-text-muted">
           {tokens.length} of OciSwap's {TOP_TOKENS_LIMIT} highest-ranked tokens traded in the last 24 hours, sorted by volume. Prices and volume from OciSwap.

@@ -30,7 +30,7 @@ export default async function ChartsOverview() {
       <div className="stack-sm">
         <div className="row">
           <BarChart3 size={24} className="text-accent" />
-          <h1>Charts</h1>
+          <h1 id="charts">Charts</h1>
         </div>
         <p className="text-text-muted">
           Live Radix network statistics, validator directory, and ecosystem token data.
@@ -41,7 +41,7 @@ export default async function ChartsOverview() {
 
       <section className="stack-sm">
         <div className="spread">
-          <h2 className="charts-section-title">Top tokens</h2>
+          <h2 id="top-tokens" className="charts-section-title">Top tokens</h2>
           <Link href="/charts/tokens" className="charts-section-link">
             View all <ArrowRight size={14} />
           </Link>
@@ -52,7 +52,7 @@ export default async function ChartsOverview() {
       {stats && (
         <section className="stack-sm">
           <div className="spread">
-            <h2 className="charts-section-title">Top validators</h2>
+            <h2 id="top-validators" className="charts-section-title">Top validators</h2>
             <Link href="/charts/validators" className="charts-section-link">
               View all <ArrowRight size={14} />
             </Link>

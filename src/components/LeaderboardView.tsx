@@ -2,9 +2,12 @@
 
 'use client';
 
+import { useMemo } from 'react';
 import { Trophy, FileText, Edit3, MessageSquare, Star } from 'lucide-react';
+import { useTableSort } from 'wiki-formant/react';
 import { useFetch } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
+import { SortHead } from '@/components/ui';
 import Link from 'next/link';
 
 interface LeaderboardEntry {
@@ -28,6 +31,22 @@ interface LeaderboardResponse {
   totalPages: number;
 }
 
+type RankedEntry = LeaderboardEntry & { rank: number };
+type NumericKey = 'rank' | 'pages' | 'edits' | 'comments' | 'points';
+
+const nameOf = (e: LeaderboardEntry) => e.displayName || e.shortAddress;
+const byNumber = (k: NumericKey) => (a: RankedEntry, b: RankedEntry) => a[k] - b[k];
+const COMPARATORS = {
+  rank: byNumber('rank'),
+  name: (a: RankedEntry, b: RankedEntry) => nameOf(a).localeCompare(nameOf(b)),
+  pages: byNumber('pages'),
+  edits: byNumber('edits'),
+  comments: byNumber('comments'),
+  points: byNumber('points'),
+};
+// Rank and name read top-down; the counts open largest first.
+const firstDirection = (key: keyof typeof COMPARATORS): 'asc' | 'desc' => (key === 'rank' || key === 'name' ? 'asc' : 'desc');
+
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) return <span className="badge badge-accent">1st</span>;
   if (rank === 2) return <span className="badge badge-warning">2nd</span>;
@@ -37,13 +56,17 @@ function RankBadge({ rank }: { rank: number }) {
 
 export default function LeaderboardView() {
   const { data, isLoading } = useFetch<LeaderboardResponse>('/api/leaderboard');
+  // Rank is the points order the API returns, so it stays with the contributor
+  // when the table is sorted by another column.
+  const ranked = useMemo(() => (data?.items ?? []).map((e, i) => ({ ...e, rank: i + 1 })), [data]);
+  const { sorted, headerProps } = useTableSort<RankedEntry, keyof typeof COMPARATORS>(ranked, { defaultKey: 'points', comparators: COMPARATORS, defaultDirection: firstDirection });
 
   return (
     <div className="stack">
       <div className="stack-sm">
         <div className="row">
           <Trophy size={24} className="text-accent" />
-          <h1>Leaderboard</h1>
+          <h1 id="leaderboard">Leaderboard</h1>
         </div>
         <p className="text-text-muted">Top contributors ranked by points. Points may be considered in any future $EMOON airdrop.</p>
       </div>
@@ -52,14 +75,12 @@ export default function LeaderboardView() {
         <table className="w-full">
           <thead>
             <tr className="text-left text-small text-text-muted border-b border-surface-2">
-              <th className="p-3 w-16">Rank</th>
-              <th className="p-3">Contributor</th>
-              <th className="p-3 text-center hidden-mobile"><FileText size={14} /></th>
-              <th className="p-3 text-center hidden-mobile"><Edit3 size={14} /></th>
-              <th className="p-3 text-center hidden-mobile"><MessageSquare size={14} /></th>
-              <th className="p-3 text-right">
-                <span className="row justify-end"><Star size={14} /> Points</span>
-              </th>
+              <SortHead {...headerProps('rank')} className="p-3 w-16">Rank</SortHead>
+              <SortHead {...headerProps('name')} className="p-3">Contributor</SortHead>
+              <SortHead {...headerProps('pages')} className="p-3 text-center hidden-mobile" title="Pages"><FileText size={14} /></SortHead>
+              <SortHead {...headerProps('edits')} className="p-3 text-center hidden-mobile" title="Edits"><Edit3 size={14} /></SortHead>
+              <SortHead {...headerProps('comments')} className="p-3 text-center hidden-mobile" title="Comments"><MessageSquare size={14} /></SortHead>
+              <SortHead {...headerProps('points')} className="p-3 text-right"><Star size={14} /> Points</SortHead>
             </tr>
           </thead>
           <tbody>
@@ -68,9 +89,9 @@ export default function LeaderboardView() {
                 <td className="p-3" colSpan={6}><div className="h-8 skeleton rounded" /></td>
               </tr>
             ))}
-            {data?.items.map((entry, i) => (
+            {sorted.map(entry => (
               <tr key={entry.id} id={`u-${entry.id}`} className="border-b border-surface-2 last:border-0 target:bg-surface-2">
-                <td className="p-3"><RankBadge rank={i + 1} /></td>
+                <td className="p-3"><RankBadge rank={entry.rank} /></td>
                 <td className="p-3">
                   {entry.profilePath ? (
                     <Link href={entry.profilePath} className="row">

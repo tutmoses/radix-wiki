@@ -5,7 +5,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
   return (
     <div className="empty-state">
       <span className="badge badge-danger">Error</span>
-      <h1>Something went wrong</h1>
+      <h1 id="something-went-wrong">Something went wrong</h1>
       <p className="text-text-muted">{error.message || 'An unexpected error occurred.'}</p>
       <Button onClick={reset}>Try again</Button>
     </div>

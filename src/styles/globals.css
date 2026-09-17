@@ -409,6 +409,7 @@
   .nav-subtree { @apply mt-1 ml-4 pl-2 border-l border-border-muted flex flex-col gap-1; .nav-item { @apply py-1.5 text-small; } }
 
   /* Table of contents */
+  .toc { @apply flex flex-col gap-2 flex-1 p-4 border-t border-border-muted; }
   .toc-btn { @apply flex items-center gap-2 px-3 py-2 text-text-muted hover:text-text transition-colors w-full; }
   .toc-label { @apply text-small font-medium uppercase tracking-wide; }
   .toc-item { @apply text-left text-small text-text-muted hover:text-accent transition-colors py-1 px-2 rounded truncate border-l-2 border-transparent; }
@@ -757,8 +758,28 @@
   .data-table-td { @apply p-3 border-b border-surface-2; }
   .data-table-row { @apply transition-colors hover:bg-surface-1/40; }
   .data-table-row:last-child .data-table-td { @apply border-b-0; }
+  /* Every sortable header, React or stored HTML, is a button inside a cell that
+     carries `aria-sort`. The arrow is read from the attribute, so the two kinds
+     of table cannot draw it differently. */
   .sort-header { @apply inline-flex items-center gap-1 cursor-pointer hover:text-text transition-colors; }
-  .sort-header-active { @apply text-text; }
+  .sort-header::after {
+    content: '';
+    flex: none;
+    width: 0.75em;
+    height: 0.75em;
+    background-color: currentColor;
+    opacity: 0.4;
+    --sort-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 15 5 5 5-5'/%3E%3Cpath d='m7 9 5-5 5 5'/%3E%3C/svg%3E");
+    mask: var(--sort-icon) center / contain no-repeat;
+  }
+  :is([aria-sort='ascending'], [aria-sort='descending']) > .sort-header { @apply text-text; }
+  :is([aria-sort='ascending'], [aria-sort='descending']) > .sort-header::after { opacity: 1; }
+  [aria-sort='ascending'] > .sort-header::after {
+    --sort-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 7-7 7 7'/%3E%3Cpath d='M12 19V5'/%3E%3C/svg%3E");
+  }
+  [aria-sort='descending'] > .sort-header::after {
+    --sort-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5v14'/%3E%3Cpath d='m19 12-7 7-7-7'/%3E%3C/svg%3E");
+  }
 
   /* /charts/tokens/<address>. Not `.page-with-infobox`, which puts the infobox first on a
      phone: here the name and price come first, then the infobox, then the chart. */

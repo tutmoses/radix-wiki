@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock } from '@/lib/block-utils';
 import { resolveMapUrl } from '@/lib/map-utils';
 import { Button, Input, Dropdown } from '@/components/ui';
-import { Iframe, YouTube, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock } from '@/lib/tiptap/extensions';
+import { Iframe, YouTube, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock, HeadingIds } from '@/lib/tiptap/extensions';
 import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column, LinkGridBlock, LinkGridGroup, TipJarBlock, ReferencesBlock, ReferenceItem, BannerBlock } from '@/types/blocks';
 
 // The upload endpoint and how a failure is surfaced are this app's, so the
@@ -60,7 +60,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
 
   // This wiki's own nodes, built from its class names and icons. Memoised
   // because a fresh array would tear the editor down and lose the selection.
-  const nodes = useMemo(() => [YouTube, Iframe, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock], []);
+  const nodes = useMemo(() => [YouTube, Iframe, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock, HeadingIds], []);
 
   const { editor, fileInputRef, isUploading, handleFileChange, triggerUpload, isActive } = useWikiEditor({
     value,

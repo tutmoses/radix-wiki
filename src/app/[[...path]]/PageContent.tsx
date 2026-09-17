@@ -366,7 +366,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
           <Link href="/" className="row link-muted"><ArrowLeft size={16} /><span>Back to Homepage</span></Link>
           <Button onClick={handleSave} disabled={isSaving} size="sm"><Save size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
         </div>
-        <h1>Edit Homepage</h1>
+        <h1 id="edit-homepage">Edit Homepage</h1>
         <div data-callout="info"><p>Editing the homepage requires holding <strong>{getXrdRequired('edit', '').toLocaleString()} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
         <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
         <div className="page-with-infobox">
@@ -546,7 +546,7 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
     <div className="stack">
       <Breadcrumbs path={tagPath} />
       <div className="spread">
-        <h1>{tag?.name || tagPath[tagPath.length - 1]}</h1>
+        <h1 id={slugify(tag?.name || tagPath[tagPath.length - 1] || '')}>{tag?.name || tagPath[tagPath.length - 1]}</h1>
         <div className="row-md">{controlItems}</div>
       </div>
       <CategoryHero description={tag?.description} mainArticle={mainArticle} />

@@ -93,7 +93,7 @@ export function UserStats({ userId }: { userId: string }) {
       <div className="center">
         <UserAvatar seed={data.userId} avatarUrl={data.avatarUrl} size="lg" />
       </div>
-      <h3 className="text-text-muted">Contribution Points</h3>
+      <h3 id="contribution-points" className="text-text-muted">Contribution Points</h3>
       <div className="stat-grid">
         <ScoreRing score={data.score} points={data.points} />
         <StatItem icon={FileText} label="Pages" value={data.stats.pages} />

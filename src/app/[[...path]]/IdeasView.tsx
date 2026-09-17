@@ -8,7 +8,7 @@ import { MessageSquare, LayoutGrid, List } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Badge } from '@/components/ui';
-import { categoryLabel, cn, formatRelativeTime } from '@/lib/utils';
+import { categoryLabel, cn, formatRelativeTime, slugify } from '@/lib/utils';
 import { findTagByPath, getMetadataKeys, type SortOrder } from '@/lib/tags';
 import { NewPageControl, SortToggle } from './PageContent';
 import type { WikiPage, PageMetadata, IdeasPage } from '@/types';
@@ -166,7 +166,7 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
     <div className="stack">
       <Breadcrumbs path={tagPath} />
       <div className="spread">
-        <h1>{tag?.name || tagPath[tagPath.length - 1]}</h1>
+        <h1 id={slugify(tag?.name || tagPath[tagPath.length - 1] || '')}>{tag?.name || tagPath[tagPath.length - 1]}</h1>
         <div className="row">
           <SortToggle sort={sort} tagPath={pathStr} />
           <button className={cn('icon-btn', view === 'list' && 'text-accent')} onClick={() => setView('list')} title="List view"><List size={18} /></button>

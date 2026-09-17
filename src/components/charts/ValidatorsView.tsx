@@ -29,7 +29,7 @@ export default async function ValidatorsView() {
         </Link>
         <div className="row">
           <Server size={24} className="text-accent" />
-          <h1>Validators</h1>
+          <h1 id="validators">Validators</h1>
         </div>
         {stats && (
           <p className="text-text-muted">

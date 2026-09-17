@@ -13,7 +13,7 @@ import { useMemo } from 'react';
 // the reader left closed renders open and slides shut on every load.
 import { RailShell, TableOfContents as SharedToc } from 'wiki-formant/react';
 import { cn } from '@/lib/utils';
-import { usePagePath, useAuth } from '@/hooks';
+import { useAuth } from '@/hooks';
 import { getVisibleTags, type TagNode } from '@/lib/tags';
 
 function NavItem({ href, icon, label, isActive }: { href: string; icon: React.ReactNode; label: string; isActive?: boolean }) {
@@ -29,11 +29,16 @@ function NavItem({ href, icon, label, isActive }: { href: string; icon: React.Re
 // Ids are injected server-side here (lib/html.ts -> wiki-formant/headings), so
 // no `slug` is passed: an id is a URL, and one minted in the browser is not the
 // one this wiki published.
+//
+// It runs on every route. A heading without an id is left out, so every view
+// gives its headings one. The editor gets its ids from `HeadingIds`.
+// With no headings the list renders nothing, and neither does its divider,
+// which is why the divider belongs to `.toc`.
 const TableOfContents = () => (
   <SharedToc
     containerSelector="main"
     offsetVar="--header-height"
-    classNames={{ root: 'stack-sm', button: 'toc-btn', label: 'toc-label', list: 'stack-xs pl-4', item: 'toc-item', itemActive: 'toc-item-active' }}
+    classNames={{ root: 'toc', button: 'toc-btn', label: 'toc-label', list: 'stack-xs pl-4', item: 'toc-item', itemActive: 'toc-item-active' }}
     icon={expanded => (
       <>
         {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -88,11 +93,6 @@ export function Sidebar() {
 
   const visibleTags = useMemo(() => getVisibleTags(), []);
 
-  const { isHomepage, isCategory, isPage, isEdit, isHistory } = usePagePath();
-  // Categories carry a hub article and a section index, both of which have
-  // headings worth jumping to — they were the only long pages with no rail.
-  const showToc = (isHomepage || isPage || isCategory) && !isEdit && !isHistory;
-
   return (
     <RailShell prefix="sidebar" label="Wiki navigation">
       <div className="stack-sm p-4">
@@ -110,11 +110,7 @@ export function Sidebar() {
         <CategoryTree nodes={visibleTags} pathname={pathname} />
       </div>
 
-      {showToc && (
-        <div className="px-4 pb-4 border-t border-border-muted pt-4 flex-1">
-          <TableOfContents />
-        </div>
-      )}
+      <TableOfContents />
     </RailShell>
   );
 }

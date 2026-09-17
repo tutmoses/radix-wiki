@@ -6,11 +6,12 @@ import { useState, useEffect, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, RotateCcw, Plus, Minus, Pencil, Move, ChevronDown } from 'lucide-react';
-import { Button, Badge } from '@/components/ui';
+import { Button, Badge, SortHead } from '@/components/ui';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { useAuth } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
 import { changeSummary } from 'wiki-formant/revisions';
+import { useTableSort } from 'wiki-formant/react';
 import { formatDate, cn, pagePath } from '@/lib/utils';
 import { stripHtml } from '@/lib/content';
 import { BLOCK_META } from '@/lib/block-utils';
@@ -37,6 +38,19 @@ const TYPE_BADGE: Record<string, { label: string; variant: 'danger' | 'warning' 
 };
 
 const CONTAINER_TYPES = new Set(['infobox', 'columns']);
+
+const TYPE_WEIGHT: Record<string, number> = { patch: 0, minor: 1, major: 2 };
+const authorName = (r: RevisionData) => r.author?.displayName || r.author?.shortAddress || '';
+const REVISION_COMPARATORS = {
+  version: (a: RevisionData, b: RevisionData) => a.version.localeCompare(b.version, undefined, { numeric: true }),
+  type: (a: RevisionData, b: RevisionData) => (TYPE_WEIGHT[a.changeType] ?? 0) - (TYPE_WEIGHT[b.changeType] ?? 0),
+  changes: (a: RevisionData, b: RevisionData) => (a.changes?.length ?? 0) - (b.changes?.length ?? 0),
+  author: (a: RevisionData, b: RevisionData) => authorName(a).localeCompare(authorName(b)),
+  date: (a: RevisionData, b: RevisionData) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+};
+// Authors read A–Z first; everything else opens newest or largest first.
+const firstDirection = (key: string): 'asc' | 'desc' => (key === 'author' ? 'asc' : 'desc');
+const NO_REVISIONS: RevisionData[] = [];
 
 // The counted phrasing is `wiki-formant/revisions`, the one the stored revision
 // message already uses. Containers are dropped first (this view never lists
@@ -131,6 +145,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
   const { isAuthenticated } = useAuth();
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const { sorted, headerProps } = useTableSort<RevisionData, keyof typeof REVISION_COMPARATORS>(data?.revisions ?? NO_REVISIONS, { defaultKey: 'date', comparators: REVISION_COMPARATORS, defaultDirection: firstDirection });
 
   const apiBase = isHomepage ? '/api/wiki' : `/api/wiki${pagePath(tagPath, slug)}`;
   const viewPath = isHomepage ? '/' : pagePath(tagPath, slug);
@@ -159,7 +174,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
     <div className="stack">
       {!isHomepage && <Breadcrumbs path={[...tagPath.split('/'), slug].filter(Boolean)} suffix="History" />}
       <div className="spread">
-        <h1 className="m-0!">{isHomepage ? 'Homepage' : 'Page'} History</h1>
+        <h1 id={isHomepage ? 'homepage-history' : 'page-history'} className="m-0!">{isHomepage ? 'Homepage' : 'Page'} History</h1>
         <Link href={viewPath}><Button variant="secondary" size="sm"><ArrowLeft size={16} />Back</Button></Link>
       </div>
       {data.revisions.length > 0 ? (
@@ -167,17 +182,18 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
           <table className="w-full text-small">
             <thead>
               <tr className="text-left text-text-muted">
-                <th className="py-2 px-3 font-medium w-24">Version</th>
-                <th className="py-2 px-3 font-medium w-20">Type</th>
-                <th className="py-2 px-3 font-medium">Changes</th>
-                <th className="py-2 px-3 font-medium">Author</th>
-                <th className="py-2 px-3 font-medium w-36">Date</th>
+                <SortHead {...headerProps('version')} className="py-2 px-3 font-medium w-24">Version</SortHead>
+                <SortHead {...headerProps('type')} className="py-2 px-3 font-medium w-20">Type</SortHead>
+                <SortHead {...headerProps('changes')} className="py-2 px-3 font-medium">Changes</SortHead>
+                <SortHead {...headerProps('author')} className="py-2 px-3 font-medium">Author</SortHead>
+                <SortHead {...headerProps('date')} className="py-2 px-3 font-medium w-36">Date</SortHead>
                 <th className="py-2 px-3 font-medium w-24"></th>
               </tr>
             </thead>
             <tbody>
-              {data.revisions.map((rev, i) => {
-                const isCurrent = i === 0;
+              {sorted.map((rev, i) => {
+                // The newest revision is the current one wherever the sort puts it.
+                const isCurrent = rev.id === data.revisions[0]?.id;
                 const type = TYPE_BADGE[rev.changeType] ?? TYPE_BADGE.patch!;
                 const changes = rev.changes || [];
                 const isExpanded = expandedId === rev.id;

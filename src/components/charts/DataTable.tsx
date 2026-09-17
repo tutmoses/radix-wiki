@@ -7,9 +7,9 @@
 'use client';
 
 import { useMemo, type ReactNode } from 'react';
-import { ArrowDown, ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTableSort } from 'wiki-formant/react';
+import { SortHead } from '@/components/ui';
 
 // `text` vs `num` decides more than the comparator: a text column opens A–Z on
 // first press, a numeric one opens largest first.
@@ -22,19 +22,6 @@ export type Column<T> = {
   cell: (row: T) => ReactNode;
 } & ({ text: (row: T) => string } | { num: (row: T) => number });
 
-// Module scope on purpose: declared inside the table's render, React sees a new
-// component type on every render and remounts the whole header.
-function SortHead<T>({ column, active, direction, onSort }: { column: Column<T>; active: boolean; direction: 'asc' | 'desc'; onSort: (key: string) => void }) {
-  return (
-    <th className={cn('data-table-th', column.className)}>
-      <button onClick={() => onSort(column.k)} className={cn('sort-header', active && 'sort-header-active')}>
-        {column.label}
-        {active && (direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
-      </button>
-    </th>
-  );
-}
-
 export function DataTable<T>({ rows, columns, defaultKey, rowKey, limit, empty }: {
   rows: T[]; columns: Column<T>[]; defaultKey: string; rowKey: (row: T) => string; limit?: number; empty: string;
 }) {
@@ -42,7 +29,7 @@ export function DataTable<T>({ rows, columns, defaultKey, rowKey, limit, empty }
     () => Object.fromEntries(columns.map(c => [c.k, 'text' in c ? (a: T, b: T) => c.text(a).localeCompare(c.text(b)) : (a: T, b: T) => c.num(a) - c.num(b)] as const)),
     [columns],
   );
-  const { sorted, sortKey, direction, toggle } = useTableSort(rows, {
+  const { sorted, headerProps } = useTableSort(rows, {
     defaultKey,
     comparators,
     defaultDirection: key => (columns.some(c => c.k === key && 'text' in c) ? 'asc' : 'desc'),
@@ -57,7 +44,7 @@ export function DataTable<T>({ rows, columns, defaultKey, rowKey, limit, empty }
         <thead>
           <tr>
             <th className="data-table-th w-12">#</th>
-            {columns.map(c => <SortHead key={c.k} column={c} active={sortKey === c.k} direction={direction} onSort={toggle} />)}
+            {columns.map(c => <SortHead key={c.k} {...headerProps(c.k)} className={cn('data-table-th', c.className)}>{c.label}</SortHead>)}
           </tr>
         </thead>
         <tbody>

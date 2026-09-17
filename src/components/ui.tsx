@@ -2,10 +2,10 @@
 
 'use client';
 
-import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type HTMLAttributes } from 'react';
+import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type HTMLAttributes, type ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, FileText } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, slugify } from '@/lib/utils';
 import { useClickOutside } from '@/hooks';
 
 // Dropdown
@@ -80,6 +80,22 @@ export function Badge({ className, variant = 'default', ...props }: HTMLAttribut
   return <span className={cn('badge', badgeVariants[variant], className)} {...props} />;
 }
 
+/**
+ * A sortable column header. Spread `useTableSort`'s `headerProps(key)` into it.
+ * The arrow is CSS keyed on `aria-sort`, the same markup `sortTables` gives the
+ * tables stored in articles. `title` names an icon-only header.
+ */
+export function SortHead<K extends string>({ sortKey, onSort, 'aria-sort': ariaSort, title, className, children }: {
+  sortKey: K; onSort: (key: K) => void; 'aria-sort': 'ascending' | 'descending' | 'none';
+  title?: string; className?: string; children: ReactNode;
+}) {
+  return (
+    <th className={className} aria-sort={ariaSort} scope="col">
+      <button type="button" onClick={() => onSort(sortKey)} className="sort-header" title={title} aria-label={title}>{children}</button>
+    </th>
+  );
+}
+
 // StatusCard - Reusable status/error display
 const STATUS = {
   authRequired: { title: 'Authentication Required', message: 'Please connect your Radix wallet.' },
@@ -95,7 +111,7 @@ export function StatusCard({ status, backHref }: { status: keyof typeof STATUS; 
       <Card className="text-center max-w-md">
         <div className="stack items-center py-12">
           <div className="status-icon"><FileText size={32} /></div>
-          <h1>{title}</h1>
+          <h1 id={slugify(title)}>{title}</h1>
           <p className="text-text-muted">{message}</p>
           <Link href={backHref}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link>
         </div>

@@ -23,6 +23,7 @@ import {
 } from 'wiki-formant/block-views';
 // The rendered-article passes are `wiki-formant/dom`, shared with caper.
 import { activateTabGroups, addCopyButtons, hydrateTweetEmbeds, onTweetResize, sizeTweetEmbeds } from 'wiki-formant/dom';
+import { sortTables } from '@/lib/table-sort';
 import { processHtml } from '@/lib/html';
 import { useAccountQr, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
@@ -406,6 +407,7 @@ export function BlockRenderer({ content, className }: { content: Block[] | unkno
     if (!container) return;
     activateTabGroups(container);
     addCopyButtons(container);
+    sortTables(container);
   }, []);
 
   if (!blocks.length) return null;

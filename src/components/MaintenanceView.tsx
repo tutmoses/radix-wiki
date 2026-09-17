@@ -10,7 +10,7 @@ function MaintenanceView({ queues }: { queues: MaintenanceQueue[] }) {
   return (
     <div className="stack">
       <Breadcrumbs path={['maintenance']} />
-      <h1>Maintenance</h1>
+      <h1 id="maintenance">Maintenance</h1>
       <p className="text-text-muted text-lg">
         Pages the wiki&rsquo;s own rules flag as needing work. Each queue is derived, not curated — fix the page and it
         leaves the list on the next revalidation.

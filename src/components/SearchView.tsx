@@ -64,7 +64,7 @@ export default function SearchView({ query: initialQuery }: { query: string }) {
 
   return (
     <div className="stack">
-      <h1>Search</h1>
+      <h1 id="search">Search</h1>
       <form onSubmit={submit} className="relative">
         <Search className="search-icon-left" size={18} />
         <input
