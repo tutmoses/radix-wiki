@@ -11,7 +11,8 @@ import { requireBalance } from '@/lib/radix/balance';
 import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, type BlockChange } from '@/lib/versioning';
 import { parsePath, orderByIds, searchPages, resolveBlockData, loadPageHistory, AUTHOR_SELECT, NOT_HIDDEN, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
-import { validateBlocks } from '@/lib/block-utils';
+import { blockIssues, validateBlocks } from '@/lib/block-utils';
+import { describeBlockIssues } from 'wiki-formant/validation';
 import { blocksToMdx } from '@/lib/mdx';
 import { pageToMarkdown } from '@/lib/markdown';
 import type { WikiPageInput, PageMetadata } from '@/types';
@@ -271,7 +272,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
     const { title, content, bannerImage, tagPath, metadata } = body;
 
     if (!title || !content) return errors.badRequest('Title and content required');
-    if (!validateBlocks(content)) return errors.badRequest('Invalid block structure');
+    if (!validateBlocks(content)) return errors.badRequest(`Invalid block structure: ${describeBlockIssues(blockIssues(content))}`);
     if (!tagPath || !isValidTagPath(tagPath.split('/'))) {
       return errors.badRequest('Valid tag path required');
     }
@@ -313,7 +314,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     const { title, content, bannerImage, metadata, revisionMessage, newSlug, editorIds } = body;
 
     if (content !== undefined && !validateBlocks(content)) {
-      return errors.badRequest('Invalid block structure');
+      return errors.badRequest(`Invalid block structure: ${describeBlockIssues(blockIssues(content))}`);
     }
 
     const existing = await prisma.page.findUnique({ where: { tagPath_slug: { tagPath: parsed.tagPath, slug: parsed.slug } } });

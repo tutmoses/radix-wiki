@@ -1,7 +1,14 @@
 // src/lib/block-utils.ts - Shared block constants and utilities
 
 import type { Block, BlockType } from '@/types/blocks';
-import { createBlockValidator, duplicateBlockIds, validateLinkGroups, validateReferenceItems } from 'wiki-formant/validation';
+import {
+  createBlockValidator,
+  duplicateBlockIds,
+  validateCodeTabs,
+  validateLinkGroups,
+  validateReferenceItems,
+  validateStatItems,
+} from 'wiki-formant/validation';
 import { Clock, FileText, Columns, TrendingUp, Pencil, Info, Rss, Code2, BarChart3, MessageSquareQuote, LayoutGrid, QrCode, ListOrdered, AlertTriangle, type LucideIcon } from 'lucide-react';
 import { someBlock } from 'wiki-formant/blocks';
 import { BLOCK_SHAPE } from '@/lib/block-shape';
@@ -64,9 +71,14 @@ export const duplicateBlock = (block: Block): Block => duplicateBlockIds(block, 
 // this is defence in depth rather than a fix for a live hole -- but a URL that
 // can never render safely is better rejected than stored.
 
-const { validateBlocks: validate } = createBlockValidator({
+//
+// Every type but the two containers is a valid leaf. `atomic` above says which
+// types the infobox and column MENUS offer, which is not the same question:
+// reading it here rejected every save of the eight Week in Review issues that
+// carry a top-level testimonial, through the editor and MCP alike.
+const { validateBlocks: validate, blockIssues } = createBlockValidator({
   isKnownType: t => t in BLOCK_META,
-  isAtomicType: t => (ATOMIC_BLOCK_TYPES as readonly string[]).includes(t),
+  isAtomicType: t => t !== 'columns' && t !== 'infobox',
   validateAtomic: b => {
     switch (b.type) {
       case 'content':
@@ -80,9 +92,9 @@ const { validateBlocks: validate } = createBlockValidator({
       case 'rssFeed':
         return typeof b.url === 'string';
       case 'codeTabs':
-        return Array.isArray(b.tabs);
+        return validateCodeTabs(b.tabs);
       case 'stats':
-        return Array.isArray(b.items);
+        return validateStatItems(b.items);
       case 'testimonial':
         return typeof b.quote === 'string' && typeof b.author === 'string';
       case 'tipJar':
@@ -100,6 +112,9 @@ const { validateBlocks: validate } = createBlockValidator({
 });
 
 export const validateBlocks = (content: unknown): content is Block[] => validate(content);
+
+/** Where a rejected tree fails and why, for an error that names the problem. */
+export { blockIssues };
 
 // --- Code detection ---
 
