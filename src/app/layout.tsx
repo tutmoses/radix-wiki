@@ -6,6 +6,7 @@ import { Inter } from 'next/font/google';
 import '@/styles/globals.css';
 import { SidebarProvider } from 'wiki-formant/react';
 import { sidebarBootScript } from 'wiki-formant/sidebar';
+import { JsonLd } from 'wiki-formant/react-server';
 import { RadixProvider } from '@/components/RadixProvider';
 import { Header } from '@/components/Header';
 import { Sidebar } from '@/components/Sidebar';
@@ -59,7 +60,7 @@ export const metadata: Metadata = {
   twitter: SITE_CARD.twitter,
 };
 
-const SITE_JSON_LD = JSON.stringify([
+const SITE_JSON_LD = [
   {
     '@context': 'https://schema.org',
     '@type': 'Organization',
@@ -84,7 +85,7 @@ const SITE_JSON_LD = JSON.stringify([
     documentation: `${SITE_URL}/llms.txt`,
     provider: { '@type': 'Organization', name: 'RADIX Wiki', url: SITE_URL },
   },
-]);
+];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   // suppressHydrationWarning: the sidebar boot script below stamps
@@ -111,7 +112,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="service-doc" type="text/markdown" href="/AGENTS.md" title="Agent API reference" />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: SITE_JSON_LD }} />
+        <JsonLd data={SITE_JSON_LD} />
         <Script src="/js/script.js" strategy="afterInteractive" />
         <Script id="plausible-init" strategy="afterInteractive">
           {/* endpoint must stay same-origin: the pa-* script ignores data-api and defaults

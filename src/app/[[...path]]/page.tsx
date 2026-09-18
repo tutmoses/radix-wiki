@@ -11,6 +11,7 @@ import { findTagByPath, getMainArticle, getSortOrder, tagPaths, type SortOrder }
 import { highlightBlocks } from '@/lib/highlight';
 import { processBlocks } from '@/lib/html';
 import { sanitizePage } from '@/lib/sanitize';
+import { JsonLd as SchemaJsonLd } from 'wiki-formant/react-server';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { STATIC_PAGES } from '@/lib/static-pages';
 import { prisma } from '@/lib/prisma/client';
@@ -213,13 +214,10 @@ function countWords(blocks: unknown): number {
   return text.split(/\s+/).filter(Boolean).length;
 }
 
+// Payloads carry wallet-authored titles and excerpts, so they go out through
+// `wiki-formant/react-server`'s JsonLd, which escapes an authored `</script>`.
 function JsonLd({ data }: { data: Record<string, unknown> | null }) {
-  if (!data) return null;
-  // Payloads carry wallet-authored titles and excerpts. Every `<` is re-encoded
-  // as its JSON escape, or an authored `</script>` would close this tag; JSON
-  // parsers decode it back, so crawlers read the same data.
-  const json = JSON.stringify({ '@context': 'https://schema.org', ...data }).replace(/</g, '\\u003c');
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: json }} />;
+  return data ? <SchemaJsonLd data={{ '@context': 'https://schema.org', ...data }} /> : null;
 }
 
 /**

@@ -13,7 +13,7 @@ import { Plugin } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { createCodeBlock, createMapEmbed, createTabs } from 'wiki-formant/tiptap';
 import { CODE_LANGS, DEFAULT_LANG } from '@/lib/block-utils';
-import { resolveMapUrl } from '@/lib/map-utils';
+import { resolveMapUrl } from 'wiki-formant/maps';
 import { slugify } from '@/lib/utils';
 
 export { Iframe, YouTube, TwitterEmbed } from 'wiki-formant/tiptap';
