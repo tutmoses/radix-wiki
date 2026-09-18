@@ -7,11 +7,10 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { SITE_URL } from '@/lib/site';
+import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { feedItem, recapIssues, renderFeed, FEED_HEADERS } from '@/lib/feed';
 import { RECAP_PREFIX, SERIES_SLUG, issueLabel, scoreline, type LedgerState } from '@/lib/week-in-review';
 import { licenseNote } from 'wiki-formant/license';
-import { WIKI_LICENSE } from '@/lib/markdown';
 
 export const dynamic = 'force-dynamic';
 

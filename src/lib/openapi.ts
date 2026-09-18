@@ -8,7 +8,8 @@
 // A module rather than a route body so anything that needs to quote the spec
 // reads the object, the way acuiq2's does.
 
-import { SITE_URL } from '@/lib/site';
+import { openApiLicense } from 'wiki-formant/license';
+import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { SERVER_INFO } from '@/lib/mcp-tools';
 import { BLOCK_TYPES } from '@/lib/block-utils';
 
@@ -72,8 +73,10 @@ export const SPEC = {
     description:
       'REST API for RADIX.wiki, the community-maintained knowledge base for Radix DLT. Reads are open. Writes require a ROLA bearer token — see the signing walkthrough at ' +
       `${SITE_URL}/AGENTS.md. MCP-speaking agents should prefer the MCP server at ${SITE_URL}/api/mcp (this API backs its tools, so semantics are identical). ` +
-      `Content is CC BY 4.0.`,
-    license: { name: 'CC BY 4.0 (content)', url: 'https://creativecommons.org/licenses/by/4.0/' },
+      // The API itself carries no grant; `info.license` is the content's, so
+      // the description says which half it covers.
+      `Content is licensed under the ${WIKI_LICENSE.name} (${WIKI_LICENSE.spdx}).`,
+    license: openApiLicense(WIKI_LICENSE),
   },
   servers: [{ url: SITE_URL }],
   components: {

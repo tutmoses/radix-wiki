@@ -3,7 +3,7 @@
 // The walk is shared with the MCP `get_full_corpus` tool; what this URL owns
 // is its preamble, which carries the licence grant an ingesting crawler needs.
 
-import { buildFullCorpus, corpusRoute } from '@/lib/llms';
+import { LICENSE_BLOCK, buildFullCorpus, corpusRoute } from '@/lib/llms';
 import { SITE_URL } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
@@ -14,9 +14,7 @@ const header = (pageCount: number) => [
   `> This is the full-text version of llms.txt for ${SITE_URL}`,
   `> ${pageCount} pages, last generated ${new Date().toISOString().split('T')[0]}`,
   ``,
-  `> License: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)`,
-  `> Attribution: "Source: RADIX.wiki (${SITE_URL}), CC BY 4.0"`,
-  `> Full license text: https://creativecommons.org/licenses/by/4.0/legalcode`,
+  LICENSE_BLOCK,
   ``,
 ].join('\n\n');
 

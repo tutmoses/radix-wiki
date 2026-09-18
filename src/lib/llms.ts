@@ -16,11 +16,12 @@ import { NOT_HIDDEN } from '@/lib/wiki';
 import { prisma } from '@/lib/prisma/client';
 import { TAG_HIERARCHY, tagPaths } from '@/lib/tags';
 import { categoryLabel, getContentSnippet, pageUrl } from '@/lib/utils';
-import { SITE_URL } from '@/lib/site';
+import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { extractText } from '@/lib/content';
 import { CHARTS_PAGES } from '@/lib/static-pages';
 import type { Block } from '@/types/blocks';
 import type { CorpusSection } from 'wiki-formant/corpus';
+import { licenseBlock } from 'wiki-formant/license';
 
 /**
  * This wiki's three corpus depths, bound to the shared route factory.
@@ -88,6 +89,14 @@ export async function corpusValidators(depth = '') {
 }
 
 const RECENT_LIMIT = 30;
+
+/**
+ * The licence as the text exports state it: `WIKI_LICENSE` through
+ * `wiki-formant/license`, so llms.txt and llms-full.txt carry the grant, the
+ * credit line and the SPDX id the agent card, the OpenAPI info and the markdown
+ * twins carry, rather than a hand-typed copy of each.
+ */
+export const LICENSE_BLOCK = licenseBlock({ license: WIKI_LICENSE });
 
 const PREAMBLE = `# RADIX Wiki — The Knowledge Base for Radix DLT
 
@@ -180,19 +189,7 @@ community and may earn toward a future airdrop at the same time.
 - Leaderboard: ${SITE_URL}/leaderboard
 - Connect a Radix wallet to start contributing
 
-## License & Attribution
-
-RADIX.wiki content is licensed under Creative Commons Attribution 4.0
-International (CC BY 4.0): https://creativecommons.org/licenses/by/4.0/
-
-You may ingest, embed, and redistribute this content in RAG systems,
-fine-tuning datasets, or other derivative works, including commercially.
-Attribution at the dataset or system level is sufficient — per-output
-citation is encouraged but not required.
-
-- Recommended attribution: "Source: RADIX.wiki (${SITE_URL}), CC BY 4.0"
-- Full license text: https://creativecommons.org/licenses/by/4.0/legalcode
-- SPDX identifier: CC-BY-4.0
+${LICENSE_BLOCK}
 
 ## Build on the Wiki — Agent API
 

@@ -27,15 +27,9 @@ import {
 } from 'wiki-formant/blocks';
 import { BANNER_LABELS } from '@/lib/content';
 import { pageUrl } from '@/lib/utils';
-import { SITE_URL } from '@/lib/site';
+import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import type { Block, AtomicBlock } from '@/types/blocks';
-import { ccBy40 } from 'wiki-formant/license';
 import { BLOCK_SHAPE } from '@/lib/block-shape';
-
-// The grant, its name and the credit line, from `wiki-formant/license` — the
-// same four fields the other two wikis had each written out. Only the site's own
-// identity is passed in.
-export const WIKI_LICENSE = ccBy40({ siteName: 'Radix Wiki', siteUrl: SITE_URL });
 
 const decode = decodeEntities;
 

@@ -29,7 +29,7 @@ import ValidatorsView from '@/components/charts/ValidatorsView';
 import TokensView from '@/components/charts/TokensView';
 import TokenDetailView from '@/components/charts/TokenDetailView';
 import { categoryLabel, clampSnippet, getContentSnippet, pagePath } from '@/lib/utils';
-import { SITE_URL } from '@/lib/site';
+import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { PageNav } from 'wiki-formant/react-server';
@@ -273,7 +273,7 @@ function articleLd(page: WikiPage, url: string) {
     image,
     isPartOf: { '@type': 'WebSite', name: 'RADIX Wiki', url: SITE_URL },
     inLanguage: 'en',
-    license: 'https://creativecommons.org/licenses/by/4.0/',
+    license: WIKI_LICENSE.url,
     ...(page.version && { version: page.version }),
     ...(citations.length && { citation: citations }),
     ...(about && { about }),

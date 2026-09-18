@@ -5,8 +5,7 @@
 
 import { descriptorResponse } from 'wiki-formant/http';
 import { agentCard, skillsFromTools } from 'wiki-formant/well-known';
-import { SITE_URL } from '@/lib/site';
-import { WIKI_LICENSE } from '@/lib/markdown';
+import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 
 // Skills come from the MCP tool manifest, so the card can never advertise a

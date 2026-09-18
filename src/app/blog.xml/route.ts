@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { SITE_URL } from '@/lib/site';
+import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { feedItem, publishedAt, renderFeed, FEED_HEADERS } from '@/lib/feed';
 import { licenseNote } from 'wiki-formant/license';
-import { WIKI_LICENSE } from '@/lib/markdown';
 
 export const dynamic = 'force-dynamic';
 
