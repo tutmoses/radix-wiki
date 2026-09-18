@@ -19,7 +19,7 @@ import type { WikiPageInput, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
 import { deliverWebhooks } from '@/lib/webhooks';
 import { trackSearch } from '@/lib/track';
-import { corpusEtag, markdownHeaders, notModified, teachingNotFound } from 'wiki-formant/http';
+import { VARY_ACCEPT, corpusEtag, markdownHeaders, notModified, teachingNotFound, wantsMarkdown } from 'wiki-formant/http';
 
 type PathParams = { path?: string[] };
 
@@ -179,17 +179,10 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
 
     // Agent-friendly text format: the `.md` twin, Accept negotiation, or an
     // explicit ?format=text. Real markdown, no component tags — dynamic
-    // blocks are resolved so page lists render as link lists.
-    const accept = request.headers.get('accept') || '';
-    if (mdSuffix || accept.includes('text/markdown') || accept.includes('text/plain') || searchParams.get('format') === 'text') {
-      const md = pageToMarkdown({
-        title: page.title,
-        url: pageUrl(page.tagPath, page.slug),
-        content: await resolveBlockData((page.content as unknown as Block[]) || []),
-        version: page.version,
-        updatedAt: page.updatedAt,
-        lastVerifiedAt: page.lastVerifiedAt,
-      });
+    // blocks are resolved so page lists render as link lists. This URL answers
+    // two formats by Accept, so both answers carry `Vary: Accept`, or a shared
+    // cache hands one client the other's.
+    if (mdSuffix || wantsMarkdown(request)) {
       // `wiki-formant/http`, shared with the other twins. The TTL is passed
       // through rather than taken from the helper's default: this wiki caches
       // its twins for 60s where caper and acuiq2 cache theirs for an hour, and
@@ -200,18 +193,26 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       // page costs a 304 instead of a block resolve and a markdown render. The
       // twin is the most recrawled URL a page has and it was the one surface
       // here serving no ETag at all — it only ever 304'd where the edge
-      // happened to synthesise a Last-Modified for it.
+      // happened to synthesise a Last-Modified for it. The 304 carries the
+      // same headers the 200 would, Cache-Control and Vary included, as RFC
+      // 9110 requires.
       const lastModified = page.updatedAt.toUTCString();
       const etag = corpusEtag([page.tagPath, page.slug, page.version, page.updatedAt]);
-      return (
-        notModified(request, etag, lastModified) ??
-        new NextResponse(md, {
-          headers: markdownHeaders(lastModified, { etag, extra: { ...CACHE.medium, ...TWIN_ROBOTS } }),
-        })
-      );
+      const headers = markdownHeaders(lastModified, { etag, extra: { ...CACHE.medium, ...TWIN_ROBOTS, ...VARY_ACCEPT } });
+      const unchanged = notModified(request, etag, lastModified, headers);
+      if (unchanged) return unchanged;
+      const md = pageToMarkdown({
+        title: page.title,
+        url: pageUrl(page.tagPath, page.slug),
+        content: await resolveBlockData((page.content as unknown as Block[]) || []),
+        version: page.version,
+        updatedAt: page.updatedAt,
+        lastVerifiedAt: page.lastVerifiedAt,
+      });
+      return new NextResponse(md, { headers });
     }
 
-    return cachedJson(page, { ...CACHE.short, 'Last-Modified': page.updatedAt.toUTCString() });
+    return cachedJson(page, { ...CACHE.short, ...VARY_ACCEPT, 'Last-Modified': page.updatedAt.toUTCString() });
   }, 'Failed to fetch');
 }
 
