@@ -193,8 +193,11 @@ const MCP = t.endpoint;
 
   await robotsChecks(t, ['/api/mcp', '/llms.txt', '/.well-known/agent-card.json']);
 
+  // A sitemap nominates pages for indexing, and Search Console filed the text
+  // indexes under "crawled, currently not indexed", so src/app/sitemap.ts leaves
+  // them out on purpose. Agents find them through robots.txt and llms.txt.
   const sitemap = await (await fetch(`${BASE}/sitemap.xml`)).text();
-  check('sitemap lists llms.txt', sitemap.includes('/llms.txt') && sitemap.includes('/llms-full.txt') && sitemap.includes('/llms-index.txt'), 'llms.txt + llms-index.txt + llms-full.txt present');
+  check('sitemap omits the llms exports', !/\/llms(-index|-full)?\.txt/.test(sitemap), 'no llms*.txt rows');
 
   process.exit(t.summary());
 })();

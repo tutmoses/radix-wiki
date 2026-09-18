@@ -30,8 +30,7 @@ import { withClient } from './seed-utils.mjs';
 // now apply on every run, in both repos.
 import {
   YOUTUBE_EMBED,
-  extractEmbeds as htmlEmbeds,
-  extractLinks as htmlLinks,
+  collectBlockLinks,
   mapLimit,
   probeExternal,
   probeUrl,
@@ -109,41 +108,11 @@ function publicAssetPaths() {
 // the entry was written. Rewriting them would falsify the log, so don't report them.
 const LINK_ROT_EXEMPT = new Set(['/contents/tech/operations/wiki-maintenance-log']);
 
-// An href/src is an HTML attribute, so `&` is stored escaped. Probe what a browser
-// would request, not the literal attribute text — 116 URLs wiki-wide carry `&amp;`,
-// and probing them raw turned query-sensitive APIs into false failures.
-const ENTITIES = { amp: '&', '#38': '&', lt: '<', gt: '>', quot: '"', apos: "'", '#39': "'" };
-const decodeAttr = (s) => s.replace(/&(amp|lt|gt|quot|apos|#38|#39);/g, (_, e) => ENTITIES[e]);
-
-// The two regexes are `wiki-formant/link-check` (`extractLinks` /
-// `extractEmbeds`, on one HTML fragment). What stays here is the BLOCK WALK —
-// this repo's container types — and the internal/external split, which depends
-// on what counts as a path on this site.
-function collectLinks(blocks, acc = { external: [], internal: [], embeds: [] }) {
-  for (const block of blocks || []) {
-    if (block?.type === 'content' && block.text) {
-      for (const { href: raw } of htmlLinks(block.text)) {
-        const href = decodeAttr(raw);
-        if (href.startsWith('http')) acc.external.push(href);
-        // Strip the trailing slash, but never down to the empty string: a bare "/"
-        // is the homepage, which STATIC_PATHS declares as "/". Run 277 rewrote the
-        // blog essays' absolute https://radix.wiki sign-offs to site-relative "/",
-        // and every run since reported those 14 healthy anchors on 12 pages as one
-        // broken internal link to "" (run 290).
-        else if (href.startsWith('/')) acc.internal.push(href.split('#')[0].replace(/(.)\/$/, '$1'));
-      }
-      for (const { kind, url: rawSrc } of htmlEmbeds(block.text)) {
-        const src = decodeAttr(rawSrc);
-        if (src.startsWith('http')) acc.embeds.push({ kind, url: src });
-      }
-    }
-    if (block?.type === 'infobox' && Array.isArray(block.blocks)) collectLinks(block.blocks, acc);
-    if (block?.type === 'columns' && Array.isArray(block.columns)) {
-      for (const col of block.columns) collectLinks(col.blocks, acc);
-    }
-  }
-  return acc;
-}
+// The block walk and the link split are `collectBlockLinks`: every core type
+// that carries a link (content anchors and embeds, reference URLs, link-grid
+// hrefs), entity-decoded so a stored `&amp;` is probed as the browser would
+// request it, and a bare `/` kept as the homepage rather than collapsed to ''.
+// This repo had fixed those two; caper had the reference URLs this one missed.
 
 async function probeEmbed({ kind, url }) {
   const yt = url.match(YOUTUBE_EMBED);
@@ -193,7 +162,7 @@ await withClient(async (client) => {
     const path = `/${row.tag_path}/${row.slug}`;
     if (LINK_ROT_EXEMPT.has(path)) continue;
     const blocks = Array.isArray(row.content) ? row.content : [];
-    const { external, internal, embeds } = collectLinks(blocks);
+    const { external, internal, embeds } = collectBlockLinks(blocks);
     for (const u of new Set(external)) {
       if (!externalToPages.has(u)) externalToPages.set(u, []);
       externalToPages.get(u).push(path);
