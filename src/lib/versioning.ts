@@ -3,14 +3,13 @@
 // Both halves are `wiki-formant`: the arithmetic is `wiki-formant/versioning`
 // and the block-tree walk is `wiki-formant/revisions`, shared with caper.
 //
-// What stays here is what is this repo's: the shape of its containers, the leaf
-// diff its history view renders, and the positional signature its four call
-// sites already use.
+// What stays here is what is this repo's: the leaf diff its history view
+// renders, and the positional signature its four call sites already use. Its
+// containers are the core two, which is the walk's default.
 
 import {
   computeRevisionDiff as sharedRevisionDiff,
   type BlockChange as SharedBlockChange,
-  type BlockGroup,
   type RevisionDiff as SharedRevisionDiff,
 } from 'wiki-formant/revisions';
 import type { Block, ContentBlock } from '@/types/blocks';
@@ -25,15 +24,6 @@ interface ContentDiff {
 
 export type BlockChange = SharedBlockChange<ContentDiff>;
 export type RevisionDiff = SharedRevisionDiff<ContentDiff>;
-
-/** This wiki's two container types, and the paths that address their children. */
-const containers = (block: Block): BlockGroup<Block>[] | null => {
-  if (block.type === 'columns') {
-    return block.columns.map((col, i) => ({ path: `columns.${i}.blocks`, blocks: col.blocks }));
-  }
-  if (block.type === 'infobox') return [{ path: 'blocks', blocks: block.blocks }];
-  return null;
-};
 
 const text = (block: Block | null): string =>
   block?.type === 'content' ? (block as ContentBlock).text : '';
@@ -67,7 +57,6 @@ export function computeRevisionDiff(
     newTitle,
     oldMeta: oldBanner,
     newMeta: newBanner,
-    containers,
     leafDiff,
   });
 }
