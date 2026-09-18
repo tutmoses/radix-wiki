@@ -215,7 +215,11 @@ function countWords(blocks: unknown): number {
 
 function JsonLd({ data }: { data: Record<string, unknown> | null }) {
   if (!data) return null;
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context': 'https://schema.org', ...data }) }} />;
+  // Payloads carry wallet-authored titles and excerpts. Every `<` is re-encoded
+  // as its JSON escape, or an authored `</script>` would close this tag; JSON
+  // parsers decode it back, so crawlers read the same data.
+  const json = JSON.stringify({ '@context': 'https://schema.org', ...data }).replace(/</g, '\\u003c');
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: json }} />;
 }
 
 /**
