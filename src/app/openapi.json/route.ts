@@ -4,11 +4,9 @@
 // workspace had each picked one of the two paths and 404'd the other, so an
 // agent that guessed wrong concluded there was no spec.
 
-import { descriptorResponse } from 'wiki-formant/http';
+import { descriptorHandler } from 'wiki-formant/well-known';
 import { SPEC } from '@/lib/openapi';
 
 export const revalidate = 86400;
 
-export async function GET(request: Request) {
-  return descriptorResponse(request, SPEC);
-}
+export const GET = descriptorHandler(SPEC);

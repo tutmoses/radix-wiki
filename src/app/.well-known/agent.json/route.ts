@@ -3,8 +3,7 @@
 // the licence projection are `wiki-formant/well-known`, shared with the other
 // agent surfaces; what stays here is what a card is supposed to differ in.
 
-import { descriptorResponse } from 'wiki-formant/http';
-import { agentCard, skillsFromTools } from 'wiki-formant/well-known';
+import { agentCard, descriptorHandler, skillsFromTools } from 'wiki-formant/well-known';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 
@@ -29,10 +28,8 @@ const AGENT_CARD = agentCard({
   },
 });
 
-// `descriptorResponse` rather than a bare JSON body: the card is the document
-// an A2A client refetches most and it carried no validator at all, so a caller
-// fell back to heuristic freshness with no way to revalidate — a corrected card
-// reached nobody on any schedule this origin controlled.
-export async function GET(request: Request) {
-  return descriptorResponse(request, AGENT_CARD);
-}
+// A validator rather than a bare JSON body: the card is the document an A2A
+// client refetches most and it carried none, so a caller fell back to heuristic
+// freshness with no way to revalidate — a corrected card reached nobody on any
+// schedule this origin controlled.
+export const GET = descriptorHandler(AGENT_CARD);

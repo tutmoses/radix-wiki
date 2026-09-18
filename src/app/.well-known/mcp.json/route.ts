@@ -5,48 +5,33 @@
 // and this one 404'd, so a client that probed here concluded the origin had no
 // MCP server while /api/mcp was answering the whole time.
 //
-// The tools listed here ARE the JSON-RPC tools /api/mcp serves — the same
-// manifest module, so the two cannot disagree.
+// The envelope, the protocol versions and the rate limit are `mcpManifest`,
+// shared with the other origins. The tools listed here ARE the JSON-RPC tools
+// /api/mcp serves — the same manifest module, so the two cannot disagree. What
+// stays here is the auth note, which no other origin has.
 
-import { descriptorResponse } from 'wiki-formant/http';
-import { MCP_PROTOCOL_VERSION, MCP_PROTOCOL_VERSIONS } from 'wiki-formant/mcp';
+import { descriptorHandler, mcpManifest } from 'wiki-formant/well-known';
 import { SERVER_INFO, TOOLS } from '@/lib/mcp-tools';
-import { MCP_RATE_LIMIT_TEXT } from '@/lib/api';
 import { SITE_URL } from '@/lib/site';
 import serverManifest from '../../../../server.json';
 
 export const revalidate = 86400;
 
-const manifest = {
-  schema_version: '1.0',
+const manifest = mcpManifest({
   name: 'Radix Wiki',
   registryName: serverManifest.name,
   version: SERVER_INFO.version,
   description:
     'Community-maintained knowledge base for Radix DLT. Reading is anonymous and free; writing takes a ROLA-signed token from your own Radix key.',
   url: SITE_URL,
-  provider: { name: 'Radix Wiki', url: SITE_URL },
-  api: { type: 'openapi', url: `${SITE_URL}/.well-known/openapi.json` },
-  mcp: {
-    endpoint: `${SITE_URL}/api/mcp`,
-    transport: 'streamable-http',
-    protocol: 'JSON-RPC 2.0',
-    // Single-sourced from the transport that actually answers, so the manifest
-    // cannot advertise a version the server does not speak.
-    protocolVersion: MCP_PROTOCOL_VERSION,
-    supportedProtocolVersions: MCP_PROTOCOL_VERSIONS,
-    rateLimit: MCP_RATE_LIMIT_TEXT,
+  tools: TOOLS,
+  extra: {
+    auth: {
+      reads: 'none',
+      writes: 'ROLA — get_challenge, sign with your own Ed25519 key, login, then Authorization: Bearer',
+      documentationUrl: `${SITE_URL}/AGENTS.md`,
+    },
   },
-  auth: {
-    reads: 'none',
-    writes: 'ROLA — get_challenge, sign with your own Ed25519 key, login, then Authorization: Bearer',
-    documentationUrl: `${SITE_URL}/AGENTS.md`,
-  },
-  tools: TOOLS.map(({ name, title, description, inputSchema, annotations }) => ({
-    name, title, description, inputSchema, annotations,
-  })),
-};
+});
 
-export async function GET(request: Request) {
-  return descriptorResponse(request, manifest, { extra: { 'Access-Control-Allow-Origin': '*' } });
-}
+export const GET = descriptorHandler(manifest, { extra: { 'Access-Control-Allow-Origin': '*' } });
