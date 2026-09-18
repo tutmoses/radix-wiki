@@ -33,7 +33,7 @@ import { metadataRows } from '@/lib/taxonomy';
 import { TokenChart } from '@/components/charts/TokenChart';
 import { formatPriceSubscript } from '@/components/charts/format';
 import { useCopy } from 'wiki-formant/react';
-import { BANNER_LABELS } from 'wiki-formant/text';
+import { bannerVariant } from 'wiki-formant/text';
 import { OCISWAP_API } from '@/lib/radix/config';
 
 // ========== PAGE CARD ==========
@@ -329,8 +329,9 @@ function TipJarBlockView({ block }: { block: TipJarBlock }) {
 }
 
 // ========== EDITORIAL NOTICES ==========
-// The label is `BANNER_LABELS`, the same string the editor and the text exports
-// print. Only the message and the icon are this wiki's.
+// `BannerView` looks the label up itself, in `BANNER_LABELS`, the same string
+// the editor and the text exports print. Only the message and the icon are this
+// wiki's.
 const BANNER_META: Record<BannerVariant, { message: string; icon: LucideIcon }> = {
   stub: { message: 'This article is a stub. You can help RADIX Wiki by expanding it.', icon: FileText },
   unsourced: { message: 'This article needs additional citations for verification. Please help improve it by adding references to reliable sources.', icon: AlertTriangle },
@@ -376,13 +377,12 @@ function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
         <ReferencesView items={block.items} title={block.title || 'References'} processHtml={processHtml} />
       );
     case 'banner': {
-      const variant = BANNER_META[block.variant] ? block.variant : 'cleanup';
-      const { message, icon: Icon } = BANNER_META[variant];
+      const { message, icon: Icon } = BANNER_META[bannerVariant(block.variant)];
       return (
         <BannerView
           variant={block.variant}
           text={block.text}
-          meta={{ label: BANNER_LABELS[variant], message }}
+          message={message}
           icon={<Icon size={18} className="editorial-banner-icon" />}
         />
       );

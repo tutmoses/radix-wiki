@@ -1,11 +1,12 @@
 // src/app/.well-known/agent.json/route.ts — A2A Agent Card (Google Agent2Agent
-// protocol). The envelope and the tools-to-skills mapping are
-// `wiki-formant/well-known`, shared with the other agent surfaces; what stays
-// here is what a card is supposed to differ in.
+// protocol). The envelope, the tools-to-skills mapping, the discovery URLs and
+// the licence projection are `wiki-formant/well-known`, shared with the other
+// agent surfaces; what stays here is what a card is supposed to differ in.
 
 import { descriptorResponse } from 'wiki-formant/http';
 import { agentCard, skillsFromTools } from 'wiki-formant/well-known';
 import { SITE_URL } from '@/lib/site';
+import { WIKI_LICENSE } from '@/lib/markdown';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 
 // Skills come from the MCP tool manifest, so the card can never advertise a
@@ -16,10 +17,9 @@ const AGENT_CARD = agentCard({
   url: SITE_URL,
   version: SERVER_INFO.version,
   skills: skillsFromTools(TOOLS),
-  license: { name: 'CC-BY-4.0', url: 'https://creativecommons.org/licenses/by/4.0/', scope: 'content' },
+  license: WIKI_LICENSE,
+  licenseScope: 'content',
   extra: {
-    mcpServerCard: `${SITE_URL}/api/mcp/server-card`,
-    openapiUrl: `${SITE_URL}/openapi.json`,
     securitySchemes: {
       rola: {
         type: 'custom',
