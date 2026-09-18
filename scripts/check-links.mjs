@@ -28,15 +28,7 @@ import { withClient } from './seed-utils.mjs';
 // /embed/ URL 200s for a deleted video; caper's knew that a connect refusal is
 // usually concurrency and that serialising per hostname is the fix. Both halves
 // now apply on every run, in both repos.
-import {
-  YOUTUBE_EMBED,
-  collectBlockLinks,
-  mapLimit,
-  probeExternal,
-  probeUrl,
-  probeYouTube,
-  unverifiableReason,
-} from 'wiki-formant/link-check';
+import { collectBlockLinks, mapLimit, probeExternal, unverifiableReason } from 'wiki-formant/link-check';
 
 config({ path: new URL('../.env', import.meta.url) });
 
@@ -114,13 +106,12 @@ const LINK_ROT_EXEMPT = new Set(['/contents/tech/operations/wiki-maintenance-log
 // request it, and a bare `/` kept as the homepage rather than collapsed to ''.
 // This repo had fixed those two; caper had the reference URLs this one missed.
 
+// `probeExternal` sends a YouTube /embed/ URL through oEmbed, as it does a
+// watch link; what an embed adds is the unverifiable-host verdict.
 async function probeEmbed({ kind, url }) {
-  const yt = url.match(YOUTUBE_EMBED);
-  if (yt) return { kind, url, videoId: yt[1], ...(await probeYouTube(yt[1])) };
-
-  const { status, ok, error, contentType, bytes } = await probeUrl(url);
-  const unverifiable = ok ? unverifiableReason(url, UNVERIFIABLE_EMBED_HOSTS) : null;
-  return { kind, url, status, ok, error, contentType, bytes, ...(unverifiable ? { unverifiable, reason: unverifiable } : {}) };
+  const probe = await probeExternal(url);
+  const unverifiable = probe.ok ? unverifiableReason(url, UNVERIFIABLE_EMBED_HOSTS) : null;
+  return { kind, ...probe, ...(unverifiable ? { unverifiable, reason: unverifiable } : {}) };
 }
 
 // Uploads are normalised by /api/upload (src/lib/images.ts), but seed scripts write

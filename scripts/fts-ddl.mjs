@@ -30,7 +30,7 @@
 
 import pg from 'pg';
 import { config } from 'dotenv';
-import { searchTsvSql } from 'wiki-formant/search';
+import { searchTsvDdl } from 'wiki-formant/search';
 config();
 
 const url = process.env.DATABASE_URL.replace(':6543', ':5432').replace(/\?.*$/, '');
@@ -39,11 +39,11 @@ await c.connect();
 const q = (s) => c.query(s).then(r => r.rows);
 
 // Title at weight A, prose at weight B, so a title hit outranks a body hit
-// inside the full-text tier as well as across tiers. The expression comes from
-// the package because `searchPageIds` reads it from there too, and the two must
-// agree exactly or the literal tier and the full-text tier disagree about what
-// counts as prose.
-const GENERATED = searchTsvSql();
+// inside the full-text tier as well as across tiers. The statements come from
+// the package because `searchPageIds` reads the same expression from there, and
+// the two must agree exactly or the literal tier and the full-text tier
+// disagree about what counts as prose.
+const ddl = searchTsvDdl('pages');
 
 // This used to skip whenever the column existed, which made the script
 // idempotent about the column and blind to its EXPRESSION — a changed prose
@@ -56,13 +56,10 @@ const GENERATED = searchTsvSql();
 // comparing it to this string can only produce false rebuilds — an
 // unconditional rebuild on a hand-run script is cheaper than a lying compare.
 await q('BEGIN');
-await q(`ALTER TABLE pages DROP COLUMN IF EXISTS search_tsv`);
-await q(`ALTER TABLE pages ADD COLUMN search_tsv tsvector
-    GENERATED ALWAYS AS (${GENERATED}
-    ) STORED`);
+for (const statement of ddl.column) await q(statement);
 await q('COMMIT');
 console.log('rebuilt generated column search_tsv');
-await q(`CREATE INDEX IF NOT EXISTS pages_search_tsv_idx ON pages USING GIN (search_tsv)`);
+await q(ddl.index);
 console.log('GIN index present');
 
 console.table(await q(`select column_name, data_type, is_generated from information_schema.columns
