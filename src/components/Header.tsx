@@ -11,6 +11,7 @@ import type { ComboboxOptionProps } from 'wiki-formant/combobox';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth, useClickOutside, usePagePath, useFetch } from '@/hooks';
 import { cn, shortenAddress, formatRelativeTime, pagePath } from '@/lib/utils';
+import { useNow } from '@/lib/now';
 import type { PageSummary } from '@/lib/wiki';
 import Highlight from '@/components/Highlight';
 import { Button, Dropdown } from '@/components/ui';
@@ -46,6 +47,7 @@ function notificationText(n: WikiNotification): string {
 }
 
 function NotificationDropdown({ onClose, initialTab }: { onClose: () => void; initialTab?: 'notifications' | 'webhooks' }) {
+  const now = useNow();
   const router = useRouter();
   const notifications = useStore(s => s.notifications);
   const markNotificationsRead = useStore(s => s.markNotificationsRead);
@@ -82,7 +84,7 @@ function NotificationDropdown({ onClose, initialTab }: { onClose: () => void; in
                   <UserAvatar seed={n.actor.id} avatarUrl={n.actor.avatarUrl} size="sm" />
                   <div className="min-w-0 flex-1">
                     <div className="text-small truncate">{notificationText(n)}</div>
-                    <div className="text-xs text-text-muted">{formatRelativeTime(n.createdAt)}</div>
+                    <div className="text-xs text-text-muted">{formatRelativeTime(n.createdAt, now)}</div>
                   </div>
                   {!n.read && <span className="notification-dot" />}
                 </button>

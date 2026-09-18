@@ -108,7 +108,7 @@ export default function LeaderboardView() {
                 <td className="p-3 text-center hidden-mobile">{entry.pages}</td>
                 <td className="p-3 text-center hidden-mobile">{entry.edits}</td>
                 <td className="p-3 text-center hidden-mobile">{entry.comments}</td>
-                <td className="p-3 text-right font-medium text-accent">{entry.points.toLocaleString()}</td>
+                <td className="p-3 text-right font-medium text-accent">{entry.points.toLocaleString('en-US')}</td>
               </tr>
             ))}
             {data && data.items.length === 0 && (

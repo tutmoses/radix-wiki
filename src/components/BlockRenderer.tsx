@@ -6,7 +6,8 @@ import { useEffect, useRef, memo, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, FileText, Copy, Check, AlertTriangle, Megaphone, CalendarClock, type LucideIcon } from 'lucide-react';
-import { cn, formatRelativeTime, generateBannerSvg, getContentSnippet, pagePath } from '@/lib/utils';
+import { cn, formatDate, formatRelativeTime, generateBannerSvg, getContentSnippet, pagePath } from '@/lib/utils';
+import { useNow } from '@/lib/now';
 import { findTagByPath } from '@/lib/tags';
 // codeTabs / columns / linkGrid / references / stats / banner are
 // `wiki-formant/block-views`, shared with caper, which had written all six
@@ -51,6 +52,7 @@ export function PageThumb({ page }: { page: Pick<WikiPage, 'title' | 'tagPath' |
 }
 
 const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; compact?: boolean }) {
+  const now = useNow();
   const leafTag = findTagByPath(page.tagPath.split('/'));
   const href = pagePath(page.tagPath, page.slug);
 
@@ -71,7 +73,7 @@ const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; com
           <span className="page-card-title">{page.title}</span>
           {(() => { const snippet = page.snippet ?? getContentSnippet(page.content); return snippet && <p className="page-card-snippet">{snippet}</p>; })()}
           <div className="page-card-meta">
-            <small className="row text-text-muted"><Clock size={12} />{formatRelativeTime(page.updatedAt)}</small>
+            <small className="row text-text-muted"><Clock size={12} />{formatRelativeTime(page.updatedAt, now)}</small>
             {leafTag && <Badge variant="secondary" className="truncate max-w-full">{leafTag.name}</Badge>}
           </div>
         </div>
@@ -171,7 +173,7 @@ function RssFeedBlockView({ block }: { block: RssFeedBlock }) {
                 <div className="rss-card-title"><a href={item.link} target="_blank" rel="noopener">{item.title}</a></div>
                 <div className="rss-card-meta">
                   <span className="rss-card-source">{item.source}</span>
-                  {item.date && <>{' · '}{new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</>}
+                  {item.date && <>{' · '}{formatDate(item.date)}</>}
                 </div>
                 {item.description && <div className="rss-card-desc">{item.description}...</div>}
               </div>

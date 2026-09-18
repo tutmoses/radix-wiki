@@ -11,6 +11,7 @@ import { findTagByPath, getMainArticle, getSortOrder, tagPaths, type SortOrder }
 import { highlightBlocks } from '@/lib/highlight';
 import { processBlocks } from '@/lib/html';
 import { sanitizePage } from '@/lib/sanitize';
+import { NowProvider } from '@/lib/now';
 import { JsonLd as SchemaJsonLd } from 'wiki-formant/react-server';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { STATIC_PAGES } from '@/lib/static-pages';
@@ -317,11 +318,17 @@ function linksTo(content: unknown, href: string): boolean {
 
 const VALID_SORTS = new Set<string>(['title', 'newest', 'oldest', 'recent']);
 
-export default async function DynamicPage({ params, searchParams }: Props) {
-  // Read the clock once, here on the server, and hand it to the views. Read
-  // inside a 'use client' render, a page near the staleness boundary could
-  // disagree between SSR and hydration.
+// Read the clock once, here on the server, and hand it to the views: as a prop
+// where a view needs it to decide something (the freshness banner), and through
+// `NowProvider` to everything that renders a relative time. Read inside a 'use
+// client' render instead, the clock is one value in the cached HTML and a later
+// one at hydration, and the text disagrees.
+export default async function DynamicPage(props: Props) {
   const nowMs = Date.now();
+  return <NowProvider now={nowMs}>{await renderRoute(props, nowMs)}</NowProvider>;
+}
+
+async function renderRoute({ params, searchParams }: Props, nowMs: number) {
   const { path } = await params;
   const str = (v: string | string[] | undefined) => (typeof v === 'string' ? v : undefined);
   const parsed = parsePath(path);

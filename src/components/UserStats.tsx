@@ -65,7 +65,7 @@ function ScoreRing({ score, points }: { score: number; points: number }) {
         </div>
         <div className="row text-small">
           <Star size={12} className="text-accent" />
-          <span className="text-text-muted">{points.toLocaleString()} pts</span>
+          <span className="text-text-muted">{points.toLocaleString('en-US')} pts</span>
         </div>
       </div>
     </div>

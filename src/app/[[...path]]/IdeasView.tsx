@@ -9,6 +9,7 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Badge } from '@/components/ui';
 import { categoryLabel, cn, formatRelativeTime, slugify } from '@/lib/utils';
+import { useNow } from '@/lib/now';
 import { findTagByPath, getMetadataKeys, type SortOrder } from '@/lib/tags';
 import { NewPageControl, SortToggle } from './PageContent';
 import type { WikiPage, PageMetadata, IdeasPage } from '@/types';
@@ -75,6 +76,7 @@ function IdeasListView({ pages, categoryFilter, statusFilter, statusOptions, pri
   pages: IdeasPage[]; categoryFilter: string; statusFilter: string;
   statusOptions: StatusOption[]; priorityOptions: StatusOption[];
 }) {
+  const now = useNow();
   const filtered = useMemo(() => {
     let result = pages;
     if (categoryFilter) result = result.filter(p => categoryLabel((p.metadata as PageMetadata)?.category) === categoryFilter);
@@ -103,7 +105,7 @@ function IdeasListView({ pages, categoryFilter, statusFilter, statusOptions, pri
             <div className="ideas-row-meta">
               <AssigneeChip raw={meta.assignee} />
               <span className="ideas-row-replies"><MessageSquare size={14} />{p.replyCount}</span>
-              <span className="ideas-row-activity">{formatRelativeTime(p.lastActivity)}</span>
+              <span className="ideas-row-activity">{formatRelativeTime(p.lastActivity, now)}</span>
             </div>
           </Link>
         );

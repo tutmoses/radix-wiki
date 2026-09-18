@@ -223,7 +223,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                           </Link>
                         ) : '—'}
                       </td>
-                      <td className="py-2 px-3 text-text-muted">{formatDate(rev.createdAt, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                      <td className="py-2 px-3 text-text-muted">{formatDate(rev.createdAt, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}</td>
                       <td className="py-2 px-3">
                         {isAuthenticated && !isCurrent && (
                           <button onClick={() => handleRestore(rev.id)} disabled={restoringId === rev.id} className="restore-btn">

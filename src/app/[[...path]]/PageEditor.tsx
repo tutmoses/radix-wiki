@@ -393,7 +393,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
         {gate && !gate.allowed ? (
           <div data-callout="warning"><p>{gate.error}</p></div>
         ) : gate === null ? (
-          <div data-callout="info"><p>{isCreating ? 'Creating a new page at' : 'Editing the page at'} <code>{viewPath}</code> requires holding <strong>{getXrdRequired(isCreating ? 'create' : 'edit', tagPath).toLocaleString()} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
+          <div data-callout="info"><p>{isCreating ? 'Creating a new page at' : 'Editing the page at'} <code>{viewPath}</code> requires holding <strong>{getXrdRequired(isCreating ? 'create' : 'edit', tagPath).toLocaleString('en-US')} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
         ) : null}
         {saveError && <div data-callout="error"><p>{saveError}</p></div>}
         <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />

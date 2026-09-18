@@ -15,6 +15,7 @@ import { LinkPreview } from '@/components/LinkPreview';
 import { Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
 import { categoryLabel, cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet, pagePath } from '@/lib/utils';
+import { useNow } from '@/lib/now';
 import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder, type TagNode } from '@/lib/tags';
 import { categoryHref, type Control, type FacetControlGroup, type FacetFilters, type SharedFacet } from '@/lib/taxonomy';
 import { createBlock } from '@/lib/block-utils';
@@ -56,6 +57,7 @@ export function PageSkeleton() {
 // The single home for page provenance — Wikipedia's "This page was last edited …" line.
 function PageMeta({ page }: { page: WikiPage }) {
   const revisions = page._count?.revisions ?? 0;
+  const now = useNow();
   return (
     <div className="page-meta">
       {page.author && (
@@ -64,7 +66,7 @@ function PageMeta({ page }: { page: WikiPage }) {
           <span className="truncate">{page.author.displayName || page.author.shortAddress}</span>
         </span>
       )}
-      <span>Last updated {formatRelativeTime(page.updatedAt)}</span>
+      <span>Last updated {formatRelativeTime(page.updatedAt, now)}</span>
       <span className="font-mono">v{page.version}</span>
       <Link href={`${pagePath(page.tagPath, page.slug)}/history`} className="link">
         {revisions} revision{revisions === 1 ? '' : 's'}
@@ -367,7 +369,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
           <Button onClick={handleSave} disabled={isSaving} size="sm"><Save size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
         </div>
         <h1 id="edit-homepage">Edit Homepage</h1>
-        <div data-callout="info"><p>Editing the homepage requires holding <strong>{getXrdRequired('edit', '').toLocaleString()} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
+        <div data-callout="info"><p>Editing the homepage requires holding <strong>{getXrdRequired('edit', '').toLocaleString('en-US')} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
         <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
         <div className="page-with-infobox">
           <div className="page-main-content">

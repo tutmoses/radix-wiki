@@ -8,6 +8,7 @@ import { useTableSort } from 'wiki-formant/react';
 import { useFetch, useAuth } from '@/hooks';
 import { Button, SortHead } from '@/components/ui';
 import { DASHBOARD_URL } from '@/lib/radix/config';
+import { formatDate } from '@/lib/utils';
 
 interface EditorShare {
   id: string;
@@ -128,7 +129,7 @@ export default function RewardsView() {
           <div className="h-10 skeleton rounded" />
         ) : data && (
           <>
-            <p className="text-2xl font-bold text-accent">{Math.floor(data.treasury.balance).toLocaleString()} $XRD</p>
+            <p className="text-2xl font-bold text-accent">{Math.floor(data.treasury.balance).toLocaleString('en-US')} $XRD</p>
             <p className="text-small text-text-muted font-mono truncate">{data.treasury.address}</p>
           </>
         )}
@@ -162,9 +163,9 @@ export default function RewardsView() {
                 <td className="p-3">
                   <span className="font-medium">{e.displayName || e.radixAddress.slice(0, 16) + '...'}</span>
                 </td>
-                <td className="p-3 text-right">{e.points.toLocaleString()}</td>
+                <td className="p-3 text-right">{e.points.toLocaleString('en-US')}</td>
                 <td className="p-3 text-right">{(e.share * 100).toFixed(1)}%</td>
-                <td className="p-3 text-right font-medium text-accent">{e.amountXrd.toLocaleString()}</td>
+                <td className="p-3 text-right font-medium text-accent">{e.amountXrd.toLocaleString('en-US')}</td>
               </tr>
             ))}
             {data && data.editors.length === 0 && (
@@ -213,8 +214,8 @@ export default function RewardsView() {
             <tbody>
               {airdrops.sorted.map(a => (
                 <tr key={a.id} className="border-b border-surface-2 last:border-0">
-                  <td className="p-3">{new Date(a.createdAt).toLocaleDateString()}</td>
-                  <td className="p-3 text-right font-medium">{a.totalXrd.toLocaleString()}</td>
+                  <td className="p-3">{formatDate(a.createdAt)}</td>
+                  <td className="p-3 text-right font-medium">{a.totalXrd.toLocaleString('en-US')}</td>
                   <td className="p-3 text-right">{a.editorCount}</td>
                   <td className="p-3 font-mono text-small truncate max-w-48">
                     {a.txHash ? (

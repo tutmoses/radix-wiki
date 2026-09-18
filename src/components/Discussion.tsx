@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback, useActionState } from 'react';
 import { MessageSquare, Reply, Trash2, ChevronDown, ChevronUp, Send } from 'lucide-react';
 import { cn, formatRelativeTime } from '@/lib/utils';
+import { useNow } from '@/lib/now';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -55,6 +56,7 @@ function CommentThread({ comment, depth, onReply, onDelete, currentUserId }: {
 }) {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const now = useNow();
   const { isAuthenticated } = useAuth();
   const canReply = isAuthenticated && depth < MAX_DEPTH;
   const isAuthor = currentUserId === comment.authorId;
@@ -72,7 +74,7 @@ function CommentThread({ comment, depth, onReply, onDelete, currentUserId }: {
           {comment.author && <UserAvatar seed={comment.author.id} avatarUrl={comment.author.avatarUrl} size="sm" />}
           <span className="font-medium">{comment.author?.displayName || comment.author?.shortAddress || 'Unknown'}</span>
           <span className="text-text-muted">·</span>
-          <span className="text-text-muted">{formatRelativeTime(comment.createdAt)}</span>
+          <span className="text-text-muted">{formatRelativeTime(comment.createdAt, now)}</span>
           {hasReplies && (
             <button onClick={() => setCollapsed(!collapsed)} className="comment-action ml-auto">
               {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
