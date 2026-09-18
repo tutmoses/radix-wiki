@@ -21,7 +21,8 @@ import { TAG_HIERARCHY, getMetadataKeys, type TagNode } from '@/lib/tags';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 import { RADIX_CONFIG } from '@/lib/radix/config';
 import { trackMcpCall } from '@/lib/track';
-import { McpToolError, type McpServerConfig, type McpPrompt, type McpResource } from 'wiki-formant/mcp';
+import { McpToolError, readArgs, withAdjustments, type McpServerConfig, type McpPrompt, type McpResource } from 'wiki-formant/mcp';
+import { CORPUS_BUDGET, sliceCorpus } from 'wiki-formant/corpus';
 import type { Block } from '@/types/blocks';
 
 const INSTRUCTIONS = [
@@ -125,15 +126,21 @@ function buildCategoryTree(nodes: TagNode[], counts: Map<string, number>, parent
 
 // ========== READ HANDLERS ==========
 
-async function search_wiki(args: { query: string; tagPath?: string; page?: number; pageSize?: number }) {
-  const { query, tagPath, page = 1, pageSize = 20 } = args;
-  const size = Math.min(pageSize, 50);
+async function search_wiki(raw: Record<string, unknown>) {
+  const args = readArgs(raw);
+  const query = args.str('query');
+  const tagPath = args.str('tagPath') || undefined;
+  const page = args.num('page', 1, 1, 100_000);
+  const size = args.num('pageSize', 20, 1, 50);
+  if (!query) {
+    throw new McpToolError('`query` is empty. Pass a keyword to search for, or call list_pages to enumerate a branch instead.');
+  }
   const { items, total } = await searchPages(query, { tagPath, page, size });
-  return listEnvelope(
+  return withAdjustments(args, listEnvelope(
     items,
     total, page, size,
     `Nothing matches "${query}"${tagPath ? ` under "${tagPath}"` : ''}. Search is keyword, not semantic: try one distinctive word rather than a phrase${tagPath ? ', or drop the tagPath filter' : ''}, or call get_categories to see what the wiki actually covers.`,
-  );
+  ));
 }
 
 /**
@@ -147,8 +154,9 @@ function pagePair(args: { path?: string; tagPath?: string; slug?: string }) {
   return { tagPath: parts.slice(0, -1).join('/'), slug: parts[parts.length - 1] ?? '' };
 }
 
-async function get_page(args: { path?: string; tagPath?: string; slug?: string }) {
-  const { tagPath, slug } = pagePair(args);
+async function get_page(raw: Record<string, unknown>) {
+  const args = readArgs(raw);
+  const { tagPath, slug } = pagePair({ path: args.str('path'), tagPath: args.str('tagPath'), slug: args.str('slug') });
   const p = await prisma.page.findUnique({
     where: { tagPath_slug: { tagPath, slug } },
     select: FULL_SELECT,
@@ -165,9 +173,12 @@ async function get_page(args: { path?: string; tagPath?: string; slug?: string }
   };
 }
 
-async function list_pages(args: { tagPath?: string; sort?: string; page?: number; pageSize?: number }) {
-  const { tagPath, sort = 'updatedAt', page = 1, pageSize = 20 } = args;
-  const size = Math.min(pageSize, 100);
+async function list_pages(raw: Record<string, unknown>) {
+  const args = readArgs(raw);
+  const tagPath = args.str('tagPath') || undefined;
+  const sort = args.str('sort', 'updatedAt');
+  const page = args.num('page', 1, 1, 100_000);
+  const size = args.num('pageSize', 20, 1, 100);
   // Naming a path gets that path. Naming none gets article space, not the
   // wiki's own operations log sitting at the top of it.
   const where = tagPath ? { tagPath } : { tagPath: NOT_HIDDEN };
@@ -176,10 +187,10 @@ async function list_pages(args: { tagPath?: string; sort?: string; page?: number
     prisma.page.findMany({ where, select: SUMMARY_SELECT, orderBy, skip: (page - 1) * size, take: size }),
     prisma.page.count({ where }),
   ]);
-  return listEnvelope(
+  return withAdjustments(args, listEnvelope(
     results.map(page => summarizePage(page)), total, page, size,
     `No pages at tagPath "${tagPath}". Call get_categories for the tag paths that exist.`,
-  );
+  ));
 }
 
 async function get_categories() {
@@ -191,9 +202,10 @@ async function get_categories() {
   return { categories: buildCategoryTree(TAG_HIERARCHY, countMap), totalPages: counts.reduce((s, c) => s + c._count, 0) };
 }
 
-async function get_recent_changes(args: { days?: number; limit?: number }) {
-  const days = Math.min(args.days || 7, 30);
-  const limit = Math.min(args.limit || 20, 50);
+async function get_recent_changes(raw: Record<string, unknown>) {
+  const args = readArgs(raw);
+  const days = args.num('days', 7, 1, 30);
+  const limit = args.num('limit', 20, 1, 50);
   const since = new Date();
   since.setDate(since.getDate() - days);
   const pages = await prisma.page.findMany({
@@ -202,7 +214,7 @@ async function get_recent_changes(args: { days?: number; limit?: number }) {
     orderBy: { updatedAt: 'desc' },
     take: limit,
   });
-  return { days, count: pages.length, pages: pages.map(page => summarizePage(page)) };
+  return withAdjustments(args, { days, count: pages.length, pages: pages.map(page => summarizePage(page)) });
 }
 
 /**
@@ -211,90 +223,35 @@ async function get_recent_changes(args: { days?: number; limit?: number }) {
  * This took no arguments and answered with the whole corpus: 3.3 MB, some
  * 827,000 tokens, in one tool result, on a server whose own payload budget is
  * 120 KB. A URL can afford that because a fetch streams to disk under an ETag;
- * a tool result lands in a context window. The bound, the preflight and the
- * page-aligned resume are the sibling wiki's contract, field for field, so an
- * agent that has ingested one already knows how to ingest this one.
+ * a tool result lands in a context window. The preflight, the budget and the
+ * page-aligned resume are `wiki-formant/corpus`, shared with caper, so an agent
+ * that has ingested one wiki already knows how to ingest the other.
  */
-async function get_full_corpus(args: { sizeOnly?: boolean; tagPath?: string; maxChars?: number; skip?: number }) {
-  const clamp = (v: unknown, def: number, min: number, max: number) =>
-    Number.isFinite(Number(v)) ? Math.min(max, Math.max(min, Math.trunc(Number(v)))) : def;
-  const tagPath = args.tagPath?.trim() || undefined;
-  const maxChars = clamp(args.maxChars, 200_000, 1_000, 1_000_000);
-  const skip = clamp(args.skip, 0, 0, 1_000_000);
-
-  const docs = await corpusSections(tagPath);
-  const characters = docs.reduce((sum, d) => sum + d.chars, 0);
-  const head = {
-    scope: 'Radix Wiki',
-    ...(tagPath ? { tagPath } : {}),
-    totalPages: docs.length,
-    characters,
-    estimatedTokens: Math.round(characters / 4),
-    tokenNote: 'estimatedTokens is characters/4, a rough guide only.',
-  };
-
-  if (args.sizeOnly) {
-    const branches = new Map<string, { pages: number; chars: number }>();
-    for (const d of docs) {
-      const b = branches.get(d.tagPath) ?? { pages: 0, chars: 0 };
-      branches.set(d.tagPath, { pages: b.pages + 1, chars: b.chars + d.chars });
-    }
-    return {
-      ...head,
-      branches: [...branches.entries()].map(([path, b]) => ({ path, ...b })).sort((a, b) => b.chars - a.chars),
-      largestPages: [...docs].sort((a, b) => b.chars - a.chars).slice(0, 5).map(({ path, chars }) => ({ path, chars })),
-      hint: 'Pull with maxChars, or one branch at a time with tagPath. get_page is cheaper for a handful of pages, and /llms-full.txt serves the same corpus cacheably.',
-    };
-  }
-
-  const parts: string[] = [];
-  let used = 0;
-  let index = skip;
-  let clippedPage: string | undefined;
-  for (; index < docs.length; index++) {
-    const d = docs[index]!;
-    if (used + d.chars > maxChars) {
-      // A page bigger than the whole budget would stall paging forever, so
-      // clip it and move the cursor past it.
-      if (!parts.length) {
-        parts.push(`${d.section.slice(0, maxChars)}\n\n[…page clipped at maxChars…]`);
-        clippedPage = d.path;
-        used = maxChars;
-        index++;
-      }
-      break;
-    }
-    parts.push(d.section);
-    used += d.chars;
-  }
-  const truncated = index < docs.length;
-  return {
-    ...head,
-    skip,
-    includedPages: parts.length,
-    includedChars: used,
-    truncated,
-    ...(truncated ? { omittedPages: docs.length - index, nextSkip: index } : {}),
-    ...(clippedPage ? { clippedPage } : {}),
-    document: [
-      `# Radix Wiki — Full Content`,
-      ``,
-      `> ${docs.length} pages${tagPath ? ` under ${tagPath}` : ''}, generated ${new Date().toISOString().split('T')[0]}`,
-      ``,
-      ...parts,
-    ].join('\n\n'),
-  };
+async function get_full_corpus(raw: Record<string, unknown>) {
+  const args = readArgs(raw);
+  const tagPath = args.str('tagPath') || undefined;
+  const slice = sliceCorpus(await corpusSections(tagPath), {
+    title: 'Radix Wiki — Full Content',
+    sizeOnly: args.bool('sizeOnly'),
+    maxChars: args.num('maxChars', CORPUS_BUDGET.default, CORPUS_BUDGET.min, CORPUS_BUDGET.max),
+    skip: args.num('skip', 0, 0, 1_000_000),
+    hint: 'Pull with maxChars, or one branch at a time with tagPath. get_page is cheaper for a handful of pages, and /llms-full.txt serves the same corpus cacheably.',
+  });
+  return withAdjustments(args, { scope: 'Radix Wiki', ...(tagPath ? { tagPath } : {}), ...slice });
 }
 
-async function get_ideas_board(args: { category?: string; workingGroup?: string }) {
+async function get_ideas_board(raw: Record<string, unknown>) {
+  const args = readArgs(raw);
+  const category = args.str('category');
+  const workingGroup = args.str('workingGroup');
   const pages = await prisma.page.findMany({
     where: { tagPath: { startsWith: 'ideas' } },
     select: IDEAS_SELECT,
     orderBy: { updatedAt: 'desc' },
   });
 
-  const catFilter = args.category ? categoryLabel(args.category).toLowerCase() : null;
-  const wgFilter = args.workingGroup ? args.workingGroup.toLowerCase() : null;
+  const catFilter = category ? categoryLabel(category).toLowerCase() : null;
+  const wgFilter = workingGroup ? workingGroup.toLowerCase() : null;
 
   const cards = pages.map(p => {
     const m = (p.metadata ?? {}) as Record<string, string>;
@@ -437,13 +394,13 @@ type Handler = (args: Record<string, unknown>) => Promise<unknown>;
 
 export function serverConfig(auth: string | null): McpServerConfig {
   const handlers: Record<string, Handler> = {
-    search_wiki: args => search_wiki(args as Parameters<typeof search_wiki>[0]),
-    get_page: args => get_page(args as Parameters<typeof get_page>[0]),
-    list_pages: args => list_pages(args as Parameters<typeof list_pages>[0]),
+    search_wiki,
+    get_page,
+    list_pages,
     get_categories,
-    get_recent_changes: args => get_recent_changes(args as Parameters<typeof get_recent_changes>[0]),
-    get_full_corpus: args => get_full_corpus(args as Parameters<typeof get_full_corpus>[0]),
-    get_ideas_board: args => get_ideas_board(args as Parameters<typeof get_ideas_board>[0]),
+    get_recent_changes,
+    get_full_corpus,
+    get_ideas_board,
     get_challenge,
     login,
     create_page: args => create_page(args, auth),

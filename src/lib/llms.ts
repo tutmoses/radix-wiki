@@ -20,6 +20,7 @@ import { SITE_URL } from '@/lib/site';
 import { extractText } from '@/lib/content';
 import { CHARTS_PAGES } from '@/lib/static-pages';
 import type { Block } from '@/types/blocks';
+import type { CorpusSection } from 'wiki-formant/corpus';
 
 /**
  * This wiki's three corpus depths, bound to the shared route factory.
@@ -30,14 +31,6 @@ import type { Block } from '@/types/blocks';
  */
 export const corpusRoute = (depth: string, build: () => Promise<string>) =>
   sharedCorpusRoute(() => corpusValidators(depth), build);
-
-/** One page as a corpus section, with the size the caller has to budget for. */
-export interface CorpusSection {
-  path: string;
-  tagPath: string;
-  chars: number;
-  section: string;
-}
 
 /**
  * Every page as one section, newest first.
@@ -61,7 +54,7 @@ export async function corpusSections(tagPath?: string): Promise<CorpusSection[]>
     const body = extractText((p.content as unknown as Block[]) || []);
     const snippet = getContentSnippet(p.content);
     const section = `## ${p.title}\n\nURL: ${pageUrl(p.tagPath, p.slug)}\nUpdated: ${p.updatedAt.toISOString().split('T')[0]}\n${snippet ? `Summary: ${cleanSnippet(snippet)}\n` : ''}\n${body}`;
-    return { path: `${p.tagPath}/${p.slug}`, tagPath: p.tagPath, chars: section.length, section };
+    return { path: `${p.tagPath}/${p.slug}`, tagPath: p.tagPath, section };
   });
 }
 
