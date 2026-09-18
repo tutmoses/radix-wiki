@@ -24,12 +24,10 @@ import type { WikiPage } from '@/types';
 import type {
   CodeTab as SharedCodeTab,
   LinkGridGroup as SharedLinkGridGroup,
+  LinkGridLink,
   ReferenceItem as SharedReferenceItem,
   StatItem as SharedStatItem,
 } from 'wiki-formant/blocks';
-
-export type { LinkGridLink } from 'wiki-formant/blocks';
-import type { LinkGridLink } from 'wiki-formant/blocks';
 
 /** Every tab here names its language; the package allows one to omit it. */
 export type CodeTab = SharedCodeTab & { language: string };

@@ -52,7 +52,7 @@ export function cachedJson<T>(data: T, headers: Record<string, string> = CACHE.s
 // surfaces: `initialize`'s instructions, the OpenAPI spec and
 // /.well-known/mcp.json all read it, so the route enforces exactly what the
 // documents claim — and all three repos had written the same three lines.
-export { MCP_RATE_LIMIT, MCP_RATE_LIMIT_PER_MIN, MCP_RATE_LIMIT_TEXT } from 'wiki-formant/rate-limit';
+export { MCP_RATE_LIMIT, MCP_RATE_LIMIT_TEXT } from 'wiki-formant/rate-limit';
 
 // `Response`, not `NextResponse`: the shared helpers in `wiki-formant/http`
 // answer with web-standard responses — a 304 from `notModified`, a descriptor
