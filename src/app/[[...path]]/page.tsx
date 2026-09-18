@@ -10,6 +10,7 @@ import { alphaControls, facetControls, facetFilters, filterPages, rankRelated, r
 import { findTagByPath, getMainArticle, getSortOrder, tagPaths, type SortOrder } from '@/lib/tags';
 import { highlightBlocks } from '@/lib/highlight';
 import { processBlocks } from '@/lib/html';
+import { sanitizePage } from '@/lib/sanitize';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { STATIC_PAGES } from '@/lib/static-pages';
 import { prisma } from '@/lib/prisma/client';
@@ -187,8 +188,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  *  round-trips the state intact. */
 const NON_RENDER_METADATA = ['state'];
 
-async function withProcessedContent<T extends { content: unknown; metadata?: unknown }>(page: T | null): Promise<T | null> {
-  if (!page || !Array.isArray(page.content)) return page;
+async function withProcessedContent<T extends { content: unknown; metadata?: unknown }>(stored: T | null): Promise<T | null> {
+  if (!stored || !Array.isArray(stored.content)) return stored;
+  // Sanitise first, then decorate. Highlighting re-serialises the whole block
+  // through rehype, which would carry an `onerror` straight through, and the
+  // heading anchors and link rewrites below are our own markup.
+  const page = sanitizePage(stored);
   let content = page.content as Block[];
   content = await resolveBlockData(content);
   if (hasCodeBlocksInContent(content)) content = await highlightBlocks(content);
@@ -472,7 +477,9 @@ export default async function DynamicPage({ params, searchParams }: Props) {
     if (!session) notFound();
     // Authenticated visitors fall through to PageView, which renders the create-page editor.
   }
-  const page = parsed.suffix === 'edit' ? rawPage : await withProcessedContent(rawPage);
+  // The editor gets the stored HTML cleaned but undecorated: its iframe node
+  // mounts a stored `src` as-is, and metadata fields are set via innerHTML.
+  const page = parsed.suffix === 'edit' ? rawPage && sanitizePage(rawPage) : await withProcessedContent(rawPage);
   let related: RelatedPages = { pages: [], sharedFacet: null };
   let pageNav: ReactNode = null;
   if (page && parsed.suffix !== 'edit') {

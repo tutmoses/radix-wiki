@@ -25,7 +25,8 @@ export function processHtml(html: string, citedRefs?: Set<number>): string {
     { slug: slugify },
   );
 
-  const withAlts = withHeadings.replace(/<img\b([^>]*)>/gi, (match, attrs) =>
+  // The sanitiser writes `<img … />`, so the alt goes before the slash.
+  const withAlts = withHeadings.replace(/<img\b([^>]*?)\s*\/?>/gi, (match, attrs) =>
     /\salt\s*=/i.test(attrs) ? match : `<img${attrs} alt="">`,
   );
 

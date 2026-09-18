@@ -30,7 +30,7 @@ async function highlightAtomicBlock(block: AtomicBlock): Promise<AtomicBlock> {
   if (block.type === 'codeTabs') {
     const tabs = await Promise.all(
       block.tabs.map(async tab => {
-        const html = `<pre><code class="language-${tab.language}">${escapeHtml(tab.code)}</code></pre>`;
+        const html = `<pre><code class="language-${escapeHtml(String(tab.language))}">${escapeHtml(tab.code)}</code></pre>`;
         return { ...tab, code: await highlightHtml(html) };
       })
     );
@@ -39,8 +39,11 @@ async function highlightAtomicBlock(block: AtomicBlock): Promise<AtomicBlock> {
   return block;
 }
 
+// The only escape codeTabs gets: its fields are wallet-authored and skip the
+// sanitiser, and rehype would re-serialise a `"` that closed the class attribute
+// as a live handler.
 function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 export async function highlightBlocks(blocks: Block[]): Promise<Block[]> {

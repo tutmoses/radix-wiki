@@ -183,8 +183,11 @@ function RssFeedBlockView({ block }: { block: RssFeedBlock }) {
   );
 }
 
+// A metadata value arrives sanitised, but sanitised as text, where a bare `"` is
+// legal. Interpolated into an attribute it would close the href and open an
+// `onmouseover`, so it is re-encoded here.
 function linkify(v: string): string {
-  const href = /^https?:\/\//.test(v) ? v : `https://${v}`;
+  const href = (/^https?:\/\//.test(v) ? v : `https://${v}`).replace(/"/g, '&quot;');
   return `<a href="${href}" target="_blank" rel="noopener" class="link break-all">${v.replace(/^https?:\/\/(www\.)?/, '')}</a>`;
 }
 
