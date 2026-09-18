@@ -21,6 +21,7 @@ import {
   annotationChecks,
   conditionalGetChecks,
   descriptorChecks,
+  distinctEtagChecks,
   payloadBudget,
   robotsChecks,
 } from 'wiki-formant/conformance';
@@ -172,24 +173,13 @@ const MCP = t.endpoint;
     ...(first ? [`${first.tagPath}/${first.slug}.md`] : []),
   ]);
 
-  // Built from code rather than rows, so an ETag is the whole validator.
-  await descriptorChecks(t, [
-    '.well-known/agent-card.json',
-    '.well-known/agent.json',
-    '.well-known/openapi.json',
-    'openapi.json',
-    '.well-known/mcp.json',
-    'api/mcp/server-card',
-  ]);
+  // Built from code rather than rows, so an ETag is the whole validator. The
+  // default list is the six S10 descriptors, which are this origin's six.
+  await descriptorChecks(t);
 
   // Three depths that shared one ETag between them would pass every check
   // above and still not move when only one of them changed.
-  const tags = await Promise.all(
-    ['llms.txt', 'llms-index.txt', 'llms-full.txt'].map(p =>
-      fetch(`${BASE}/${p}`).then(r => r.headers.get('etag')),
-    ),
-  );
-  check('llms depths have distinct ETags', new Set(tags).size === 3, tags.join(' '));
+  await distinctEtagChecks(t, ['llms.txt', 'llms-index.txt', 'llms-full.txt']);
 
   await robotsChecks(t, ['/api/mcp', '/llms.txt', '/.well-known/agent-card.json']);
 
