@@ -50,6 +50,7 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
+    "src/app/.well-known/**/*.ts",
     ".next/types/**/*.ts",
     "prisma.config.ts",
     ".next/dev/types/**/*.ts",
