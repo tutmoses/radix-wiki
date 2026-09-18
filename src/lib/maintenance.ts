@@ -11,7 +11,7 @@
 import { prisma } from '@/lib/prisma/client';
 import { cached } from '@/lib/wiki';
 import { pagePath } from '@/lib/utils';
-import { isStale, daysSince } from '@/lib/freshness';
+import { isStale, daysSince } from 'wiki-formant/freshness';
 import { getMetadataKeys } from '@/lib/tags';
 
 const HREF = /href=\\?"([^"\\?#]+)/g;

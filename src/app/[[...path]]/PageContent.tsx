@@ -18,7 +18,7 @@ import { categoryLabel, cn, slugify, generateBannerSvg, formatRelativeTime, form
 import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder, type TagNode } from '@/lib/tags';
 import { categoryHref, type Control, type FacetControlGroup, type FacetFilters, type SharedFacet } from '@/lib/taxonomy';
 import { createBlock } from '@/lib/block-utils';
-import { freshnessBanner } from '@/lib/freshness';
+import { freshnessBanner } from 'wiki-formant/freshness';
 import type { WikiPage } from '@/types';
 import type { Block } from '@/types/blocks';
 
