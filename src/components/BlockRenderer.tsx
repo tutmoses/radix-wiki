@@ -21,8 +21,6 @@ import {
   ReferencesView,
   StatsView,
 } from 'wiki-formant/block-views';
-// The rendered-article passes are `wiki-formant/dom`, shared with caper.
-import { activateTabGroups, addCopyButtons, hydrateTweetEmbeds, onTweetResize, sizeTweetEmbeds, sortTables } from 'wiki-formant/dom';
 import { processHtml } from '@/lib/html';
 import { useAccountQr, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
@@ -32,7 +30,9 @@ import { getMetadataKeys } from '@/lib/tags';
 import { metadataRows } from '@/lib/taxonomy';
 import { TokenChart } from '@/components/charts/TokenChart';
 import { formatPriceSubscript } from '@/components/charts/format';
-import { useCopy } from 'wiki-formant/react';
+// The rendered-article passes are `wiki-formant/dom`, run by the hooks that
+// wrap them, shared with caper.
+import { useArticlePasses, useCopy, useTweetEmbeds } from 'wiki-formant/react';
 import { bannerVariant } from 'wiki-formant/text';
 import { OCISWAP_API } from '@/lib/radix/config';
 
@@ -277,27 +277,22 @@ const ContentBlockView = memo(function ContentBlockView({ html }: { html: string
   const ref = useRef<HTMLDivElement>(null);
   const processedHtml = useMemo(() => processHtml(html), [html]);
 
+  useTweetEmbeds(ref, [html]);
+
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
-    hydrateTweetEmbeds(el);
-    const offResize = onTweetResize(height => sizeTweetEmbeds(el, height));
-
-    if (/\$\$|\\\(|\\\[/.test(html)) {
-      import('katex/dist/katex.min.css').then(() => import('katex/contrib/auto-render')).then(({ default: render }) => {
-        render(el, {
-          delimiters: [
-            { left: '$$', right: '$$', display: true },
-            { left: '$', right: '$', display: false },
-            { left: '\\(', right: '\\)', display: false },
-            { left: '\\[', right: '\\]', display: true },
-          ],
-          throwOnError: false,
-        });
+    if (!el || !/\$\$|\\\(|\\\[/.test(html)) return;
+    import('katex/dist/katex.min.css').then(() => import('katex/contrib/auto-render')).then(({ default: render }) => {
+      render(el, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false },
+          { left: '\\(', right: '\\)', display: false },
+          { left: '\\[', right: '\\]', display: true },
+        ],
+        throwOnError: false,
       });
-    }
-
-    return offResize;
+    });
   }, [html]);
 
   return processedHtml.trim() ? <div ref={ref} className="prose-content" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: processedHtml }} /> : null;
@@ -404,13 +399,7 @@ export function BlockRenderer({ content, className }: { content: Block[] | unkno
   const containerRef = useRef<HTMLDivElement>(null);
   const blocks = (content && Array.isArray(content)) ? content as Block[] : [];
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    activateTabGroups(container);
-    addCopyButtons(container);
-    sortTables(container);
-  }, []);
+  useArticlePasses(containerRef, [blocks]);
 
   if (!blocks.length) return null;
 

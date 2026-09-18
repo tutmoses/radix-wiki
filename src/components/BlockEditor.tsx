@@ -5,7 +5,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo, memo, type ReactNode } from 'react';
 import { useAccountQr } from '@/hooks';
 import { EditorContent, type Editor } from '@tiptap/react';
-import { TABLE_ACTIONS, insertEmbed, useWikiEditor } from 'wiki-formant/editor';
+import { TABLE_ACTIONS, insertEmbed, uploadImageTo, useWikiEditor } from 'wiki-formant/editor';
 import { BANNER_VARIANTS } from 'wiki-formant/text';
 import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, LayoutGrid, Info, Rss, QrCode, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -15,17 +15,9 @@ import { Button, Input, Dropdown } from '@/components/ui';
 import { Iframe, YouTube, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock, HeadingIds } from '@/lib/tiptap/extensions';
 import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column, LinkGridBlock, LinkGridGroup, TipJarBlock, ReferencesBlock, ReferenceItem, BannerBlock } from '@/types/blocks';
 
-// The upload endpoint and how a failure is surfaced are this app's, so the
-// hook takes the uploader rather than owning one.
-async function uploadImage(file: File): Promise<string | null> {
-  const formData = new FormData();
-  formData.append('file', file);
-  try {
-    const res = await fetch('/api/upload', { method: 'POST', body: formData });
-    if (!res.ok) { alert((await res.json()).error || 'Upload failed'); return null; }
-    return (await res.json()).url;
-  } catch { alert('Upload failed'); return null; }
-}
+// The upload endpoint is this app's, so the hook takes the uploader rather than
+// owning one. Module-level because the hook's upload callback depends on it.
+const uploadImage = uploadImageTo('/api/upload');
 
 // The upload POST, the paste scrubber, the embed dispatch, the extension set
 // and the editor's own state are `wiki-formant/editor`, shared with caper,
