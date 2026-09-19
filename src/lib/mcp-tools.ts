@@ -78,8 +78,8 @@ export const TOOLS: McpToolSpec[] = [
       type: 'object',
       properties: {
         path: { type: 'string', description: 'The whole path in one string, e.g. "contents/tech/core-concepts/utxo-model" — the form every listing returns as `url`. Use this or the tagPath/slug pair.' },
-        tagPath: { type: 'string', description: 'Tag path (e.g. "contents/tech/core-concepts")' },
-        slug: { type: 'string', description: 'Page slug (e.g. "utxo-model")' },
+        tagPath: { type: 'string', description: 'Tag path (e.g. "contents/tech/core-concepts"). Ignored when `path` is set.' },
+        slug: { type: 'string', description: 'Page slug (e.g. "utxo-model"). Ignored when `path` is set.' },
       },
       requireOneOf: ['path', 'slug'],
     },

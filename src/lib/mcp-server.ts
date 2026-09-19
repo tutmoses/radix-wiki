@@ -148,11 +148,13 @@ async function search_wiki(raw: Record<string, unknown>) {
  * The pair, from either spelling. Every listing hands back a `url`, so an agent
  * that has just read one holds the whole path as a single string and had to
  * split it by hand to call this — the sibling wiki already took either form.
+ * `path` wins when both are given, as it does on the sibling, and its origin is
+ * dropped so a listing's `url` resolves as the schema says it does.
  */
 function pagePair(args: { path?: string; tagPath?: string; slug?: string }) {
-  if (args.slug) return { tagPath: args.tagPath ?? '', slug: args.slug };
-  const parts = (args.path ?? '').replace(/^\/+|\/+$/g, '').split('/');
-  return { tagPath: parts.slice(0, -1).join('/'), slug: parts[parts.length - 1] ?? '' };
+  if (!args.path) return { tagPath: args.tagPath ?? '', slug: args.slug ?? '' };
+  const parts = args.path.replace(/^https?:\/\/[^/]+/, '').split('/').filter(Boolean);
+  return { tagPath: parts.slice(0, -1).join('/'), slug: parts.at(-1) ?? '' };
 }
 
 async function get_page(raw: Record<string, unknown>) {
