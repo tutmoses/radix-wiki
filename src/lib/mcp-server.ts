@@ -112,6 +112,11 @@ function workingGroupFromTitle(title: string): string | null {
 
 // ========== TAG HIERARCHY HELPERS ==========
 
+/** Pages in a node's whole branch. Counted per tag path alone, `contents` read
+ *  0 beside the 130 pages filed beneath it, and so did every pure container. */
+const branchCount = (counts: Map<string, number>, path: string) =>
+  [...counts].reduce((n, [p, c]) => n + (p === path || p.startsWith(`${path}/`) ? c : 0), 0);
+
 function buildCategoryTree(nodes: TagNode[], counts: Map<string, number>, parent = ''): object[] {
   return nodes.filter(n => !n.hidden && n.slug).map(n => {
     const path = parent ? `${parent}/${n.slug}` : n.slug;
@@ -119,7 +124,7 @@ function buildCategoryTree(nodes: TagNode[], counts: Map<string, number>, parent
       path,
       name: categoryLabel(n.name),
       ...(n.description ? { description: n.description } : {}),
-      pageCount: counts.get(path) || 0,
+      pageCount: branchCount(counts, path),
       ...(n.children ? { children: buildCategoryTree(n.children, counts, path) } : {}),
     };
   });

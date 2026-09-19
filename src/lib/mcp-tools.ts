@@ -112,7 +112,7 @@ export const TOOLS: McpToolSpec[] = [
     name: 'get_categories',
     title: 'List categories',
     description:
-      'The wiki tag hierarchy as a tree, each node carrying its path, name, description and page count. '
+      'The wiki tag hierarchy as a tree, each node carrying its path, name, description and the page count of its whole branch. '
       + 'The cheapest way to orient before searching, and the only way to find a valid tagPath before create_page. '
       + 'Costs one call and a few kilobytes; prefer it to listing pages to find out what exists.',
     annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
