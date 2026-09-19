@@ -8,10 +8,23 @@ export const runtime = 'nodejs';
 const SIZE = { width: 1200, height: 630 };
 const SCRIM = 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.3) 50%, transparent 100%)';
 
+// Every stored banner is on this wiki's Vercel Blob store (measured, Sep 2026).
+// Fetching whatever `?banner=` named made this route an anonymous proxy to any
+// URL the server can reach, decoded by sharp on the way through.
+const BANNER_HOST = /\.public\.blob\.vercel-storage\.com$/;
+
+function storedBanner(banner: string | null): string | null {
+  if (!banner) return null;
+  try {
+    const url = new URL(banner);
+    return url.protocol === 'https:' && BANNER_HOST.test(url.hostname) ? url.href : null;
+  } catch { return null; }
+}
+
 /** Inlines the banner so the renderer never fetches; an unreachable or undecodable one falls back to its URL. */
 async function bannerDataUrl(banner: string) {
   try {
-    const res = await fetch(banner);
+    const res = await fetch(banner, { redirect: 'error' });
     if (!res.ok) return banner;
     const png = await sharp(Buffer.from(await res.arrayBuffer())).resize(1200, 630, { fit: 'cover' }).png().toBuffer();
     return `data:image/png;base64,${png.toString('base64')}`;
@@ -38,7 +51,7 @@ export async function GET(req: Request) {
   const title = searchParams.get('title') || 'RADIX Wiki';
   const tagPath = searchParams.get('tagPath') || '';
   const description = searchParams.get('description') || 'A decentralized wiki powered by Radix DLT';
-  const banner = searchParams.get('banner');
+  const banner = storedBanner(searchParams.get('banner'));
   const bannerSrc = banner ? await bannerDataUrl(banner) : '';
   // A banner brings its own art and takes the scrim; without one the card paints itself.
   // Satori iterates every style key and does not skip `undefined`, so each variant's
