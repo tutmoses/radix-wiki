@@ -187,9 +187,12 @@ async function list_pages(raw: Record<string, unknown>) {
   const sort = args.str('sort', 'updatedAt');
   const page = args.num('page', 1, 1, 100_000);
   const size = args.num('pageSize', 20, 1, 100);
-  // Naming a path gets that path. Naming none gets article space, not the
-  // wiki's own operations log sitting at the top of it.
-  const where = tagPath ? { tagPath } : { tagPath: NOT_HIDDEN };
+  // Naming a path gets that branch, as the schema says, and a hidden path
+  // beneath it only when it is the one named. Naming none gets article space,
+  // not the wiki's own operations log sitting at the top of it.
+  const where = tagPath
+    ? { OR: [{ tagPath }, { tagPath: { startsWith: `${tagPath}/`, ...NOT_HIDDEN } }] }
+    : { tagPath: NOT_HIDDEN };
   const orderBy = sort === 'title' ? { title: 'asc' as const } : { updatedAt: 'desc' as const };
   const [results, total] = await Promise.all([
     prisma.page.findMany({ where, select: SUMMARY_SELECT, orderBy, skip: (page - 1) * size, take: size }),
