@@ -145,6 +145,7 @@ function PageToolsDropdown({ onClose, historyPath, mdxPath, tagPath, slug, isPag
 }) {
   const { isAuthenticated } = useAuth();
   const showToast = useStore(s => s.showToast);
+  const pageTitle = useStore(s => s.pageTitle);
   // `useCopy` from `wiki-formant/react`, keyed: two copyable things, one indicator.
   const { copied, copy: copyText } = useCopy<'cite' | 'link'>(1500);
   // The same `/api/telegram` client the settings panel uses, asked only when
@@ -169,7 +170,7 @@ function PageToolsDropdown({ onClose, historyPath, mdxPath, tagPath, slug, isPag
     } finally { setWatchBusy(false); }
   };
 
-  const title = isPage && slug ? slug.replace(/-/g, ' ') : 'RADIX Wiki';
+  const title = isPage && slug ? pageTitle ?? slug.replace(/-/g, ' ') : 'RADIX Wiki';
 
   return (
     <Dropdown onClose={onClose}>

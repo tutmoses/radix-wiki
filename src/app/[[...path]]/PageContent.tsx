@@ -671,6 +671,12 @@ function PageViewContent({ page, related, series, sections, listing, pageNav, no
 // ========== PAGE VIEW WRAPPER ==========
 export function PageView({ page, tagPath, slug, isEditMode, related = { pages: [], sharedFacet: null }, series = null, pageNav, nowMs }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; related?: RelatedPages; series?: PageRef | null; /** Server-rendered, so the foot nav stays out of this client bundle. */ pageNav?: ReactNode; nowMs: number }) {
   const { isAuthenticated } = useAuth();
+  // The header sits outside this tree and cites the page it is on; it knows
+  // only the URL, and a slug is not a title.
+  useEffect(() => {
+    useStore.setState({ pageTitle: page?.title ?? null });
+    return () => useStore.setState({ pageTitle: null });
+  }, [page?.title]);
 
   const viewPath = pagePath(tagPath, slug);
 

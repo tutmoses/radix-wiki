@@ -114,6 +114,8 @@ interface AppStore {
   toast: { message: string; type: 'success' | 'info' } | null;
   showToast: (message: string, type?: 'success' | 'info') => void;
   dismissToast: () => void;
+  /** The article on screen, set by `PageView`, so the header's citation can name it. */
+  pageTitle: string | null;
   notifications: WikiNotification[];
   unreadCount: number;
   fetchNotifications: () => Promise<void>;
@@ -189,6 +191,7 @@ export const useStore = create<AppStore>()((set, get) => ({
     setTimeout(() => set({ toast: null }), 5000);
   },
   dismissToast: () => set({ toast: null }),
+  pageTitle: null,
   notifications: [],
   unreadCount: 0,
   fetchNotifications: async () => {
