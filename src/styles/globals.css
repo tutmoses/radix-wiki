@@ -2,6 +2,12 @@
 
 @import "tailwindcss";
 
+/* Tailwind's automatic content detection never scans node_modules, so a utility
+   that appears only inside a wiki-formant component (ColumnsView's `items-end`,
+   `items-stretch`) was never emitted. The rail shell and the block views render
+   from the package, so its dist is a content root like any other. */
+@source "../../node_modules/wiki-formant/dist";
+
 @theme {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --color-surface-0: #393e50;
