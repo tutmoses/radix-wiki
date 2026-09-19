@@ -16,7 +16,7 @@ import { NOT_HIDDEN } from '@/lib/wiki';
 import { prisma } from '@/lib/prisma/client';
 import { TAG_HIERARCHY, tagPaths } from '@/lib/tags';
 import { categoryLabel, getContentSnippet, pageUrl } from '@/lib/utils';
-import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
+import { SIBLING_WIKI, SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { extractText } from '@/lib/content';
 import { CHARTS_PAGES } from '@/lib/static-pages';
 import type { Block } from '@/types/blocks';
@@ -111,6 +111,7 @@ const PREAMBLE = `# RADIX Wiki — The Knowledge Base for Radix DLT
 > Agent discovery: ${SITE_URL}/.well-known/agent-card.json
 > Agent API reference: ${SITE_URL}/AGENTS.md
 > Individual pages in markdown: append .md to any page URL
+> Sister wiki for ${SIBLING_WIKI.covers}: ${SIBLING_WIKI.url} (MCP: ${SIBLING_WIKI.mcp})
 
 ## What Makes Radix Distinct
 

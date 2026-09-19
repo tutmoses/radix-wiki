@@ -4,6 +4,16 @@ import { ccBy40 } from 'wiki-formant/license';
 
 export const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 
+// The sister wiki, named in llms.txt and the MCP instructions so an agent that
+// arrives here with a question about DAOs in general finds where it is answered.
+// The split is the one the wiki sweeps route facts by: this wiki owns Radix,
+// including the Radix DAO's own decisions, and caper.network owns the rest.
+export const SIBLING_WIKI = {
+  covers: 'DAO governance in general, DeSci and economics',
+  url: 'https://caper.network/wiki',
+  mcp: 'https://caper.network/api/mcp',
+};
+
 // The grant, its name and the credit line, from `wiki-formant/license` — the
 // same four fields the other two wikis had each written out. Only the site's own
 // identity is passed in. Here rather than beside any one surface because every
