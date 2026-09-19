@@ -34,8 +34,6 @@ export async function POST(request: NextRequest) {
       return errors.badRequest('No accounts provided');
     }
 
-    const primaryAccount = accounts[0]!;
-
     if (!signedChallenge) {
       return errors.badRequest('Signed challenge is required');
     }
@@ -45,16 +43,26 @@ export async function POST(request: NextRequest) {
       return json({ error: verification.error || 'Verification failed' }, { status: 401 });
     }
 
-    let user = await prisma.user.findUnique({ where: { radixAddress: primaryAccount.address } });
+    // The session belongs to the address the proof verified, never to one the
+    // body merely names. `accounts` is unsigned: keying the user on accounts[0]
+    // let anyone sign a challenge with their own key and log in as any address
+    // on the ledger. A persona proof names no account, so it cannot log in.
+    const address = signedChallenge.address;
+    if (!address.startsWith('account_')) {
+      return errors.badRequest('Sign in with an account proof');
+    }
+    const account = accounts.find(a => a.address === address);
+
+    let user = await prisma.user.findUnique({ where: { radixAddress: address } });
     let isNewUser = false;
 
     if (!user) {
       isNewUser = true;
       user = await prisma.user.create({
         data: {
-          radixAddress: primaryAccount.address,
+          radixAddress: address,
           personaAddress: persona?.identityAddress,
-          displayName: persona?.label || primaryAccount.label,
+          displayName: persona?.label || account?.label,
         },
       });
     } else if (persona?.identityAddress || persona?.label) {
