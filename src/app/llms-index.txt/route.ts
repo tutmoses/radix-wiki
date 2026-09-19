@@ -5,8 +5,7 @@
 // and /llms-full.txt has the complete text of every page.
 
 import { prisma } from '@/lib/prisma/client';
-import { NOT_HIDDEN } from '@/lib/wiki';
-import { SECTION_NAMES, corpusRoute, pageLine } from '@/lib/llms';
+import { CORPUS_WHERE, SECTION_NAMES, corpusRoute, pageLine } from '@/lib/llms';
 import { SITE_URL } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
@@ -16,7 +15,7 @@ export const GET = corpusRoute('llms-index', async () => {
     select: { title: true, tagPath: true, slug: true, content: true },
     // The third copy of the corpus walk, and the one that kept listing the
     // maintenance log at the top of the index after the other two stopped.
-    where: { tagPath: { not: '', ...NOT_HIDDEN } },
+    where: CORPUS_WHERE,
     orderBy: { updatedAt: 'desc' },
   });
 

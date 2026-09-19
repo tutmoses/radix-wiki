@@ -33,6 +33,10 @@ import { licenseBlock } from 'wiki-formant/license';
 export const corpusRoute = (depth: string, build: () => Promise<string>) =>
   sharedCorpusRoute(() => corpusValidators(depth), build);
 
+/** The rows every corpus depth serves: article space, without the homepage row
+ *  or the hidden operations paths. */
+export const CORPUS_WHERE = { tagPath: { not: '', ...NOT_HIDDEN } };
+
 /**
  * Every page as one section, newest first.
  *
@@ -45,9 +49,7 @@ export async function corpusSections(tagPath?: string): Promise<CorpusSection[]>
   const pages = await prisma.page.findMany({
     select: { title: true, tagPath: true, slug: true, content: true, updatedAt: true },
     where: {
-      tagPath: tagPath
-        ? { startsWith: tagPath, not: '', ...NOT_HIDDEN }
-        : { not: '', ...NOT_HIDDEN },
+      tagPath: tagPath ? { ...CORPUS_WHERE.tagPath, startsWith: tagPath } : CORPUS_WHERE.tagPath,
     },
     orderBy: { updatedAt: 'desc' },
   });
@@ -78,9 +80,16 @@ export function pageLine(p: { title: string; tagPath: string | null; slug: strin
   });
 }
 
-/** Corpus-wide ETag + Last-Modified from page count, newest update and depth. */
+/**
+ * Corpus-wide ETag + Last-Modified from page count, newest update and depth.
+ *
+ * Aggregated over exactly the rows the documents project. The maintenance log
+ * is rewritten several times a day and appears in none of them, so counting it
+ * moved every llms ETag and re-sent a multi-megabyte export that had not
+ * changed a byte.
+ */
 export async function corpusValidators(depth = '') {
-  const agg = await prisma.page.aggregate({ _count: true, _max: { updatedAt: true } });
+  const agg = await prisma.page.aggregate({ _count: true, _max: { updatedAt: true }, where: CORPUS_WHERE });
   const stamp = agg._max.updatedAt ?? new Date(0);
   return {
     etag: corpusEtag([depth, agg._count, stamp]),
@@ -216,11 +225,11 @@ export async function buildLlmsTxt(): Promise<string> {
   const [recent, counts] = await Promise.all([
     prisma.page.findMany({
       select: { title: true, tagPath: true, slug: true, content: true },
-      where: { tagPath: { not: '', ...NOT_HIDDEN } },
+      where: CORPUS_WHERE,
       orderBy: { updatedAt: 'desc' },
       take: RECENT_LIMIT,
     }),
-    prisma.page.groupBy({ by: ['tagPath'], _count: true, where: { tagPath: { not: '', ...NOT_HIDDEN } } }),
+    prisma.page.groupBy({ by: ['tagPath'], _count: true, where: CORPUS_WHERE }),
   ]);
 
   // Roll tag-path counts up to top-level sections
