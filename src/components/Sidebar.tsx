@@ -56,12 +56,16 @@ const TableOfContents = () => (
  * Only the active trail opens, so the rail shows one section's children rather
  * than the whole hierarchy, and the deepest matching node is the one marked
  * current — an ancestor is on the trail, not the page you are on.
+ *
+ * Each open level is a list nested in its parent's item, inside the one
+ * labelled <nav> the rail gives it; a <nav> per level made every open branch
+ * an unlabelled landmark of its own.
  */
 function CategoryTree({ nodes, parent = '', pathname }: {
   nodes: TagNode[]; parent?: string; pathname: string;
 }) {
   return (
-    <nav className="stack-sm">
+    <ul className={cn('nav-tree', parent && 'nav-subtree')}>
       {nodes.map(node => {
         const path = parent ? `${parent}/${node.slug}` : node.slug;
         const href = `/${path}`;
@@ -70,20 +74,16 @@ function CategoryTree({ nodes, parent = '', pathname }: {
         const openChildren = onTrail ? children : [];
         const isCurrent = onTrail && !openChildren.some(c => pathname.startsWith(`${href}/${c.slug}`));
         return (
-          <div key={path}>
+          <li key={path}>
             <Link href={href} title={node.name}
               className={cn('nav-item', isCurrent && 'bg-accent-muted text-accent font-medium')}>
               <span className="truncate">{node.name}</span>
             </Link>
-            {openChildren.length > 0 && (
-              <div className="nav-subtree">
-                <CategoryTree nodes={openChildren} parent={path} pathname={pathname} />
-              </div>
-            )}
-          </div>
+            {openChildren.length > 0 && <CategoryTree nodes={openChildren} parent={path} pathname={pathname} />}
+          </li>
         );
       })}
-    </nav>
+    </ul>
   );
 }
 
@@ -105,10 +105,10 @@ export function Sidebar() {
         </nav>
       </div>
 
-      <div className="stack-sm p-4">
-        <span className="sidebar-label">Categories</span>
+      <nav className="stack-sm p-4" aria-labelledby="rail-categories">
+        <span id="rail-categories" className="sidebar-label">Categories</span>
         <CategoryTree nodes={visibleTags} pathname={pathname} />
-      </div>
+      </nav>
 
       <TableOfContents />
     </RailShell>

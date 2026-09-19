@@ -410,9 +410,11 @@
 
   /* Nav items */
   .nav-item { @apply flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-text-muted hover:bg-surface-2 hover:text-text; }
+  /* The category tree is nested lists; the base list rules are for prose. */
+  .nav-tree { @apply flex flex-col gap-2 m-0 p-0 list-none; li { @apply m-0; } }
   /* A child branch of the category tree: indented under its parent with a rule,
      so the trail is readable without an expander control. */
-  .nav-subtree { @apply mt-1 ml-4 pl-2 border-l border-border-muted flex flex-col gap-1; .nav-item { @apply py-1.5 text-small; } }
+  .nav-subtree { @apply mt-1 ml-4 pl-2 border-l border-border-muted; .nav-item { @apply py-1.5 text-small; } }
 
   /* Table of contents */
   .toc { @apply flex flex-col gap-2 flex-1 p-4 border-t border-border-muted; }
