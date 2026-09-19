@@ -8,14 +8,14 @@ import { SITE_URL } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
 
-const header = (pageCount: number) => [
+const header = (pageCount: number, updated: Date) => [
   `# RADIX Wiki — Full Content Export`,
   ``,
   `> This is the full-text version of llms.txt for ${SITE_URL}`,
-  `> ${pageCount} pages, last generated ${new Date().toISOString().split('T')[0]}`,
+  `> ${pageCount} pages, last updated ${updated.toISOString().split('T')[0]}`,
   ``,
   LICENSE_BLOCK,
   ``,
 ].join('\n\n');
 
-export const GET = corpusRoute('llms-full', () => buildFullCorpus(header));
+export const GET = corpusRoute('llms-full', updated => buildFullCorpus(pageCount => header(pageCount, updated)));

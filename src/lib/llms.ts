@@ -29,9 +29,16 @@ import { licenseBlock } from 'wiki-formant/license';
  * The factory is `wiki-formant/http`. What stays here is the one thing that is
  * this wiki's: which
  * aggregate defines a corpus revision, which `corpusValidators` below answers.
+ *
+ * The build is handed the date those validators carry, so a document that
+ * states one states its Last-Modified. A clock date would ride along in every
+ * 304 for as long as the corpus did not move.
  */
-export const corpusRoute = (depth: string, build: () => Promise<string>) =>
-  sharedCorpusRoute(() => corpusValidators(depth), build);
+export const corpusRoute = (depth: string, build: (updated: Date) => Promise<string>) =>
+  async (request: Request) => {
+    const validators = await corpusValidators(depth);
+    return sharedCorpusRoute(() => validators, () => build(new Date(validators.lastModified)))(request);
+  };
 
 /** The rows every corpus depth serves: article space, without the homepage row
  *  or the hidden operations paths. */
