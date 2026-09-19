@@ -70,7 +70,7 @@ export const TOOLS: McpToolSpec[] = [
     title: 'Read a page',
     description:
       'Read one page in full: its extracted text, current version number, update date and declared metadata. '
-      + 'Takes either the single `path` a listing returns or the tagPath/slug pair it splits into — not a URL and not a title. '
+      + 'Takes either the whole path as one string (the `url` a listing returns works as-is) or the tagPath/slug pair it splits into — not a title. '
       + 'A wrong pair is answered with the tools that find a right one rather than an empty result. '
       + 'For the whole article set at once use get_full_corpus, and for a page as markdown fetch its URL with `.md` appended.',
     annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
