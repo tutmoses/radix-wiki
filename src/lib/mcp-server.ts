@@ -16,7 +16,7 @@ import { NOT_HIDDEN, searchPages, summarizePage, SUMMARY_SELECT } from '@/lib/wi
 import { listEnvelope } from 'wiki-formant/pagination';
 import { MCP_RATE_LIMIT, MCP_RATE_LIMIT_TEXT } from '@/lib/api';
 import { extractText } from '@/lib/content';
-import { buildLlmsTxt, corpusSections } from '@/lib/llms';
+import { CORPUS_WHERE, buildLlmsTxt, corpusSections } from '@/lib/llms';
 import { TAG_HIERARCHY, getMetadataKeys, type TagNode } from '@/lib/tags';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 import { RADIX_CONFIG } from '@/lib/radix/config';
@@ -189,10 +189,11 @@ async function list_pages(raw: Record<string, unknown>) {
   const size = args.num('pageSize', 20, 1, 100);
   // Naming a path gets that branch, as the schema says, and a hidden path
   // beneath it only when it is the one named. Naming none gets article space,
-  // not the wiki's own operations log sitting at the top of it.
+  // not the wiki's own operations log sitting at the top of it, nor the
+  // homepage row, which no category holds and get_page cannot address.
   const where = tagPath
     ? { OR: [{ tagPath }, { tagPath: { startsWith: `${tagPath}/`, ...NOT_HIDDEN } }] }
-    : { tagPath: NOT_HIDDEN };
+    : CORPUS_WHERE;
   const orderBy = sort === 'title' ? { title: 'asc' as const } : { updatedAt: 'desc' as const };
   const [results, total] = await Promise.all([
     prisma.page.findMany({ where, select: SUMMARY_SELECT, orderBy, skip: (page - 1) * size, take: size }),
@@ -205,10 +206,10 @@ async function list_pages(raw: Record<string, unknown>) {
 }
 
 async function get_categories() {
-  // The tree already drops hidden nodes; the total has to drop their pages too,
-  // or `get_categories` and `list_pages` report two different sizes for the
-  // same wiki and an agent has no way to tell which one it is walking.
-  const counts = await prisma.page.groupBy({ by: ['tagPath'], _count: true, where: { tagPath: NOT_HIDDEN } });
+  // The tree drops hidden nodes and the homepage; the total has to drop their
+  // pages too, so it is the sum of the categories and `list_pages` reports the
+  // same size — otherwise an agent has no way to tell which one it is walking.
+  const counts = await prisma.page.groupBy({ by: ['tagPath'], _count: true, where: CORPUS_WHERE });
   const countMap = new Map(counts.map(c => [c.tagPath, c._count]));
   return { categories: buildCategoryTree(TAG_HIERARCHY, countMap), totalPages: counts.reduce((s, c) => s + c._count, 0) };
 }
