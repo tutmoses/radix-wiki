@@ -209,8 +209,9 @@ async function get_recent_changes(raw: Record<string, unknown>) {
   const args = readArgs(raw);
   const days = args.num('days', 7, 1, 30);
   const limit = args.num('limit', 20, 1, 50);
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+  // N × 24h back, not N calendar days in the server's zone: `setDate` moves the
+  // window by an hour either side of a DST change.
+  const since = new Date(Date.now() - days * 86_400_000);
   const pages = await prisma.page.findMany({
     where: { updatedAt: { gte: since }, tagPath: NOT_HIDDEN },
     select: SUMMARY_SELECT,
