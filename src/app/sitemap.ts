@@ -6,6 +6,7 @@ import { isValidTagPath, tagPaths } from '@/lib/tags';
 import { SITEMAP_PAGES } from '@/lib/static-pages';
 import { pageUrl } from '@/lib/utils';
 import { SITE_URL } from '@/lib/site';
+import { NOT_HIDDEN } from '@/lib/wiki';
 
 // `revalidate` alone, not `force-dynamic` beside it. The two contradict each
 // other and force-dynamic wins, so this route was rebuilt per request and
@@ -26,14 +27,18 @@ function pagePriority(tagPath: string): number {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Hidden paths are wiki-internal: the maintenance log keeps its URL but is
+  // not article space, and at several rewrites a day it also dated every
+  // category above it as changed today.
   const pages = await prisma.page.findMany({
+    where: { tagPath: NOT_HIDDEN },
     select: { tagPath: true, slug: true, updatedAt: true },
     orderBy: { updatedAt: 'desc' },
   });
 
   // The root tag is the homepage, already the first row — as a category it
   // came out a second time, at `${SITE_URL}/`.
-  const categoryPaths = tagPaths().map(t => t.path).filter(Boolean);
+  const categoryPaths = tagPaths().filter(t => t.path && !t.hidden).map(t => t.path);
 
   // Newest page under each category → real lastModified (pages already ordered updatedAt desc)
   const catModified = new Map<string, Date>();
@@ -57,7 +62,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: SITE_URL, lastModified: latest, changeFrequency: 'daily', priority: 1 },
     ...categoryPaths.map(path => ({
       url: `${SITE_URL}/${path}`,
-      lastModified: catModified.get(path) ?? latest,
+      // A category with no pages has no honest date; the site's newest is not one.
+      lastModified: catModified.get(path),
       changeFrequency: 'weekly' as const,
       priority: 0.8,
     })),

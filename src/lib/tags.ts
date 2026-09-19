@@ -242,8 +242,8 @@ export interface TagPathEntry {
 
 /**
  * Every tag path in the tree, depth-first, parents before children. The callers
- * differ only in what they keep: the sitemap and the prebuild take the lot,
- * llms.txt drops the hidden ones, HIDDEN_TAG_PATHS keeps nothing else.
+ * differ only in what they keep: the prebuild takes the lot, the sitemap and
+ * llms.txt drop the hidden ones, HIDDEN_TAG_PATHS keeps nothing else.
  */
 export function tagPaths(nodes: TagNode[] = TAG_HIERARCHY, parent = '', inherited = false): TagPathEntry[] {
   return nodes.flatMap(node => {
