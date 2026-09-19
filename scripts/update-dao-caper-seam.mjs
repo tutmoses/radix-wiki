@@ -3,9 +3,9 @@
 //
 // Each card's "Dependencies & cross-references" list gains one line pointing at the caper page that
 // treats its question in general: working groups, the proposal lifecycle and thresholds, treasury
-// custody, legal wrappers and MIDAO, ballot methods, and bootstrap budgets. Majority Judgment gains
-// the ballot-methods page under See also. Every linked page was opened on 19 September 2026. Links
-// go to caper's general reference only, never to its product pages (VOICE.md §4 Caper overlay).
+// custody, legal wrappers and MIDAO, ballot methods, and bootstrap budgets. Every linked page was
+// opened on 19 September 2026. Links go to caper's general reference only, never to its product
+// pages (VOICE.md §4 Caper overlay).
 //
 // dao-incorporate-duna-llc also gains the council's 17 September update (t.me/RadixAccountabilityCouncil/1037):
 // the last submissions to MIDAO's onboarding portal were expected by Monday 21 September, so the
@@ -61,11 +61,6 @@ const EDITS = [
     li: `How Arbitrum and Uniswap handled their first budgets and the votes that approved them, with the Radix Foundation's grant and conditional treasury transfer as a third case: ${ext('concepts/treasury/bootstrap-budgets-and-ratification-votes', 'Bootstrap budgets and ratification votes')} ${REF}.`,
     message: 'Cross-reference to bootstrap budgets and ratification votes on caper.network, which treats the Radix Foundation grant as a worked case; opened 19 September 2026.',
   },
-  {
-    tag: 'contents/tech/core-concepts', slug: 'majority-judgment', version: '1.0.1', change: 'patch',
-    seeAlso: `${ext('concepts/voting/ranked-and-alternative-ballot-methods', 'Ranked and alternative ballot methods')}, on caper.network, which compares the counting rules DAO platforms use`,
-    message: 'See also: ranked and alternative ballot methods on caper.network, opened 19 September 2026.',
-  },
 ];
 
 // Insert `html` immediately before the one occurrence of `anchor` (or, with `closeAfter`, before the
@@ -97,9 +92,8 @@ await withClient(async (client) => {
     }
     let blocks = JSON.parse(before);
     if (e.li) blocks = insertAt(blocks, DEPS, `<li>${e.li}</li>`, { closeAfter: true });
-    if (e.seeAlso) blocks = insertAt(blocks, '<h2 id="see-also">See also</h2>', `<li>${e.seeAlso}</li>`, { closeAfter: true });
     if (e.insert) blocks = insertAt(blocks, e.insert.before, e.insert.html);
-    const added = [e.li, e.seeAlso, e.insert?.html].filter(Boolean).join('');
+    const added = [e.li, e.insert?.html].filter(Boolean).join('');
     if (added.includes(NBSP) || added.includes(EMDASH)) throw new Error(`${e.slug}: U+00A0 or an em dash in new text`);
     const json = JSON.stringify(blocks);
     if (!json.includes(SENTINEL)) throw new Error(`${e.slug}: sentinel missing after edits`);
