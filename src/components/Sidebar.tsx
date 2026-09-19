@@ -102,7 +102,7 @@ export function Sidebar() {
   return (
     <RailShell prefix="sidebar" label="Wiki navigation">
       <div className="stack-sm p-4">
-        <nav className="stack-sm">
+        <nav className="stack-sm" aria-label="Site">
           <NavItem href="/" icon={<Home size={18} />} label="Home" pathname={pathname} />
           <NavItem href="/charts" icon={<BarChart3 size={18} />} label="Charts" pathname={pathname} tree />
           <NavItem href="/leaderboard" icon={<Trophy size={18} />} label="Leaderboard" pathname={pathname} />
