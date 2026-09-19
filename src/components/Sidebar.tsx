@@ -11,14 +11,20 @@ import { useMemo } from 'react';
 // with caper, which had the same aside under a different class prefix. The
 // third state is the one a reimplementation drops: without `--instant` a rail
 // the reader left closed renders open and slides shut on every load.
-import { RailShell, TableOfContents as SharedToc } from 'wiki-formant/react';
+import { RailShell, TableOfContents as SharedToc, isRailLinkActive } from 'wiki-formant/react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks';
 import { getVisibleTags, type TagNode } from '@/lib/tags';
 
-function NavItem({ href, icon, label, isActive }: { href: string; icon: React.ReactNode; label: string; isActive?: boolean }) {
+// `aria-current` is `page` on the view being rendered and `true` on a link lit
+// because the reader is somewhere beneath it, as on acuiq2's rail.
+const ariaCurrent = (pathname: string, href: string, active: boolean) =>
+  active ? (pathname === href ? 'page' as const : 'true' as const) : undefined;
+
+function NavItem({ href, icon, label, pathname, tree }: { href: string; icon: React.ReactNode; label: string; pathname: string; tree?: boolean }) {
+  const active = isRailLinkActive(pathname, href, tree);
   return (
-    <Link href={href} className={cn('nav-item', isActive && 'bg-accent-muted text-accent font-medium')}>
+    <Link href={href} className={cn('nav-item', active && 'bg-accent-muted text-accent font-medium')} aria-current={ariaCurrent(pathname, href, active)}>
       {icon}<span>{label}</span>
     </Link>
   );
@@ -69,13 +75,13 @@ function CategoryTree({ nodes, parent = '', pathname }: {
       {nodes.map(node => {
         const path = parent ? `${parent}/${node.slug}` : node.slug;
         const href = `/${path}`;
-        const onTrail = pathname === href || pathname.startsWith(`${href}/`);
+        const onTrail = isRailLinkActive(pathname, href, true);
         const children = (node.children ?? []).filter(c => !c.hidden);
         const openChildren = onTrail ? children : [];
-        const isCurrent = onTrail && !openChildren.some(c => pathname.startsWith(`${href}/${c.slug}`));
+        const isCurrent = onTrail && !openChildren.some(c => isRailLinkActive(pathname, `${href}/${c.slug}`, true));
         return (
           <li key={path}>
-            <Link href={href} title={node.name}
+            <Link href={href} title={node.name} aria-current={ariaCurrent(pathname, href, isCurrent)}
               className={cn('nav-item', isCurrent && 'bg-accent-muted text-accent font-medium')}>
               <span className="truncate">{node.name}</span>
             </Link>
@@ -97,11 +103,11 @@ export function Sidebar() {
     <RailShell prefix="sidebar" label="Wiki navigation">
       <div className="stack-sm p-4">
         <nav className="stack-sm">
-          <NavItem href="/" icon={<Home size={18} />} label="Home" isActive={pathname === '/'} />
-          <NavItem href="/charts" icon={<BarChart3 size={18} />} label="Charts" isActive={pathname === '/charts' || pathname.startsWith('/charts/')} />
-          <NavItem href="/leaderboard" icon={<Trophy size={18} />} label="Leaderboard" isActive={pathname === '/leaderboard'} />
+          <NavItem href="/" icon={<Home size={18} />} label="Home" pathname={pathname} />
+          <NavItem href="/charts" icon={<BarChart3 size={18} />} label="Charts" pathname={pathname} tree />
+          <NavItem href="/leaderboard" icon={<Trophy size={18} />} label="Leaderboard" pathname={pathname} />
           {/* Editorial work queues — reader nav stays free of maintenance machinery. */}
-          {isAuthenticated && <NavItem href="/maintenance" icon={<Wrench size={18} />} label="Maintenance" isActive={pathname === '/maintenance'} />}
+          {isAuthenticated && <NavItem href="/maintenance" icon={<Wrench size={18} />} label="Maintenance" pathname={pathname} />}
         </nav>
       </div>
 
