@@ -1,7 +1,9 @@
 // src/lib/feed.ts — the block walk behind `content:encoded`.
 //
-// The channel, the item skeleton, the XML escaping and the headers are
-// `wiki-formant/feed`, shared with the other two wikis, which had written the
+// The channel, the item skeleton, the XML escaping, the headers and the
+// validators a poller revalidates against (`feedResponse`: an ETag off the XML,
+// Last-Modified off the build date, and the 304) are `wiki-formant/feed`,
+// shared with the other two wikis, which had written the
 // same 47 of 64 lines — including, verbatim, the comment explaining why the
 // apostrophe escapes numerically.
 //
@@ -21,7 +23,7 @@ import { ogImageUrl } from '@/lib/og';
 import { absolutise as absolutiseFrom, clampWords, escXml, type FeedItem } from 'wiki-formant/feed';
 import { leafBlocks } from '@/lib/block-shape';
 
-export { FEED_HEADERS, renderFeed } from 'wiki-formant/feed';
+export { feedResponse } from 'wiki-formant/feed';
 
 /** Blog posts carry a `metadata.date` ("2026-08-02" or "2026/03/15"); fall back to the row's createdAt. */
 export function publishedAt(metadata: unknown, createdAt: Date): Date {

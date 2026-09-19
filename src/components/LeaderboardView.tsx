@@ -4,10 +4,9 @@
 
 import { useMemo } from 'react';
 import { Trophy, FileText, Edit3, MessageSquare, Star } from 'lucide-react';
-import { useTableSort } from 'wiki-formant/react';
+import { SortHeader, useTableSort } from 'wiki-formant/react';
 import { useFetch } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
-import { SortHead } from '@/components/ui';
 import Link from 'next/link';
 
 interface LeaderboardEntry {
@@ -75,12 +74,12 @@ export default function LeaderboardView() {
         <table className="w-full">
           <thead>
             <tr className="text-left text-small text-text-muted border-b border-surface-2">
-              <SortHead {...headerProps('rank')} className="p-3 w-16">Rank</SortHead>
-              <SortHead {...headerProps('name')} className="p-3">Contributor</SortHead>
-              <SortHead {...headerProps('pages')} className="p-3 text-center hidden-mobile" title="Pages"><FileText size={14} /></SortHead>
-              <SortHead {...headerProps('edits')} className="p-3 text-center hidden-mobile" title="Edits"><Edit3 size={14} /></SortHead>
-              <SortHead {...headerProps('comments')} className="p-3 text-center hidden-mobile" title="Comments"><MessageSquare size={14} /></SortHead>
-              <SortHead {...headerProps('points')} className="p-3 text-right"><Star size={14} /> Points</SortHead>
+              <SortHeader {...headerProps('rank')} className="p-3 w-16">Rank</SortHeader>
+              <SortHeader {...headerProps('name')} className="p-3">Contributor</SortHeader>
+              <SortHeader {...headerProps('pages')} className="p-3 text-center hidden-mobile" label="Pages"><FileText size={14} /></SortHeader>
+              <SortHeader {...headerProps('edits')} className="p-3 text-center hidden-mobile" label="Edits"><Edit3 size={14} /></SortHeader>
+              <SortHeader {...headerProps('comments')} className="p-3 text-center hidden-mobile" label="Comments"><MessageSquare size={14} /></SortHeader>
+              <SortHeader {...headerProps('points')} className="p-3 text-right"><Star size={14} /> Points</SortHeader>
             </tr>
           </thead>
           <tbody>

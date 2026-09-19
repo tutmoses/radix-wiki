@@ -1,14 +1,13 @@
-import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
-import { feedItem, publishedAt, renderFeed, FEED_HEADERS } from '@/lib/feed';
+import { feedItem, feedResponse, publishedAt } from '@/lib/feed';
 import { licenseNote } from 'wiki-formant/license';
 
 export const dynamic = 'force-dynamic';
 
 const FEED_LIMIT = 20;
 
-export async function GET() {
+export async function GET(request: Request) {
   const posts = await prisma.page.findMany({
     where: { tagPath: 'blog' },
     select: { slug: true, title: true, content: true, metadata: true, bannerImage: true, createdAt: true },
@@ -20,11 +19,11 @@ export async function GET() {
     .slice(0, FEED_LIMIT)
     .map(p => feedItem(p));
 
-  return new NextResponse(renderFeed({
+  return feedResponse(request, {
     title: 'RADIX.wiki Blog',
     link: `${SITE_URL}/blog`,
     description: 'Community blog of RADIX.wiki, the knowledge base for Radix DLT.',
     copyright: licenseNote(WIKI_LICENSE),
     self: `${SITE_URL}/blog.xml`,
-  }, items), { headers: FEED_HEADERS });
+  }, items);
 }

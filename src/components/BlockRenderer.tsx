@@ -2,12 +2,13 @@
 
 'use client';
 
-import { useEffect, useRef, memo, useMemo } from 'react';
+import { useEffect, useRef, memo, useMemo, type ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, FileText, Copy, Check, AlertTriangle, Megaphone, CalendarClock, type LucideIcon } from 'lucide-react';
-import { cn, formatDate, formatRelativeTime, generateBannerSvg, getContentSnippet, pagePath } from '@/lib/utils';
-import { useNow } from '@/lib/now';
+import { cn, generateBannerSvg, getContentSnippet, pagePath } from '@/lib/utils';
+import { AGO, useNow } from '@/lib/now';
+import { formatDay, relativeTime } from 'wiki-formant/freshness';
 import { findTagByPath } from '@/lib/tags';
 // codeTabs / columns / linkGrid / references / stats / banner are
 // `wiki-formant/block-views`, shared with caper, which had written all six
@@ -26,7 +27,7 @@ import { processHtml } from '@/lib/html';
 import { useAccountQr, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
 import type { WikiPage, PageMetadata } from '@/types';
-import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, InfoboxBlock, AtomicBlock, ContentBlock, TipJarBlock, BannerVariant, TestimonialBlock } from '@/types/blocks';
+import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, InfoboxBlock, AtomicBlock, TipJarBlock, BannerVariant, TestimonialBlock } from '@/types/blocks';
 import { getMetadataKeys } from '@/lib/tags';
 import { metadataRows } from '@/lib/taxonomy';
 import { TokenChart } from '@/components/charts/TokenChart';
@@ -35,6 +36,7 @@ import { formatPriceSubscript } from '@/components/charts/format';
 // wrap them, shared with caper.
 import { useArticlePasses, useCopy, useTweetEmbeds } from 'wiki-formant/react';
 import { bannerVariant } from 'wiki-formant/text';
+import { InfoboxAside, InfoboxFacts, formatFactValue } from 'wiki-formant/react-server';
 import { OCISWAP_API } from '@/lib/radix/config';
 
 // ========== PAGE CARD ==========
@@ -73,7 +75,7 @@ const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; com
           <span className="page-card-title">{page.title}</span>
           {(() => { const snippet = page.snippet ?? getContentSnippet(page.content); return snippet && <p className="page-card-snippet">{snippet}</p>; })()}
           <div className="page-card-meta">
-            <small className="row text-text-muted"><Clock size={12} />{formatRelativeTime(page.updatedAt, now)}</small>
+            <small className="row text-text-muted"><Clock size={12} />{relativeTime(page.updatedAt, now, AGO)}</small>
             {leafTag && <Badge variant="secondary" className="truncate max-w-full">{leafTag.name}</Badge>}
           </div>
         </div>
@@ -87,8 +89,11 @@ function RecentPagesBlockView({ block }: { block: RecentPagesBlock }) {
   const params = new URLSearchParams({ pageSize: String(block.limit) });
   if (block.tagPath) params.set('tagPath', block.tagPath);
   params.set('sort', 'updatedAt');
-  const { data, isLoading } = useFetch<WikiPage[]>(`/api/wiki?${params}`, { transform: d => d.items || [] });
-  const display = data?.length ? data : block.resolvedPages || [];
+  // Like PageListBlockView below: a server-resolved list never fetches. It used
+  // to re-fetch on every hydration and replace the list the page was rendered
+  // with, for the same rows the server had just queried.
+  const { data, isLoading } = useFetch<WikiPage[]>(block.resolvedPages ? null : `/api/wiki?${params}`, { transform: d => d.items || [] });
+  const display = block.resolvedPages || data || [];
   if (isLoading && !display.length) return <div className="recent-pages-grid">{Array.from({ length: Math.min(block.limit, 3) }, (_, i) => <div key={i} className="h-32 skeleton" />)}</div>;
   if (!display.length) return <p className="text-text-muted">No pages found.</p>;
   return <div className="recent-pages-grid">{display.map(p => <PageCard key={p.id} page={p} />)}</div>;
@@ -173,7 +178,7 @@ function RssFeedBlockView({ block }: { block: RssFeedBlock }) {
                 <div className="rss-card-title"><a href={item.link} target="_blank" rel="noopener">{item.title}</a></div>
                 <div className="rss-card-meta">
                   <span className="rss-card-source">{item.source}</span>
-                  {item.date && <>{' · '}{formatDate(item.date)}</>}
+                  {item.date && <>{' · '}{formatDay(item.date)}</>}
                 </div>
                 {item.description && <div className="rss-card-desc">{item.description}...</div>}
               </div>
@@ -185,30 +190,6 @@ function RssFeedBlockView({ block }: { block: RssFeedBlock }) {
   );
 }
 
-// A metadata value arrives sanitised, but sanitised as text, where a bare `"` is
-// legal. Interpolated into an attribute it would close the href and open an
-// `onmouseover`, so it is re-encoded here.
-function linkify(v: string): string {
-  const href = (/^https?:\/\//.test(v) ? v : `https://${v}`).replace(/"/g, '&quot;');
-  return `<a href="${href}" target="_blank" rel="noopener" class="link break-all">${v.replace(/^https?:\/\/(www\.)?/, '')}</a>`;
-}
-
-function formatMetadataValue(value: string, type: string): string {
-  if (type === 'date') {
-    const d = new Date(value);
-    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
-  }
-  const isUrl = (v: string) => type === 'url' || /^https?:\/\//.test(v) || /^[^\s]+\.[a-z]{2,}(\/\S*)?$/i.test(v);
-  if (/<br\s*\/?>/.test(value)) {
-    return value.split(/<br\s*\/?>/).map(part => {
-      const trimmed = part.trim();
-      return trimmed ? (isUrl(trimmed) ? linkify(trimmed) : trimmed) : '';
-    }).join('<br>');
-  }
-  if (isUrl(value)) return linkify(value);
-  return value;
-}
-
 // Which keys appear, in what order, and which of them link is `metadataRows` —
 // the shared derivation, so this table and caper's cannot drift apart. A
 // row carries an `href` exactly when its key is a facet the category view
@@ -217,17 +198,18 @@ function formatMetadataValue(value: string, type: string): string {
 // is built from. `resource_address` keys are dropped here rather than there:
 // they are not a table row on this wiki at all, they are the AssetPrice widgets
 // above the table.
-function buildMetadataBlock(metadata: PageMetadata, tagPath: string): ContentBlock | null {
-  if (!metadata) return null;
-  const rows = metadataRows(tagPath, { metadata })
-    .filter(row => row.type !== 'resource_address')
-    .map(row => {
-      const cell = row.href
-        ? `<a href="${row.href}" class="link">${row.value}</a>`
-        : formatMetadataValue(row.value, row.type);
-      return `<tr><th>${row.label}</th><td>${cell}</td></tr>`;
-    }).join('');
-  return rows ? { id: '__metadata__', type: 'content', text: `<table>${rows}</table>` } : null;
+function factRows(metadata: PageMetadata | null | undefined, tagPath?: string) {
+  return metadata && tagPath ? metadataRows(tagPath, { metadata }).filter(row => row.type !== 'resource_address') : [];
+}
+
+// Metadata values are stored HTML, cleaned by `sanitizePage` with the rest of
+// the row: the developer guides link their prerequisites and docs inline. A
+// value carrying markup is written as markup, through the prose link pass; a
+// plain one takes the package's date, URL and line formatting.
+function factValue(value: string, type: string): ReactNode {
+  return /<(?!br\b)[a-z]|&[#\w]+;/i.test(value)
+    ? <span dangerouslySetInnerHTML={{ __html: processHtml(value) }} />
+    : formatFactValue(value, type);
 }
 
 function getResourceAddressEntries(metadata: PageMetadata, tagPath: string): { key: string; label: string; value: string }[] {
@@ -239,31 +221,24 @@ function getResourceAddressEntries(metadata: PageMetadata, tagPath: string): { k
 export function infoboxHasContent(block: InfoboxBlock | null, metadata?: PageMetadata | null, tagPath?: string): boolean {
   if (block?.blocks?.length) return true;
   if (!metadata || !tagPath) return false;
-  return getResourceAddressEntries(metadata, tagPath).length > 0 || buildMetadataBlock(metadata, tagPath) !== null;
+  return getResourceAddressEntries(metadata, tagPath).length > 0 || factRows(metadata, tagPath).length > 0;
 }
 
-export function InfoboxSidebar({ block, metadata, tagPath, series }: { block: InfoboxBlock; metadata?: PageMetadata | null; tagPath?: string; series?: { title: string; href: string } | null }) {
-  const metaBlock = metadata && tagPath ? buildMetadataBlock(metadata, tagPath) : null;
+export function InfoboxSidebar({ block, title, metadata, tagPath, series }: { block: InfoboxBlock; title: string; metadata?: PageMetadata | null; tagPath?: string; series?: { title: string; href: string } | null }) {
   const assetEntries = metadata && tagPath ? getResourceAddressEntries(metadata, tagPath) : [];
+  // `series` is Wikipedia's {{Category main article}}, pointed from the article:
+  // the tag path names the topic's main article, so every page in it opens onto
+  // the one that defines it. Breadcrumbs already say where the page sits.
   return (
-    <aside className="infobox stack">
-      {/* Wikipedia's {{Category main article}}, pointed from the article: the tag
-          path names the topic's main article, so every page in it opens onto the
-          one that defines it. Breadcrumbs already say where the page sits. */}
-      {series && (
-        <div className="infobox-series">
-          <span>Part of a series on</span>
-          <Link href={series.href} className="link">{series.title}</Link>
-        </div>
-      )}
+    <InfoboxAside label={`Key facts about ${title}`} series={series} link={Link} className="stack">
       {assetEntries.map(entry => (
         <div key={entry.key}>
           <AssetPriceBlockView block={{ id: `__asset_${entry.key}__`, type: 'assetPrice', resourceAddress: entry.value, showChange: true, showChart: true, chartTimeframe: '30d' }} />
         </div>
       ))}
-      {metaBlock && <div>{renderBlockView(metaBlock)}</div>}
+      <InfoboxFacts rows={factRows(metadata, tagPath)} link={Link} formatValue={factValue} />
       {(block.blocks || []).map(b => <div key={b.id}>{renderBlockView(b)}</div>)}
-    </aside>
+    </InfoboxAside>
   );
 }
 
@@ -361,7 +336,9 @@ function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
     case 'pageList': return <PageListBlockView block={block} />;
     case 'assetPrice': return <AssetPriceBlockView block={block} />;
     case 'rssFeed': return <RssFeedBlockView block={block} />;
-    case 'codeTabs': return <CodeTabsView tabs={block.tabs} />;
+    // Every tree reaching this renderer went through `highlightBlocks`, which
+    // escapes each tab's source before highlighting it into markup.
+    case 'codeTabs': return <CodeTabsView tabs={block.tabs} highlighted />;
     case 'columns':
       return (
         <ColumnsView columns={block.columns} gap={block.gap} align={block.align} render={renderBlockView} />

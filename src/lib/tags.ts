@@ -93,7 +93,7 @@ export const TAG_HIERARCHY: TagNode[] = [
       { key: 'prerequisites', label: 'Prerequisites:', type: 'text' },
       { key: 'language', label: 'Language:', type: 'text' },
       // 'text', not 'url': these carry a human label ("Getting Rust & Scrypto") that a
-      // url-typed field would flatten to a bare hostname via linkify().
+      // url-typed field would flatten to a bare hostname in the infobox.
       { key: 'officialDocs', label: 'Official Docs:', type: 'text' },
     ],
     description: 'Build on Radix — tutorials, guides, design patterns, and API references for Scrypto, transaction manifests, and the Radix stack.',

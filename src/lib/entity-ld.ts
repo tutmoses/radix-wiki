@@ -12,6 +12,7 @@
 //   aboutEntity() – what the page is ABOUT (the Organization, tool, or event)
 
 import { categoryLabel } from '@/lib/utils';
+import { isoDate } from 'wiki-formant/freshness';
 
 const URL_KEYS = ['website', 'x', 'telegram', 'github', 'discord'] as const;
 
@@ -40,10 +41,10 @@ function isoDuration(value: string | undefined): string | undefined {
 }
 
 /** ISO date, or undefined when the stored value isn't parseable. */
-function isoDate(value: string | undefined): string | undefined {
+function storedDate(value: string | undefined): string | undefined {
   if (!value) return undefined;
   const d = new Date(value);
-  return isNaN(d.getTime()) ? undefined : d.toISOString().slice(0, 10);
+  return isNaN(d.getTime()) ? undefined : isoDate(d);
 }
 
 function sameAs(md: Record<string, string>): string[] {
@@ -104,7 +105,7 @@ export function aboutEntity(
   const [root, child] = segs;
   const md = (metadata ?? {}) as Record<string, string>;
   const links = sameAs(md);
-  const founded = isoDate(md.founded);
+  const founded = storedDate(md.founded);
   const status = categoryLabel(md.status) || undefined;
 
   // Third-party developer tools and agent projects.
@@ -141,7 +142,7 @@ export function aboutEntity(
 
   // Conferences, hackathons, and milestones.
   if (root === 'contents' && child === 'history') {
-    const date = isoDate(md.date);
+    const date = storedDate(md.date);
     if (!date) return null;
     return {
       '@type': 'Event',

@@ -29,41 +29,6 @@ export function cn(...inputs: ClassValue[]): string {
 export const categoryLabel = (name?: string): string =>
   (name ?? '').replace(/^[^\p{Lu}\p{Ll}\p{Nd}]+/u, '').trim();
 
-export function slugify(text: string): string {
-  return text.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '');
-}
-
-/**
- * A date as the server and every browser render it alike: in UTC. Without a
- * zone it formatted in the machine's own, so a server in UTC and a reader in
- * Europe or the Americas disagreed about any time within hours of midnight,
- * which is a hydration mismatch.
- */
-export function formatDate(date: Date | string, options?: Intl.DateTimeFormatOptions): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC', ...options });
-}
-
-/**
- * "43m ago", against `now` rather than the clock: anything the server renders
- * must pass the render's own time (`useNow()`), or the browser hydrates it
- * against a later one and the text disagrees.
- */
-export function formatRelativeTime(date: Date | string, now: number): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  const diffMs = now - d.getTime();
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
-  const diffHour = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHour / 24);
-
-  if (diffSec < 60) return 'just now';
-  if (diffMin < 60) return `${diffMin}m ago`;
-  if (diffHour < 24) return `${diffHour}h ago`;
-  if (diffDay < 7) return `${diffDay}d ago`;
-  return formatDate(d);
-}
-
 export function shortenAddress(address: string, chars: number = 6): string {
   return address.length <= chars * 2 ? address : `${address.slice(0, chars)}...${address.slice(-chars)}`;
 }

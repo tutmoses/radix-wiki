@@ -8,8 +8,7 @@
 
 import { useMemo, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { useTableSort } from 'wiki-formant/react';
-import { SortHead } from '@/components/ui';
+import { SortHeader, useTableSort } from 'wiki-formant/react';
 
 // `text` vs `num` decides more than the comparator: a text column opens A–Z on
 // first press, a numeric one opens largest first.
@@ -44,7 +43,7 @@ export function DataTable<T>({ rows, columns, defaultKey, rowKey, limit, empty }
         <thead>
           <tr>
             <th className="data-table-th w-12">#</th>
-            {columns.map(c => <SortHead key={c.k} {...headerProps(c.k)} className={cn('data-table-th', c.className)}>{c.label}</SortHead>)}
+            {columns.map(c => <SortHeader key={c.k} {...headerProps(c.k)} className={cn('data-table-th', c.className)}>{c.label}</SortHeader>)}
           </tr>
         </thead>
         <tbody>

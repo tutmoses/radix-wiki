@@ -8,8 +8,10 @@ import { MessageSquare, LayoutGrid, List } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Badge } from '@/components/ui';
-import { categoryLabel, cn, formatRelativeTime, slugify } from '@/lib/utils';
-import { useNow } from '@/lib/now';
+import { categoryLabel, cn } from '@/lib/utils';
+import { slugifyHeading } from 'wiki-formant/headings';
+import { AGO, useNow } from '@/lib/now';
+import { relativeTime } from 'wiki-formant/freshness';
 import { findTagByPath, getMetadataKeys, type SortOrder } from '@/lib/tags';
 import { NewPageControl, SortToggle } from './PageContent';
 import type { WikiPage, PageMetadata, IdeasPage } from '@/types';
@@ -105,7 +107,7 @@ function IdeasListView({ pages, categoryFilter, statusFilter, statusOptions, pri
             <div className="ideas-row-meta">
               <AssigneeChip raw={meta.assignee} />
               <span className="ideas-row-replies"><MessageSquare size={14} />{p.replyCount}</span>
-              <span className="ideas-row-activity">{formatRelativeTime(p.lastActivity, now)}</span>
+              <span className="ideas-row-activity">{relativeTime(p.lastActivity, now, AGO)}</span>
             </div>
           </Link>
         );
@@ -168,7 +170,7 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
     <div className="stack">
       <Breadcrumbs path={tagPath} />
       <div className="spread">
-        <h1 id={slugify(tag?.name || tagPath[tagPath.length - 1] || '')}>{tag?.name || tagPath[tagPath.length - 1]}</h1>
+        <h1 id={slugifyHeading(tag?.name || tagPath[tagPath.length - 1] || '')}>{tag?.name || tagPath[tagPath.length - 1]}</h1>
         <div className="row">
           <SortToggle sort={sort} tagPath={pathStr} />
           <button className={cn('icon-btn', view === 'list' && 'text-accent')} onClick={() => setView('list')} title="List view"><List size={18} /></button>

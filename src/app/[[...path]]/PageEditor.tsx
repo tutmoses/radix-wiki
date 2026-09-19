@@ -10,7 +10,8 @@ import { ArrowLeft, Save, Trash2, Link2, X } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Button, Input, StatusCard } from '@/components/ui';
 import { useAuth, useClickOutside, useStore } from '@/hooks';
-import { cn, pagePath, slugify } from '@/lib/utils';
+import { cn, pagePath } from '@/lib/utils';
+import { slugifyHeading } from 'wiki-formant/headings';
 import { findInfobox } from '@/components/BlockRenderer';
 import { isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, XRD_NOT_A_FEE, type MetadataKeyDefinition } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
@@ -338,7 +339,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
       const exists = page || (await fetch(apiPath).then(r => r.ok));
       const method = exists ? 'PUT' : 'POST';
       const endpoint = exists ? apiPath : '/api/wiki';
-      const newSlug = slugify(editSlug);
+      const newSlug = slugifyHeading(editSlug);
       const body = exists
         ? { title, content, bannerImage, metadata, newSlug, editorIds, revisionMessage: revisionMessage.trim() || undefined }
         : { title, content, bannerImage, metadata, tagPath, slug: newSlug || slug };
@@ -401,7 +402,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
           <Link2 size={14} />
           {isHub ? <span>/{tagPath}</span> : <>
             <span>/{tagPath}/</span>
-            <input type="text" value={editSlug} onChange={e => setEditSlug(e.target.value.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-'))} onBlur={() => setEditSlug(slugify(editSlug))} placeholder="page-slug" />
+            <input type="text" value={editSlug} onChange={e => setEditSlug(e.target.value.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-'))} onBlur={() => setEditSlug(slugifyHeading(editSlug))} placeholder="page-slug" />
           </>}
         </div>
         {!isCreating && (

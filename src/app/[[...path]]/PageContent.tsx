@@ -14,12 +14,14 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { LinkPreview } from '@/components/LinkPreview';
 import { Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
-import { categoryLabel, cn, slugify, generateBannerSvg, formatRelativeTime, formatDate, getContentSnippet, pagePath } from '@/lib/utils';
-import { useNow } from '@/lib/now';
+import { categoryLabel, cn, generateBannerSvg, getContentSnippet, pagePath } from '@/lib/utils';
+import { slugifyHeading } from 'wiki-formant/headings';
+import { AGO, useNow } from '@/lib/now';
 import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder, type TagNode } from '@/lib/tags';
 import { categoryHref, type Control, type FacetControlGroup, type FacetFilters, type SharedFacet } from '@/lib/taxonomy';
 import { createBlock } from '@/lib/block-utils';
-import { freshnessBanner } from 'wiki-formant/freshness';
+import { formatDay, freshnessBanner, relativeTime } from 'wiki-formant/freshness';
+import { FacetSummary, RelatedPages as SeeAlso } from 'wiki-formant/react-server';
 import type { WikiPage } from '@/types';
 import type { Block } from '@/types/blocks';
 
@@ -66,12 +68,12 @@ function PageMeta({ page }: { page: WikiPage }) {
           <span className="truncate">{page.author.displayName || page.author.shortAddress}</span>
         </span>
       )}
-      <span>Last updated {formatRelativeTime(page.updatedAt, now)}</span>
+      <span>Last updated {relativeTime(page.updatedAt, now, AGO)}</span>
       <span className="font-mono">v{page.version}</span>
       <Link href={`${pagePath(page.tagPath, page.slug)}/history`} className="link">
         {revisions} revision{revisions === 1 ? '' : 's'}
       </Link>
-      {page.lastVerifiedAt && <span>Verified {formatDate(page.lastVerifiedAt)}</span>}
+      {page.lastVerifiedAt && <span>Verified {formatDay(page.lastVerifiedAt)}</span>}
     </div>
   );
 }
@@ -303,7 +305,11 @@ function CategoryRail({ facetGroups, letters, open }: {
 }
 
 // ========== CATEGORY RESULTS BAR ==========
-/** One line above the grid: how much of the category you are looking at, and the two controls that change it. */
+/**
+ * One line above the grid: how much of the category you are looking at, and the
+ * two controls that change it. The sentence and its Clear link are
+ * `wiki-formant/react-server`'s, shared with the other wikis.
+ */
 function ResultsBar({ tag, tagPath, total, shown, sort, filters, letter, hasRail, filtersOpen, onToggleFilters }: {
   tag: TagNode | null; tagPath: string; total: number; shown: number; sort: SortOrder;
   filters: FacetFilters; letter?: string; hasRail: boolean; filtersOpen: boolean; onToggleFilters: () => void;
@@ -312,12 +318,10 @@ function ResultsBar({ tag, tagPath, total, shown, sort, filters, letter, hasRail
   const narrowed = Object.keys(filters).length + (letter ? 1 : 0);
   return (
     <div className="results-bar">
-      <p className="results-count">
-        {shown === total
-          ? <>The following <strong>{total}</strong> page{total === 1 ? ' is' : 's are'} in {categoryName}.</>
-          : <>Showing <strong>{shown}</strong> of {total} pages in {categoryName}.</>}
-        {narrowed > 0 && <> <Link href={categoryHref(tagPath, { sort })} className="link">Clear</Link></>}
-      </p>
+      <FacetSummary
+        shown={shown} total={total} name={categoryName} link={Link}
+        clearHref={narrowed > 0 ? categoryHref(tagPath, { sort }) : undefined}
+      />
       <div className="row">
         {hasRail && (
           <button type="button" className={cn('filter-toggle', narrowed > 0 && 'filter-toggle-active')} onClick={onToggleFilters} aria-expanded={filtersOpen}>
@@ -408,7 +412,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
       {infobox && infoboxHasContent(infobox) ? (
         <div className="page-with-infobox">
           <div className="page-main-content stack">{mainContent}</div>
-          <InfoboxSidebar block={infobox} />
+          <InfoboxSidebar block={infobox} title="RADIX Wiki" />
         </div>
       ) : (
         mainContent
@@ -429,8 +433,8 @@ export function NewPageControl({ tagPath, noun = 'Page' }: { tagPath: string; no
     <div className="row">
       {showCreate ? (
         <>
-          <Input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder={`${noun.toLowerCase()}-slug`} className="w-48" onKeyDown={e => e.key === 'Enter' && newSlug.trim() && router.push(`/${tagPath}/${slugify(newSlug)}`)} autoFocus />
-          <Button size="sm" onClick={() => { const s = slugify(newSlug); if (s) router.push(`/${tagPath}/${s}`); }} disabled={!newSlug.trim()}>Go</Button>
+          <Input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder={`${noun.toLowerCase()}-slug`} className="w-48" onKeyDown={e => e.key === 'Enter' && newSlug.trim() && router.push(`/${tagPath}/${slugifyHeading(newSlug)}`)} autoFocus />
+          <Button size="sm" onClick={() => { const s = slugifyHeading(newSlug); if (s) router.push(`/${tagPath}/${s}`); }} disabled={!newSlug.trim()}>Go</Button>
           <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
         </>
       ) : <Button size="sm" onClick={() => setShowCreate(true)}><Plus size={16} />New {noun}</Button>}
@@ -548,7 +552,7 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
     <div className="stack">
       <Breadcrumbs path={tagPath} />
       <div className="spread">
-        <h1 id={slugify(tag?.name || tagPath[tagPath.length - 1] || '')}>{tag?.name || tagPath[tagPath.length - 1]}</h1>
+        <h1 id={slugifyHeading(tag?.name || tagPath[tagPath.length - 1] || '')}>{tag?.name || tagPath[tagPath.length - 1]}</h1>
         <div className="row-md">{controlItems}</div>
       </div>
       <CategoryHero description={tag?.description} mainArticle={mainArticle} />
@@ -570,35 +574,6 @@ export type RelatedPage = Pick<WikiPage, 'id' | 'title' | 'slug' | 'tagPath'> & 
 /** `sharedFacet` names the axis the ranking found in common, so the heading can be the way into the whole set. */
 export type RelatedPages = { pages: RelatedPage[]; sharedFacet: SharedFacet | null };
 
-/**
- * The heading *is* the link: it names what these five have in common and opens
- * the filtered category holding the rest.
- */
-function SeeAlso({ pages, tagPath, sharedFacet }: { pages: RelatedPage[]; tagPath: string; sharedFacet?: SharedFacet | null }) {
-  if (!pages.length) return null;
-  const sectionTag = findTagByPath(tagPath.split('/'));
-  const sectionName = categoryLabel(sectionTag?.name ?? '') || tagPath;
-  return (
-    <aside className="see-also" aria-labelledby="see-also-heading">
-      <h2 id="see-also-heading" className="text-h4">
-        <Link href={categoryHref(tagPath, sharedFacet ? { filters: { [sharedFacet.key]: sharedFacet.value } } : {})} className="link">
-          {sharedFacet ? <>More {sharedFacet.value} in {sectionName}</> : <>More from {sectionName}</>}
-        </Link>
-      </h2>
-      <ul className="see-also-grid">
-        {pages.map(p => (
-          <li key={p.id}>
-            <Link href={`/${p.tagPath}/${p.slug}`} className="see-also-card">
-              <span className="font-medium">{p.title}</span>
-              {p.snippet && <span className="text-text-muted text-small line-clamp-2">{p.snippet}</span>}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </aside>
-  );
-}
-
 // ========== PAGE VIEW (Read-only) ==========
 function PageViewContent({ page, related, series, sections, listing, pageNav, nowMs }: { page: WikiPage; related: RelatedPages; series: PageRef | null; sections?: ReactNode; listing?: ReactNode; pageNav?: ReactNode; nowMs: number }) {
   const { isAuthenticated } = useAuth();
@@ -613,13 +588,21 @@ function PageViewContent({ page, related, series, sections, listing, pageNav, no
   // The synthetic freshness notice defers to an author-placed outdated banner.
   const hasOutdatedBanner = blocks.some(b => b.type === 'banner' && b.variant === 'outdated');
   const fresh = hasOutdatedBanner ? null : freshnessBanner(page, nowMs);
+  const sectionName = categoryLabel(findTagByPath(page.tagPath.split('/'))?.name ?? '') || page.tagPath;
   const mainBlocks = [...(fresh ? [fresh] : []), ...blocks.filter(b => b.type !== 'infobox')];
 
   // Everything after the prose. On a hub it moves below the listing, so the page
   // reads article → the pages in it → provenance and discussion.
   const tail = (
     <>
-      <SeeAlso pages={related.pages} tagPath={page.tagPath} sharedFacet={related.sharedFacet} />
+      {/* The heading *is* the link: it names what these pages have in common and
+          opens the filtered category holding the rest. */}
+      <SeeAlso
+        link={Link}
+        pages={related.pages.map(p => ({ href: pagePath(p.tagPath, p.slug), title: p.title, detail: p.snippet }))}
+        heading={related.sharedFacet ? <>More {related.sharedFacet.value} in {sectionName}</> : <>More from {sectionName}</>}
+        href={categoryHref(page.tagPath, related.sharedFacet ? { filters: { [related.sharedFacet.key]: related.sharedFacet.value } } : {})}
+      />
       {subjectUserId && <UserStats userId={subjectUserId} />}
       {pageNav}
       <PageMeta page={page} />
@@ -652,12 +635,12 @@ function PageViewContent({ page, related, series, sections, listing, pageNav, no
     <article className="stack">
       <Banner src={page.bannerImage} title={page.title} tagPath={page.tagPath}>
         <Breadcrumbs path={[...page.tagPath.split('/'), page.slug].filter(Boolean)} leafTitle={page.title} />
-        <h1 id={slugify(page.title)} className="m-0!">{page.title}</h1>
+        <h1 id={slugifyHeading(page.title)} className="m-0!">{page.title}</h1>
       </Banner>
       {showInfobox ? (
         <div className="page-with-infobox">
           {main}
-          <InfoboxSidebar block={infobox ?? { id: '__infobox__', type: 'infobox', blocks: [] }} metadata={page.metadata} tagPath={page.tagPath} series={series} />
+          <InfoboxSidebar block={infobox ?? { id: '__infobox__', type: 'infobox', blocks: [] }} title={page.title} metadata={page.metadata} tagPath={page.tagPath} series={series} />
         </div>
       ) : main}
       {/* Full width, not nested in the article column: a card grid and a facet

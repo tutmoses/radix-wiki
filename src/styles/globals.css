@@ -2,6 +2,11 @@
 
 @import "tailwindcss";
 
+/* The structure the package's markup needs and nothing else: columns, tab
+   panels, copy buttons, sortable headers. The rules below give it this wiki's
+   colours and spacing, and override it where they have to. */
+@import "wiki-formant/base.css" layer(components);
+
 /* Tailwind's automatic content detection never scans node_modules, so a utility
    that appears only inside a wiki-formant component (ColumnsView's `items-end`,
    `items-stretch`) was never emitted. The rail shell and the block views render
@@ -139,7 +144,8 @@
      right edges 66px apart reads as a mistake, not as a measure. */
   .page-with-infobox .prose-content :where(p, ul, ol, blockquote, h2, h3, h4) { max-width: none; }
 
-  .prose-content {
+  /* The infobox's facts table carries stored links too, and reads them as prose does. */
+  :is(.prose-content, .infobox-facts) {
     a[href^="/"] { @apply text-accent font-medium decoration-accent/40 underline underline-offset-2 hover:text-accent-hover hover:decoration-accent-hover/60; }
     a[href^="http"] { @apply text-text underline underline-offset-2 decoration-text/30 hover:text-accent-hover hover:decoration-accent-hover/50; &::after { content: '\2009\2197'; font-size: 0.75em; } }
     /* The learning path's rows are links, and the prose anchor rule above would
@@ -174,7 +180,6 @@
   [data-tabs] {
     .tabs-list { @apply flex gap-1 border-b border-border-muted mb-4; }
     .tab-button { @apply py-2 px-4 bg-transparent border-b-2 border-transparent text-text-muted cursor-pointer transition-all hover:text-text; &.active { @apply text-accent border-accent; } }
-    .tab-panel, [data-tab-item] { @apply hidden; &.active { @apply block; } }
   }
   .tabs-editor {
     @apply border border-border-muted rounded-lg overflow-hidden;
@@ -185,26 +190,12 @@
     .tab-add { @apply py-1 px-2 text-text-muted cursor-pointer rounded hover:text-accent hover:bg-surface-2; }
     .tabs-content { @apply p-4; }
   }
-  [data-tabs][data-active-tab="0"] [data-tab-item]:nth-of-type(1),
-  [data-tabs][data-active-tab="1"] [data-tab-item]:nth-of-type(2),
-  [data-tabs][data-active-tab="2"] [data-tab-item]:nth-of-type(3),
-  [data-tabs][data-active-tab="3"] [data-tab-item]:nth-of-type(4),
-  [data-tabs][data-active-tab="4"] [data-tab-item]:nth-of-type(5),
-  [data-tabs][data-active-tab="5"] [data-tab-item]:nth-of-type(6) { @apply block; }
-
   /* KaTeX math */
   .katex-display { @apply my-4 overflow-x-auto overflow-y-hidden; }
   .katex { @apply text-text; }
 
   /* rehype-pretty-code blocks */
   [data-rehype-pretty-code-figure] { @apply my-4; pre { @apply border border-border-muted rounded-lg p-4; background-color: #24292e; } code { @apply p-0 bg-transparent; } }
-
-  /* Copy button on code blocks */
-  .code-copy-btn {
-    @apply absolute top-2 right-2 p-1.5 rounded bg-white/10 text-text-muted opacity-0 transition-all cursor-pointer hover:bg-white/20 hover:text-text z-10;
-  }
-  pre:hover > .code-copy-btn,
-  .code-block-wrapper:hover > .code-copy-btn { @apply opacity-100; }
 
   /* ===== CALLOUTS / ADMONITIONS ===== */
   [data-callout] {
@@ -286,6 +277,25 @@
 }
 
 @layer components {
+  /* ===== OVER wiki-formant/base.css =====
+     base.css is imported into this layer, which outranks `@layer base`, so a
+     rule that restyles or overrides one of its selectors has to sit here. */
+
+  /* The editor shows the tab `data-active-tab` names; a reader's panels are base.css's. */
+  [data-tabs] [data-tab-item] { @apply hidden; }
+  [data-tabs][data-active-tab="0"] [data-tab-item]:nth-of-type(1),
+  [data-tabs][data-active-tab="1"] [data-tab-item]:nth-of-type(2),
+  [data-tabs][data-active-tab="2"] [data-tab-item]:nth-of-type(3),
+  [data-tabs][data-active-tab="3"] [data-tab-item]:nth-of-type(4),
+  [data-tabs][data-active-tab="4"] [data-tab-item]:nth-of-type(5),
+  [data-tabs][data-active-tab="5"] [data-tab-item]:nth-of-type(6) { @apply block; }
+
+  /* Copy button on code blocks: placed and revealed by base.css, themed here. */
+  .code-copy-btn {
+    @apply p-1.5 rounded bg-white/10 text-text-muted transition-all hover:bg-white/20 hover:text-text z-10;
+  }
+  .code-block-wrapper:hover > .code-copy-btn { @apply opacity-100; }
+
   /* ===== SKIP LINK ===== */
   .skip-link {
     @apply absolute -top-full left-4 z-50 px-4 py-2 bg-accent text-surface-0 rounded-b font-semibold text-sm;
@@ -514,7 +524,7 @@
 
   /* ===== CATEGORY RESULTS BAR ===== */
   .results-bar { @apply flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-border-muted; }
-  .results-count { @apply m-0 text-text-muted text-small; }
+  .facet-summary { @apply m-0 text-text-muted text-small; }
   .filter-toggle { @apply md:hidden inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border-muted bg-surface-1 text-small text-text-muted transition-colors hover:border-accent hover:text-text; }
   .filter-toggle-active { @apply border-accent text-text; }
 
@@ -567,8 +577,11 @@
 
   /* ===== SEE ALSO ===== */
   .see-also { @apply mt-8 pt-6 border-t border-border-muted flex flex-col gap-3; }
-  .see-also-grid { @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 list-none pl-0; }
-  .see-also-card { @apply flex flex-col gap-1 p-3 bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5; }
+  .see-also-heading { @apply text-h4; }
+  .see-also-list { @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 list-none pl-0; }
+  .see-also-item { @apply flex flex-col gap-1 p-3 bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5; }
+  .see-also-title { @apply font-medium; }
+  .see-also-detail { @apply text-text-muted text-small line-clamp-2; }
 
   /* ===== CATEGORY GRID ===== */
   .category-grid { @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4; }
@@ -612,6 +625,8 @@
   .block-label { @apply flex items-center gap-2 text-text-muted; }
   .block-label-text { @apply text-small font-medium uppercase; }
   .block-actions { @apply flex items-center gap-2 opacity-0 transition-opacity; .group:hover & { @apply opacity-100; } }
+  /* BlockActions renders delete last. */
+  .block-action { @apply p-1 text-text-muted disabled:opacity-30; &:last-child { @apply hover:text-error; } }
 
   .insert-btn { @apply flex items-center gap-2 text-text-muted hover:text-text border border-dashed border-border-muted hover:border-border rounded-md transition-colors px-3 py-1.5; }
 
@@ -703,6 +718,7 @@
 
   /* Infobox sidebar */
   .infobox-heading { @apply mt-0 border-b-0 text-small font-bold uppercase tracking-wide text-text-muted; }
+  .infobox-facts { @apply m-0; }
   .infobox-series { @apply flex flex-col items-center gap-0.5 text-center text-small text-text-muted pb-3 border-b border-border-muted; }
 
   .infobox {
@@ -748,8 +764,9 @@
   .footer-links { @apply flex items-center gap-4 flex-wrap; }
 
   /* ===== COLUMNS VIEW ===== */
-  .columns-layout { @apply flex flex-col md:flex-row; }
-  .column-view { @apply w-full md:flex-1 flex flex-col gap-4; }
+  /* The row, the stacking and data-gap/data-align are base.css; the space
+     between blocks inside a column is this wiki's. */
+  .column-view { @apply gap-4; }
 
   /* ===== EMPTY STATES ===== */
   .empty-state { @apply py-12 text-center; }
@@ -767,27 +784,10 @@
   .data-table-row { @apply transition-colors hover:bg-surface-1/40; }
   .data-table-row:last-child .data-table-td { @apply border-b-0; }
   /* Every sortable header, React or stored HTML, is a button inside a cell that
-     carries `aria-sort`. The arrow is read from the attribute, so the two kinds
-     of table cannot draw it differently. */
-  .sort-header { @apply inline-flex items-center gap-1 cursor-pointer hover:text-text transition-colors; }
-  .sort-header::after {
-    content: '';
-    flex: none;
-    width: 0.75em;
-    height: 0.75em;
-    background-color: currentColor;
-    opacity: 0.4;
-    --sort-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 15 5 5 5-5'/%3E%3Cpath d='m7 9 5-5 5 5'/%3E%3C/svg%3E");
-    mask: var(--sort-icon) center / contain no-repeat;
-  }
+     carries `aria-sort`; base.css resets the button and draws the arrow from the
+     attribute, so the two kinds of table cannot draw it differently. */
+  .sort-header { @apply gap-1 hover:text-text transition-colors; }
   :is([aria-sort='ascending'], [aria-sort='descending']) > .sort-header { @apply text-text; }
-  :is([aria-sort='ascending'], [aria-sort='descending']) > .sort-header::after { opacity: 1; }
-  [aria-sort='ascending'] > .sort-header::after {
-    --sort-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 7-7 7 7'/%3E%3Cpath d='M12 19V5'/%3E%3C/svg%3E");
-  }
-  [aria-sort='descending'] > .sort-header::after {
-    --sort-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5v14'/%3E%3Cpath d='m19 12-7 7-7-7'/%3E%3C/svg%3E");
-  }
 
   /* /charts/tokens/<address>. Not `.page-with-infobox`, which puts the infobox first on a
      phone: here the name and price come first, then the infobox, then the chart. */

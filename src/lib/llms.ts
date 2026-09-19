@@ -16,6 +16,7 @@ import { NOT_HIDDEN } from '@/lib/wiki';
 import { prisma } from '@/lib/prisma/client';
 import { TAG_HIERARCHY, tagPaths } from '@/lib/tags';
 import { categoryLabel, getContentSnippet, pageUrl } from '@/lib/utils';
+import { isoDate } from 'wiki-formant/freshness';
 import { SIBLING_WIKI, SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { extractText } from '@/lib/content';
 import { CHARTS_PAGES } from '@/lib/static-pages';
@@ -63,7 +64,7 @@ export async function corpusSections(tagPath?: string): Promise<CorpusSection[]>
   return pages.map(p => {
     const body = extractText((p.content as unknown as Block[]) || []);
     const snippet = getContentSnippet(p.content);
-    const section = `## ${p.title}\n\nURL: ${pageUrl(p.tagPath, p.slug)}\nUpdated: ${p.updatedAt.toISOString().split('T')[0]}\n${snippet ? `Summary: ${cleanSnippet(snippet)}\n` : ''}\n${body}`;
+    const section = `## ${p.title}\n\nURL: ${pageUrl(p.tagPath, p.slug)}\nUpdated: ${isoDate(p.updatedAt)}\n${snippet ? `Summary: ${cleanSnippet(snippet)}\n` : ''}\n${body}`;
     return { path: `${p.tagPath}/${p.slug}`, tagPath: p.tagPath, section };
   });
 }
@@ -78,12 +79,13 @@ export const SECTION_NAMES = new Map(
   TAG_HIERARCHY.filter(n => !n.hidden && n.slug).map(n => [n.slug, categoryLabel(n.name)]),
 );
 
-/** One markdown bullet for a page: linked title plus cleaned excerpt. */
-export function pageLine(p: { title: string; tagPath: string | null; slug: string | null; content: unknown }): string {
+/** One markdown bullet for a page: linked title, cleaned excerpt, and the date an agent diffs on. */
+export function pageLine(p: { title: string; tagPath: string | null; slug: string | null; content: unknown; updatedAt: Date }): string {
   return formantPageLine({
     title: p.title,
     url: pageUrl(p.tagPath ?? '', p.slug ?? ''),
     excerpt: getContentSnippet(p.content),
+    updated: p.updatedAt,
   });
 }
 
@@ -231,7 +233,7 @@ content programmatically. No browser or wallet extension required.
 export async function buildLlmsTxt(): Promise<string> {
   const [recent, counts] = await Promise.all([
     prisma.page.findMany({
-      select: { title: true, tagPath: true, slug: true, content: true },
+      select: { title: true, tagPath: true, slug: true, content: true, updatedAt: true },
       where: CORPUS_WHERE,
       orderBy: { updatedAt: 'desc' },
       take: RECENT_LIMIT,

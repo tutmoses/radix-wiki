@@ -5,24 +5,26 @@
 // decisions: which slug rule its published anchors were minted under, its own
 // host, and the h1 demotion.
 
-import { injectHeadingIds } from 'wiki-formant/headings';
+import { injectHeadingIds, slugifyHeading } from 'wiki-formant/headings';
 import { normaliseLinks } from 'wiki-formant/links';
-import { slugify } from '@/lib/utils';
 import type { Block } from '@/types/blocks';
 import { mapBlockTree } from 'wiki-formant/blocks';
 import { BLOCK_SHAPE } from '@/lib/block-shape';
 
-/** Process HTML content for display: heading ids + anchors, link normalisation, alt attrs. */
-export function processHtml(html: string, citedRefs?: Set<number>): string {
+/**
+ * Process HTML content for display: heading ids + anchors, link normalisation, alt attrs.
+ * `used` is the page's heading ids so far, shared across its blocks.
+ */
+export function processHtml(html: string, citedRefs?: Set<number>, used?: Set<string>): string {
   if (!html.trim()) return html;
 
   // Demote h1 in content to h2 (the page title is the only h1), then ids and a
-  // hover permalink anchor on what is left. `slugify` is passed rather than
-  // defaulted because it is the rule this wiki's published anchors were minted
-  // under, and an id is a URL.
+  // hover permalink anchor on what is left. `slugifyHeading` is passed rather
+  // than defaulted because it is the rule this wiki's published anchors were
+  // minted under, and an id is a URL.
   const withHeadings = injectHeadingIds(
     html.replace(/<h1(\s[^>]*)?>([\s\S]*?)<\/h1>/gi, '<h2$1>$2</h2>'),
-    { slug: slugify },
+    { slug: slugifyHeading, used },
   );
 
   // The sanitiser writes `<img … />`, so the alt goes before the slash.
@@ -33,16 +35,20 @@ export function processHtml(html: string, citedRefs?: Set<number>): string {
   return normaliseLinks(withAlts, { selfHost: 'radix.wiki', citedRefs });
 }
 
-/** Apply processHtml to every content block recursively (for SSR normalisation). */
-export function processBlocks(blocks: Block[]): Block[] {
-  // Shared across content blocks so citation `id="cite-n"` targets are unique
-  // doc-wide.
+/**
+ * Apply processHtml to every content block recursively (for SSR normalisation).
+ * `reserved` is the ids the page template renders itself, its `<h1>`'s among them.
+ */
+export function processBlocks(blocks: Block[], reserved: string[] = []): Block[] {
+  // Shared across content blocks so citation `id="cite-n"` targets, and heading
+  // ids, are unique doc-wide: two blocks with the same heading minted the same id.
   const citedRefs = new Set<number>();
+  const used = new Set(reserved);
   // The container walk is `mapBlockTree` from `wiki-formant/blocks`. It was
   // written out here, and in four other files in this repo.
   return mapBlockTree(
     blocks,
-    b => (b.type === 'content' && typeof b.text === 'string' ? { ...b, text: processHtml(b.text, citedRefs) } : b),
+    b => (b.type === 'content' && typeof b.text === 'string' ? { ...b, text: processHtml(b.text, citedRefs, used) } : b),
     BLOCK_SHAPE,
   );
 }

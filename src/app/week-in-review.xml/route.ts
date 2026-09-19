@@ -5,10 +5,9 @@
 // is recaps only, full text, numbered, with the scored prediction record in the
 // channel description so the one number the series owns travels with every copy.
 
-import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
-import { feedItem, recapIssues, renderFeed, FEED_HEADERS } from '@/lib/feed';
+import { feedItem, feedResponse, recapIssues } from '@/lib/feed';
 import { RECAP_PREFIX, SERIES_SLUG, issueLabel, scoreline, type LedgerState } from '@/lib/week-in-review';
 import { licenseNote } from 'wiki-formant/license';
 
@@ -16,7 +15,7 @@ export const dynamic = 'force-dynamic';
 
 const FEED_LIMIT = 30;
 
-export async function GET() {
+export async function GET(request: Request) {
   const [recaps, index] = await Promise.all([
     prisma.page.findMany({
       where: { tagPath: 'blog', slug: { startsWith: RECAP_PREFIX } },
@@ -35,11 +34,11 @@ export async function GET() {
 
   const state = (index?.metadata as { state?: LedgerState } | null)?.state;
 
-  return new NextResponse(renderFeed({
+  return feedResponse(request, {
     title: 'Radix Week in Review',
     link: `${SITE_URL}/blog/${SERIES_SLUG}`,
     description: `The week in the Radix ecosystem, read against the ledger. ${scoreline(state)}`,
     copyright: licenseNote(WIKI_LICENSE),
     self: `${SITE_URL}/week-in-review.xml`,
-  }, items), { headers: FEED_HEADERS });
+  }, items);
 }

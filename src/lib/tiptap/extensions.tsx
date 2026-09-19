@@ -9,9 +9,9 @@
 
 import { ChevronDown, Check, Code, Plus, X } from 'lucide-react';
 import { createCodeBlock, createHeadingIds, createMapEmbed, createTabs } from 'wiki-formant/tiptap';
+import { slugifyHeading } from 'wiki-formant/headings';
 import { CODE_LANGS, DEFAULT_LANG } from '@/lib/block-utils';
 import { resolveMapUrl } from 'wiki-formant/maps';
-import { slugify } from '@/lib/utils';
 
 export { Iframe, YouTube, TwitterEmbed } from 'wiki-formant/tiptap';
 
@@ -51,7 +51,7 @@ export const { TabGroup, TabItem } = createTabs({
 
 /**
  * Gives each heading in the editor the id its published copy will carry, so
- * the "on this page" rail can list it while the page is being edited. `slugify`
- * is the rule `processHtml` passes to `injectHeadingIds`.
+ * the "on this page" rail can list it while the page is being edited.
+ * `slugifyHeading` is the rule `processHtml` passes to `injectHeadingIds`.
  */
-export const HeadingIds = createHeadingIds({ slug: slugify });
+export const HeadingIds = createHeadingIds({ slug: slugifyHeading });

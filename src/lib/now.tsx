@@ -13,6 +13,9 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 
 const NowContext = createContext<number | null>(null);
 
+/** How every "3h ago" on the wiki reads: short, and a date from a week on. */
+export const AGO = { style: 'short', absoluteAfterDays: 7 } as const;
+
 export function NowProvider({ now, children }: { now: number; children: ReactNode }) {
   return <NowContext.Provider value={now}>{children}</NowContext.Provider>;
 }

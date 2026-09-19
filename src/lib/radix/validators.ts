@@ -2,6 +2,7 @@
 
 import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
+import { isoDate } from 'wiki-formant/freshness';
 import {
   chunks, entityDetailsAt, GatewayUnavailableError, num, paginatedGatewayFetch, postGateway, readMetadata,
   type GatewayPage, type LedgerState,
@@ -79,7 +80,7 @@ function parseValidator(item: any, ledger: LedgerState): Parsed | null {
       ? {
         epoch: requestEpoch,
         fee: num(request.new_fee_factor),
-        ...(isFinite(roundAt) && { around: new Date(roundAt + (requestEpoch - currentEpoch) * EPOCH_MS).toISOString().slice(0, 10) }),
+        ...(isFinite(roundAt) && { around: isoDate(new Date(roundAt + (requestEpoch - currentEpoch) * EPOCH_MS)) }),
       }
       : undefined;
 

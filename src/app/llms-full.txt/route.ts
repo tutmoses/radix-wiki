@@ -3,6 +3,7 @@
 // The walk is shared with the MCP `get_full_corpus` tool; what this URL owns
 // is its preamble, which carries the licence grant an ingesting crawler needs.
 
+import { isoDate } from 'wiki-formant/freshness';
 import { LICENSE_BLOCK, buildFullCorpus, corpusRoute } from '@/lib/llms';
 import { SITE_URL } from '@/lib/site';
 
@@ -12,7 +13,7 @@ const header = (pageCount: number, updated: Date) => [
   `# RADIX Wiki — Full Content Export`,
   ``,
   `> This is the full-text version of llms.txt for ${SITE_URL}`,
-  `> ${pageCount} pages, last updated ${updated.toISOString().split('T')[0]}`,
+  `> ${pageCount} pages, last updated ${isoDate(updated)}`,
   ``,
   LICENSE_BLOCK,
   ``,

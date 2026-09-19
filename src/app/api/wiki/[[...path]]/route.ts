@@ -4,7 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
-import { slugify, pageUrl, pagePath } from '@/lib/utils';
+import { pageUrl, pagePath } from '@/lib/utils';
+import { slugifyHeading } from 'wiki-formant/headings';
 import { SITE_URL } from '@/lib/site';
 import { isValidTagPath, isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys } from '@/lib/tags';
 import { requireBalance } from '@/lib/radix/balance';
@@ -284,7 +285,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
     const auth = await requireAuth(request, { type: 'create', tagPath });
     if ('error' in auth) return auth.error;
 
-    let slug = body.slug || slugify(title);
+    let slug = body.slug || slugifyHeading(title);
     const existing = await prisma.page.findUnique({ where: { tagPath_slug: { tagPath, slug } } });
     if (existing) slug = `${slug}-${Date.now().toString(36)}`;
 
@@ -334,7 +335,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
 
     if (!existing) return errors.notFound('Page not found');
 
-    const slugUpdate = newSlug && newSlug !== existing.slug ? slugify(newSlug) : undefined;
+    const slugUpdate = newSlug && newSlug !== existing.slug ? slugifyHeading(newSlug) : undefined;
     if (slugUpdate) {
       const conflict = await prisma.page.findUnique({ where: { tagPath_slug: { tagPath: existing.tagPath, slug: slugUpdate } } });
       if (conflict) return errors.badRequest('A page with that slug already exists in this category');

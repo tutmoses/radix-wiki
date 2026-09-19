@@ -12,7 +12,8 @@ import { TokenChart } from './TokenChart';
 import { HoldersTable, type HolderRow } from './HoldersTable';
 import { CopyAddress } from './CopyAddress';
 import { formatUsd, formatPercent, formatAmount, formatPriceSubscript } from './format';
-import { cn, pagePath, shortenAddress, slugify } from '@/lib/utils';
+import { cn, pagePath, shortenAddress } from '@/lib/utils';
+import { slugifyHeading } from 'wiki-formant/headings';
 
 interface WikiPageRef {
   tagPath: string;
@@ -72,7 +73,7 @@ function InfoTable({ title, rows }: { title: string; rows: Row[] }) {
   if (rows.length === 0) return null;
   return (
     <section className="stack-xs">
-      <h2 id={slugify(title)} className="infobox-heading">{title}</h2>
+      <h2 id={slugifyHeading(title)} className="infobox-heading">{title}</h2>
       <table>
         <tbody>
           {rows.map(([label, value]) => <tr key={label}><th>{label}</th><td>{value}</td></tr>)}
@@ -138,7 +139,7 @@ export default async function TokenDetailView({ address, wikiPage }: { address: 
                 <div className="w-12 h-12 rounded-full bg-surface-2 shrink-0" />
               )}
               <div className="stack-xs min-w-0">
-                <h1 id={slugify(token.name || token.symbol) || 'token'} className="token-name">
+                <h1 id={slugifyHeading(token.name || token.symbol) || 'token'} className="token-name">
                   {token.name || token.symbol}
                   {token.symbol && token.symbol !== token.name && <span className="text-text-muted"> ({token.symbol})</span>}
                 </h1>

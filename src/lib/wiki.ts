@@ -8,6 +8,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma/client';
 import { getContentSnippet, getMatchSnippet, pageUrl } from '@/lib/utils';
+import { isoDate } from 'wiki-formant/freshness';
 import { decodeEntities } from '@/lib/content';
 import { isValidTagPath, getSortOrder, getMetadataKeys, HIDDEN_TAG_PATHS, type SortOrder } from '@/lib/tags';
 import type { WikiPage, IdeasPage } from '@/types';
@@ -346,8 +347,8 @@ export function summarizePage(p: { title: string; tagPath: string; slug: string;
     // literal and full-text tiers disagree about what counts as prose.
     snippet: (headline ? decodeEntities(headline).trim() : '')
       || (query ? getMatchSnippet(p.content, query) : getContentSnippet(p.content)),
-    updatedAt: p.updatedAt.toISOString().split('T')[0],
-    ...(p.lastVerifiedAt ? { lastVerified: p.lastVerifiedAt.toISOString().split('T')[0] } : {}),
+    updatedAt: isoDate(p.updatedAt),
+    ...(p.lastVerifiedAt ? { lastVerified: isoDate(p.lastVerifiedAt) } : {}),
     ...(meta ? { metadata: meta } : {}),
   };
 }

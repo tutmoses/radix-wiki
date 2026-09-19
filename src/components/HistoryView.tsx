@@ -6,13 +6,14 @@ import { useState, useEffect, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, RotateCcw, Plus, Minus, Pencil, Move, ChevronDown } from 'lucide-react';
-import { Button, Badge, SortHead } from '@/components/ui';
+import { Button, Badge } from '@/components/ui';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { useAuth } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
 import { changeSummary } from 'wiki-formant/revisions';
-import { useTableSort } from 'wiki-formant/react';
-import { formatDate, cn, pagePath } from '@/lib/utils';
+import { SortHeader, restoreViaPost, useRevisionRestore, useTableSort } from 'wiki-formant/react';
+import { cn, pagePath } from '@/lib/utils';
+import { formatDay } from 'wiki-formant/freshness';
 import { stripHtml } from '@/lib/content';
 import { BLOCK_META } from '@/lib/block-utils';
 import type { BlockType } from '@/types/blocks';
@@ -143,12 +144,15 @@ function ExpandedChanges({ changes }: { changes: BlockChange[] }) {
 export function HistoryView({ data, tagPath, slug, isHomepage }: { data: HistoryData; tagPath: string; slug: string; isHomepage?: boolean }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const [restoringId, setRestoringId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const { sorted, headerProps } = useTableSort<RevisionData, keyof typeof REVISION_COMPARATORS>(data?.revisions ?? NO_REVISIONS, { defaultKey: 'date', comparators: REVISION_COMPARATORS, defaultDirection: firstDirection });
 
   const apiBase = isHomepage ? '/api/wiki' : `/api/wiki${pagePath(tagPath, slug)}`;
   const viewPath = isHomepage ? '/' : pagePath(tagPath, slug);
+  // Confirm, POST, report: `wiki-formant/react`. A failure shows above the table.
+  const { restore, busyId, error: restoreError } = useRevisionRestore<string>(restoreViaPost(`${apiBase}/history`), {
+    onRestored: () => router.push(viewPath),
+  });
 
   if (!data) {
     return (
@@ -159,17 +163,6 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
     );
   }
 
-  const handleRestore = async (revisionId: string) => {
-    if (!confirm('Restore this revision?')) return;
-    setRestoringId(revisionId);
-    try {
-      const r = await fetch(`${apiBase}/history`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ revisionId }) });
-      if (r.ok) router.push(viewPath);
-      else alert((await r.json()).error || 'Failed to restore');
-    } catch { alert('Failed to restore'); }
-    finally { setRestoringId(null); }
-  };
-
   return (
     <div className="stack">
       {!isHomepage && <Breadcrumbs path={[...tagPath.split('/'), slug].filter(Boolean)} suffix="History" />}
@@ -177,16 +170,17 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
         <h1 id={isHomepage ? 'homepage-history' : 'page-history'} className="m-0!">{isHomepage ? 'Homepage' : 'Page'} History</h1>
         <Link href={viewPath}><Button variant="secondary" size="sm"><ArrowLeft size={16} />Back</Button></Link>
       </div>
+      {restoreError && <p className="text-error text-small" role="alert">{restoreError}</p>}
       {data.revisions.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="w-full text-small">
             <thead>
               <tr className="text-left text-text-muted">
-                <SortHead {...headerProps('version')} className="py-2 px-3 font-medium w-24">Version</SortHead>
-                <SortHead {...headerProps('type')} className="py-2 px-3 font-medium w-20">Type</SortHead>
-                <SortHead {...headerProps('changes')} className="py-2 px-3 font-medium">Changes</SortHead>
-                <SortHead {...headerProps('author')} className="py-2 px-3 font-medium">Author</SortHead>
-                <SortHead {...headerProps('date')} className="py-2 px-3 font-medium w-36">Date</SortHead>
+                <SortHeader {...headerProps('version')} className="py-2 px-3 font-medium w-24">Version</SortHeader>
+                <SortHeader {...headerProps('type')} className="py-2 px-3 font-medium w-20">Type</SortHeader>
+                <SortHeader {...headerProps('changes')} className="py-2 px-3 font-medium">Changes</SortHeader>
+                <SortHeader {...headerProps('author')} className="py-2 px-3 font-medium">Author</SortHeader>
+                <SortHeader {...headerProps('date')} className="py-2 px-3 font-medium w-36">Date</SortHeader>
                 <th className="py-2 px-3 font-medium w-24"></th>
               </tr>
             </thead>
@@ -209,7 +203,8 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                         <div className="row gap-3">
                           <ChangeSummary changes={changes} changeType={rev.changeType} />
                           {changes.length > 0 && (
-                            <button onClick={() => setExpandedId(isExpanded ? null : rev.id)} className="text-accent hover:text-accent-hover">
+                            <button type="button" onClick={() => setExpandedId(isExpanded ? null : rev.id)} className="text-accent hover:text-accent-hover"
+                              aria-label={`Changes in v${rev.version}`} aria-expanded={isExpanded}>
                               <ChevronDown size={14} className={cn('transition-transform', isExpanded && 'rotate-180')} />
                             </button>
                           )}
@@ -223,11 +218,11 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                           </Link>
                         ) : '—'}
                       </td>
-                      <td className="py-2 px-3 text-text-muted">{formatDate(rev.createdAt, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}</td>
+                      <td className="py-2 px-3 text-text-muted">{formatDay(rev.createdAt, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}</td>
                       <td className="py-2 px-3">
                         {isAuthenticated && !isCurrent && (
-                          <button onClick={() => handleRestore(rev.id)} disabled={restoringId === rev.id} className="restore-btn">
-                            <RotateCcw size={14} /><span>{restoringId === rev.id ? '…' : 'Restore'}</span>
+                          <button type="button" onClick={() => restore(rev.id, `v${rev.version}`)} disabled={busyId === rev.id} className="restore-btn">
+                            <RotateCcw size={14} /><span>{busyId === rev.id ? '…' : 'Restore'}</span>
                           </button>
                         )}
                       </td>

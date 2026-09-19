@@ -72,18 +72,14 @@ export const sanitizeHtml = createHtmlSanitizer({
 });
 
 /**
- * Every leaf field a renderer writes as raw HTML. codeTabs is left alone on
- * purpose: its `code` is source text, which `highlightBlocks` escapes before
- * highlighting, and through an HTML sanitiser it would lose every `<T>` in a
- * Rust signature.
- */
-const sanitizeLeaf = (block: Block): Block =>
-  block.type === 'codeTabs' ? block : sanitizeCoreLeaf(block, sanitizeHtml);
-
-/**
  * A page row with its authored HTML cleaned: the block tree, and every string
  * metadata value, which the infobox renders as table cells. Non-string metadata
  * (a sweep's `state`) passes through, so an editor save round-trips it.
+ *
+ * `sanitizeCoreLeaf` cleans every leaf field a renderer writes as raw HTML and
+ * leaves codeTabs alone: its `code` is source text, which `highlightBlocks`
+ * escapes before highlighting, and through an HTML sanitiser it would lose
+ * every `<T>` in a Rust signature.
  *
  * Runs server-side on the way to the renderer and the editor, never on write,
  * so it covers rows stored before it existed and no sanitiser ships to the client.
@@ -92,7 +88,7 @@ export function sanitizePage<T extends { content: unknown; metadata?: unknown }>
   const { content, metadata } = page;
   return {
     ...page,
-    content: Array.isArray(content) ? mapBlockTree(content as Block[], sanitizeLeaf, BLOCK_SHAPE) : content,
+    content: Array.isArray(content) ? mapBlockTree(content as Block[], b => sanitizeCoreLeaf(b, sanitizeHtml), BLOCK_SHAPE) : content,
     metadata: metadata && typeof metadata === 'object' && !Array.isArray(metadata)
       ? Object.fromEntries(Object.entries(metadata).map(([k, v]) => [k, typeof v === 'string' ? sanitizeHtml(v) : v]))
       : metadata,

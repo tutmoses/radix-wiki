@@ -12,7 +12,10 @@ import { highlightBlocks } from '@/lib/highlight';
 import { processBlocks } from '@/lib/html';
 import { sanitizePage } from '@/lib/sanitize';
 import { NowProvider } from '@/lib/now';
-import { JsonLd as SchemaJsonLd } from 'wiki-formant/react-server';
+// Payloads carry wallet-authored titles and excerpts, so they go out through
+// `wiki-formant/react-server`'s JsonLd, which escapes an authored `</script>`.
+import { JsonLd } from 'wiki-formant/react-server';
+import { articleLd, citationsFromReferences, collectionLd } from 'wiki-formant/metadata';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { STATIC_PAGES } from '@/lib/static-pages';
 import { prisma } from '@/lib/prisma/client';
@@ -29,7 +32,8 @@ import ChartsOverview from '@/components/charts/ChartsOverview';
 import ValidatorsView from '@/components/charts/ValidatorsView';
 import TokensView from '@/components/charts/TokensView';
 import TokenDetailView from '@/components/charts/TokenDetailView';
-import { categoryLabel, clampSnippet, getContentSnippet, pagePath } from '@/lib/utils';
+import { categoryLabel, clampSnippet, getContentSnippet, pagePath, pageUrl } from '@/lib/utils';
+import { slugifyHeading } from 'wiki-formant/headings';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
@@ -190,7 +194,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  *  round-trips the state intact. */
 const NON_RENDER_METADATA = ['state'];
 
-async function withProcessedContent<T extends { content: unknown; metadata?: unknown }>(stored: T | null): Promise<T | null> {
+async function withProcessedContent<T extends { title: string; content: unknown; metadata?: unknown }>(stored: T | null): Promise<T | null> {
   if (!stored || !Array.isArray(stored.content)) return stored;
   // Sanitise first, then decorate. Highlighting re-serialises the whole block
   // through rehype, which would carry an `onerror` straight through, and the
@@ -199,8 +203,9 @@ async function withProcessedContent<T extends { content: unknown; metadata?: unk
   let content = page.content as Block[];
   content = await resolveBlockData(content);
   if (hasCodeBlocksInContent(content)) content = await highlightBlocks(content);
-  // Normalise HTML server-side so SSR output has demoted h1s, alt attrs, and correct link attributes
-  content = processBlocks(content);
+  // Normalise HTML server-side so SSR output has demoted h1s, alt attrs, and correct link attributes.
+  // The title's id is reserved: PageView renders it as the page's <h1 id>.
+  content = processBlocks(content, [slugifyHeading(page.title)]);
   const metadata = page.metadata && typeof page.metadata === 'object'
     ? Object.fromEntries(Object.entries(page.metadata as Record<string, unknown>).filter(([k]) => !NON_RENDER_METADATA.includes(k)))
     : page.metadata;
@@ -215,90 +220,56 @@ function countWords(blocks: unknown): number {
   return text.split(/\s+/).filter(Boolean).length;
 }
 
-// Payloads carry wallet-authored titles and excerpts, so they go out through
-// `wiki-formant/react-server`'s JsonLd, which escapes an authored `</script>`.
-function JsonLd({ data }: { data: Record<string, unknown> | null }) {
-  return data ? <SchemaJsonLd data={{ '@context': 'https://schema.org', ...data }} /> : null;
-}
+const WEBSITE = { '@type': 'WebSite', name: 'RADIX Wiki', url: SITE_URL };
+const PUBLISHER = { '@type': 'Organization', name: 'RADIX Wiki', url: SITE_URL, logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` } };
 
 /**
- * Sources from the page's own `references` blocks, as Article.citation. The
- * block type already stores {id, text, url} per entry, so the citation list is
- * read straight off the content rather than re-parsed out of rendered HTML.
+ * The page as an Article. The envelope and the citations are
+ * `wiki-formant/metadata`; `extra` carries what only this wiki states.
  */
-function citationsFrom(content: unknown): Record<string, unknown>[] {
-  const out: Record<string, unknown>[] = [];
-
-  // References blocks are usually top-level, but infobox/columns can nest them.
-  if (!Array.isArray(content)) return out;
-  for (const block of leafBlocks(content as Block[])) {
-    if (block.type !== 'references') continue;
-    for (const ref of block.items ?? []) {
-      const text = typeof ref?.text === 'string' ? ref.text.replace(/<[^>]+>/g, '').trim() : '';
-      if (!text) continue;
-      out.push({
-        '@type': 'CreativeWork',
-        name: text.slice(0, 250),
-        ...(typeof ref.url === 'string' && ref.url && { url: ref.url }),
-      });
-    }
-  }
-  return out.slice(0, 50);
-}
-
-function articleLd(page: WikiPage, url: string) {
+function pageLd(page: WikiPage, url: string) {
   const tagSegments = page.tagPath?.split('/').filter(Boolean) || [];
   const section = tagSegments.length ? categoryLabel(findTagByPath(tagSegments.slice(0, 1))?.name ?? tagSegments[0] ?? '') : undefined;
-  const citations = citationsFrom(page.content);
   const about = aboutEntity(page.tagPath, page.title, page.metadata);
-  // Google recommends an image on every article; pages without a banner get the
-  // same generated card the OG tags already use, rather than no image at all.
-  const image = page.bannerImage || ogImageUrl({ title: page.title, tagPath: page.tagPath });
-  return {
-    '@type': articleType(page.tagPath),
-    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+  // References blocks are usually top-level, but infobox/columns can nest them.
+  const references = Array.isArray(page.content)
+    ? leafBlocks(page.content as unknown as Block[]).flatMap(b => (b.type === 'references' ? b.items ?? [] : []))
+    : [];
+  return articleLd({
+    type: articleType(page.tagPath),
     headline: page.title,
-    description: getContentSnippet(page.content) || '',
     url,
-    datePublished: page.createdAt,
-    dateModified: page.updatedAt,
-    wordCount: countWords(page.content),
-    ...(section && { articleSection: section }),
+    description: getContentSnippet(page.content),
+    // Google recommends an image on every article; pages without a banner get the
+    // same generated card the OG tags already use, rather than no image at all.
+    image: page.bannerImage || ogImageUrl({ title: page.title, tagPath: page.tagPath }),
+    published: page.createdAt,
+    modified: page.updatedAt,
     // Name only — the wiki doesn't publish the displayName↔wallet mapping, so no
     // address identifier or explorer URL in structured data.
-    author: {
-      '@type': 'Person',
-      name: page.author?.displayName || 'Anonymous',
-    },
-    publisher: { '@type': 'Organization', name: 'RADIX Wiki', url: SITE_URL, logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` } },
-    image,
-    isPartOf: { '@type': 'WebSite', name: 'RADIX Wiki', url: SITE_URL },
-    inLanguage: 'en',
+    author: { '@type': 'Person', name: page.author?.displayName || 'Anonymous' },
+    publisher: PUBLISHER,
+    isPartOf: WEBSITE,
     license: WIKI_LICENSE.url,
-    ...(page.version && { version: page.version }),
-    ...(citations.length && { citation: citations }),
-    ...(about && { about }),
-    ...articleLearningProps(page.tagPath, page.metadata),
-  };
+    citation: citationsFromReferences(references),
+    extra: {
+      wordCount: countWords(page.content),
+      ...(section && { articleSection: section }),
+      ...(page.version && { version: page.version }),
+      ...(about && { about }),
+      ...articleLearningProps(page.tagPath, page.metadata),
+    },
+  });
 }
 
 /** `items` are the category's pages, or — for a container that holds none — its sections. */
-function collectionLd(name: string, url: string, items: ({ title: string; tagPath: string; slug: string } | { name: string; href: string })[], description?: string) {
-  return {
-    '@type': 'CollectionPage',
-    name, url,
-    ...(description && { description }),
-    isPartOf: { '@type': 'WebSite', name: 'RADIX Wiki', url: SITE_URL },
-    mainEntity: {
-      '@type': 'ItemList',
-      numberOfItems: items.length,
-      itemListElement: items.slice(0, 50).map((item, i) => ({
-        '@type': 'ListItem',
-        position: i + 1,
-        ...('href' in item ? { url: `${SITE_URL}${item.href}`, name: item.name } : { url: `${SITE_URL}/${item.tagPath}/${item.slug}`, name: item.title }),
-      })),
-    },
-  };
+function categoryLd(name: string, url: string, items: ({ title: string; tagPath: string; slug: string } | { name: string; href: string })[], description?: string) {
+  return collectionLd({
+    name, url, description, isPartOf: WEBSITE, max: 50,
+    items: items.map(item => ('href' in item
+      ? { name: item.name, url: `${SITE_URL}${item.href}` }
+      : { name: item.title, url: pageUrl(item.tagPath, item.slug) })),
+  });
 }
 
 /**
@@ -366,9 +337,12 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
     return <HomepageView page={page} isEditing={false} />;
   }
 
+  // Every editor gets the stored row, cleaned but undecorated, as an article's
+  // does below. The processed row carries heading anchors, resolved page lists
+  // and highlighted code, and the homepage editor saved all three back.
   if (parsed.type === 'edit' && !parsed.tagPath && !parsed.slug) {
-    const page = await withProcessedContent(await getHomepage());
-    return <HomepageView page={page} isEditing={true} />;
+    const page = await getHomepage();
+    return <HomepageView page={page && sanitizePage(page)} isEditing={true} />;
   }
 
   if (parsed.type === 'category') {
@@ -381,7 +355,7 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
     // without a hub keep falling through to the listing.
     if (parsed.suffix === 'edit') {
       const hub = await getCategoryHub(parsed.tagPath);
-      if (hub) return <PageView page={hub} tagPath={parsed.tagPath} slug="" isEditMode nowMs={nowMs} />;
+      if (hub) return <PageView page={sanitizePage(hub)} tagPath={parsed.tagPath} slug="" isEditMode nowMs={nowMs} />;
     }
 
     // The facet bar, the sort control and the A-Z index all live on this
@@ -396,7 +370,7 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
       const pages = await getIdeasPages(parsed.tagPath);
       return (
         <>
-          <JsonLd data={collectionLd(categoryName, categoryUrl, pages, tag?.description)} />
+          <JsonLd data={categoryLd(categoryName, categoryUrl, pages, tag?.description)} />
           <Suspense fallback={<PageSkeleton />}><IdeasView tagPath={tagSegments} pages={pages} sort={ideasSort} /></Suspense>
         </>
       );
@@ -458,8 +432,8 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
 
     return (
       <>
-        {hub && <JsonLd data={articleLd(hub, categoryUrl)} />}
-        <JsonLd data={collectionLd(categoryName, categoryUrl, pages.length ? pages : allSubcategories, tag?.description)} />
+        {hub && <JsonLd data={pageLd(hub, categoryUrl)} />}
+        <JsonLd data={categoryLd(categoryName, categoryUrl, pages.length ? pages : allSubcategories, tag?.description)} />
         <CategoryView
           tagPath={tagSegments} pages={pages} sort={sort} total={all.length}
           facetGroups={facetControls(parsed.tagPath, all, state)} filters={filters}
@@ -521,7 +495,7 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
   const pageUrl = `${SITE_URL}/${pathSegments.join('/')}`;
   return (
     <>
-      {page && <JsonLd data={articleLd(page, pageUrl)} />}
+      {page && <JsonLd data={pageLd(page, pageUrl)} />}
       <PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} related={related} series={series} pageNav={pageNav} nowMs={nowMs} />
     </>
   );

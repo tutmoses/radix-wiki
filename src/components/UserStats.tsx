@@ -3,7 +3,8 @@
 'use client';
 
 import { FileText, Edit3, Calendar, Users, Shield, Star } from 'lucide-react';
-import { cn, formatDate } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { formatDay } from 'wiki-formant/freshness';
 import { useFetch } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
 
@@ -99,7 +100,7 @@ export function UserStats({ userId }: { userId: string }) {
         <StatItem icon={FileText} label="Pages" value={data.stats.pages} />
         <StatItem icon={Users} label="Contributions" value={data.stats.uniqueContributions} />
         <StatItem icon={Edit3} label="Edits" value={data.stats.edits} />
-        <StatItem icon={Calendar} label="Member Since" value={formatDate(data.memberSince, { month: 'short', year: 'numeric' })} />
+        <StatItem icon={Calendar} label="Member Since" value={formatDay(data.memberSince, { month: 'short', year: 'numeric' })} />
       </div>
       <p className="text-small text-text-muted text-center">Points may be considered in any future $EMOON airdrop for contributors.</p>
     </section>

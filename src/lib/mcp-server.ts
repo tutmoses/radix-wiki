@@ -11,6 +11,7 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { categoryLabel, pageUrl, pagePath } from '@/lib/utils';
+import { isoDate } from 'wiki-formant/freshness';
 import { SIBLING_WIKI, SITE_URL } from '@/lib/site';
 import { NOT_HIDDEN, searchPages, summarizePage, SUMMARY_SELECT } from '@/lib/wiki';
 import { listEnvelope } from 'wiki-formant/pagination';
@@ -276,7 +277,7 @@ async function get_ideas_board(raw: Record<string, unknown>) {
       priority: categoryLabel(m.priority) || null,
       category: categoryLabel(m.category) || null,
       assignee: assigneeName(m.assignee),
-      updatedAt: p.updatedAt.toISOString().split('T')[0],
+      updatedAt: isoDate(p.updatedAt),
     };
   }).filter(c => {
     if (catFilter && (c.category ?? '').toLowerCase() !== catFilter) return false;

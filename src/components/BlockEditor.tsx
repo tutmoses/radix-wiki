@@ -2,10 +2,11 @@
 
 'use client';
 
-import { useState, useCallback, useEffect, useRef, useMemo, memo, type ReactNode } from 'react';
+import { useState, useCallback, useMemo, memo, type ReactNode } from 'react';
 import { useAccountQr } from '@/hooks';
 import { EditorContent, type Editor } from '@tiptap/react';
-import { TABLE_ACTIONS, insertEmbed, uploadImageTo, useWikiEditor } from 'wiki-formant/editor';
+import { TABLE_ACTIONS, ToolbarButton, insertEmbed, runTableAction, toolbarActions, uploadImageTo, useWikiEditor, type ToolbarAction, type ToolbarKey } from 'wiki-formant/editor';
+import { BlockActions, useBlockOperations } from 'wiki-formant/react';
 import { BANNER_VARIANTS } from 'wiki-formant/text';
 import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, LayoutGrid, Info, Rss, QrCode, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -27,24 +28,15 @@ const uploadImage = uploadImageTo('/api/upload');
 
 type UrlPromptKind = 'link' | 'embed';
 
-const TOOLBAR_BUTTONS: { key: string; icon: LucideIcon; active?: string | [string, Record<string, unknown>]; action?: (e: Editor, upload: () => void) => void; prompt?: UrlPromptKind }[] = [
-  { key: 'bold', icon: Bold, active: 'bold', action: e => e.chain().focus().toggleBold().run() },
-  { key: 'italic', icon: Italic, active: 'italic', action: e => e.chain().focus().toggleItalic().run() },
-  { key: 'code', icon: Code, active: 'code', action: e => e.chain().focus().toggleCode().run() },
-  { key: 'link', icon: Link2, active: 'link', prompt: 'link' },
-  { key: 'h2', icon: Heading2, active: ['heading', { level: 2 }], action: e => e.chain().focus().toggleHeading({ level: 2 }).run() },
-  { key: 'h3', icon: Heading3, active: ['heading', { level: 3 }], action: e => e.chain().focus().toggleHeading({ level: 3 }).run() },
-  { key: 'h4', icon: Heading4, active: ['heading', { level: 4 }], action: e => e.chain().focus().toggleHeading({ level: 4 }).run() },
-  { key: 'list', icon: List, active: 'bulletList', action: e => e.chain().focus().toggleBulletList().run() },
-  { key: 'quote', icon: Quote, active: 'blockquote', action: e => e.chain().focus().toggleBlockquote().run() },
-  { key: 'codeBlock', icon: Code, active: 'codeBlock', action: e => e.chain().focus().toggleCodeBlock().run() },
-  { key: 'divider', icon: Minus, action: e => e.chain().focus().setHorizontalRule().run() },
-  { key: 'upload', icon: Upload, action: (_, upload) => upload() },
-  { key: 'embed', icon: Globe, prompt: 'embed' },
-  { key: 'table', icon: TableIcon, active: 'table', action: e => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
-  { key: 'tabs', icon: LayoutList, active: 'tabGroup', action: e => e.chain().focus().insertContent({ type: 'tabGroup', content: [{ type: 'tabItem', attrs: { title: 'Tab 1' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Content for tab 1' }] }] }, { type: 'tabItem', attrs: { title: 'Tab 2' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Content for tab 2' }] }] }] }).run() },
-];
-
+// The commands and their labels are `wiki-formant/editor`'s; the icons, and
+// upload and embed between the two groups, are this wiki's.
+const FORMAT_ACTIONS = toolbarActions(['bold', 'italic', 'code', 'link', 'h2', 'h3', 'h4', 'bulletList', 'blockquote', 'codeBlock', 'divider']);
+const INSERT_ACTIONS = toolbarActions(['table', 'tabs']);
+const TOOLBAR_ICONS: Partial<Record<ToolbarKey, LucideIcon>> = {
+  bold: Bold, italic: Italic, code: Code, link: Link2, h2: Heading2, h3: Heading3, h4: Heading4,
+  bulletList: List, blockquote: Quote, codeBlock: Code, divider: Minus, table: TableIcon, tabs: LayoutList,
+};
+const PRESSED = 'bg-accent text-text-inverted';
 
 function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   const [urlPrompt, setUrlPrompt] = useState<UrlPromptKind | null>(null);
@@ -63,6 +55,20 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
     uploadImage,
   });
 
+  const togglePrompt = (kind: UrlPromptKind) => { setUrlPrompt(urlPrompt === kind ? null : kind); setUrlValue(''); };
+
+  // `link` has no `run`: it needs a URL, so it opens the prompt.
+  const actionButton = (a: ToolbarAction, e: Editor) => {
+    const Icon = TOOLBAR_ICONS[a.key];
+    const pressed = isActive(a.active) || (a.key === 'link' && urlPrompt === 'link');
+    return (
+      <ToolbarButton key={a.key} label={a.label} pressed={a.active ? pressed : undefined}
+        onPress={() => (a.run ? a.run(e) : togglePrompt('link'))} className={cn('toolbar-btn', pressed && PRESSED)}>
+        {Icon && <Icon size={14} />}
+      </ToolbarButton>
+    );
+  };
+
   const applyUrl = () => {
     const url = urlValue.trim();
     if (editor && url && urlPrompt) {
@@ -78,16 +84,15 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" className="hidden" onChange={handleFileChange} />
       {editor && (
         <div className="toolbar">
-          {TOOLBAR_BUTTONS.map(({ key, icon: Icon, active, action, prompt }) => (
-            <button key={key} type="button"
-              onClick={() => prompt ? (setUrlPrompt(urlPrompt === prompt ? null : prompt), setUrlValue('')) : action?.(editor, triggerUpload)}
-              className={cn('toolbar-btn', (isActive(active) || (!!prompt && urlPrompt === prompt)) && 'bg-accent text-text-inverted')} title={key}><Icon size={14} /></button>
-          ))}
+          {FORMAT_ACTIONS.map(a => actionButton(a, editor))}
+          <ToolbarButton label="Upload image" onPress={triggerUpload} className="toolbar-btn"><Upload size={14} /></ToolbarButton>
+          <ToolbarButton label="Embed" pressed={urlPrompt === 'embed'} onPress={() => togglePrompt('embed')} className={cn('toolbar-btn', urlPrompt === 'embed' && PRESSED)}><Globe size={14} /></ToolbarButton>
+          {INSERT_ACTIONS.map(a => actionButton(a, editor))}
           {editor.isActive('table') && (
             <>
               <div className="toolbar-divider" />
               {TABLE_ACTIONS.map(([cmd, txt, danger]) => (
-                <button key={cmd} type="button" onClick={() => (editor.chain().focus() as any)[cmd]().run()} className={cn('toolbar-btn text-xs', danger && 'hover:text-error')}>{txt}</button>
+                <button key={cmd} type="button" onClick={() => runTableAction(editor, cmd)} className={cn('toolbar-btn text-xs', danger && 'hover:text-error')}>{txt}</button>
               ))}
             </>
           )}
@@ -186,19 +191,20 @@ function RssFeedBlockEdit({ block, onUpdate }: BlockProps<RssFeedBlock>) {
 
 export function InfoboxEditor({ block, onChange }: { block: InfoboxBlock; onChange?: (block: InfoboxBlock) => void }) {
   const setBlocks = useCallback((blocks: AtomicBlock[]) => onChange?.({ ...block, blocks }), [block, onChange]);
-  const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(block.blocks || [], setBlocks);
+  const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(block.blocks || [], setBlocks, DUPLICATE_ATOMIC);
   const handleBlockUpdate = useCallback((i: number, b: Block) => update(i, b as AtomicBlock), [update]);
+  const add = (type: BlockType) => insert(createBlock(type) as AtomicBlock);
 
   return (
     <div className="edit-wrapper">
       <div className="edit-wrapper-label"><Info size={18} /><span className="font-medium">Sidebar Content</span></div>
       <div className="stack-sm">
         {(block.blocks?.length ?? 0) === 0 ? (
-          <div className="empty-state"><p className="text-text-muted text-small mb-2">Empty sidebar</p><InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
+          <div className="empty-state"><p className="text-text-muted text-small mb-2">Empty sidebar</p><InsertButton onInsert={add} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
         ) : (
           <>
             {(block.blocks || []).map((b, i) => <BlockWrapper key={b.id} block={b} index={i} total={(block.blocks || []).length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={handleBlockUpdate} onDelete={remove} onDuplicate={duplicate} onMove={move} compact />)}
-            <InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} />
+            <InsertButton onInsert={add} compact blockTypes={ATOMIC_BLOCK_TYPES} />
           </>
         )}
       </div>
@@ -274,41 +280,26 @@ function ColumnsBlockEdit({ block, onUpdate }: BlockProps<ColumnsBlock>) {
 }
 
 // ========== BLOCK OPERATIONS ==========
-function useBlockOperations<T extends Block | AtomicBlock>(blocks: T[], setBlocks: (blocks: T[]) => void) {
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const blocksRef = useRef(blocks);
-  const setBlocksRef = useRef(setBlocks);
-  // Written after render, not during. The callbacks below read these only from
-  // event handlers, and React flushes pending effects before the next event.
-  useEffect(() => {
-    blocksRef.current = blocks;
-    setBlocksRef.current = setBlocks;
-  });
-
-  return {
-    selectedIndex, setSelectedIndex,
-    update: useCallback((i: number, b: T) => setBlocksRef.current(blocksRef.current.map((x, j) => j === i ? b : x)), []),
-    remove: useCallback((i: number) => { setBlocksRef.current(blocksRef.current.filter((_, j) => j !== i)); setSelectedIndex(null); }, []),
-    duplicate: useCallback((i: number) => { const next = [...blocksRef.current]; next.splice(i + 1, 0, duplicateBlock(blocksRef.current[i]!) as T); setBlocksRef.current(next); setSelectedIndex(i + 1); }, []),
-    move: useCallback((from: number, to: number) => { if (to < 0 || to >= blocksRef.current.length) return; const next = [...blocksRef.current]; const [m] = next.splice(from, 1); next.splice(to, 0, m!); setBlocksRef.current(next); setSelectedIndex(to); }, []),
-    insert: useCallback((type: BlockType, at?: number) => { const next = [...blocksRef.current]; const i = at ?? blocksRef.current.length; next.splice(i, 0, createBlock(type) as T); setBlocksRef.current(next); setSelectedIndex(i); }, []),
-  };
-}
+// `useBlockOperations` is `wiki-formant/react`; creating and duplicating a block
+// stay here, since the union is this repo's. A container holds atomic blocks only.
+const DUPLICATE = { duplicate: duplicateBlock };
+const DUPLICATE_ATOMIC = { duplicate: (b: AtomicBlock) => duplicateBlock(b) as AtomicBlock };
 
 function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Column; onUpdate: (col: Column) => void; onDelete: () => void; canDelete: boolean }) {
   const setBlocks = useCallback((blocks: AtomicBlock[]) => onUpdate({ ...column, blocks }), [column, onUpdate]);
-  const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(column.blocks || [], setBlocks);
+  const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(column.blocks || [], setBlocks, DUPLICATE_ATOMIC);
   const handleUpdate = useCallback((i: number, b: Block) => update(i, b as AtomicBlock), [update]);
+  const add = (type: BlockType) => insert(createBlock(type) as AtomicBlock);
 
   return (
     <div className="column-editor">
       <div className="spread"><span className="column-header">Column</span>{canDelete && <button onClick={onDelete} className="icon-btn p-1 text-text-muted hover:text-error" title="Delete column" aria-label="Delete column"><Trash2 size={14} /></button>}</div>
       {(column.blocks?.length ?? 0) === 0 ? (
-        <div className="py-6 text-center"><p className="text-text-muted text-small mb-2">Empty column</p><InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
+        <div className="py-6 text-center"><p className="text-text-muted text-small mb-2">Empty column</p><InsertButton onInsert={add} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
       ) : (
         <div className="stack-sm">
           {(column.blocks || []).map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={(column.blocks || []).length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={handleUpdate} onDelete={remove} onDuplicate={duplicate} onMove={move} compact />)}
-          <InsertButton onInsert={insert} compact blockTypes={ATOMIC_BLOCK_TYPES} />
+          <InsertButton onInsert={add} compact blockTypes={ATOMIC_BLOCK_TYPES} />
         </div>
       )}
     </div>
@@ -413,14 +404,10 @@ const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelecte
   const iconSize = compact ? 12 : 14;
   const handleSelect = useCallback(() => onSelect(index), [onSelect, index]);
   const handleUpdate = useCallback((b: Block) => onUpdate(index, b), [onUpdate, index]);
-  const handleDelete = useCallback(() => onDelete(index), [onDelete, index]);
-  const handleDuplicate = useCallback(() => onDuplicate(index), [onDuplicate, index]);
-  const handleMoveUp = useCallback(() => onMove(index, index - 1), [onMove, index]);
-  const handleMoveDown = useCallback(() => onMove(index, index + 1), [onMove, index]);
 
   if (!meta) return (
     <div className={cn('block-unknown', compact ? 'p-3' : 'p-4 rounded-lg')}>
-      <div className="spread mb-2"><span className={cn('text-warning', compact ? 'text-small' : 'font-medium')}>Unknown block: {block.type}</span><button onClick={e => { e.stopPropagation(); handleDelete(); }} className="icon-btn p-1 text-text-muted hover:text-error" title="Delete block" aria-label="Delete block"><Trash2 size={iconSize} /></button></div>
+      <div className="spread mb-2"><span className={cn('text-warning', compact ? 'text-small' : 'font-medium')}>Unknown block: {block.type}</span><button onClick={e => { e.stopPropagation(); onDelete(index); }} className="icon-btn p-1 text-text-muted hover:text-error" title="Delete block" aria-label="Delete block"><Trash2 size={iconSize} /></button></div>
     </div>
   );
   const Icon = meta.icon;
@@ -434,12 +421,17 @@ const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelecte
     )}>
       <div className={cn('spread', compact ? 'mb-2' : 'mb-3')}>
         <div className="row">{!(compact || isContainer) && <div className="block-label"><Icon size={18} /><span className="block-label-text">{meta.label}</span></div>}</div>
-        <div className="block-actions">
-          <button onClick={e => { e.stopPropagation(); handleMoveUp(); }} disabled={index === 0} className="icon-btn p-1 text-text-muted disabled:opacity-30" title="Move up" aria-label="Move up"><ChevronUp size={iconSize} /></button>
-          <button onClick={e => { e.stopPropagation(); handleMoveDown(); }} disabled={index === total - 1} className="icon-btn p-1 text-text-muted disabled:opacity-30" title="Move down" aria-label="Move down"><ChevronDown size={iconSize} /></button>
-          {!compact && <button onClick={e => { e.stopPropagation(); handleDuplicate(); }} className="icon-btn p-1 text-text-muted" title="Duplicate"><Copy size={iconSize} /></button>}
-          <button onClick={e => { e.stopPropagation(); handleDelete(); }} className="icon-btn p-1 text-text-muted hover:text-error" title="Delete"><Trash2 size={iconSize} /></button>
-        </div>
+        <BlockActions
+          index={index} total={total} blockLabel={meta.label}
+          ops={{ move: onMove, duplicate: onDuplicate, remove: onDelete }}
+          icons={{
+            up: <ChevronUp size={iconSize} />,
+            down: <ChevronDown size={iconSize} />,
+            duplicate: compact ? undefined : <Copy size={iconSize} />,
+            remove: <Trash2 size={iconSize} />,
+          }}
+          className="block-actions" buttonClassName="icon-btn block-action"
+        />
       </div>
       {renderBlockEdit(block, handleUpdate)}
     </div>
@@ -448,12 +440,13 @@ const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelecte
 
 // ========== PUBLIC API ==========
 export function BlockEditor({ content, onChange }: { content: Block[]; onChange: (content: Block[]) => void }) {
-  const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(content, onChange);
-  if (content.length === 0) return <div className="stack items-center empty-state"><p className="text-text-muted">No content yet. Add your first block!</p><InsertButton onInsert={insert} /></div>;
+  const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(content, onChange, DUPLICATE);
+  const add = (type: BlockType) => insert(createBlock(type));
+  if (content.length === 0) return <div className="stack items-center empty-state"><p className="text-text-muted">No content yet. Add your first block!</p><InsertButton onInsert={add} /></div>;
   return (
     <div className="stack">
       {content.map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={content.length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={update} onDelete={remove} onDuplicate={duplicate} onMove={move} />)}
-      <InsertButton onInsert={insert} />
+      <InsertButton onInsert={add} />
     </div>
   );
 }

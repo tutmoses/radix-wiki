@@ -4,11 +4,11 @@
 
 import { useState } from 'react';
 import { Gift, Download, CheckCircle, ExternalLink } from 'lucide-react';
-import { useTableSort } from 'wiki-formant/react';
+import { SortHeader, useTableSort } from 'wiki-formant/react';
 import { useFetch, useAuth } from '@/hooks';
-import { Button, SortHead } from '@/components/ui';
+import { Button } from '@/components/ui';
 import { DASHBOARD_URL } from '@/lib/radix/config';
-import { formatDate } from '@/lib/utils';
+import { formatDay } from 'wiki-formant/freshness';
 
 interface EditorShare {
   id: string;
@@ -146,10 +146,10 @@ export default function RewardsView() {
         <table className="w-full">
           <thead>
             <tr className="text-left text-small text-text-muted border-b border-surface-2">
-              <SortHead {...editors.headerProps('editor')} className="p-3">Editor</SortHead>
-              <SortHead {...editors.headerProps('points')} className="p-3 text-right">Points</SortHead>
-              <SortHead {...editors.headerProps('share')} className="p-3 text-right">Share</SortHead>
-              <SortHead {...editors.headerProps('xrd')} className="p-3 text-right">$XRD</SortHead>
+              <SortHeader {...editors.headerProps('editor')} className="p-3">Editor</SortHeader>
+              <SortHeader {...editors.headerProps('points')} className="p-3 text-right">Points</SortHeader>
+              <SortHeader {...editors.headerProps('share')} className="p-3 text-right">Share</SortHeader>
+              <SortHeader {...editors.headerProps('xrd')} className="p-3 text-right">$XRD</SortHeader>
             </tr>
           </thead>
           <tbody>
@@ -205,16 +205,16 @@ export default function RewardsView() {
           <table className="w-full">
             <thead>
               <tr className="text-left text-small text-text-muted border-b border-surface-2">
-                <SortHead {...airdrops.headerProps('date')} className="p-3">Date</SortHead>
-                <SortHead {...airdrops.headerProps('total')} className="p-3 text-right">Total $XRD</SortHead>
-                <SortHead {...airdrops.headerProps('editors')} className="p-3 text-right">Editors</SortHead>
-                <SortHead {...airdrops.headerProps('tx')} className="p-3">Tx Hash</SortHead>
+                <SortHeader {...airdrops.headerProps('date')} className="p-3">Date</SortHeader>
+                <SortHeader {...airdrops.headerProps('total')} className="p-3 text-right">Total $XRD</SortHeader>
+                <SortHeader {...airdrops.headerProps('editors')} className="p-3 text-right">Editors</SortHeader>
+                <SortHeader {...airdrops.headerProps('tx')} className="p-3">Tx Hash</SortHeader>
               </tr>
             </thead>
             <tbody>
               {airdrops.sorted.map(a => (
                 <tr key={a.id} className="border-b border-surface-2 last:border-0">
-                  <td className="p-3">{formatDate(a.createdAt)}</td>
+                  <td className="p-3">{formatDay(a.createdAt)}</td>
                   <td className="p-3 text-right font-medium">{a.totalXrd.toLocaleString('en-US')}</td>
                   <td className="p-3 text-right">{a.editorCount}</td>
                   <td className="p-3 font-mono text-small truncate max-w-48">
