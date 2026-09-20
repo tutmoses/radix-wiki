@@ -4,10 +4,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Trash2, Copy, Check, Loader2, ExternalLink, Bell, BellOff } from 'lucide-react';
-import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui';
 import { categoryLabel, cn } from '@/lib/utils';
-import { useStore } from '@/hooks';
+import { useStore, useWikiPathname } from '@/hooks';
 import { findTagByPath, isValidTagPath } from '@/lib/tags';
 import { useCopy } from 'wiki-formant/react';
 
@@ -152,7 +151,7 @@ export function useTelegram(enabled = true) {
 }
 
 function TelegramSection() {
-  const pathname = usePathname();
+  const pathname = useWikiPathname();
   const { state, loading, deepLink, connect, subscribe, unsubscribe, disconnect } = useTelegram();
   const [subscribing, setSubscribing] = useState(false);
   const showToast = useStore(s => s.showToast);

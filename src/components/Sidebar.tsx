@@ -3,7 +3,6 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { Home, Trophy, BarChart3, ChevronRight, ChevronDown, ListTree, Wrench } from 'lucide-react';
 import { useMemo } from 'react';
 // The rail's shell — its landmark, its three collapse states and the scroll
@@ -13,7 +12,7 @@ import { useMemo } from 'react';
 // the reader left closed renders open and slides shut on every load.
 import { RailShell, TableOfContents as SharedToc, isRailLinkActive } from 'wiki-formant/react';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/hooks';
+import { useAuth, useWikiPathname } from '@/hooks';
 import { getVisibleTags, type TagNode } from '@/lib/tags';
 
 // `aria-current` is `page` on the view being rendered and `true` on a link lit
@@ -94,7 +93,7 @@ function CategoryTree({ nodes, parent = '', pathname }: {
 }
 
 export function Sidebar() {
-  const pathname = usePathname();
+  const pathname = useWikiPathname();
   const { isAuthenticated } = useAuth();
 
   const visibleTags = useMemo(() => getVisibleTags(), []);

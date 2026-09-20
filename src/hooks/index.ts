@@ -71,8 +71,30 @@ export function useAccountQr(rawAddress: string | undefined) {
 
 // ========== PAGE PATH HOOK ==========
 
-export function usePagePath() {
+/**
+ * `usePathname()`, with the root spelled the way the browser spells it.
+ *
+ * Next stores the root of an optional catch-all under the page path
+ * `normalizePagePath('/')` gives it — `/index` — and on Vercel an ISR
+ * regeneration renders the homepage at that path. `params` still arrives
+ * empty, so the article itself is right, but `usePathname()` reads `/index`
+ * on the server and `/` in the browser. Anything client-side that branches on
+ * it then renders one thing into the cached HTML and another at hydration:
+ * the header's page-tools button disappeared from the server render, which is
+ * a structural mismatch, so React #418 hit every visitor to the homepage from
+ * the first regeneration after a deploy — while the build-time prerender,
+ * which does render at `/`, looked fine. `next start` never spells it the
+ * other way, so it reproduces only in production.
+ *
+ * This is `denormalizePagePath`'s rule, applied where the pathname is read.
+ */
+export function useWikiPathname(): string {
   const pathname = usePathname();
+  return pathname === '/index' ? '/' : pathname;
+}
+
+export function usePagePath() {
+  const pathname = useWikiPathname();
   const segments = pathname.split('/').filter(Boolean);
   const last = segments[segments.length - 1];
   const isEdit = last === 'edit';
