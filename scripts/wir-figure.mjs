@@ -203,7 +203,12 @@ function wirFigure(snap, prior, series, dev, devPrior) {
       : null;
     b += statCard(L, dy2, dcw, 'BUSIEST REPOSITORY',
       busiest ? busiest.label : '\u2014', '', busiest ? `${fmt(busiest.commits)} commits` : '');
-    const activeDays = Math.max(0, ...(dev.repos || []).filter((r) => !r.error).map((r) => r.activeDays || 0));
+    // Across repositories the answer is the union of the days, not the busiest
+    // repository's count; older readings carry no perDay, so fall back to that.
+    const dayUnion = new Set();
+    for (const r of (dev.repos || []).filter((x) => !x.error)) for (const d of Object.keys(r.perDay || {})) dayUnion.add(d);
+    const activeDays = dayUnion.size
+      || Math.max(0, ...(dev.repos || []).filter((r) => !r.error).map((r) => r.activeDays || 0));
     b += statCard(L + dcw + gap, dy2, dcw, 'DAYS WITH A COMMIT', `${activeDays} of 7`, '',
       `${(dev.repos || []).filter((r) => !r.error && r.commits > 0).length} active repos`);
     yC = dy2 + 78;

@@ -196,13 +196,15 @@ async function repoWeek({ repo, label }, since, until) {
       } catch { /* one bad commit does not spoil the week */ }
     }
 
-    const days = new Set(commits.map((c) => (c.commit?.author?.date || '').slice(0, 10)).filter(Boolean));
+    // GitHub selects by committer date; these dates are author dates, so work
+    // pushed this week but written earlier falls outside the window and would
+    // otherwise report more active days than the week has.
+    const inWindow = (d) => d >= since && d <= until;
+    const authorDays = commits.map((c) => (c.commit?.author?.date || '').slice(0, 10)).filter(inWindow);
+    const days = new Set(authorDays);
     const authors = new Set(commits.map((c) => c.author?.login || c.commit?.author?.name).filter(Boolean));
     const perDay = {};
-    for (const c of commits) {
-      const d = (c.commit?.author?.date || '').slice(0, 10);
-      if (d) perDay[d] = (perDay[d] || 0) + 1;
-    }
+    for (const d of authorDays) perDay[d] = (perDay[d] || 0) + 1;
 
     return {
       label, repo,
