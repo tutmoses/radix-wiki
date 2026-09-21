@@ -434,10 +434,22 @@
   .toc-item-active { @apply text-accent font-medium bg-accent-muted border-accent; }
 
   /* ===== BANNER ===== */
-  .banner-container { @apply relative w-full aspect-[4/1] max-h-48 overflow-hidden bg-surface-1 rounded-lg; }
+  /* 4:1 is a FLOOR, not a height. The banner backs a crumb trail and an h1,
+     and on a 375px phone the ratio gives 86px for ~120px of content — which
+     `justify-end` + `overflow-hidden` resolved by eating "Home / Blog /" off
+     the top. The ratio-holder and the overlay share one grid cell, so the row
+     is as tall as whichever needs more; `max-height` on the holder is what
+     `max-h-48` used to be, and only caps the image, never the text. The column
+     is `minmax(0, 1fr)` rather than the implicit `auto`, which would size to
+     its items' max-content — for a long title, the whole unwrapped line. */
+  .banner-container { @apply relative grid grid-cols-[minmax(0,1fr)] w-full overflow-hidden bg-surface-1 rounded-lg; }
+  .banner-container::before { content: ''; grid-area: 1 / 1; aspect-ratio: 4 / 1; max-height: 12rem; }
   .banner-image { @apply w-full h-full object-cover object-center; }
-  .banner-placeholder { @apply w-full h-full bg-linear-to-br from-surface-1 to-surface-2; }
-  .banner-overlay { @apply absolute inset-0 flex flex-col justify-end p-3 sm:p-4 lg:p-6 text-text; h1 { @apply text-base sm:text-h3 lg:text-h1 leading-tight; text-shadow: 0 2px 8px rgba(0,0,0,0.5); } nav { @apply text-xs sm:text-small font-medium; text-shadow: 0 1px 4px rgba(0,0,0,0.6); a, span { @apply text-white/90 hover:text-white; } } }
+  /* Absolute, like the `fill` Image it stands in for: a second in-flow grid
+     item would auto-place into a row of its own. */
+  .banner-placeholder { @apply absolute inset-0 bg-linear-to-br from-surface-1 to-surface-2; }
+  /* `relative` only so it paints above the absolutely-positioned image. */
+  .banner-overlay { grid-area: 1 / 1; @apply relative flex flex-col justify-end p-3 sm:p-4 lg:p-6 text-text; h1 { @apply text-base sm:text-h3 lg:text-h1 leading-tight; text-shadow: 0 2px 8px rgba(0,0,0,0.5); } nav { @apply text-xs sm:text-small font-medium; text-shadow: 0 1px 4px rgba(0,0,0,0.6); a, span { @apply text-white/90 hover:text-white; } } }
   .banner-overlay-left { @apply flex flex-col gap-1 sm:gap-2 min-w-0; }
   .banner-empty { @apply relative w-full aspect-[4/1] max-h-48 overflow-hidden bg-surface-1 rounded-lg border-2 border-dashed border-border-muted bg-surface-1/50; }
   .banner-upload-btn { @apply w-full h-full flex items-center justify-center text-text-muted hover:text-text hover:bg-surface-2/50 transition-colors; }

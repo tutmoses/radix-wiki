@@ -106,7 +106,6 @@ export function Banner({ src, title, tagPath, editable, onUpload, onRemove, chil
         <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="banner-upload-btn">
           <div className="stack-sm items-center"><ImageIcon size={32} /><span>{isUploading ? 'Uploading...' : 'Add Banner Image'}</span></div>
         </button>
-        {children && <div className="banner-overlay">{children}</div>}
       </div>
     );
   }
