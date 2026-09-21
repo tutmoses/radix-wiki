@@ -85,7 +85,10 @@ const nextConfig: NextConfig = {
       { source: '/developers/tools/rrc-404', destination: '/contents/tech/core-protocols/rrc-404', permanent: true },
       // Community cleanup, 2026-07-27: these URLs still draw traffic but their pages moved
       // out of /community (projects and councils belong under /ecosystem).
-      { source: '/talent-pool/dan-hughes', destination: '/community/dan-hughes', permanent: true },
+      // Dan Hughes's biography left /community when that section was retired on
+      // 2026-09-09; both old addresses point at where it actually lives.
+      { source: '/talent-pool/dan-hughes', destination: '/contents/history/dan-hughes', permanent: true },
+      { source: '/community/dan-hughes', destination: '/contents/history/dan-hughes', permanent: true },
       { source: '/community/radix-accountability-council', destination: '/ecosystem/radix-accountability-council', permanent: true },
       { source: '/community/hydraswap', destination: '/ecosystem/hydraswap', permanent: true },
       // Search Console's 404 list, 2026-09-06: URLs Google still holds whose page
@@ -95,6 +98,7 @@ const nextConfig: NextConfig = {
       { source: '/charts-tokens', destination: '/charts/tokens', permanent: true },
       { source: '/contents/history/history-of-radix', destination: '/contents/history', permanent: true },
       { source: '/ecosystem/radix-desktop-tool', destination: '/developers/tools/radix-desktop-tool', permanent: true },
+      { source: '/ecosystem/radix-ecosystem-fund', destination: '/contents/history/radix-ecosystem-funding', permanent: true },
       { source: '/contents/tech/comparison', destination: '/contents/tech/comparisons', permanent: true },
       { source: '/contents/tech/comparison/polkadot', destination: '/contents/tech/comparisons/radix-vs-polkadot', permanent: true },
       // The ideas board was reseeded as the DAO transition's work queue; these are
@@ -102,7 +106,6 @@ const nextConfig: NextConfig = {
       { source: '/ideas/xian-protocol-upgrade', destination: '/ideas/dao-xian-protocol-upgrade', permanent: true },
       { source: '/ideas/consultations-v2', destination: '/ideas/dao-governance-app-consultation-v2', permanent: true },
       { source: '/ideas/rfc-migrate-radix-developer-documentation-to-radixwiki', destination: '/ideas/dao-migrate-dev-docs-wiki', permanent: true },
-      { source: '/ideas/rfc-mini-season-2-of-radix-rewards-during-foundation-handover', destination: '/ideas/dao-radix-rewards-mini-season-2', permanent: true },
       { source: '/ideas/dao-treasury-custody', destination: '/ideas/dao-xrd-custody', permanent: true },
       // DeSci lives on caper.network now, same slugs.
       { source: '/contents/tech/desci', destination: 'https://caper.network/wiki/desci', permanent: true },
