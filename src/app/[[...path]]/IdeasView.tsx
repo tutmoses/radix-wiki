@@ -171,6 +171,11 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
       <Breadcrumbs path={tagPath} />
       <div className="spread">
         <h1 id={slugifyHeading(tag?.name || tagPath[tagPath.length - 1] || '')}>{tag?.name || tagPath[tagPath.length - 1]}</h1>
+        {/* The board is the page's one region and the list view carries no
+            headings at all, so without this the document is an h1 and nothing
+            else. Named for a screen reader and an outline parser; the tabs
+            below already say it on screen. */}
+        <h2 className="sr-only">Ideas</h2>
         <div className="row">
           <SortToggle sort={sort} tagPath={pathStr} />
           <button className={cn('icon-btn', view === 'list' && 'text-accent')} onClick={() => setView('list')} title="List view"><List size={18} /></button>
@@ -195,10 +200,10 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
           <div className="board-columns">
           {columns.map(({ label, color, items }) => (
             <div key={label} className="board-column">
-              <div className="board-column-head">
+              <h3 className="board-column-head">
                 <span className="flex items-center gap-2"><span className={cn('size-2 rounded-full', `bg-${color}`)} />{label}</span>
                 <Badge>{items.length}</Badge>
-              </div>
+              </h3>
               <div className="board-column-body">
                 {items.length > 0 ? items.map(p => <BoardCard key={p.id} page={p} priorityOptions={priorityOptions} />) : <div className="board-empty">No items</div>}
               </div>

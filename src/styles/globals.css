@@ -754,7 +754,7 @@
   .status-tab { @apply px-3 py-2 text-small font-medium text-text-muted cursor-pointer transition-colors hover:text-text -mb-px border-b-2 border-transparent whitespace-nowrap shrink-0; }
   .board-columns { @apply grid gap-3 pb-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6; }
   .board-column { @apply flex flex-col rounded-lg bg-surface-1/40; }
-  .board-column-head { @apply flex items-center justify-between gap-2 px-3 py-2.5 text-sm font-semibold border-b border-border-muted whitespace-nowrap; }
+  .board-column-head { @apply m-0 flex items-center justify-between gap-2 px-3 py-2.5 text-sm font-semibold border-b border-border-muted whitespace-nowrap; }
   .board-column-body { @apply flex flex-col gap-2 p-2 min-h-24; }
   .board-card { @apply flex flex-col gap-2 p-3 rounded-lg bg-surface-1 border border-border-muted/60 transition-all hover:bg-surface-2 hover:border-border-muted; }
   .board-card-title { @apply text-sm font-medium line-clamp-2; }
@@ -956,6 +956,9 @@
   .welcome-page { @apply max-w-2xl mx-auto py-12 flex flex-col gap-8; }
   .welcome-hero { @apply text-center flex flex-col gap-2; }
   .welcome-grid { @apply grid grid-cols-1 sm:grid-cols-3 gap-4; }
+  /* The three cards are the page's only sections, so they are h2 under the
+     hero's h1 rather than the h3 that skipped a level. Drawn as before. */
+  .welcome-card-title { @apply m-0 mt-0 text-h3 font-normal border-b-0; }
   .welcome-card {
     @apply bg-surface-1 border border-border-muted rounded-lg p-5 flex flex-col gap-2;
     animation: slide-up 0.3s ease-out both;
