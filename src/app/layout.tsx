@@ -6,6 +6,7 @@ import { Inter } from 'next/font/google';
 import '@/styles/globals.css';
 import { SidebarProvider } from 'wiki-formant/react';
 import { sidebarBootScript } from 'wiki-formant/sidebar';
+import { SIDEBAR_BREAKPOINT, SIDEBAR_KEY } from '@/lib/sidebar';
 import { JsonLd } from 'wiki-formant/react-server';
 import { RadixProvider } from '@/components/RadixProvider';
 import { Header } from '@/components/Header';
@@ -96,7 +97,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* Before first paint: stamp the remembered rail state on <html>, so a
             rail the reader collapsed does not paint open and animate shut. */}
-        <script dangerouslySetInnerHTML={{ __html: sidebarBootScript('radix-wiki:sidebar', 768) }} />
+        <script dangerouslySetInnerHTML={{ __html: sidebarBootScript(SIDEBAR_KEY, SIDEBAR_BREAKPOINT) }} />
         <link rel="help" type="text/plain" href="/llms.txt" />
         <link rel="alternate" type="text/plain" href="/llms-full.txt" title="Full LLM content" />
         {/* Kept here rather than in `alternates.types`: pages set `alternates.canonical`,
@@ -122,7 +123,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <RadixProvider>
           {/* The rail and the header button that toggles it are not siblings,
               so the collapse state spans them through this provider. */}
-          <SidebarProvider storageKey="radix-wiki:sidebar" breakpoint={768}>
+          <SidebarProvider storageKey={SIDEBAR_KEY} breakpoint={SIDEBAR_BREAKPOINT}>
             <div className="min-h-screen bg-surface-0">
               <a href="#main" className="skip-link">Skip to content</a>
               <Header />

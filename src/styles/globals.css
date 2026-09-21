@@ -60,6 +60,16 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 
 @layer base {
+  /* The page gutter: 16 / 24 / 32px at base / 640 / 1024 — the canonical scale
+     in STRUCTURE.md D8, and caper's `--page-pad` by the same name. One token,
+     because the header, the article column and the footer must share a gutter
+     or the page does not line up; all three had retyped `px-4 sm:px-6 lg:px-8`
+     instead, which is three places to miss when the scale moves. It cannot be
+     an `@theme` token: those take no media queries. */
+  :root { --page-pad: 16px; }
+  @media (min-width: 640px) { :root { --page-pad: 24px; } }
+  @media (min-width: 1024px) { :root { --page-pad: 32px; } }
+
   html { font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
   body { @apply bg-surface-0 text-text text-base min-h-screen; }
 
@@ -369,11 +379,11 @@
 
   /* ===== APP SHELL (layout.tsx) ===== */
   .app-main { @apply min-h-[calc(100dvh-var(--header-height))] flex-1 min-w-0 transition-all duration-200; }
-  .app-content { @apply px-4 sm:px-6 lg:px-8 py-6 sm:py-8 mx-auto w-full max-w-[var(--content-width)]; }
+  .app-content { @apply py-6 sm:py-8 mx-auto w-full max-w-[var(--content-width)]; padding-inline: var(--page-pad); }
 
   /* ===== HEADER ===== */
   .header { @apply sticky top-0 z-50 bg-surface-0/80 backdrop-blur-md border-b border-border-muted; }
-  .header-inner { @apply w-full px-4 sm:px-6 lg:px-8; }
+  .header-inner { @apply w-full; padding-inline: var(--page-pad); }
   /* flex-wrap + min-h only differ from a fixed row when a child actually wraps,
      and only `.header-search-open` does that, below `sm`. */
   .header-bar { @apply flex flex-wrap items-center gap-2 min-h-[var(--header-height)]; }
@@ -445,6 +455,11 @@
      toggle stays reachable while the rail is open — which is the only way back
      out, there being no scrim. */
   @media (max-width: 767px) {
+    /* The JS half of this number is SIDEBAR_BREAKPOINT in `src/lib/sidebar.ts`,
+       and it cannot be read from here. `--rail-floating` is how the hook checks
+       the two still agree — see wiki-formant's `railBreakpointMismatch`, which
+       says so in development the moment they stop. */
+    :root { --rail-floating: 1; }
     .sidebar { position: fixed; left: 0; z-index: 40; box-shadow: var(--shadow); }
   }
   .sidebar-label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3; }
@@ -808,7 +823,7 @@
   }
 
   /* ===== FOOTER ===== */
-  .footer { @apply flex items-center justify-between gap-4 flex-wrap border-t border-border-muted py-8 mt-8 mx-auto w-full max-w-[var(--content-width)] px-4 sm:px-6 lg:px-8 text-text-muted text-small; }
+  .footer { @apply flex items-center justify-between gap-4 flex-wrap border-t border-border-muted py-8 mt-8 mx-auto w-full max-w-[var(--content-width)] text-text-muted text-small; padding-inline: var(--page-pad); }
   .footer-links { @apply flex items-center gap-4 flex-wrap; }
 
   /* ===== COLUMNS VIEW ===== */
