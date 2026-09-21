@@ -80,6 +80,17 @@
 
   a { @apply text-accent no-underline hover:text-accent-hover; }
   code { @apply text-[0.9em] px-1.5 py-0.5 bg-surface-2 rounded; }
+  /* Address wrap (STRUCTURE.md D8): a base rule, one scope for Radix address
+     and hash text. Inline code is where stored prose puts them, and a class
+     cannot reach it — `.break-anywhere` was defined here in July 2026 and
+     applied to nothing in the two months since, because the HTML that needs
+     it comes out of the database. A 64-character hash is one unbreakable
+     word, so its min-content width IS the whole string: 567px inside a 342px column, running off the
+     right of every phone. `overflow-wrap: anywhere` is the half that shrinks
+     min-content; `word-break` alone would not have. Code inside a <pre> keeps
+     its own rule below — that block scrolls on purpose, and wrapping a
+     listing is not reading it. */
+  :not(pre) > code { overflow-wrap: anywhere; word-break: break-word; }
   pre { @apply text-base border border-border-muted rounded-lg p-4 overflow-x-auto; background-color: #24292e; code { @apply p-0 bg-transparent; } }
   blockquote { @apply border-l-4 border-accent pl-4 py-1 italic text-text-muted; }
 
@@ -347,9 +358,6 @@
   .breadcrumb-link { @apply capitalize text-text-muted no-underline hover:text-accent; }
   .breadcrumb-current { @apply capitalize text-text; }
 
-  /* Long Radix addresses / tx hashes wrap instead of overflowing (STRUCTURE.md D8). */
-  .break-anywhere { overflow-wrap: anywhere; word-break: break-word; }
-
   /* ===== LINKS ===== */
   /* Matches the base `a` rule so a <button> can be styled as an inline link. */
   .link { @apply text-accent no-underline cursor-pointer hover:text-accent-hover; }
@@ -403,6 +411,10 @@
   .search-page-result { @apply block p-3 bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5 hover:shadow; }
 
   /* ===== SIDEBAR ===== */
+  /* The four `sidebar--*` / `sidebar__*` names below are built at runtime, not
+     written: `RailShell prefix="sidebar"` concatenates them. A scan of literal
+     class names therefore reports all four as unreferenced — they are not, and
+     that is why `lint:classes` leaves `--unused` advisory. Do not delete them. */
   .sidebar { @apply sticky top-[var(--header-height)] h-[calc(100dvh-var(--header-height))] bg-surface-0 border-r border-border-muted shrink-0 overflow-hidden transition-all duration-200; }
   .sidebar--open { width: var(--sidebar-width); }
   .sidebar--closed { width: 0; }
@@ -416,6 +428,25 @@
   html[data-sidebar='open'] .sidebar { width: var(--sidebar-width); }
   .sidebar--instant { transition: none; }
   .sidebar__scroll { @apply flex flex-col h-full overflow-y-auto w-[var(--sidebar-width)] pb-24; }
+  /* Below the rail's own breakpoint the rail OVERLAYS the article instead of
+     pushing it. `wiki-formant`'s RailShell already assumes this — it closes the
+     rail on a tap inside only when `isMobile`, which is what an overlay needs
+     and a column beside the text does not — but this stylesheet pushed at every
+     width. At 375px the 288px rail left the article 87px and the infobox set
+     one letter per line.
+
+     768 is not a guess and must not drift: it is the `breakpoint` passed to
+     both `SidebarProvider` and `sidebarBootScript` in layout.tsx, so the width
+     that makes the rail close on navigate is the same width that makes it
+     float. Above it the rail stays a sticky column, which is why this is a
+     max-width query and not a change to the base rule.
+
+     The header is `z-50` and starts at y=0; the rail begins below it, so the
+     toggle stays reachable while the rail is open — which is the only way back
+     out, there being no scrim. */
+  @media (max-width: 767px) {
+    .sidebar { position: fixed; left: 0; z-index: 40; box-shadow: var(--shadow); }
+  }
   .sidebar-label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3; }
 
   /* Nav items */
@@ -464,7 +495,12 @@
   .page-card-title { @apply font-medium transition-colors truncate; .group:hover & { @apply text-accent; } }
   .page-card-snippet { @apply text-text-muted line-clamp-2 text-small; }
   .page-card-meta { @apply flex items-center gap-2 flex-wrap mt-auto pt-1; }
-  .page-card-compact { @apply flex items-center gap-2 p-3 bg-surface-1 border border-border-muted rounded-lg hover:bg-surface-2 transition-colors; }
+  /* `min-w-0` twice, and both are load-bearing. The title span is `truncate`,
+     which is `white-space: nowrap` — so its min-content is the untruncated
+     title, and a flex item's `min-width: auto` refuses to go below that. The
+     card grew to fit the text instead of the text ellipsing, and then the card
+     itself, a flex item of a wrapping row, refused to shrink in turn. */
+  .page-card-compact { @apply flex items-center gap-2 p-3 min-w-0 max-w-full bg-surface-1 border border-border-muted rounded-lg hover:bg-surface-2 transition-colors; > span { @apply min-w-0; } }
   .page-card-icon { @apply size-8 rounded object-cover shrink-0; }
 
   /* ===== STATUS CARD ===== */
