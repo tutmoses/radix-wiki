@@ -54,6 +54,10 @@ export function pageUrl(tagPath: string, slug: string): string {
 function toPlainText(html: string): string {
   return decodeEntities(html.replace(/<[^>]+>/g, ' '))
     .replace(/\s+/g, ' ')
+    // A tag becomes a space, so prose that wrapped a link or <strong> around the
+    // word before a comma came out as "the Radix network ." Close those up again.
+    .replace(/\s+([,.;:!?%)\]])/g, '$1')
+    .replace(/([(\[])\s+/g, '$1')
     .trim();
 }
 
@@ -68,6 +72,15 @@ export function getContentSnippet(content: unknown, maxLen = 150): string {
     }
   }
   return '';
+}
+
+/** The description a page publishes: the excerpt an editor wrote, else the opening
+ *  content block. The meta description and the Article JSON-LD both read this, so
+ *  a page cannot describe itself two ways. */
+export function pageDescription(page: { metadata?: unknown; content?: unknown } | null | undefined): string {
+  const excerpt = (page?.metadata as Record<string, unknown> | null | undefined)?.excerpt;
+  if (typeof excerpt === 'string' && excerpt.trim()) return excerpt.trim();
+  return getContentSnippet(page?.content);
 }
 
 /** Shorten a snippet a list row already carries. List rows ship one 150-char snippet

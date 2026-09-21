@@ -32,7 +32,7 @@ import ChartsOverview from '@/components/charts/ChartsOverview';
 import ValidatorsView from '@/components/charts/ValidatorsView';
 import TokensView from '@/components/charts/TokensView';
 import TokenDetailView from '@/components/charts/TokenDetailView';
-import { categoryLabel, clampSnippet, getContentSnippet, pagePath, pageUrl } from '@/lib/utils';
+import { categoryLabel, clampSnippet, pageDescription, pagePath, pageUrl } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import Link from 'next/link';
@@ -153,12 +153,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const title = page?.title || 'RADIX Wiki';
-  const snippet = getContentSnippet(page?.content);
+  const snippet = pageDescription(page);
   const tagSegments = page?.tagPath?.split('/').filter(Boolean) || [];
   const sectionName = tagSegments.length
     ? categoryLabel(findTagByPath(tagSegments.slice(0, 1))?.name ?? '')
     : undefined;
-  // Description derived directly from content so it never goes stale
+  // The page's own excerpt where it has one, else its opening block, so the
+  // description never goes stale against the article
   const description = snippet
     || (page
       ? `${title}${sectionName ? ` — a ${sectionName} article` : ''} on RADIX Wiki, the community-maintained knowledge base for the Radix DLT ecosystem.`
@@ -239,7 +240,7 @@ function pageLd(page: WikiPage, url: string) {
     type: articleType(page.tagPath),
     headline: page.title,
     url,
-    description: getContentSnippet(page.content),
+    description: pageDescription(page),
     // Google recommends an image on every article; pages without a banner get the
     // same generated card the OG tags already use, rather than no image at all.
     image: page.bannerImage || ogImageUrl({ title: page.title, tagPath: page.tagPath }),
