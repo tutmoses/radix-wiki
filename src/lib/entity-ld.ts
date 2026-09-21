@@ -140,15 +140,20 @@ export function aboutEntity(
     };
   }
 
-  // Conferences, hackathons, and milestones.
+  // Gatherings only. The same tag path also holds milestones — an exploit, an
+  // RFP round, a subsidy sunset — which are records of something that happened
+  // rather than something anyone attended: an `Event` for those asserts a venue
+  // and an attendance mode that never existed. `location` is required on Event,
+  // so a gathering still missing one gets no entity rather than an invalid one.
   if (root === 'contents' && child === 'history') {
     const date = storedDate(md.date);
-    if (!date) return null;
+    const gathering = ['Conference', 'Hackathon', 'Workshop'].includes(categoryLabel(md.type));
+    if (!date || !gathering || !md.location) return null;
     return {
       '@type': 'Event',
       name: title,
       startDate: date,
-      ...(md.location && { location: { '@type': 'Place', name: md.location } }),
+      location: { '@type': 'Place', name: md.location },
       ...(links.length && { sameAs: links }),
       eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
     };

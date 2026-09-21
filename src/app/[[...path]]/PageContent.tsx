@@ -184,7 +184,7 @@ function SectionIndex({ subcategories }: { subcategories: SubcategorySummary[] }
         const rest = child.isSections ? 0 : child.total - child.links.length;
         return (
           <div key={child.href} className="section-card">
-            <Link href={child.href} className="section-card-title">{child.name}</Link>
+            <h2 className="section-card-title"><Link href={child.href}>{child.name}</Link></h2>
             {child.description && <p className="section-card-desc">{child.description}</p>}
             {child.links.length > 0 && (
               <ul className="section-card-links">
@@ -455,6 +455,12 @@ function CategoryListing({ tagPath, pages, sort, total, facetGroups, filters, le
   return (
     <div className="stack">
       {heading}
+      {/* The results bar says what the listing holds but is not a heading, which
+          left every card title an h3 under whatever h2 the prose above happened
+          to end on — on /ecosystem, 140 projects nested under "How a status is
+          decided". Named for screen readers and outline parsers only; the bar
+          below already says it on screen. */}
+      <h2 className="sr-only">{categoryLabel(tag?.name ?? '') || tagPath.at(-1) || 'Pages'}</h2>
       <ResultsBar
         tag={tag} tagPath={pathStr} total={total} shown={pages.length} sort={sort} filters={filters} letter={letter}
         hasRail={hasRail} filtersOpen={showFilters} onToggleFilters={() => setShowFilters(v => !v)}
@@ -514,7 +520,8 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
   const tag = findTagByPath(tagPath);
   const controlItems = <><SubscribeRow tagPath={pathStr} /><NewPageControl tagPath={pathStr} /></>;
   // The page title already names the category and the results bar names what the
-  // listing holds, so neither the listing nor the section index takes a heading.
+  // listing holds, so neither draws a visible heading — the outline they need is
+  // carried by the section cards' own h2 and the listing's sr-only one.
   // A hub's title sits in its banner, so its controls ride above whichever comes first.
   const hubControls = <div className="row-md justify-end empty:hidden">{controlItems}</div>;
   const listing = total > 0 && (

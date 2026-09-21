@@ -153,6 +153,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const title = page?.title || 'RADIX Wiki';
+  // Google truncates a <title> around sixty characters, and the template spends
+  // thirteen of them on " | RADIX Wiki". A wiki title is written for the H1 and
+  // the listing card, where "Governance WG · " earns its space; `seoTitle` is the
+  // short form for the tab and the SERP. Social cards are not length-constrained
+  // the same way, so they keep the page's own title.
+  const seoTitle = (page?.metadata as Record<string, string> | null)?.seoTitle || title;
   const snippet = pageDescription(page);
   const tagSegments = page?.tagPath?.split('/').filter(Boolean) || [];
   const sectionName = tagSegments.length
@@ -168,7 +174,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const canonical = segments ? `${SITE_URL}/${segments}` : SITE_URL;
 
   return {
-    title,
+    title: seoTitle,
     description,
     ...ogMetadata({
       title, description, url: canonical, type: 'article',

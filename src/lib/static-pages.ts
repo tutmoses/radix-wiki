@@ -26,7 +26,11 @@ export interface StaticPage {
 
 /** Declaration order is the sitemap's order. */
 export const STATIC_PAGES: Record<string, StaticPage> = {
-  homepage: { path: '', title: 'Radix Wiki: $XRD, Scrypto & the Radix DLT Crypto Ecosystem', description: 'The community-maintained wiki for Radix DLT – $XRD, the Radix Engine, Scrypto smart contracts, Cerberus consensus, validators, staking, and the DeFi ecosystem.', absoluteTitle: true, imageTitle: 'RADIX Wiki' },
+  // The description answers "what is Radix" before it says what this site is.
+  // Both halves used to describe the wiki, which is why the homepage was not the
+  // candidate Google picked for that query — it ranked a Core Concepts page at 63
+  // instead, on a phrase the homepage's own lead sentence answers outright.
+  homepage: { path: '', title: 'Radix Wiki: $XRD, Scrypto & the Radix DLT Crypto Ecosystem', description: 'Radix is a layer-1 protocol built for DeFi, founded by Dan Hughes and running on Cerberus consensus. The community wiki for $XRD, Scrypto and the Radix Engine.', absoluteTitle: true, imageTitle: 'RADIX Wiki' },
   charts: { path: 'charts', title: 'Charts', description: 'Live Radix network statistics, validator directory, and ecosystem token analytics — successor to RadixCharts.', llmsDescription: 'Live Radix network statistics, validator directory, and ecosystem token analytics.', changeFrequency: 'daily', priority: 0.7 },
   'charts-validators': { path: 'charts/validators', title: 'Validators', description: 'Every Radix validator with its stake, fee, pending fee changes, 7-day uptime and owner stake, and how concentrated staking is.', changeFrequency: 'daily', priority: 0.7 },
   'charts-tokens': { path: 'charts/tokens', title: 'Tokens', description: 'Radix tokens traded on OciSwap in the last 24 hours, by volume, with price and 24h change.', changeFrequency: 'daily', priority: 0.7 },

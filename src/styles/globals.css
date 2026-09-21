@@ -550,7 +550,9 @@
      the article column beside an infobox, and three cards there truncate titles. */
   .section-index { @apply grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 auto-rows-fr gap-3; }
   .section-card { @apply flex flex-col gap-2 p-4 bg-surface-1 border border-border-muted rounded-lg transition-colors hover:border-accent; }
-  .section-card-title { @apply font-medium transition-colors hover:text-accent; }
+  /* A heading element, so a category index has an outline rather than an h1 and
+     nothing under it — drawn as the card title it has always been. */
+  .section-card-title { @apply m-0 mt-0 text-base font-medium border-b-0; a { @apply transition-colors hover:text-accent; } }
   .section-card-desc { @apply m-0 text-text-muted text-small; }
   .section-card-links { @apply m-0 pl-0 list-none flex flex-col gap-1 text-small; li { @apply m-0 truncate; } }
 
