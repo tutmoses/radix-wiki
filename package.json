@@ -13,7 +13,8 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "lint:classes": "check-classes"
+    "lint:classes": "check-classes",
+    "lint:pages": "check-pages --site https://radix.wiki"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
@@ -52,7 +53,7 @@
     "sharp": "^0.35.3",
     "tailwind-merge": "^3.5.0",
     "unified": "^11.0.5",
-    "wiki-formant": "^0.23.0",
+    "wiki-formant": "^0.25.0",
     "zustand": "^5.0.0"
   },
   "devDependencies": {

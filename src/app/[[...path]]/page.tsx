@@ -15,7 +15,7 @@ import { NowProvider } from '@/lib/now';
 // Payloads carry wallet-authored titles and excerpts, so they go out through
 // `wiki-formant/react-server`'s JsonLd, which escapes an authored `</script>`.
 import { JsonLd } from 'wiki-formant/react-server';
-import { articleLd, citationsFromReferences, collectionLd } from 'wiki-formant/metadata';
+import { articleLd, citationsFromReferences, collectionLd, documentTitle } from 'wiki-formant/metadata';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { STATIC_PAGES } from '@/lib/static-pages';
 import { prisma } from '@/lib/prisma/client';
@@ -153,12 +153,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const title = page?.title || 'RADIX Wiki';
-  // Google truncates a <title> around sixty characters, and the template spends
-  // thirteen of them on " | RADIX Wiki". A wiki title is written for the H1 and
-  // the listing card, where "Governance WG · " earns its space; `seoTitle` is the
-  // short form for the tab and the SERP. Social cards are not length-constrained
-  // the same way, so they keep the page's own title.
-  const seoTitle = (page?.metadata as Record<string, string> | null)?.seoTitle || title;
+  // The short form for the tab and the SERP, where the template spends 13 of the
+  // budget on " | RADIX Wiki"; the rule and its reasoning are in the package.
+  // Social cards are not length-constrained the same way and keep `title`.
+  const seoTitle = documentTitle(title, page?.metadata);
   const snippet = pageDescription(page);
   const tagSegments = page?.tagPath?.split('/').filter(Boolean) || [];
   const sectionName = tagSegments.length
