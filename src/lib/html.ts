@@ -1,17 +1,16 @@
 // src/lib/html.ts — HTML post-processing for wiki content rendering.
 //
-// Heading ids and anchor normalisation are `wiki-formant/headings` and
-// `wiki-formant/links`, shared with caper. What stays here is this wiki's own
+// Heading ids, table scroll boxes and anchor normalisation are
+// `wiki-formant/headings`, `/dom` and `/links`. What stays here is this wiki's own
 // decisions: which slug rule its published anchors were minted under, its own
 // host, and the h1 demotion.
 
+import { scrollTables } from 'wiki-formant/dom';
 import { injectHeadingIds, slugifyHeading } from 'wiki-formant/headings';
 import { normaliseLinks } from 'wiki-formant/links';
 import type { Block } from '@/types/blocks';
 import { mapBlockTree } from 'wiki-formant/blocks';
 import { BLOCK_SHAPE } from '@/lib/block-shape';
-
-const TABLE_SCROLL = '<div class="table-scroll">';
 
 /**
  * Process HTML content for display: heading ids + anchors, alt attrs, table scroll boxes, link normalisation.
@@ -34,15 +33,7 @@ export function processHtml(html: string, citedRefs?: Set<number>, used?: Set<st
     /\salt\s*=/i.test(attrs) ? match : `<img${attrs} alt="">`,
   );
 
-  // A table box ignores `overflow`, so a stored table wider than its column
-  // painted past it, under the infobox. Each one gets a box that scrolls. The
-  // sanitiser strips this class from stored HTML, so finding it means the pass
-  // has already run.
-  const withScroll = withAlts.includes(TABLE_SCROLL)
-    ? withAlts
-    : withAlts.replace(/<table\b/gi, `${TABLE_SCROLL}<table`).replace(/<\/table>/gi, '</table></div>');
-
-  return normaliseLinks(withScroll, { selfHost: 'radix.wiki', citedRefs });
+  return normaliseLinks(scrollTables(withAlts), { selfHost: 'radix.wiki', citedRefs });
 }
 
 /**

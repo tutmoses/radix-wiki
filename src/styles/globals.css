@@ -115,13 +115,12 @@
   tr:hover td { @apply bg-white/5; }
 
   /* Canonical table-overflow policy (STRUCTURE.md D8): a stored table scrolls
-     inside the box `processHtml` wraps it in, at every width. It was keyed to
-     phones, but the rails and the infobox narrow the column too: at 1024px it is
-     425px, and the Week in Review ledger ran 1,068px wide under the sticky
-     infobox. On a phone the cells also stop wrapping. Infobox tables opt back
-     out of that below — they are key-value pairs, and a sideways scroll to read
-     a value is not reading. */
-  .table-scroll { overflow-x: auto; }
+     inside the `.table-scroll` box `scrollTables` wraps it in, at every width;
+     the box is wiki-formant/base.css. It was keyed to phones here, but the rails
+     and the infobox narrow the column too: at 1024px it is 425px, and the Week
+     in Review ledger ran 1,068px wide under the sticky infobox. On a phone the
+     cells also stop wrapping. Infobox tables opt back out of that below — they
+     are key-value pairs, and a sideways scroll to read a value is not reading. */
   @media (max-width: 639px) {
     .prose-content table { white-space: nowrap; }
   }
