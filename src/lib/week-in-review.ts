@@ -1,9 +1,9 @@
 // src/lib/week-in-review.ts — the series' shared vocabulary.
 //
 // The recap slugs, the issue numbering and the scored prediction record are read
-// by the app (feed, page furniture) and written by scripts/week-in-review.mjs.
-// They agree because the rules live here and the script mirrors these three
-// functions verbatim; both sides are asserted by scripts/wir-lint.mjs.
+// by the app (feed, page furniture) and written by scripts/week-in-review.mjs,
+// which imports them from here. It used to mirror them, and nothing checked that
+// the copies agreed.
 
 export const SERIES_SLUG = 'week-in-review';
 export const RECAP_PREFIX = 'week-in-review-';

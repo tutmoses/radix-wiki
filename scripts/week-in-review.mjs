@@ -19,12 +19,11 @@
 import { config } from 'dotenv';
 import { bump } from 'wiki-formant/versioning';
 import { uid, cuid, AUTHOR_ID, isLockedPage, esc, meta, withClient } from './seed-utils.mjs';
+import { RECAP_PREFIX, SERIES_SLUG, issueLabel, scoreline } from '../src/lib/week-in-review.ts';
 
 config({ path: new URL('../.env', import.meta.url) });
 
 const TAG = 'blog';
-const INDEX_SLUG = 'week-in-review';
-const RECAP_LIKE = 'week-in-review-%';
 const INDEX_TITLE = 'Radix Week in Review';
 
 const [mode, ...rest] = process.argv.slice(2);
@@ -53,24 +52,29 @@ const NAV_MARK = 'Radix Week in Review series';
 const LEGACY_FOOTER = /is a knowledge and community hub/i;
 const FEED_PATH = '/week-in-review.xml';
 
-/** An issue number is a recap's chronological rank among its siblings, so #1 is the
- *  oldest and a published number never moves. src/lib/week-in-review.ts and
- *  src/app/week-in-review.xml/route.ts derive it the same way. */
-const issueLabel = (n) => `Issue #${n}`;
+// A run of 16 characters with nowhere to break: an address, a URL, a hash, a field
+// name. Outside <code> one is as wide as it is long, and they held both ledger tables
+// at 1,068 and 1,471px in a 425px column. `&` and `;` end a run, so an entity is never
+// counted into one or cut in half.
+const LONG_TOKEN = /[^\s<>()[\],&;]{16,}/g;
 
-/** The scored record, mirroring `scoreline()` in src/lib/week-in-review.ts. Kept off
- *  the individual recaps on purpose: it moves as claims resolve, and stamping it on
- *  every recap would rewrite all of them each sync for a number one click away. */
-function scoreline(state) {
-  const preds = (state && state.predictions) || [];
-  const hit = preds.filter((p) => p.status === 'hit').length;
-  const miss = preds.filter((p) => p.status === 'miss').length;
-  const open = preds.filter((p) => p.status === 'open').length;
-  const scored = hit + miss;
-  if (!scored && !open) return 'Predictions are scored against the ledger as they come due.';
-  if (!scored) return `${open} prediction${open === 1 ? '' : 's'} open, none scored yet.`;
-  const rate = Math.round((hit / scored) * 100);
-  return `${hit} of ${scored} predictions hit (${rate}%)${open ? `, ${open} still open` : ''}.`;
+/** A ledger state string, ready for the page. State strings are HTML: the routine writes
+ *  entities, links and code into them, and the render path sanitises them. All but
+ *  `openNote` were escaped, so the ledger showed `&rsquo;` and `<a href=` as text.
+ *  The one thing added is <code> around a long token, where the address rule lets it
+ *  break, leaving any trailing full stop or colon outside. */
+function html(s) {
+  let inCode = 0;
+  return String(s ?? '').split(/(<[^>]+>)/).map((seg) => {
+    if (seg.startsWith('<')) {
+      if (/^<\/?code\b/i.test(seg)) inCode += seg[1] === '/' ? -1 : 1;
+      return seg;
+    }
+    return inCode ? seg : seg.replace(LONG_TOKEN, (t) => {
+      const [, token, tail] = t.match(/^(.*?)([.:]*)$/);
+      return `<code>${token}</code>${tail}`;
+    });
+  }).join('');
 }
 
 /** Foot nav for one recap. Carries the previous week's excerpt, so an unchained
@@ -79,7 +83,7 @@ function navHtml(prev, next, issue) {
   const parts = [];
   if (prev) parts.push(`<a href="/blog/${prev.slug}" rel="noopener">← Previous: ${esc(prev.label)}</a>`);
   if (next) parts.push(`<a href="/blog/${next.slug}" rel="noopener">Next: ${esc(next.label)} →</a>`);
-  parts.push(`<a href="/blog/${INDEX_SLUG}" rel="noopener">All recaps</a>`);
+  parts.push(`<a href="/blog/${SERIES_SLUG}" rel="noopener">All recaps</a>`);
   // The feed was reachable only by browser auto-discovery, which is no route at all
   // for a reader who wants the series in a reader or forwarded to their mail.
   parts.push(`<a href="${FEED_PATH}" rel="noopener">Subscribe</a>`);
@@ -95,7 +99,7 @@ async function loadRecaps(client) {
   const { rows } = await client.query(
     `SELECT id, slug, title, version, content, metadata FROM pages
       WHERE tag_path = $1 AND slug LIKE $2 ORDER BY slug`,
-    [TAG, RECAP_LIKE],
+    [TAG, `${RECAP_PREFIX}%`],
   );
   const recaps = [];
   for (const r of rows) {
@@ -123,17 +127,17 @@ function renderIndex(state, recaps) {
 
   const openRows = open
     .sort((a, b) => String(a.due).localeCompare(String(b.due)))
-    .map((p) => row([esc(p.claim), esc(p.who || ''), esc(p.due || ''), esc(p.check || ''), esc(p.recorded || '')]));
+    .map((p) => row([html(p.claim), html(p.who), html(p.due), html(p.check), html(p.recorded)]));
 
   const doneRows = done
     .sort((a, b) => String(b.resolved || '').localeCompare(String(a.resolved || '')))
     .slice(0, 25)
     .map((p) => row([
-      esc(p.claim),
-      esc(p.due || ''),
+      html(p.claim),
+      html(p.due),
       p.status === 'hit' ? '<strong>Hit</strong>' : 'Miss',
-      esc(p.evidence || ''),
-      esc(p.resolvedIn || ''),
+      html(p.evidence),
+      html(p.resolvedIn),
     ]));
   const hidden = Math.max(0, done.length - 25);
 
@@ -143,14 +147,14 @@ function renderIndex(state, recaps) {
   const numbered = recaps.map((r, i) => ({ ...r, issue: i + 1 })).reverse();
 
   const recapRow = (r) => {
-    const html = JSON.stringify(r.content || []);
-    const internal = (html.match(/href=\\?"\/(?!\/)/g) || []).length;
-    const outbound = (html.match(/href=\\?"https?:/g) || []).length;
+    const json = JSON.stringify(r.content || []);
+    const internal = (json.match(/href=\\?"\/(?!\/)/g) || []).length;
+    const outbound = (json.match(/href=\\?"https?:/g) || []).length;
     return row([
       `<a href="/blog/${r.slug}" rel="noopener">#${r.issue}</a>`,
       esc(r.label),
       esc(r.title.replace(/^Radix Week in Review:\s*/, '')),
-      esc((state.throughlines || {})[r.slug] || r.excerpt || ''),
+      (state.throughlines || {})[r.slug] ? html(state.throughlines[r.slug]) : esc(r.excerpt),
       `${internal} / ${outbound}`,
     ]);
   };
@@ -175,8 +179,8 @@ function renderIndex(state, recaps) {
       `<tr><th>Open predictions</th><td>${open.length}</td></tr>` +
       `<tr><th>Resolved</th><td>${done.length}</td></tr>` +
       `<tr><th>Hit rate</th><td>${rate}</td></tr>` +
-      (state.scoring ? `<tr><th>Scoring</th><td>${esc(state.scoring)}</td></tr>` : '') +
-      `<tr><th>Tracking since</th><td>${esc(since)}</td></tr>` +
+      (state.scoring ? `<tr><th>Scoring</th><td>${html(state.scoring)}</td></tr>` : '') +
+      `<tr><th>Tracking since</th><td>${html(since)}</td></tr>` +
       `<tr><th>Feed</th><td><a href="${FEED_PATH}" rel="noopener">RSS</a></td></tr>` +
       `</tbody></table>` }] },
     { id: uid(), type: 'content', text:
@@ -191,7 +195,7 @@ function renderIndex(state, recaps) {
       // rather than what one claim now reads. Held in state, not hand-written onto
       // the block: the run that added the halt note in September wrote it straight
       // into the rendered HTML and the next sync would have silently deleted it.
-      (state.openNote ? `<p id="halt-and-scoring">${state.openNote}</p>` : '') +
+      (state.openNote ? `<p id="halt-and-scoring">${html(state.openNote)}</p>` : '') +
       (openRows.length
         ? table(['Claim', 'Who', 'Due by', 'How it gets checked', 'Recorded'], openRows)
         : '<p>Nothing outstanding.</p>') },
@@ -202,7 +206,7 @@ function renderIndex(state, recaps) {
           (hidden ? `<p>${hidden} older resolved ${hidden === 1 ? 'claim is' : 'claims are'} held in the page state.</p>` : '')
         : '<p>Nothing scored yet.</p>') +
       (voided.length
-        ? `<h3>Withdrawn</h3><ul>${voided.map((p) => `<li>${esc(p.claim)} ${EN} ${esc(p.evidence || 'no longer decidable')}</li>`).join('')}</ul>`
+        ? `<h3>Withdrawn</h3><ul>${voided.map((p) => `<li>${html(p.claim)} ${EN} ${html(p.evidence || 'no longer decidable')}</li>`).join('')}</ul>`
         : '') },
     { id: uid(), type: 'content', text:
       `<h2>Every recap</h2>` +
@@ -219,7 +223,7 @@ function renderIndex(state, recaps) {
 async function readIndex(client) {
   const { rows } = await client.query(
     'SELECT id, title, version, content, metadata FROM pages WHERE tag_path = $1 AND slug = $2',
-    [TAG, INDEX_SLUG],
+    [TAG, SERIES_SLUG],
   );
   return rows[0] || null;
 }
@@ -327,7 +331,7 @@ async function sync(client, stateOverride) {
   const content = renderIndex(state, recaps);
 
   if (!existing) {
-    console.log(`  ${DRY ? '[dry] ' : ''}${INDEX_SLUG}  page created (v1.0.0)`);
+    console.log(`  ${DRY ? '[dry] ' : ''}${SERIES_SLUG}  page created (v1.0.0)`);
     if (!DRY) {
       const now = new Date().toISOString();
       const id = cuid();
@@ -340,7 +344,7 @@ async function sync(client, stateOverride) {
       await client.query(
         `INSERT INTO pages (id, slug, title, content, tag_path, metadata, version, author_id, created_at, updated_at)
          VALUES ($1,$2,$3,$4,$5,$6,'1.0.0',$7,$8,$8)`,
-        [id, INDEX_SLUG, INDEX_TITLE, json, TAG, metadata, AUTHOR_ID, now]);
+        [id, SERIES_SLUG, INDEX_TITLE, json, TAG, metadata, AUTHOR_ID, now]);
       await client.query(
         `INSERT INTO revisions (id, page_id, content, title, version, change_type, author_id, message, created_at)
          VALUES ($1,$2,$3,$4,'1.0.0','major',$5,$6,$7)`,
@@ -352,11 +356,11 @@ async function sync(client, stateOverride) {
     const same = textOf(content) === textOf(existing.content) &&
       canonical(state) === canonical(meta(existing).state ?? {});
     if (same) {
-      console.log(`  ${INDEX_SLUG}  no change`);
+      console.log(`  ${SERIES_SLUG}  no change`);
       ok++;
     } else {
       const version = bump(existing.version, 'minor');
-      console.log(`  ${DRY ? '[dry] ' : ''}${INDEX_SLUG}  v${existing.version} -> v${version}  index rebuilt`);
+      console.log(`  ${DRY ? '[dry] ' : ''}${SERIES_SLUG}  v${existing.version} -> v${version}  index rebuilt`);
       if (!DRY) {
         const now = new Date().toISOString();
         const json = JSON.stringify(keepIds(content, existing.content));
