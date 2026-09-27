@@ -75,7 +75,7 @@
 
   /* One flow rhythm for every block-level element. Individual rules below carry
      only their top margin and type; nothing restates the bottom gap. */
-  :is(h1, h2, h3, h4, p, ul, ol, blockquote, pre, table, figure, hr) { @apply mb-4 last:mb-0; }
+  :is(h1, h2, h3, h4, p, ul, ol, blockquote, pre, table, figure, hr, .table-scroll) { @apply mb-4 last:mb-0; }
 
   h1, h2, h3, h4 { &:first-child { @apply mt-0; } }
   h1 { @apply text-h1 font-bold mt-8; }
@@ -114,11 +114,16 @@
   tr:last-child td:last-child { border-bottom-right-radius: var(--radius); }
   tr:hover td { @apply bg-white/5; }
 
-  /* Canonical table-overflow policy (STRUCTURE.md D8): wide prose tables scroll on
-     mobile instead of breaking layout. Infobox tables opt back out below — they
-     are key-value pairs, and a sideways scroll to read a value is not reading. */
+  /* Canonical table-overflow policy (STRUCTURE.md D8): a stored table scrolls
+     inside the box `processHtml` wraps it in, at every width. It was keyed to
+     phones, but the rails and the infobox narrow the column too: at 1024px it is
+     425px, and the Week in Review ledger ran 1,068px wide under the sticky
+     infobox. On a phone the cells also stop wrapping. Infobox tables opt back
+     out of that below — they are key-value pairs, and a sideways scroll to read
+     a value is not reading. */
+  .table-scroll { overflow-x: auto; }
   @media (max-width: 639px) {
-    .prose-content table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+    .prose-content table { white-space: nowrap; }
   }
 
   ::selection { @apply bg-accent-muted text-text; }
@@ -791,7 +796,7 @@
     width: 100%;
     overflow-wrap: anywhere;
     container-type: inline-size;
-    table { table-layout: fixed; width: 100%; display: table; white-space: normal; }
+    table { table-layout: fixed; width: 100%; white-space: normal; }
     /* Labels are short and values are the reading, so an even split wastes the
        rail. 42% is the floor that still fits "Published:" on one line. */
     th { @apply bg-surface-2; width: 42%; }

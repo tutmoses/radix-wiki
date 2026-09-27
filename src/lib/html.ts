@@ -11,8 +11,10 @@ import type { Block } from '@/types/blocks';
 import { mapBlockTree } from 'wiki-formant/blocks';
 import { BLOCK_SHAPE } from '@/lib/block-shape';
 
+const TABLE_SCROLL = '<div class="table-scroll">';
+
 /**
- * Process HTML content for display: heading ids + anchors, link normalisation, alt attrs.
+ * Process HTML content for display: heading ids + anchors, alt attrs, table scroll boxes, link normalisation.
  * `used` is the page's heading ids so far, shared across its blocks.
  */
 export function processHtml(html: string, citedRefs?: Set<number>, used?: Set<string>): string {
@@ -32,7 +34,15 @@ export function processHtml(html: string, citedRefs?: Set<number>, used?: Set<st
     /\salt\s*=/i.test(attrs) ? match : `<img${attrs} alt="">`,
   );
 
-  return normaliseLinks(withAlts, { selfHost: 'radix.wiki', citedRefs });
+  // A table box ignores `overflow`, so a stored table wider than its column
+  // painted past it, under the infobox. Each one gets a box that scrolls. The
+  // sanitiser strips this class from stored HTML, so finding it means the pass
+  // has already run.
+  const withScroll = withAlts.includes(TABLE_SCROLL)
+    ? withAlts
+    : withAlts.replace(/<table\b/gi, `${TABLE_SCROLL}<table`).replace(/<\/table>/gi, '</table></div>');
+
+  return normaliseLinks(withScroll, { selfHost: 'radix.wiki', citedRefs });
 }
 
 /**
