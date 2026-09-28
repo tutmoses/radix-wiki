@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, Fragment } from 'react';
+import { useState, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, RotateCcw, Plus, Minus, Pencil, Move, ChevronDown } from 'lucide-react';
@@ -14,17 +14,16 @@ import { changeSummary } from 'wiki-formant/revisions';
 import { SortHeader, restoreViaPost, useRevisionRestore, useTableSort } from 'wiki-formant/react';
 import { cn, pagePath } from '@/lib/utils';
 import { formatDay } from 'wiki-formant/freshness';
-import { stripHtml } from '@/lib/content';
 import { BLOCK_META } from '@/lib/block-utils';
 import type { BlockType } from '@/types/blocks';
-import type { BlockChange } from '@/lib/versioning';
+import type { DiffPart, HistoryChange } from '@/lib/versioning';
 
 interface RevisionData {
   id: string;
   title: string;
   version: string;
   changeType: string;
-  changes: BlockChange[] | null;
+  changes: HistoryChange[];
   message?: string | null;
   createdAt: Date;
   author?: { id: string; displayName?: string | null; shortAddress: string; avatarUrl?: string | null };
@@ -38,14 +37,12 @@ const TYPE_BADGE: Record<string, { label: string; variant: 'danger' | 'warning' 
   patch: { label: 'Patch', variant: 'secondary' },
 };
 
-const CONTAINER_TYPES = new Set(['infobox', 'columns']);
-
 const TYPE_WEIGHT: Record<string, number> = { patch: 0, minor: 1, major: 2 };
 const authorName = (r: RevisionData) => r.author?.displayName || r.author?.shortAddress || '';
 const REVISION_COMPARATORS = {
   version: (a: RevisionData, b: RevisionData) => a.version.localeCompare(b.version, undefined, { numeric: true }),
   type: (a: RevisionData, b: RevisionData) => (TYPE_WEIGHT[a.changeType] ?? 0) - (TYPE_WEIGHT[b.changeType] ?? 0),
-  changes: (a: RevisionData, b: RevisionData) => (a.changes?.length ?? 0) - (b.changes?.length ?? 0),
+  changes: (a: RevisionData, b: RevisionData) => a.changes.length - b.changes.length,
   author: (a: RevisionData, b: RevisionData) => authorName(a).localeCompare(authorName(b)),
   date: (a: RevisionData, b: RevisionData) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
 };
@@ -54,36 +51,23 @@ const firstDirection = (key: string): 'asc' | 'desc' => (key === 'author' ? 'asc
 const NO_REVISIONS: RevisionData[] = [];
 
 // The counted phrasing is `wiki-formant/revisions`, the one the stored revision
-// message already uses. Containers are dropped first (this view never lists
-// them) and an empty set reads off the revision's own change type instead.
-function ChangeSummary({ changes, changeType }: { changes: BlockChange[]; changeType: string }) {
-  const visible = changes.filter(c => !CONTAINER_TYPES.has(c.type));
-  const summary = visible.length
-    ? changeSummary({ changes: visible, titleChanged: false })
+// message already uses. The server has already dropped containers (this view
+// never lists them); an empty set reads off the revision's own change type.
+function ChangeSummary({ changes, changeType }: { changes: HistoryChange[]; changeType: string }) {
+  const summary = changes.length
+    ? changeSummary({ changes, titleChanged: false })
     : changeType === 'major' ? 'Structural changes' : changeType === 'minor' ? 'Content updated' : changeType === 'patch' ? 'Metadata updated' : 'No changes';
   return <span className="text-xs text-text-muted">{summary}</span>;
 }
 
-function ContentDiff({ from, to }: { from: string; to: string }) {
-  const [parts, setParts] = useState<[number, string][] | null>(null);
-
-  useEffect(() => {
-    const a = stripHtml(from || '');
-    const b = stripHtml(to || '');
-    if (a === b) return;
-    import('fast-diff').then(({ default: fastDiff }) => {
-      setParts(fastDiff(a, b).filter(([, t]) => t.trim()));
-    });
-  }, [from, to]);
-
-  if (!parts || parts.length === 0) return null;
-
+// Diffed and clipped on the server (`historyChanges`); this only draws it.
+function ContentDiff({ parts }: { parts: DiffPart[] }) {
   return (
     <div className="mt-1 text-xs leading-relaxed">
       {parts.map(([type, text], i) =>
         type === -1 ? <span key={i} className="text-error/80 line-through">{text}</span>
         : type === 1 ? <span key={i} className="text-success bg-success/10 rounded-xs px-0.5">{text}</span>
-        : <span key={i} className="text-text-muted">{text.length > 60 ? text.slice(0, 30) + '…' + text.slice(-30) : text}</span>
+        : <span key={i} className="text-text-muted">{text}</span>
       )}
     </div>
   );
@@ -112,18 +96,13 @@ function formatBlockPath(path: string, type: string): string {
   return `${typeLabel} at ${location}`;
 }
 
-function ExpandedChanges({ changes }: { changes: BlockChange[] }) {
-  const visible = changes.filter(c => !CONTAINER_TYPES.has(c.type));
+function ExpandedChanges({ changes }: { changes: HistoryChange[] }) {
   return (
     <tr><td colSpan={6} className="p-0!">
       <div className="bg-surface-0 p-3 border-t border-border-muted stack-sm">
-        {visible.map((c, i) => {
+        {changes.map((c, i) => {
           const icons = { added: <Plus size={12} className="text-success" />, removed: <Minus size={12} className="text-error" />, modified: <Pencil size={12} className="text-warning" />, moved: <Move size={12} className="text-info" /> };
           const colors = { added: 'text-success', removed: 'text-error', modified: 'text-warning', moved: 'text-info' };
-          const textAttr = c.attributes?.text as { from: string; to: string } | undefined;
-          const fromText = c.leafDiff?.from ?? textAttr?.from ?? '';
-          const toText = c.leafDiff?.to ?? textAttr?.to ?? '';
-          const hasTextChange = fromText || toText;
           return (
             <div key={i} className="text-xs">
               <div className="row gap-2">
@@ -132,7 +111,7 @@ function ExpandedChanges({ changes }: { changes: BlockChange[] }) {
                 <span className="text-text-muted">—</span>
                 <span>{formatBlockPath(c.path, c.type)}</span>
               </div>
-              {hasTextChange && <ContentDiff from={fromText} to={toText} />}
+              {c.leafDiff && <ContentDiff parts={c.leafDiff} />}
             </div>
           );
         })}
@@ -189,7 +168,7 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
                 // The newest revision is the current one wherever the sort puts it.
                 const isCurrent = rev.id === data.revisions[0]?.id;
                 const type = TYPE_BADGE[rev.changeType] ?? TYPE_BADGE.patch!;
-                const changes = rev.changes || [];
+                const { changes } = rev;
                 const isExpanded = expandedId === rev.id;
                 return (
                   <Fragment key={rev.id}>

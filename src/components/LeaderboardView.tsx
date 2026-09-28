@@ -5,30 +5,9 @@
 import { useMemo } from 'react';
 import { Trophy, FileText, Edit3, MessageSquare, Star } from 'lucide-react';
 import { SortHeader, useTableSort } from 'wiki-formant/react';
-import { useFetch } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
 import Link from 'next/link';
-
-interface LeaderboardEntry {
-  id: string;
-  displayName: string | null;
-  shortAddress: string;
-  avatarUrl: string | null;
-  profilePath: string | null;
-  pages: number;
-  edits: number;
-  contributions: number;
-  comments: number;
-  points: number;
-}
-
-interface LeaderboardResponse {
-  items: LeaderboardEntry[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
+import type { LeaderboardEntry } from '@/lib/scoring';
 
 type RankedEntry = LeaderboardEntry & { rank: number };
 type NumericKey = 'rank' | 'pages' | 'edits' | 'comments' | 'points';
@@ -53,11 +32,13 @@ function RankBadge({ rank }: { rank: number }) {
   return <span className="text-text-muted">#{rank}</span>;
 }
 
-export default function LeaderboardView() {
-  const { data, isLoading } = useFetch<LeaderboardResponse>('/api/leaderboard');
-  // Rank is the points order the API returns, so it stays with the contributor
-  // when the table is sorted by another column.
-  const ranked = useMemo(() => (data?.items ?? []).map((e, i) => ({ ...e, rank: i + 1 })), [data]);
+// Every contributor, resolved on the server. It fetched the top 25 after
+// hydration, so a crawler read an empty table, and the `#u-<id>` anchors the
+// header and page histories link to existed only for the top 25.
+export default function LeaderboardView({ entries }: { entries: LeaderboardEntry[] }) {
+  // Rank is the points order the server returns, so it stays with the
+  // contributor when the table is sorted by another column.
+  const ranked = useMemo(() => entries.map((e, i) => ({ ...e, rank: i + 1 })), [entries]);
   const { sorted, headerProps } = useTableSort<RankedEntry, keyof typeof COMPARATORS>(ranked, { defaultKey: 'points', comparators: COMPARATORS, defaultDirection: firstDirection });
 
   return (
@@ -83,11 +64,6 @@ export default function LeaderboardView() {
             </tr>
           </thead>
           <tbody>
-            {isLoading && Array.from({ length: 10 }, (_, i) => (
-              <tr key={i} className="border-b border-surface-2">
-                <td className="p-3" colSpan={6}><div className="h-8 skeleton rounded" /></td>
-              </tr>
-            ))}
             {sorted.map(entry => (
               <tr key={entry.id} id={`u-${entry.id}`} className="border-b border-surface-2 last:border-0 target:bg-surface-2">
                 <td className="p-3"><RankBadge rank={entry.rank} /></td>
@@ -110,7 +86,7 @@ export default function LeaderboardView() {
                 <td className="p-3 text-right font-medium text-accent">{entry.points.toLocaleString('en-US')}</td>
               </tr>
             ))}
-            {data && data.items.length === 0 && (
+            {entries.length === 0 && (
               <tr>
                 <td colSpan={6} className="p-8 text-center text-text-muted">No contributors yet. Be the first!</td>
               </tr>

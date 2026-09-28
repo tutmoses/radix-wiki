@@ -37,11 +37,10 @@ export const STATIC_PAGES: Record<string, StaticPage> = {
   welcome: { path: 'welcome', title: 'Welcome', description: 'Get started with RADIX Wiki — connect your Radix wallet and begin contributing to the decentralized knowledge base.', changeFrequency: 'monthly', priority: 0.5 },
   leaderboard: { path: 'leaderboard', title: 'Leaderboard', description: 'Top RADIX.wiki contributors ranked by contribution points.', changeFrequency: 'monthly', priority: 0.5 },
   rewards: { path: 'rewards', title: 'Rewards', description: 'Track contributor rewards and $XRD airdrop eligibility on RADIX Wiki.', changeFrequency: 'monthly', priority: 0.5 },
-  // Both titles already carry the site name, so the template doubles it —
-  // "Search — RADIX Wiki | RADIX Wiki". Left as it renders today. Maintenance is
-  // a work queue, hidden the way Wikipedia hides its maintenance categories.
-  search: { path: 'search', title: 'Search — RADIX Wiki', description: 'Search the community-maintained RADIX Wiki.', noindex: true },
-  maintenance: { path: 'maintenance', title: 'Maintenance — RADIX Wiki', description: 'Pages flagged as outdated, orphaned, unsourced, or missing required metadata.', noindex: true },
+  // Maintenance is a work queue, hidden the way Wikipedia hides its
+  // maintenance categories.
+  search: { path: 'search', title: 'Search', description: 'Search the community-maintained RADIX Wiki.', noindex: true },
+  maintenance: { path: 'maintenance', title: 'Maintenance', description: 'Pages flagged as outdated, orphaned, unsourced, or missing required metadata.', noindex: true },
 };
 
 /** Every route with a sitemap row, bar the homepage — its URL is the bare origin. */

@@ -35,7 +35,6 @@ const HistoryView = dynamic(() => import('@/components/HistoryView'), {
   loading: () => <div className="h-64 skeleton rounded-lg" />,
 });
 
-export type { HistoryData } from '@/components/HistoryView';
 export { HistoryView };
 
 const Discussion = dynamic(() => import('@/components/Discussion').then(m => m.Discussion), { ssr: false });

@@ -19,7 +19,7 @@ import { articleLd, citationsFromReferences, collectionLd, documentTitle } from 
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { STATIC_PAGES } from '@/lib/static-pages';
 import { prisma } from '@/lib/prisma/client';
-import { PageView, HomepageView, CategoryView, PageSkeleton, HistoryView, type HistoryData, type RelatedPages, type SubcategorySummary } from './PageContent';
+import { PageView, HomepageView, CategoryView, PageSkeleton, HistoryView, type RelatedPages, type SubcategorySummary } from './PageContent';
 import dynamic from 'next/dynamic';
 
 const IdeasView = dynamic(() => import('./IdeasView'), { loading: () => <PageSkeleton /> });
@@ -42,6 +42,7 @@ import { adjacentPages } from 'wiki-formant/pagination';
 import { ogMetadata, ogImageUrl } from '@/lib/og';
 import { articleType, aboutEntity, articleLearningProps } from '@/lib/entity-ld';
 import { getTokenDetail } from '@/lib/radix/tokens';
+import { getEditorScores, publicScore } from '@/lib/scoring';
 import type { Block } from '@/types/blocks';
 import type { WikiPage } from '@/types';
 import { BLOCK_SHAPE, leafBlocks } from '@/lib/block-shape';
@@ -129,7 +130,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (parsed.type === 'edit' || parsed.type === 'history' || parsed.type === 'mdx') {
     const label = parsed.type === 'edit' ? 'Edit' : parsed.type === 'history' ? 'Revision history' : 'MDX export';
     return {
-      title: `${label} — RADIX Wiki`,
+      // The layout's template adds the site name; carrying it here doubled it.
+      title: label,
       description: `${label} view on RADIX Wiki.`,
       robots: NOINDEX_ROBOTS,
       alternates: { canonical: `${SITE_URL}/${parsed.tagPath}/${parsed.slug}`.replace(/\/+$/, '') || SITE_URL },
@@ -145,7 +147,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const session = await getSession();
     if (!session) notFound();
     return {
-      title: 'New page — RADIX Wiki',
+      title: 'New page',
       description: 'Create a new page on RADIX Wiki.',
       robots: NOINDEX_ROBOTS,
       alternates: { canonical: `${SITE_URL}/${parsed.tagPath}/${parsed.slug}` },
@@ -326,7 +328,7 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
 
   if (parsed.type === 'search') return <SearchView query={str((await searchParams).q) ?? ''} />;
   if (parsed.type === 'maintenance') return <MaintenanceView queues={await getMaintenanceQueues()} />;
-  if (parsed.type === 'leaderboard') return <LeaderboardView />;
+  if (parsed.type === 'leaderboard') return <LeaderboardView entries={(await getEditorScores()).map(publicScore)} />;
   if (parsed.type === 'welcome') return <WelcomeView />;
   if (parsed.type === 'rewards') return <RewardsView />;
   if (parsed.type === 'charts') return <ChartsOverview />;
@@ -450,7 +452,7 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
   }
 
   if (parsed.type === 'history') {
-    const data = await getPageHistory(parsed.tagPath, parsed.slug) as HistoryData;
+    const data = await getPageHistory(parsed.tagPath, parsed.slug);
     // No page, no history. The empty view answered 200 for any slug at all, and
     // Search Console filed the revision views of deleted pages as soft 404s.
     if (!data) notFound();

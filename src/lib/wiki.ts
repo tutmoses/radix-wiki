@@ -13,7 +13,7 @@ import { decodeEntities } from '@/lib/content';
 import { isValidTagPath, getSortOrder, getMetadataKeys, HIDDEN_TAG_PATHS, type SortOrder } from '@/lib/tags';
 import type { WikiPage, IdeasPage } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, RssFeedBlock } from '@/types/blocks';
-import { computeRevisionDiff } from '@/lib/versioning';
+import { computeRevisionDiff, historyChanges, type BlockChange } from '@/lib/versioning';
 import { STATIC_PATH_TYPES } from '@/lib/static-pages';
 import { leafBlocks } from '@/lib/block-shape';
 
@@ -287,7 +287,14 @@ export async function loadPageHistory(tagPath: string, slug: string) {
   return { currentVersion: page.version, revisions: backfilled };
 }
 
-export const getPageHistory = cached('getPageHistory', loadPageHistory);
+/** The history page's copy: the same rows, each change list diffed for display. */
+export const getPageHistory = cached('getPageHistory', async (tagPath: string, slug: string) => {
+  const history = await loadPageHistory(tagPath, slug);
+  return history && {
+    ...history,
+    revisions: history.revisions.map(r => ({ ...r, changes: historyChanges((r.changes ?? []) as unknown as BlockChange[]) })),
+  };
+});
 
 // ========== SEARCH ==========
 

@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { unstable_cache } from 'next/cache';
+import { shortenAddress, pagePath } from '@/lib/utils';
 
 const WEIGHTS = { page: 150, edit: 80, contribution: 80, comment: 70, tenure: 50 } as const;
 
@@ -113,6 +114,25 @@ export const getEditorScores = unstable_cache(
   ['editor-scores'],
   { revalidate: 3600, tags: ['leaderboard'] },
 );
+
+/** The public leaderboard row. The wallet address leaves the server truncated
+ *  only; the full one stays in getEditorScores for the admin rewards CSV. */
+export function publicScore(e: EditorScore) {
+  return {
+    id: e.id,
+    displayName: e.displayName,
+    shortAddress: shortenAddress(e.radixAddress),
+    avatarUrl: e.avatarUrl,
+    profilePath: e.subjectPage ? pagePath(e.subjectPage.tagPath, e.subjectPage.slug) : null,
+    pages: e.pages,
+    edits: e.edits,
+    contributions: e.contributions,
+    comments: e.comments,
+    points: e.points,
+  };
+}
+
+export type LeaderboardEntry = ReturnType<typeof publicScore>;
 
 /** Log-dampened 0-100 ring score for profile display */
 export function ringScore(s: ScoreInput): number {
