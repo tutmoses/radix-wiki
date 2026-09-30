@@ -12,8 +12,6 @@ import {
   type BlockChange as SharedBlockChange,
   type RevisionDiff as SharedRevisionDiff,
 } from 'wiki-formant/revisions';
-import fastDiff from 'fast-diff';
-import { stripHtml } from 'wiki-formant/text';
 import type { Block, ContentBlock } from '@/types/blocks';
 
 export { formatVersion, incrementVersion, parseVersion } from 'wiki-formant/versioning';
@@ -26,11 +24,6 @@ interface ContentDiff {
 
 export type BlockChange = SharedBlockChange<ContentDiff>;
 export type RevisionDiff = SharedRevisionDiff<ContentDiff>;
-
-/** A stripped-text diff as the history view draws it: -1 removed, 0 kept, 1 added. */
-export type DiffPart = [-1 | 0 | 1, string];
-/** A change as the history page ships it: the diff it draws, not the two HTML bodies behind it. */
-export type HistoryChange = SharedBlockChange<DiffPart[]>;
 
 const text = (block: Block | null): string =>
   block?.type === 'content' ? (block as ContentBlock).text : '';
@@ -65,33 +58,5 @@ export function computeRevisionDiff(
     oldMeta: oldBanner,
     newMeta: newBanner,
     leafDiff,
-  });
-}
-
-/** The view lists leaves; a container's own entry only restates its children. */
-const CONTAINER_TYPES = new Set(['infobox', 'columns']);
-/** Kept text is context, so a long run keeps only its ends. */
-const KEPT_MAX = 60;
-const clip = (t: string) => (t.length > KEPT_MAX ? `${t.slice(0, 30)}…${t.slice(-30)}` : t);
-
-/**
- * The history page's change list, diffed on the server. It used to ship both
- * HTML bodies of every modified block in every revision and diff them in the
- * browser on expand: 870 KB of payload for a 13-revision page whose rendered
- * diffs come to 25 KB. `attributes.text` is where diffs stored before
- * `leafDiff` existed kept the same pair.
- */
-export function historyChanges(changes: readonly BlockChange[]): HistoryChange[] {
-  return changes.filter(c => !CONTAINER_TYPES.has(c.type)).map(({ attributes, leafDiff, ...change }) => {
-    const stored = attributes?.text as ContentDiff | undefined;
-    const from = stripHtml(leafDiff?.from ?? stored?.from ?? '');
-    const to = stripHtml(leafDiff?.to ?? stored?.to ?? '');
-    if (from === to) return change;
-    // Semantic cleanup: a rewritten sentence reads as the old words struck and
-    // the new ones added, not as a character soup of shared letters.
-    const parts = fastDiff(from, to, undefined, true)
-      .filter(([, t]) => t.trim())
-      .map(([op, t]): DiffPart => [op, op === 0 ? clip(t) : t]);
-    return parts.length ? { ...change, leafDiff: parts } : change;
   });
 }

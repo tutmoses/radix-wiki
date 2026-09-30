@@ -5,18 +5,19 @@
 import { useState, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, RotateCcw, Plus, Minus, Pencil, Move, ChevronDown } from 'lucide-react';
+import { ArrowLeft, RotateCcw, ChevronDown } from 'lucide-react';
 import { Button, Badge } from '@/components/ui';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { useAuth } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
 import { changeSummary } from 'wiki-formant/revisions';
 import { SortHeader, restoreViaPost, useRevisionRestore, useTableSort } from 'wiki-formant/react';
+import { RevisionChanges } from 'wiki-formant/react-server';
 import { cn, pagePath } from '@/lib/utils';
 import { formatDay } from 'wiki-formant/freshness';
 import { BLOCK_META } from '@/lib/block-utils';
 import type { BlockType } from '@/types/blocks';
-import type { DiffPart, HistoryChange } from '@/lib/versioning';
+import type { HistoryChange } from 'wiki-formant/history';
 
 interface RevisionData {
   id: string;
@@ -60,62 +61,15 @@ function ChangeSummary({ changes, changeType }: { changes: HistoryChange[]; chan
   return <span className="text-xs text-text-muted">{summary}</span>;
 }
 
-// Diffed and clipped on the server (`historyChanges`); this only draws it.
-function ContentDiff({ parts }: { parts: DiffPart[] }) {
-  return (
-    <div className="mt-1 text-xs leading-relaxed">
-      {parts.map(([type, text], i) =>
-        type === -1 ? <span key={i} className="text-error/80 line-through">{text}</span>
-        : type === 1 ? <span key={i} className="text-success bg-success/10 rounded-xs px-0.5">{text}</span>
-        : <span key={i} className="text-text-muted">{text}</span>
-      )}
-    </div>
-  );
-}
+// Editor labels, except that a content block is 'Text' where it is being read
+// rather than inserted. An unknown type is a block this build no longer has.
+const blockLabel = (type: string) => (type === 'content' ? 'Text' : BLOCK_META[type as BlockType]?.label ?? type);
 
-function formatBlockPath(path: string, type: string): string {
-  const parts = path.replace('root.', '').split('.');
-  const segments: string[] = [];
-
-  for (let i = 0; i < parts.length; i++) {
-    if (parts[i] === 'columns' && parts[i + 1] !== undefined) {
-      segments.push(`Col ${parseInt(parts[i + 1]!) + 1}`);
-      i++; // skip the column index
-    } else if (parts[i] === 'blocks' && parts[i + 1] !== undefined) {
-      segments.push(`Block ${parseInt(parts[i + 1]!) + 1}`);
-      i++; // skip the block index
-    } else if (!isNaN(parseInt(parts[i]!))) {
-      segments.push(`Block ${parseInt(parts[i]!) + 1}`);
-    }
-  }
-
-  const location = segments.length ? segments.join(' → ') : 'root';
-  // Editor labels, except that a content block is 'Text' where it is being read
-  // rather than inserted. An unknown type is a block this build no longer has.
-  const typeLabel = type === 'content' ? 'Text' : BLOCK_META[type as BlockType]?.label ?? type;
-  return `${typeLabel} at ${location}`;
-}
-
+// Diffed on the server (`wiki-formant/history`); the list is the package's.
 function ExpandedChanges({ changes }: { changes: HistoryChange[] }) {
   return (
     <tr><td colSpan={6} className="p-0!">
-      <div className="bg-surface-0 p-3 border-t border-border-muted stack-sm">
-        {changes.map((c, i) => {
-          const icons = { added: <Plus size={12} className="text-success" />, removed: <Minus size={12} className="text-error" />, modified: <Pencil size={12} className="text-warning" />, moved: <Move size={12} className="text-info" /> };
-          const colors = { added: 'text-success', removed: 'text-error', modified: 'text-warning', moved: 'text-info' };
-          return (
-            <div key={i} className="text-xs">
-              <div className="row gap-2">
-                {icons[c.action]}
-                <span className={cn('capitalize font-medium', colors[c.action])}>{c.action}</span>
-                <span className="text-text-muted">—</span>
-                <span>{formatBlockPath(c.path, c.type)}</span>
-              </div>
-              {c.leafDiff && <ContentDiff parts={c.leafDiff} />}
-            </div>
-          );
-        })}
-      </div>
+      <div className="revision-changes-panel"><RevisionChanges changes={changes} label={blockLabel} /></div>
     </td></tr>
   );
 }

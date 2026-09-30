@@ -13,7 +13,8 @@ import { decodeEntities } from '@/lib/content';
 import { isValidTagPath, getSortOrder, getMetadataKeys, HIDDEN_TAG_PATHS, type SortOrder } from '@/lib/tags';
 import type { WikiPage, IdeasPage } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, RssFeedBlock } from '@/types/blocks';
-import { computeRevisionDiff, historyChanges, type BlockChange } from '@/lib/versioning';
+import { computeRevisionDiff } from '@/lib/versioning';
+import { withChanges } from 'wiki-formant/history';
 import { STATIC_PATH_TYPES } from '@/lib/static-pages';
 import { leafBlocks } from '@/lib/block-shape';
 
@@ -245,12 +246,8 @@ export const getIdeasPages = cached('getIdeasPages',
   },
 );
 
-/**
- * Uncached, and deliberately reachable that way: `/api/wiki/…/history` is the
- * documented way to confirm a direct-DB script write landed, and those scripts
- * insert revisions without revalidating the `wiki` tag.
- */
-export async function loadPageHistory(tagPath: string, slug: string) {
+/** A page and its revisions, newest first, each with the content it stored. */
+async function pageRevisions(tagPath: string, slug: string) {
   const page = await prisma.page.findUnique({
     where: { tagPath_slug: { tagPath, slug } },
     select: { id: true, title: true, version: true },
@@ -266,6 +263,18 @@ export async function loadPageHistory(tagPath: string, slug: string) {
     },
     orderBy: { createdAt: 'desc' },
   });
+  return { page, revisions };
+}
+
+/**
+ * Uncached, and deliberately reachable that way: `/api/wiki/…/history` is the
+ * documented way to confirm a direct-DB script write landed, and those scripts
+ * insert revisions without revalidating the `wiki` tag.
+ */
+export async function loadPageHistory(tagPath: string, slug: string) {
+  const history = await pageRevisions(tagPath, slug);
+  if (!history) return null;
+  const { page, revisions } = history;
 
   // Backfill changes for revisions that don't have stored diffs
   const backfilled = revisions.map((rev, i) => {
@@ -287,12 +296,16 @@ export async function loadPageHistory(tagPath: string, slug: string) {
   return { currentVersion: page.version, revisions: backfilled };
 }
 
-/** The history page's copy: the same rows, each change list diffed for display. */
+/**
+ * The history page's copy, diffed for display from each revision's stored
+ * content (`wiki-formant/history`). Stored `changes` are not read: only the app
+ * editor writes them, so a script edit's revision has none.
+ */
 export const getPageHistory = cached('getPageHistory', async (tagPath: string, slug: string) => {
-  const history = await loadPageHistory(tagPath, slug);
+  const history = await pageRevisions(tagPath, slug);
   return history && {
-    ...history,
-    revisions: history.revisions.map(r => ({ ...r, changes: historyChanges((r.changes ?? []) as unknown as BlockChange[]) })),
+    currentVersion: history.page.version,
+    revisions: withChanges(history.revisions.map(({ changes: _, ...rev }) => rev)),
   };
 });
 

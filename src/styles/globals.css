@@ -768,6 +768,17 @@
 
   /* ===== HISTORY / DIFF ===== */
   .restore-btn { @apply flex items-center gap-1 text-accent hover:text-accent-hover disabled:opacity-50; }
+  /* RevisionChanges (wiki-formant/react-server): the list resets in base.css,
+     the colours are these. */
+  .revision-changes-panel { @apply bg-surface-0 p-3 border-t border-border-muted text-xs; }
+  .revision-change-action { @apply font-medium; }
+  .revision-change[data-action='added'] .revision-change-action { @apply text-success; }
+  .revision-change[data-action='removed'] .revision-change-action { @apply text-error; }
+  .revision-change[data-action='modified'] .revision-change-action { @apply text-warning; }
+  .revision-change[data-action='moved'] .revision-change-action { @apply text-info; }
+  .revision-diff { @apply leading-relaxed text-text-muted; }
+  .revision-diff del { @apply text-error/80; }
+  .revision-diff ins { @apply text-success bg-success/10 rounded-xs px-0.5 no-underline; }
 
   /* ===== PAGE WITH INFOBOX LAYOUT ===== */
   .page-with-infobox {
