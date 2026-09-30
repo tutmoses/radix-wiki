@@ -87,7 +87,9 @@ export function historyChanges(changes: readonly BlockChange[]): HistoryChange[]
     const from = stripHtml(leafDiff?.from ?? stored?.from ?? '');
     const to = stripHtml(leafDiff?.to ?? stored?.to ?? '');
     if (from === to) return change;
-    const parts = fastDiff(from, to)
+    // Semantic cleanup: a rewritten sentence reads as the old words struck and
+    // the new ones added, not as a character soup of shared letters.
+    const parts = fastDiff(from, to, undefined, true)
       .filter(([, t]) => t.trim())
       .map(([op, t]): DiffPart => [op, op === 0 ? clip(t) : t]);
     return parts.length ? { ...change, leafDiff: parts } : change;
