@@ -11,6 +11,8 @@ export function Footer() {
         <Link href="/charts">Charts</Link>
         <Link href="/leaderboard">Leaderboard</Link>
         <a href="/llms.txt">llms.txt</a>
+        <Link href="/contents/resources/legal/terms-of-use">Terms</Link>
+        <Link href="/contents/resources/legal/privacy-policy">Privacy</Link>
       </nav>
       <p>
         © 2026 RADIX Wiki. Content licensed under{' '}
