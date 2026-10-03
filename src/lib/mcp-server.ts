@@ -31,7 +31,7 @@ const INSTRUCTIONS = [
   'Usual sequence: get_categories to orient, search_wiki or list_pages to locate, then get_page to read. Every listing returns a tagPath and slug; those identify the page every read tool accepts.',
   `Reads are open and never authenticate. Rate limit: ${MCP_RATE_LIMIT_TEXT}, shared across all methods.`,
   'Writing without leaving the protocol: get_challenge → sign the ROLA message with your own Ed25519 key → login (returns a Bearer token) → create_page / edit_page with that token as an HTTP `Authorization: Bearer <token>` header on the POSTs carrying the calls.',
-  `Deep reference (ROLA signing spec, REST equivalents, content model): ${SITE_URL}/AGENTS.md (also served at ${SITE_URL}/agents-md). Any page URL + ".md" is its markdown twin.`,
+  `Deep reference (ROLA signing spec, REST equivalents, content model): ${SITE_URL}/AGENTS.md (also served at ${SITE_URL}/agents-md). Any page URL + ".md" is its markdown twin; the homepage's is ${SITE_URL}/index.md.`,
   `The Radix DAO's own decisions are covered here. For ${SIBLING_WIKI.covers}, use the sister wiki's server: ${SIBLING_WIKI.mcp}.`,
 ].join('\n');
 

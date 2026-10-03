@@ -95,12 +95,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (staticPage) {
     const { path: staticPath, title, description, noindex, absoluteTitle, imageTitle } = staticPage;
     const url = staticPath ? `${SITE_URL}/${staticPath}` : SITE_URL;
+    const og = ogMetadata({ title, description, url, imageTitle });
     return {
       title: absoluteTitle ? { absolute: title } : title,
       description,
       ...(noindex
         ? { robots: NOINDEX_ROBOTS, alternates: { canonical: url } }
-        : ogMetadata({ title, description, url, imageTitle })),
+        : parsed.type === 'homepage'
+          // `markdownTwin` would advertise `${url}.md`, which on a bare origin is
+          // another host; the homepage's twin is /index.md.
+          ? { ...og, alternates: { ...og.alternates, types: { 'text/markdown': `${SITE_URL}/index.md` } } }
+          : og),
     };
   }
 
@@ -122,6 +127,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         title, description,
         url: `${SITE_URL}/${parsed.tagPath}`, tagPath: parsed.tagPath,
         banner: hub?.bannerImage,
+        // Every category has a twin: its hub article, or else its listing.
+        markdownTwin: true,
       }),
     };
   }

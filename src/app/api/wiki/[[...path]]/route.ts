@@ -11,11 +11,15 @@ import { isValidTagPath, isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAu
 import { requireBalance } from '@/lib/radix/balance';
 import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, type BlockChange } from '@/lib/versioning';
-import { parsePath, orderByIds, searchPages, resolveBlockData, loadPageHistory, AUTHOR_SELECT, NOT_HIDDEN, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
+import { parsePath, orderByIds, searchPages, resolveBlockData, loadPageHistory, getCategoryPages, AUTHOR_SELECT, NOT_HIDDEN, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
 import { blockIssues, validateBlocks } from '@/lib/block-utils';
 import { describeBlockIssues } from 'wiki-formant/validation';
 import { blocksToMdx } from '@/lib/mdx';
 import { pageToMarkdown } from '@/lib/markdown';
+import { markdownDocument } from 'wiki-formant/markdown';
+import { findTagByPath } from '@/lib/tags';
+import { categoryLabel } from '@/lib/utils';
+import { WIKI_LICENSE } from '@/lib/site';
 import type { WikiPageInput, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
 import { deliverWebhooks } from '@/lib/webhooks';
@@ -66,7 +70,11 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
   // written into a rewrite destination, so the extension carries the intent).
   const last = rawPath?.[rawPath.length - 1];
   const mdSuffix = Boolean(last?.endsWith('.md'));
-  const path = mdSuffix && rawPath ? [...rawPath.slice(0, -1), last!.slice(0, -3)] : rawPath;
+  // The homepage's twin is /index.md: the `${url}.md` rule every other page
+  // follows names no path on a bare origin.
+  const path = mdSuffix && rawPath
+    ? (rawPath.length === 1 && last === 'index.md' ? [] : [...rawPath.slice(0, -1), last!.slice(0, -3)])
+    : rawPath;
   const parsed = parsePath(path, 'api');
 
   return handleRoute(async () => {
@@ -146,12 +154,33 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
 
     if (parsed.type === 'invalid') return errors.notFound('Invalid path');
 
+    // The teaching 404: this is the answer an agent that guessed a `.md` URL
+    // gets, and `Page not found` gave it nothing to retry from.
+    const noPage = (where: string) => teachingNotFound(
+      `No page at "${where}".`,
+      {
+        index: `${SITE_URL}/llms-index.txt`,
+        search: `${SITE_URL}/api/wiki?q=<term>`,
+        categories: `${SITE_URL}/api/wiki?tagPath=`,
+        note: 'Every page URL takes a ".md" suffix for its markdown twin, and the homepage\'s is /index.md. Paths are tagPath + slug, e.g. "contents/tech/core-concepts/utxo-model".',
+      },
+      CACHE.short['Cache-Control'],
+    );
+
     // History mode — the uncached read, so a direct-DB script write shows up here
     // the moment it lands rather than after the `wiki` tag next revalidates.
     if (parsed.type === 'history') {
       const history = await loadPageHistory(parsed.tagPath, parsed.slug);
       if (!history) return errors.notFound('Page not found');
       return cachedJson(history);
+    }
+
+    // Only the wiki's own rows answer here. The app routes (charts, leaderboard,
+    // rewards, welcome, a token's detail) parse with the homepage's empty
+    // tagPath and slug, and used to fall through to the homepage row below:
+    // /charts.md served the homepage's markdown with a 200.
+    if (parsed.type !== 'homepage' && parsed.type !== 'category' && parsed.type !== 'page') {
+      return noPage(path?.join('/') ?? '');
     }
 
     // Homepage or specific page
@@ -161,22 +190,40 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     });
 
     if (!page && parsed.type === 'homepage') return cachedJson(null);
-    // The one 404 that is worth caching: a missing page is a hot path for crawlers.
-    // It teaches for the same reason the MCP lane's does — this is the answer an
-    // agent that guessed a `.md` URL gets, and `Page not found` gave it nothing
-    // to retry from.
-    if (!page) {
-      return teachingNotFound(
-        `No page at "${pagePath(parsed.tagPath, parsed.slug)}".`,
-        {
-          index: `${SITE_URL}/llms-index.txt`,
-          search: `${SITE_URL}/api/wiki?q=<term>`,
-          categories: `${SITE_URL}/api/wiki?tagPath=`,
-          note: 'Every page URL takes a ".md" suffix for its markdown twin. Paths are tagPath + slug, e.g. "contents/tech/core-concepts/utxo-model".',
-        },
-        CACHE.short['Cache-Control'],
+
+    // A category with no hub article is still a page to a reader: the listing
+    // the HTML shows. Its twin is that listing, or every section linked from a
+    // crawler's copy of the wiki 404s.
+    if (!page && parsed.type === 'category' && (mdSuffix || wantsMarkdown(request))) {
+      const tag = findTagByPath(parsed.tagPath.split('/'));
+      const sections = (tag?.children ?? []).filter(c => !c.hidden);
+      const pages = await getCategoryPages(parsed.tagPath);
+      // `cached` round-trips through JSON, so updatedAt arrives as a string whatever its type says.
+      const updated = pages.reduce<Date | null>((d, p) => {
+        const at = new Date(p.updatedAt);
+        return !d || at > d ? at : d;
+      }, null);
+      const lastModified = updated?.toUTCString();
+      const etag = corpusEtag([parsed.tagPath, pages.length, updated]);
+      const headers = markdownHeaders(lastModified, { etag, extra: { ...CACHE.medium, ...TWIN_ROBOTS, ...VARY_ACCEPT } });
+      const unchanged = notModified(request, etag, lastModified ?? null, headers);
+      if (unchanged) return unchanged;
+
+      const link = (title: string, url: string) => `- [${title.replace(/[[\]]/g, '\\$&')}](${url})`;
+      const body = [
+        tag?.description,
+        sections.length && `## Sections\n\n${sections.map(c => link(c.name, `${SITE_URL}/${parsed.tagPath}/${c.slug}`)).join('\n')}`,
+        pages.length && `## Pages\n\n${pages.map(p => link(p.title, pageUrl(p.tagPath, p.slug))).join('\n')}`,
+      ].filter(Boolean).join('\n\n');
+      const title = categoryLabel(tag?.name ?? '') || parsed.tagPath.split('/').at(-1)!.replace(/-/g, ' ');
+      return new NextResponse(
+        markdownDocument({ title, url: `${SITE_URL}/${parsed.tagPath}`, updated, license: WIKI_LICENSE }, body),
+        { headers },
       );
     }
+
+    // The one 404 that is worth caching: a missing page is a hot path for crawlers.
+    if (!page) return noPage(pagePath(parsed.tagPath, parsed.slug));
 
     // Agent-friendly text format: the `.md` twin, Accept negotiation, or an
     // explicit ?format=text. Real markdown, no component tags — dynamic

@@ -39,7 +39,7 @@ export const GET = corpusRoute('llms-index', async () => {
     `> Every page on ${SITE_URL} (${pages.length} pages), grouped by section,`,
     `> most recently updated first. Compact site map: ${SITE_URL}/llms.txt`,
     `> Full text of every page: ${SITE_URL}/llms-full.txt`,
-    `> Individual pages in markdown: append .md to any page URL`,
+    `> Individual pages in markdown: append .md to any page URL (the homepage's is /index.md)`,
     '',
     ...sectionLines,
   ].join('\n');

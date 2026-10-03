@@ -128,7 +128,7 @@ const PREAMBLE = `# RADIX Wiki — The Knowledge Base for Radix DLT
 > OpenAPI spec for the REST API: ${SITE_URL}/openapi.json
 > Agent discovery: ${SITE_URL}/.well-known/agent-card.json
 > Agent API reference: ${SITE_URL}/AGENTS.md
-> Individual pages in markdown: append .md to any page URL
+> Individual pages in markdown: append .md to any page URL (the homepage's is /index.md)
 > Sister wiki for ${SIBLING_WIKI.covers}: ${SIBLING_WIKI.url} (MCP: ${SIBLING_WIKI.mcp})
 
 ## What Makes Radix Distinct
