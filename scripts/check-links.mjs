@@ -196,7 +196,9 @@ await withClient(async (client) => {
     .map((r) => ({ ...r, pages: externalToPages.get(r.url) }));
 
   const brokenInternal = [...internalToPages.entries()]
-    .filter(([p]) => !livePaths.has(p))
+    // A page's own /history and /edit are routes parsePath() resolves from the page
+    // path (run 526: the 1 Oct legal rewrites link "this page's history").
+    .filter(([p]) => !livePaths.has(p) && !livePaths.has(p.replace(/\/(history|edit)$/, '')))
     .map(([p, pages]) => ({ url: p, pages }));
 
   const embeds = [...embedToPages.entries()].map(([url, { kind }]) => ({ kind, url }));
