@@ -18,7 +18,7 @@ import { put } from '@vercel/blob';
 import { config } from 'dotenv';
 
 // Credentials are split by ownership: the Higgsfield keys are marketing/ops, so
-// they live in radix-studio/.env with the rest of them; BLOB_READ_WRITE_TOKEN is
+// they live in radix-studio/.env with the rest of them; BLOB_STORE_ID is
 // this app's, and stays here. Disjoint keys, so load order doesn't matter.
 config();
 config({ path: resolve(import.meta.dirname, '../../radix-studio/.env') });

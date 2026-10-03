@@ -45,8 +45,8 @@ const keepBlobs = args.includes('--keep-blobs');
 const MAX_WIDTH = 1600;
 const MIN_SAVING = 0.05; // re-encoding costs a blob; only swap when it actually pays
 
-if (apply && !process.env.BLOB_READ_WRITE_TOKEN) {
-  console.error('BLOB_READ_WRITE_TOKEN is not set — cannot upload or delete.');
+if (apply && !process.env.BLOB_STORE_ID) {
+  console.error('BLOB_STORE_ID is not set — cannot upload or delete.');
   process.exit(1);
 }
 
