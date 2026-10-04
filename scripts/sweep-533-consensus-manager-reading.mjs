@@ -1,6 +1,6 @@
 // Sweep 533 (contents/tech): Consensus Manager's ledger reading re-taken on 4 Oct 2026, with the
-// epoch average across the 31 Aug – 11 Sep halt; the DeSci page's PsyDAO site link unlinked
-// (psydao.io lapsed at its registrar on 22 Sep 2026 and serves Namecheap's expired-domain page).
+// epoch average across the 31 Aug – 11 Sep halt; the DeSci page's PsyDAO link moved off the lapsed
+// psydao.io (registrar expiry 22 Sep 2026) to its current site, psydao.world.
 import pg from 'pg';
 import { config } from 'dotenv';
 import { cuid, AUTHOR_ID, isLockedPage } from './seed-utils.mjs';
@@ -86,6 +86,21 @@ try {
     const fixed = dsRaw.replace(PSY_OLD, 'PsyDAO');
     await save(ds, JSON.parse(fixed), '1.2.6', 'patch',
       'Unlinked PsyDAO\'s website: psydao.io passed its registrar expiry on 22 Sep 2026 and serves Namecheap\'s expired-domain page over HTTP and no TLS (read 4 Oct 2026). Its X, Discord and Telegram links stay.',
+      false);
+  }
+
+  // 3. Follow-up, same run: the caper pass found PsyDAO's current site, psydao.world (200, read
+  // 4 Oct 2026, the domain caper.network/wiki/desci/ecosystem/psydao already cites).
+  const ds2 = await load('contents/tech/core-concepts', 'decentralized-science-desci');
+  const ds2Raw = JSON.stringify(ds2.content);
+  const PSY_CELL = '<p>PsyDAO</p>';
+  const PSY_NEW = '<p><a target=\\"_blank\\" rel=\\"noopener noreferrer nofollow\\" class=\\"link\\" href=\\"https://psydao.world/\\">PsyDAO</a></p>';
+  if (ds2Raw.includes('psydao.world')) {
+    console.log('  decentralized-science-desci: psydao.world already linked – no write');
+  } else {
+    if (ds2Raw.split(PSY_CELL).length !== 2) throw new Error('PsyDAO cell not found exactly once');
+    await save(ds2, JSON.parse(ds2Raw.replace(PSY_CELL, PSY_NEW)), '1.2.7', 'patch',
+      'Relinked PsyDAO to its current website, psydao.world (200, read 4 Oct 2026), which replaced the lapsed psydao.io.',
       false);
   }
 } finally {
