@@ -100,6 +100,7 @@ export function aboutEntity(
   tagPath: string | null | undefined,
   title: string,
   metadata: unknown,
+  page: { description?: string; image: string },
 ): Record<string, unknown> | null {
   const segs = segments(tagPath);
   const [root, child] = segs;
@@ -145,15 +146,22 @@ export function aboutEntity(
   // rather than something anyone attended: an `Event` for those asserts a venue
   // and an attendance mode that never existed. `location` is required on Event,
   // so a gathering still missing one gets no entity rather than an invalid one.
+  // Organizer, performer and offers stay unset: no metadata key records them,
+  // and Google lists them as recommended, not required.
   if (root === 'contents' && child === 'history') {
     const date = storedDate(md.date);
+    const endDate = storedDate(md.endDate);
     const gathering = ['Conference', 'Hackathon', 'Workshop'].includes(categoryLabel(md.type));
     if (!date || !gathering || !md.location) return null;
     return {
       '@type': 'Event',
       name: title,
       startDate: date,
-      location: { '@type': 'Place', name: md.location },
+      ...(endDate && { endDate }),
+      eventStatus: 'https://schema.org/EventScheduled',
+      location: { '@type': 'Place', name: md.location, address: md.location },
+      ...(page.description && { description: page.description }),
+      image: page.image,
       ...(links.length && { sameAs: links }),
       eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
     };

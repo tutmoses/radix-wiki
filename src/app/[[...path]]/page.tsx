@@ -244,7 +244,11 @@ const PUBLISHER = { '@type': 'Organization', name: 'RADIX Wiki', url: SITE_URL, 
 function pageLd(page: WikiPage, url: string) {
   const tagSegments = page.tagPath?.split('/').filter(Boolean) || [];
   const section = tagSegments.length ? categoryLabel(findTagByPath(tagSegments.slice(0, 1))?.name ?? tagSegments[0] ?? '') : undefined;
-  const about = aboutEntity(page.tagPath, page.title, page.metadata);
+  const description = pageDescription(page);
+  // Google recommends an image on every article; pages without a banner get the
+  // same generated card the OG tags already use, rather than no image at all.
+  const image = page.bannerImage || ogImageUrl({ title: page.title, tagPath: page.tagPath });
+  const about = aboutEntity(page.tagPath, page.title, page.metadata, { description, image });
   // References blocks are usually top-level, but infobox/columns can nest them.
   const references = Array.isArray(page.content)
     ? leafBlocks(page.content as unknown as Block[]).flatMap(b => (b.type === 'references' ? b.items ?? [] : []))
@@ -253,10 +257,8 @@ function pageLd(page: WikiPage, url: string) {
     type: articleType(page.tagPath),
     headline: page.title,
     url,
-    description: pageDescription(page),
-    // Google recommends an image on every article; pages without a banner get the
-    // same generated card the OG tags already use, rather than no image at all.
-    image: page.bannerImage || ogImageUrl({ title: page.title, tagPath: page.tagPath }),
+    description,
+    image,
     published: page.createdAt,
     modified: page.updatedAt,
     // Name only — the wiki doesn't publish the displayName↔wallet mapping, so no
