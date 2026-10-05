@@ -75,6 +75,7 @@ export const TAG_HIERARCHY: TagNode[] = [
         metadataKeys: [
           { key: 'attendees', label: 'Attendees:', type: 'text'},
           { key: 'date', label: 'Date:', type: 'date' },
+          { key: 'endDate', label: 'End date:', type: 'date' },
           { key: 'location', label: 'Location:', type: 'text' },
           { key: 'type', label: 'Type:', type: 'select', options: ['Conference', 'Hackathon', 'Milestone', 'Workshop'] },
           { key: 'website', label: 'Website:', type: 'url' }
