@@ -133,7 +133,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
         // below puts a 30s edge cache in front of this, so a repeated query
         // inside that window fires once — which is the debounce this wants
         // anyway, not a gap in the measurement.
-        trackSearch(request, q, total);
+        trackSearch(request.headers, q, total, 'wiki');
         return cachedJson(paginatedResponse(items, total, page, pageSize));
       }
 

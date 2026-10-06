@@ -1,13 +1,10 @@
-// src/lib/auth.ts — this wiki's binding of `wiki-formant/rola`.
+// src/lib/auth.ts — this wiki's binding of @/lib/rola.
 //
 // The stack itself (challenge, proof verification, JWT session, cookie and
-// Bearer entry) lives in the package. What stays here is only what is this
-// wiki's: the cookie name, the dApp identity, and the two ports the package
-// deliberately does not import — a per-repo Prisma client and next/headers.
+// Bearer entry) is @/lib/rola. What stays here is only what is this wiki's
+// configuration: the cookie name, the secret and the dApp identity.
 
-import { cookies } from 'next/headers';
-import { createRolaAuth } from 'wiki-formant/rola';
-import { prisma } from '@/lib/prisma/client';
+import { createRolaAuth } from '@/lib/rola';
 import { RADIX_CONFIG } from '@/lib/radix/config';
 
 if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
@@ -19,8 +16,6 @@ const auth = createRolaAuth({
   jwtSecret: new TextEncoder().encode(
     process.env.JWT_SECRET || 'default-secret-change-in-production-min-32-chars'
   ),
-  store: { session: prisma.session, challenge: prisma.challenge },
-  cookies,
   rola: {
     expectedOrigin: RADIX_CONFIG.applicationUrl,
     dAppDefinitionAddress: RADIX_CONFIG.dAppDefinitionAddress,

@@ -6,10 +6,10 @@ import { matchSnippet } from 'wiki-formant/text';
 import { decodeEntities } from '@/lib/content';
 import { SITE_URL } from '@/lib/site';
 
-// The deterministic pair behind the generative banner is `wiki-formant`,
+// The deterministic pair behind the generative banner is `wiki-formant/seeded`,
 // shared with caper.
-export { hashStr, seededRandom } from 'wiki-formant';
-import { hashStr, seededRandom } from 'wiki-formant';
+export { hashStr, seededRandom } from 'wiki-formant/seeded';
+import { hashStr, seededRandom } from 'wiki-formant/seeded';
 
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));

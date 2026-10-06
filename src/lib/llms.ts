@@ -8,7 +8,7 @@
 
 import {
   cleanSnippet,
-  corpusEtag,
+  corpusValidatorsFrom,
   corpusRoute as sharedCorpusRoute,
   pageLine as formantPageLine,
 } from 'wiki-formant/http';
@@ -99,11 +99,7 @@ export function pageLine(p: { title: string; tagPath: string | null; slug: strin
  */
 async function corpusValidators(depth = '') {
   const agg = await prisma.page.aggregate({ _count: true, _max: { updatedAt: true }, where: CORPUS_WHERE });
-  const stamp = agg._max.updatedAt ?? new Date(0);
-  return {
-    etag: corpusEtag([depth, agg._count, stamp]),
-    lastModified: stamp.toUTCString(),
-  };
+  return corpusValidatorsFrom([depth, agg._count], [agg._max.updatedAt]);
 }
 
 const RECENT_LIMIT = 30;

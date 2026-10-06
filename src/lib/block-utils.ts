@@ -1,16 +1,9 @@
 // src/lib/block-utils.ts - Shared block constants and utilities
 
 import type { Block, BlockType } from '@/types/blocks';
-import {
-  createBlockValidator,
-  duplicateBlockIds,
-  validateCodeTabs,
-  validateLinkGroups,
-  validateReferenceItems,
-  validateStatItems,
-} from 'wiki-formant/validation';
+import { coreAtomicValidator, createBlockValidator, duplicateBlockIds } from 'wiki-formant/validation';
 import { Clock, FileText, Columns, TrendingUp, Pencil, Info, Rss, Code2, BarChart3, MessageSquareQuote, LayoutGrid, QrCode, ListOrdered, AlertTriangle, type LucideIcon } from 'lucide-react';
-import { someBlock } from 'wiki-formant/blocks';
+import { coreBlockDefaults, someBlock } from 'wiki-formant/blocks';
 import { BLOCK_SHAPE } from '@/lib/block-shape';
 
 export const CODE_LANGS = ['javascript', 'typescript', 'css', 'json', 'bash', 'python', 'rust', 'sql', 'html', 'xml', 'jsx', 'tsx', 'markdown', 'yaml', 'toml'] as const;
@@ -29,24 +22,23 @@ export const DEFAULT_LANG = 'rust';
 // codeTabs is valid and renderable (one live tutorial) with no editor UI.
 type BlockSpec = { label: string; icon: LucideIcon; insertable?: true; atomic?: true; create: () => Omit<Block, 'id'> };
 
+// What inserting a core type makes is `wiki-formant/blocks`', identical in all three wikis.
+const CORE = coreBlockDefaults();
+
 export const BLOCK_META: Record<BlockType, BlockSpec> = {
-  content: { label: 'Content', icon: Pencil, insertable: true, atomic: true, create: () => ({ type: 'content', text: '' }) },
-  banner: { label: 'Notice Banner', icon: AlertTriangle, insertable: true, atomic: true, create: () => ({ type: 'banner', variant: 'stub' }) },
-  columns: { label: 'Columns', icon: Columns, insertable: true, create: () => ({ type: 'columns', columns: [{ id: crypto.randomUUID(), blocks: [] }, { id: crypto.randomUUID(), blocks: [] }], gap: 'md', align: 'start' }) },
-  recentPages: { label: 'Recent Pages', icon: Clock, insertable: true, atomic: true, create: () => ({ type: 'recentPages', limit: 5 }) },
-  pageList: { label: 'Page List', icon: FileText, insertable: true, atomic: true, create: () => ({ type: 'pageList', pageIds: [] }) },
+  content: { label: 'Content', icon: Pencil, insertable: true, atomic: true, create: CORE.content },
+  banner: { label: 'Notice Banner', icon: AlertTriangle, insertable: true, atomic: true, create: CORE.banner },
+  columns: { label: 'Columns', icon: Columns, insertable: true, create: CORE.columns },
+  recentPages: { label: 'Recent Pages', icon: Clock, insertable: true, atomic: true, create: CORE.recentPages },
+  pageList: { label: 'Page List', icon: FileText, insertable: true, atomic: true, create: CORE.pageList },
   assetPrice: { label: 'Asset Price', icon: TrendingUp, insertable: true, atomic: true, create: () => ({ type: 'assetPrice', resourceAddress: 'resource_rdx1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxradxrd', showChange: true }) },
   rssFeed: { label: 'RSS Feed', icon: Rss, insertable: true, atomic: true, create: () => ({ type: 'rssFeed', url: 'https://tutmoses.github.io/rss-feed/feeds.json', limit: 15 }) },
-  codeTabs: { label: 'Code Tabs', icon: Code2, atomic: true, create: () => ({ type: 'codeTabs', tabs: [{ label: 'Rust', language: 'rust', code: '' }, { label: 'TypeScript', language: 'typescript', code: '' }] }) },
-  linkGrid: { label: 'Link Grid', icon: LayoutGrid, insertable: true, atomic: true, create: () => ({ type: 'linkGrid', groups: [{ id: crypto.randomUUID(), heading: 'Group', links: [] }] }) },
+  codeTabs: { label: 'Code Tabs', icon: Code2, atomic: true, create: CORE.codeTabs },
+  linkGrid: { label: 'Link Grid', icon: LayoutGrid, insertable: true, atomic: true, create: CORE.linkGrid },
   tipJar: { label: 'Tip Jar', icon: QrCode, insertable: true, atomic: true, create: () => ({ type: 'tipJar', address: '', label: 'Tip the author ☕️', message: 'Support independent writing on Radix — scan to send $XRD.' }) },
-  references: { label: 'References', icon: ListOrdered, insertable: true, atomic: true, create: () => ({ type: 'references', title: 'References', items: [] }) },
-  infobox: { label: 'Infobox', icon: Info, create: () => ({ type: 'infobox', blocks: [] }) },
-  stats: { label: 'Stats', icon: BarChart3, create: () => ({ type: 'stats', items: [
-    { id: crypto.randomUUID(), value: '100+', label: 'Customers' },
-    { id: crypto.randomUUID(), value: '$1M', label: 'Revenue' },
-    { id: crypto.randomUUID(), value: '99%', label: 'Uptime' },
-  ], columns: 3 }) },
+  references: { label: 'References', icon: ListOrdered, insertable: true, atomic: true, create: CORE.references },
+  infobox: { label: 'Infobox', icon: Info, create: CORE.infobox },
+  stats: { label: 'Stats', icon: BarChart3, create: CORE.stats },
   testimonial: { label: 'Testimonial', icon: MessageSquareQuote, create: () => ({ type: 'testimonial', quote: 'An amazing product that changed everything.', author: 'Jane Doe', role: 'CEO' }) },
 };
 
@@ -61,9 +53,9 @@ export const duplicateBlock = (block: Block): Block => duplicateBlockIds(block, 
 
 // --- Block validation ---
 //
-// The walk (id/type gate, container branch, the two nested item validators) is
-// `wiki-formant/validation`, shared with caper.
-// Only the switch below is this repo's — its block type set is.
+// The walk (id/type gate, container branch, the two nested item validators) and
+// the core leaf checks are `wiki-formant/validation`, shared with caper and
+// acuiq2. Only the four native cases below are this repo's — its block type set is.
 //
 // `okUrl` arrives with it: reference and link-grid URLs outside http(s) and
 // mailto are rejected at the write path. React 19 neutralises a `javascript:`
@@ -76,37 +68,22 @@ export const duplicateBlock = (block: Block): Block => duplicateBlockIds(block, 
 // types the infobox and column MENUS offer, which is not the same question:
 // reading it here rejected every save of the eight Week in Review issues that
 // carry a top-level testimonial, through the editor and MCP alike.
+const core = coreAtomicValidator();
 const { validateBlocks: validate, blockIssues } = createBlockValidator({
   isKnownType: t => t in BLOCK_META,
   isAtomicType: t => t !== 'columns' && t !== 'infobox',
   validateAtomic: b => {
     switch (b.type) {
-      case 'content':
-        return typeof b.text === 'string';
-      case 'recentPages':
-        return typeof b.limit === 'number' && b.limit > 0;
-      case 'pageList':
-        return Array.isArray(b.pageIds) && b.pageIds.every(id => typeof id === 'string');
       case 'assetPrice':
         return b.resourceAddress === undefined || typeof b.resourceAddress === 'string';
       case 'rssFeed':
         return typeof b.url === 'string';
-      case 'codeTabs':
-        return validateCodeTabs(b.tabs);
-      case 'stats':
-        return validateStatItems(b.items);
       case 'testimonial':
         return typeof b.quote === 'string' && typeof b.author === 'string';
       case 'tipJar':
         return typeof b.address === 'string';
-      case 'banner':
-        return typeof b.variant === 'string';
-      case 'references':
-        return validateReferenceItems(b.items);
-      case 'linkGrid':
-        return validateLinkGroups(b.groups);
       default:
-        return false;
+        return core(b);
     }
   },
 });

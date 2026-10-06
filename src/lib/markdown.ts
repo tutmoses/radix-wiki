@@ -14,18 +14,8 @@
 // switch over the union means a new block type is a compile error until it is
 // handled, rather than silently rendering as nothing.
 
-import { decodeEntities, htmlToMarkdown, inlineToMarkdown } from 'wiki-formant';
-import { markdownDocument } from 'wiki-formant/markdown';
-import {
-  renderBlockTree,
-  codeTabsToMarkdown,
-  bannerToMarkdown,
-  referencesToMarkdown,
-  statsToMarkdown,
-  linkGridToMarkdown,
-  linkList,
-} from 'wiki-formant/blocks';
-import { BANNER_LABELS } from '@/lib/content';
+import { decodeEntities, inlineToMarkdown, markdownDocument } from 'wiki-formant/markdown';
+import { coreAtomicToMarkdown, renderBlockTree, linkList } from 'wiki-formant/blocks';
 import { pageUrl } from '@/lib/utils';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import type { Block, AtomicBlock } from '@/types/blocks';
@@ -33,8 +23,7 @@ import { BLOCK_SHAPE } from '@/lib/block-shape';
 
 const decode = decodeEntities;
 
-// `inline` and `htmlToMarkdown` are the shared converter now; aliased so the
-// block renderers below read unchanged.
+// The shared inline converter, aliased so the block renderers below read unchanged.
 const inline = inlineToMarkdown;
 
 type ResolvedPage = { title: string; tagPath: string; slug: string };
@@ -45,23 +34,9 @@ const pageLinks = (pages: ResolvedPage[]) =>
 /** One leaf as markdown. The MDX export reuses it for every static leaf. */
 export function atomicToMarkdown(block: AtomicBlock): string {
   switch (block.type) {
-    case 'content':
-      return htmlToMarkdown(block.text);
-
-    case 'codeTabs':
-      return codeTabsToMarkdown(block.tabs);
-
-    case 'banner':
-      return bannerToMarkdown(BANNER_LABELS[block.variant] ?? block.variant, block.text);
-
-    case 'references':
-      return referencesToMarkdown(block.items, block.title || 'References');
-
-    case 'stats':
-      return statsToMarkdown(block.items);
-
-    case 'linkGrid':
-      return linkGridToMarkdown(block.groups, block.intro);
+    case 'content': case 'codeTabs': case 'banner':
+    case 'references': case 'stats': case 'linkGrid':
+      return coreAtomicToMarkdown(block, { siteUrl: SITE_URL });
 
     case 'recentPages':
       return block.resolvedPages?.length

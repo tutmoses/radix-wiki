@@ -1,39 +1,23 @@
 // src/lib/content.ts — a page as plain prose, for LLM and MCP exports.
 //
-// stripHtml, the banner labels and the leaf bodies are `wiki-formant/text`,
-// shared with the other two wikis. What stays here is the dispatch: a switch
+// The core leaf bodies are `wiki-formant/blocks`' `coreAtomicText`, shared with
+// the other two wikis. What stays here is the dispatch: a switch
 // over this repo's block union, where a new block type is a compile error until
 // it is handled.
 
-import { renderBlockTree } from 'wiki-formant/blocks';
-import {
-  BANNER_LABELS,
-  bannerToText,
-  codeTabsToText,
-  linkGridToText,
-  pageListToText,
-  referencesToText,
-  statsToText,
-  stripHtml,
-} from 'wiki-formant/text';
+import { coreAtomicText, renderBlockTree } from 'wiki-formant/blocks';
 import { BLOCK_SHAPE } from '@/lib/block-shape';
 import type { Block, AtomicBlock } from '@/types/blocks';
 
-export { decodeEntities } from 'wiki-formant';
-export { stripHtml, BANNER_LABELS };
+export { decodeEntities } from 'wiki-formant/markdown';
 
 function atomicText(block: Block | AtomicBlock): string {
   switch (block.type) {
-    case 'content': return stripHtml(block.text);
-    case 'codeTabs': return codeTabsToText(block.tabs);
-    case 'banner': return bannerToText(BANNER_LABELS[block.variant] ?? block.variant, block.text);
-    case 'references': return referencesToText(block.items);
-    case 'stats': return statsToText(block.items);
-    case 'linkGrid': return linkGridToText(block.groups, block.intro);
-    // Resolved server-side, so these read only after `resolveBlockData`; a raw
-    // row has no `resolvedPages` and extracts to empty.
-    case 'recentPages':
-    case 'pageList': return pageListToText(block.resolvedPages ?? []);
+    // Page lists are resolved server-side, so they read only after
+    // `resolveBlockData`; a raw row has no `resolvedPages` and extracts to empty.
+    case 'content': case 'codeTabs': case 'banner': case 'references':
+    case 'stats': case 'linkGrid': case 'recentPages': case 'pageList':
+      return coreAtomicText(block);
     default: return '';
   }
 }

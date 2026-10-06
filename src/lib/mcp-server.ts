@@ -430,6 +430,6 @@ export function serverConfig(auth: string | null): McpServerConfig {
     prompts: PROMPTS,
     rateLimit: MCP_RATE_LIMIT,
     docsUrl: `${SITE_URL}/AGENTS.md`,
-    onCall: (req, body) => trackMcpCall(req, SERVER_INFO.name, body),
+    onCall: (req, body) => trackMcpCall(req, body, SERVER_INFO.name),
   };
 }
