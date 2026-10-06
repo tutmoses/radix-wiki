@@ -2,11 +2,12 @@
 
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useFetch } from '@/hooks';
 import { formatPriceSubscript } from './format';
 import { OCISWAP_API } from '@/lib/radix/config';
+import { useAreaChart, type ChartPoint } from './useAreaChart';
 
 const TIMEFRAME_CONFIG: Record<string, { resolution: string; seconds: number; countback: number }> = {
   '24h': { resolution: '60', seconds: 86400, countback: 24 },
@@ -16,8 +17,6 @@ const TIMEFRAME_CONFIG: Record<string, { resolution: string; seconds: number; co
 };
 const TIMEFRAMES = ['24h', '7d', '30d', '90d'] as const;
 const TIMEFRAME_LABELS: Record<string, string> = { '24h': '24H', '7d': '7D', '30d': '30D', '90d': '90D' };
-
-type ChartPoint = { time: number; value: number };
 
 // The UDF response is columnar — parallel `t` and `c` arrays — or a status that
 // is not `ok`. A throw in here surfaces as the fetch's own error.
@@ -29,12 +28,8 @@ function toPoints(json: UdfResponse): ChartPoint[] {
 }
 
 export function TokenChart({ resourceAddress, defaultTimeframe = '30d', height = 260 }: { resourceAddress: string; defaultTimeframe?: string; height?: number }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<any>(null);
-  const seriesRef = useRef<any>(null);
-  const roRef = useRef<ResizeObserver | null>(null);
   const [timeframe, setTimeframe] = useState(defaultTimeframe);
-  const [chartReady, setChartReady] = useState(false);
+  const { containerRef, ready, show } = useAreaChart(height, formatPriceSubscript);
   // Pinned to the render that changed the timeframe: `useFetch` keys off the URL,
   // and a `now` recomputed every render would refetch forever.
   const url = useMemo(() => {
@@ -45,56 +40,8 @@ export function TokenChart({ resourceAddress, defaultTimeframe = '30d', height =
   const { data, isLoading, error } = useFetch<ChartPoint[]>(url, { transform: toPoints });
 
   useEffect(() => {
-    if (!containerRef.current) return;
-    let disposed = false;
-
-    import('lightweight-charts').then(({ createChart, AreaSeries, ColorType, LineType, CrosshairMode }) => {
-      if (disposed || !containerRef.current) return;
-
-      const chart = createChart(containerRef.current, {
-        layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#8b8fa3', fontFamily: 'inherit', fontSize: 10 },
-        grid: { vertLines: { color: 'rgba(139, 143, 163, 0.1)' }, horzLines: { color: 'rgba(139, 143, 163, 0.1)' } },
-        crosshair: { mode: CrosshairMode.Magnet, vertLine: { color: 'rgba(255, 157, 160, 0.4)', width: 1, style: 3 }, horzLine: { color: 'rgba(255, 157, 160, 0.4)', width: 1, style: 3 } },
-        rightPriceScale: { visible: true, borderVisible: false, scaleMargins: { top: 0.1, bottom: 0.1 } },
-        timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false },
-        handleScroll: false,
-        handleScale: false,
-        width: containerRef.current.clientWidth,
-        height,
-      });
-
-      const series = chart.addSeries(AreaSeries, {
-        lineColor: '#ff9da0',
-        topColor: 'rgba(255, 157, 160, 0.4)',
-        bottomColor: 'rgba(255, 157, 160, 0.02)',
-        lineWidth: 2,
-        lineType: LineType.Curved,
-        crosshairMarkerBackgroundColor: '#ff9da0',
-        crosshairMarkerBorderColor: '#ff9da0',
-        priceFormat: { type: 'custom', formatter: formatPriceSubscript, minMove: 0.0001 },
-      });
-
-      chartRef.current = chart;
-      seriesRef.current = series;
-      setChartReady(true);
-
-      const ro = new ResizeObserver(entries => {
-        const w = entries[0]?.contentRect?.width;
-        if (w && chart) chart.applyOptions({ width: w });
-      });
-      ro.observe(containerRef.current);
-      roRef.current = ro;
-    });
-
-    return () => { disposed = true; roRef.current?.disconnect(); roRef.current = null; chartRef.current?.remove(); chartRef.current = null; seriesRef.current = null; setChartReady(false); };
-  }, [height]);
-
-  useEffect(() => {
-    if (!chartReady || !seriesRef.current || !data?.length) return;
-    seriesRef.current.setData(data);
-    chartRef.current?.timeScale().fitContent();
-    if (containerRef.current) chartRef.current?.applyOptions({ width: containerRef.current.clientWidth });
-  }, [data, chartReady]);
+    if (ready && data?.length) show(data);
+  }, [data, ready, show]);
 
   return (
     <div className="asset-chart">
@@ -106,7 +53,7 @@ export function TokenChart({ resourceAddress, defaultTimeframe = '30d', height =
         ))}
       </div>
       <div ref={containerRef} className="asset-chart-container" style={{ minHeight: height }}>
-        {isLoading && !chartReady && <div className="skeleton rounded" style={{ height }} />}
+        {isLoading && !ready && <div className="skeleton rounded" style={{ height }} />}
         {error && <p className="text-error text-small p-4">{error}</p>}
       </div>
     </div>

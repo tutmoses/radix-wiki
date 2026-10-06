@@ -225,3 +225,23 @@ model Salt {
   day   String @id
   value String
 }
+
+/// One UTC day of user transactions, summed from the Gateway's transaction stream by
+/// src/lib/radix/activity.ts. A row exists only once its whole day has been read, so a
+/// missing day is unread, never zero.
+model LedgerDay {
+  day            DateTime @id @db.Date
+  transactions   Int
+  activeAccounts Int      @map("active_accounts")
+  newAccounts    Int      @map("new_accounts")
+  newComponents  Int      @map("new_components")
+  newResources   Int      @map("new_resources")
+  nftsMinted     Int      @map("nfts_minted")
+  feesXrd        Float    @map("fees_xrd")
+  burnedXrd      Float    @map("burned_xrd")
+  royaltiesXrd   Float    @map("royalties_xrd")
+  /// The last transaction counted. Null on a day with none, such as during the August 2026 halt.
+  stateVersion   Int?     @map("state_version")
+
+  @@map("ledger_days")
+}

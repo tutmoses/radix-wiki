@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { ArrowRight, Activity, Coins, Server, BarChart3 } from 'lucide-react';
 import { getNetworkStats, type NetworkStats } from '@/lib/radix/network';
 import { getTopTokens } from '@/lib/radix/tokens';
+import { getLedgerDays } from '@/lib/radix/activity';
+import { ActivityChart } from './ActivityChart';
 import { ValidatorsTable } from './ValidatorsTable';
 import { TokensTable } from './TokensTable';
 import LedgerUnavailable from './LedgerUnavailable';
@@ -23,7 +25,11 @@ function statCards({ staking, xrdSupply, epoch, stateVersion }: NetworkStats): S
 export default async function ChartsOverview() {
   // Token prices come from OciSwap and survive a Gateway that will not answer state
   // reads, so they are fetched apart from the ledger and still render alone.
-  const [stats, tokens] = await Promise.all([getNetworkStats().catch(() => null), getTopTokens()]);
+  const [stats, tokens, days] = await Promise.all([
+    getNetworkStats().catch(() => null),
+    getTopTokens(),
+    getLedgerDays().catch(() => []),
+  ]);
 
   return (
     <div className="stack">
@@ -38,6 +44,13 @@ export default async function ChartsOverview() {
       </div>
 
       {stats ? <StatGrid stats={statCards(stats)} /> : <LedgerUnavailable what="Live network data" />}
+
+      {days.length > 0 && (
+        <section className="stack-sm">
+          <h2 id="network-activity" className="charts-section-title">Network activity</h2>
+          <ActivityChart days={days} />
+        </section>
+      )}
 
       <section className="stack-sm">
         <div className="spread">
@@ -62,7 +75,7 @@ export default async function ChartsOverview() {
       )}
 
       <p className="text-text-muted text-small">
-        Data updates every 1–5 minutes. Validator and network data: Radix Gateway. Token prices: OciSwap.
+        Data updates every 1–5 minutes, and network activity once a day. Validator, network and activity data: Radix Gateway. Token prices: OciSwap.
       </p>
     </div>
   );

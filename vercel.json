@@ -1,0 +1,3 @@
+{
+  "crons": [{ "path": "/api/cron/ledger-days", "schedule": "20 0 * * *" }]
+}

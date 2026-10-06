@@ -855,6 +855,8 @@
   .ledger-unavailable { @apply flex items-start gap-3 bg-surface-1 border border-border-muted rounded-lg p-4; }
   .charts-stat-grid { @apply grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3; }
   .charts-section-title { @apply text-h4 font-semibold; }
+  .activity-metrics { @apply flex flex-wrap gap-1 text-small; }
+  .activity-metrics .toggle-option { @apply normal-case; }
   .charts-section-link { @apply inline-flex items-center gap-1 text-small text-accent hover:underline; }
 
   .data-table-wrap { @apply bg-surface-1 border border-border-muted rounded-lg overflow-hidden overflow-x-auto; }
