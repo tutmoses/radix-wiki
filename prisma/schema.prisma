@@ -192,3 +192,36 @@ model Airdrop {
 
   @@map("airdrops")
 }
+
+// Page views and events, counted by wiki-formant/analytics. Its SQL names these
+// tables as written, so they carry no @@map. A visitor is a hash under the day's
+// Salt, which is replaced daily; rows older than 400 days are deleted.
+model View {
+  id        BigInt   @id @default(autoincrement())
+  siteId    String   @default("")
+  path      String
+  source    String?
+  country   String?
+  device    String
+  visitor   String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([siteId, createdAt])
+}
+
+model Event {
+  id        BigInt   @id @default(autoincrement())
+  siteId    String   @default("")
+  name      String
+  path      String?
+  props     Json     @default("{}")
+  visitor   String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([siteId, name, createdAt])
+}
+
+model Salt {
+  day   String @id
+  value String
+}

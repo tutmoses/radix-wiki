@@ -1,5 +1,4 @@
 import { NextResponse, type NextRequest, type NextFetchEvent } from 'next/server';
-import { plausibleEvent } from '@/lib/track';
 import { detectAiBot } from 'wiki-formant/crawlers';
 
 
@@ -9,8 +8,10 @@ export function proxy(request: NextRequest, event: NextFetchEvent) {
   const botName = detectAiBot(request.headers.get('user-agent'));
   if (!botName) return NextResponse.next();
 
+  // Imported here, not at the top: track.ts pulls in Prisma, which a static
+  // import would load for every request the proxy sees, bots or not.
   event.waitUntil(
-    plausibleEvent('AI Bot Visit', request.nextUrl.href, { bot: botName }, request.headers),
+    import('@/lib/track').then(m => m.trackEvent('AI Bot Visit', request.nextUrl.href, { bot: botName }, request.headers)),
   );
 
   return NextResponse.next();
@@ -18,7 +19,8 @@ export function proxy(request: NextRequest, event: NextFetchEvent) {
 
 export const config = {
   // The negative lookahead excludes /api wholesale, which would blind the
-  // AI-bot counter to the machine surface — so the two agent-facing API
-  // prefixes are matched back in explicitly.
-  matcher: ['/((?!api|_next|js|favicon\\.ico|logo\\.png).*)', '/api/mcp', '/api/wiki/:path*'],
+  // AI-bot counter to the machine surface – so the two agent-facing API
+  // prefixes are matched back in explicitly. /api/view stays out: the beacon
+  // is sent by browsers, and collect() drops bots itself.
+  matcher: ['/((?!api|_next|favicon\\.ico|logo\\.png).*)', '/api/mcp', '/api/wiki/:path*'],
 };

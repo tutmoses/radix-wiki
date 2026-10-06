@@ -1,27 +1,30 @@
-// src/lib/track.ts — server-side Plausible events, shared by the proxy
-// ("AI Bot Visit"), the MCP route ("MCP Call") and the wiki search endpoint
-// ("Search Query") so the three never drift.
+// src/lib/track.ts – server-side events, counted in this wiki's own database and
+// shared by the proxy ("AI Bot Visit"), the MCP route ("MCP Call") and the wiki
+// search endpoint ("Search Query") so the three never drift.
 //
-// The event body and the JSON-RPC props extraction are
-// `wiki-formant/analytics`, shared with the other wikis. What stays here is
-// this wiki's domain and the Next deferral.
+// `wiki-formant/analytics` owns the tables' SQL, the visitor hash and the props
+// extraction; this binds it to Prisma. Page views arrive separately, from
+// <Beacon> through POST /api/view.
 
 import { after } from 'next/server';
 import { SITE_URL } from '@/lib/site';
-import { plausibleEvent as send, mcpCallProps, searchQueryProps, plausibleDomain, type PlausibleExtra } from 'wiki-formant/analytics';
+import { prisma } from '@/lib/prisma/client';
+import { recordEvent, mcpCallProps, searchQueryProps, type Sql } from 'wiki-formant/analytics';
 
-// Hostname the Plausible property is registered under.
-export const PLAUSIBLE_DOMAIN = plausibleDomain(process.env.NEXT_PUBLIC_APP_URL, 'radix.wiki');
+export const sql: Sql = (query, ...values) => prisma.$queryRawUnsafe(query, ...values);
 
-// Callers decide how to defer it (event.waitUntil in the proxy vs after() in routes).
-export function plausibleEvent(
+// Dev and previews share production's database, so only production records.
+// `headers` are the request of whoever caused the event, so it joins their
+// visitor, agents included. Callers decide how to defer it (event.waitUntil in
+// the proxy, after() in routes).
+export function trackEvent(
   name: string,
   url: string,
   props: Record<string, string>,
-  headers: Headers,
-  extra?: PlausibleExtra,
-): Promise<unknown> {
-  return send({ domain: PLAUSIBLE_DOMAIN }, name, url, props, headers, extra);
+  headers?: Headers,
+): Promise<void> {
+  if (process.env.VERCEL_ENV !== 'production') return Promise.resolve();
+  return recordEvent(sql, { name, url, props, headers });
 }
 
 // Tool-level MCP analytics. UA matching in the proxy can't see inside the
@@ -30,7 +33,7 @@ export function plausibleEvent(
 export function trackMcpCall(request: Request, server: string, body: unknown) {
   const props = mcpCallProps(request, body, server);
   const { url, headers } = request;
-  after(() => plausibleEvent('MCP Call', url, props, headers));
+  after(() => trackEvent('MCP Call', url, props, headers));
 }
 
 // Human search analytics, the twin of trackMcpCall. Without it this wiki counts
@@ -40,7 +43,7 @@ export function trackMcpCall(request: Request, server: string, body: unknown) {
 //
 // Called from the one GET that serves the search box, so it sees the settled
 // query the typeahead debounce dispatched rather than every keystroke. `total`
-// is the match count before pagination — the page-one slice would report zero
+// is the match count before pagination – the page-one slice would report zero
 // only for a genuinely empty result anyway, but the filter that yields the gap
 // list reads `results == "0"` and must not be confused by a deep page.
 export function trackSearch(request: Request, query: string, results: number) {
@@ -48,12 +51,8 @@ export function trackSearch(request: Request, query: string, results: number) {
   if (!props) return;
   const { headers } = request;
   // The referer is the page the reader searched from; the search endpoint's own
-  // URL would file every query against /api/wiki.
+  // URL would file every query against /api/wiki. The reader's own headers make
+  // the search join their visitor rather than count as a separate one.
   const url = headers.get('referer') || SITE_URL;
-  after(() => plausibleEvent('Search Query', url, props, headers, {
-    // A person triggered this, so send their own user agent and let the event
-    // join their session. The bot-tracker default would file every search as a
-    // separate pseudo-visitor and inflate the very human lane this explains.
-    userAgent: headers.get('user-agent') ?? undefined,
-  }));
+  after(() => trackEvent('Search Query', url, props, headers));
 }

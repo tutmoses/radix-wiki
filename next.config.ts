@@ -5,8 +5,8 @@ import type { NextConfig } from 'next';
 // Content-Security-Policy (STRUCTURE.md S9). Enforcing in production, dev exempt
 // (Next's inline HMR runtime would trip it). Verified against home, article pages
 // with embeds/images, and the wallet-connect init before flipping from
-// Report-Only. 'unsafe-inline' is required (Next injects inline hydration + an
-// inline plausible-init script, no nonce middleware); img/frame stay `https:`-broad
+// Report-Only. 'unsafe-inline' is required (Next injects inline hydration + the
+// inline sidebar boot script, no nonce middleware); img/frame stay `https:`-broad
 // because published articles embed arbitrary hosts; connect-src covers the Radix
 // Gateway + wallet Connect Relay (both under *.radixdlt.com) and OciSwap.
 const isProd = process.env.NODE_ENV === 'production';
@@ -132,10 +132,6 @@ const nextConfig: NextConfig = {
         // rewrite destination (a client-supplied one survives, one authored
         // here does not), so the extension has to be what carries the intent.
         { source: '/:path*.md', destination: '/api/wiki/:path*.md' },
-      ],
-      afterFiles: [
-        { source: '/js/script.js', destination: 'https://plausible.io/js/pa-5NRG8r4xW19fPk-6FUmFm.js' },
-        { source: '/api/event', destination: 'https://plausible.io/api/event' },
       ],
     };
   },

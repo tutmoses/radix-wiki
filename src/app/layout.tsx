@@ -1,10 +1,9 @@
 // src/app/layout.tsx
 
 import type { Metadata } from 'next';
-import Script from 'next/script';
 import { Inter } from 'next/font/google';
 import '@/styles/globals.css';
-import { SidebarProvider } from 'wiki-formant/react';
+import { Beacon, SidebarProvider } from 'wiki-formant/react';
 import { sidebarBootScript } from 'wiki-formant/sidebar';
 import { SIDEBAR_BREAKPOINT, SIDEBAR_KEY } from '@/lib/sidebar';
 import { JsonLd } from 'wiki-formant/react-server';
@@ -15,7 +14,6 @@ import { Footer } from '@/components/Footer';
 import { Toast } from '@/components/Toast';
 
 import { SITE_URL } from '@/lib/site';
-import { PLAUSIBLE_DOMAIN } from '@/lib/track';
 import { ogMetadata, SITE_NAME } from '@/lib/og';
 
 const inter = Inter({
@@ -114,12 +112,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <JsonLd data={SITE_JSON_LD} />
-        <Script src="/js/script.js" strategy="afterInteractive" />
-        <Script id="plausible-init" strategy="afterInteractive">
-          {/* endpoint must stay same-origin: the pa-* script ignores data-api and defaults
-              to plausible.io/api/event, which connect-src blocks (next.config.ts CSP). */}
-          {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init({ domain: ${JSON.stringify(PLAUSIBLE_DOMAIN)}, endpoint: '/api/event' });`}
-        </Script>
+        <Beacon />
         <RadixProvider>
           {/* The rail and the header button that toggles it are not siblings,
               so the collapse state spans them through this provider. */}
