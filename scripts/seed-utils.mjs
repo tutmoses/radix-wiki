@@ -158,20 +158,33 @@ export async function embedFigure(client, page, { marker, html, place, message, 
     action = pos === blocks.length - 1 ? `appended [${pos}]` : `inserted [${pos}]`;
   }
 
-  const version = bump(page.version, 'minor');
-  if (!dry) {
-    const now = new Date().toISOString();
-    const json = JSON.stringify(blocks);
-    await client.query('BEGIN');
-    await client.query('UPDATE pages SET content = $1, version = $2, updated_at = $3 WHERE id = $4',
-      [json, version, now, page.id]);
-    await client.query(
-      `INSERT INTO revisions (id, page_id, content, title, version, change_type, author_id, message, created_at)
-       VALUES ($1,$2,$3,$4,$5,'minor',$6,$7,$8)`,
-      [cuid(), page.id, json, page.title, version, AUTHOR_ID, message, now]);
-    await client.query('COMMIT');
-  }
+  const version = await writeRevision(client, page, blocks, { message, dry });
   return { action, version, blocks };
+}
+
+/**
+ * Write edited blocks back to a loaded page row (`id`, `title`, `version`) as one
+ * revision: the page and its `revisions` row in one transaction, the version
+ * bumped from the stored one by `change`, which is also the revision's
+ * change_type. `verified` stamps `last_verified_at` too, for an edit that
+ * re-checked the page's facts. `dry` writes nothing. Returns the new version.
+ */
+export async function writeRevision(client, page, blocks, { change = 'minor', message, verified = false, dry = false }) {
+  const version = bump(page.version, change);
+  if (dry) return version;
+  assertLinkShapes(blocks, page.title);
+  const now = new Date().toISOString();
+  const json = JSON.stringify(blocks);
+  await client.query('BEGIN');
+  await client.query(
+    `UPDATE pages SET content = $1, version = $2, updated_at = $3${verified ? ', last_verified_at = $3' : ''} WHERE id = $4`,
+    [json, version, now, page.id]);
+  await client.query(
+    `INSERT INTO revisions (id, page_id, content, title, version, change_type, author_id, message, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+    [cuid(), page.id, json, page.title, version, change, AUTHOR_ID, message, now]);
+  await client.query('COMMIT');
+  return version;
 }
 
 /**
