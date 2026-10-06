@@ -32,7 +32,6 @@ const nextConfig: NextConfig = {
   // so the studio runs on its own distDir to coexist with `:3000`. Off unless
   // STUDIO_DIST_DIR is set, so normal dev/build keep the default `.next`.
   ...(process.env.STUDIO_DIST_DIR ? { distDir: process.env.STUDIO_DIST_DIR } : {}),
-  reactStrictMode: true,
   compress: true,
   
   experimental: {

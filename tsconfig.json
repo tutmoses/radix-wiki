@@ -27,21 +27,6 @@
     "paths": {
       "@/*": [
         "./src/*"
-      ],
-      "@/components/*": [
-        "./src/components/*"
-      ],
-      "@/lib/*": [
-        "./src/lib/*"
-      ],
-      "@/hooks/*": [
-        "./src/hooks/*"
-      ],
-      "@/types/*": [
-        "./src/types/*"
-      ],
-      "@/styles/*": [
-        "./src/styles/*"
       ]
     },
     "target": "ES2022"
@@ -52,7 +37,6 @@
     "**/*.tsx",
     "src/app/.well-known/**/*.ts",
     ".next/types/**/*.ts",
-    "prisma.config.ts",
     ".next/dev/types/**/*.ts",
     ".next/studio/types/**/*.ts",
     ".next/studio/dev/types/**/*.ts"
