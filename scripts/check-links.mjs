@@ -46,7 +46,7 @@ const UNVERIFIABLE_EMBED_HOSTS = new Map([
   ['widgets.sociablekit.com', 'widget shell rendering only "Shopify Store" — 200 says nothing about the store ID'],
 ]);
 
-// Routes parsePath() resolves without a backing page (src/lib/wiki.ts).
+// Routes parsePath() resolves without a backing page (src/lib/path.ts).
 const STATIC_PATHS = ['/', '/leaderboard', '/welcome', '/rewards', '/search', '/maintenance', '/charts', '/charts/validators', '/charts/tokens',
   // Agent surface: real routes, not wiki pages, so they need declaring here or every
   // page that cites one is reported as a broken internal link (run 272).

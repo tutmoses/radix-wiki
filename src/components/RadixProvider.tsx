@@ -6,6 +6,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStore } from '@/hooks';
 import { RADIX_CONFIG } from '@/lib/radix/config';
+import { sendJson } from '@/lib/utils';
 import type { RadixWalletData, SignedChallenge } from '@/types';
 
 type RadixDappToolkitType = Awaited<ReturnType<typeof import('@radixdlt/radix-dapp-toolkit').RadixDappToolkit>>;
@@ -36,14 +37,10 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
     walletData: RadixWalletData,
     proof: SignedChallenge,
   ) => {
-    const response = await fetch('/api/auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        accounts: walletData.accounts,
-        persona: walletData.persona,
-        signedChallenge: proof,
-      }),
+    const response = await sendJson('/api/auth', 'POST', {
+      accounts: walletData.accounts,
+      persona: walletData.persona,
+      signedChallenge: proof,
     });
 
     if (!response.ok) {

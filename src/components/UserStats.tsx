@@ -81,7 +81,7 @@ export function UserStats({ userId }: { userId: string }) {
       <section className="section-divider stack-sm">
         <h3 className="text-text-muted">Statistics</h3>
         <div className="stat-grid">
-          {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-24 skeleton rounded-lg" />)}
+          {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-24 skeleton" />)}
         </div>
       </section>
     );

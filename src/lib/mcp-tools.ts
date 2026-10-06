@@ -14,6 +14,7 @@
 // and the server card follow it rather than keeping their own.
 import serverManifest from '../../server.json';
 import type { ToolAnnotations, ToolSchema } from 'wiki-formant/mcp';
+import { SITE_URL } from '@/lib/site';
 
 /** Reported by `initialize`. `name` is the MCP server id, distinct from the
  *  registry's namespaced `serverManifest.name`. */
@@ -21,7 +22,7 @@ export const SERVER_INFO = { name: 'radix-wiki', version: serverManifest.version
 
 /** Registry identity, for the server card. */
 
-export type McpToolSpec = {
+type McpToolSpec = {
   name: string;
   /** Human-facing label. 2025-06-18 promoted this out of `annotations`. */
   title: string;
@@ -204,7 +205,7 @@ export const TOOLS: McpToolSpec[] = [
     name: 'create_page',
     title: 'Create a page',
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-    description: 'Create a new Radix Wiki page. Requires a ROLA bearer token — see https://radix.wiki/AGENTS.md for the challenge-sign-verify flow. Call get_categories first for a valid tagPath. Some paths are balance-gated (blog needs 50,000 $XRD). Earns contribution points.',
+    description: `Create a new Radix Wiki page. Requires a ROLA bearer token — see ${SITE_URL}/AGENTS.md for the challenge-sign-verify flow. Call get_categories first for a valid tagPath. Some paths are balance-gated (blog needs 50,000 $XRD). Earns contribution points.`,
     auth: 'rola',
     inputSchema: {
       type: 'object',
@@ -232,7 +233,7 @@ export const TOOLS: McpToolSpec[] = [
     name: 'edit_page',
     title: 'Edit a page',
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
-    description: 'Edit an existing Radix Wiki page. Requires a ROLA bearer token — see https://radix.wiki/AGENTS.md. Fetch the page with get_page first and send the full revised block array; the version bump, block-level diff, and revision entry are computed server-side. Locked and author-only pages are rejected. Earns contribution points.',
+    description: `Edit an existing Radix Wiki page. Requires a ROLA bearer token — see ${SITE_URL}/AGENTS.md. Fetch the page with get_page first and send the full revised block array; the version bump, block-level diff, and revision entry are computed server-side. Locked and author-only pages are rejected. Earns contribution points.`,
     auth: 'rola',
     inputSchema: {
       type: 'object',

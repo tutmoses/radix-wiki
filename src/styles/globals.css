@@ -33,6 +33,12 @@
   --color-danger: #ffc599;
   --color-danger-muted: rgba(255, 197, 153, 0.12);
   --color-info-muted: rgba(204, 209, 255, 0.12);
+  /* github-dark, the highlighter's theme, so an unhighlighted block matches a highlighted one. */
+  --color-code-bg: #24292e;
+  --color-code-tabs-bg: #1e2228;
+  /* The /charts canvas reads these two by name: its axis labels and grid, and the series is accent. */
+  --color-chart-axis: #8b8fa3;
+  --color-telegram: #2aabee;
   --text-h1: 1.8rem;
   --text-h2: 1.6rem;
   --text-h3: 1.4rem;
@@ -101,7 +107,7 @@
      its own rule below — that block scrolls on purpose, and wrapping a
      listing is not reading it. */
   :not(pre) > code { overflow-wrap: anywhere; word-break: break-word; }
-  pre { @apply text-base border border-border-muted rounded-lg p-4 overflow-x-auto; background-color: #24292e; code { @apply p-0 bg-transparent; } }
+  pre { @apply text-base border border-border-muted rounded-lg p-4 overflow-x-auto; background-color: var(--color-code-bg); code { @apply p-0 bg-transparent; } }
   blockquote { @apply border-l-4 border-accent pl-4 py-1 italic text-text-muted; }
 
   table { @apply w-full border-collapse rounded-lg overflow-hidden; }
@@ -152,7 +158,7 @@
     ul, ol { @apply pl-6 mb-3; }
     blockquote { @apply my-3 py-0; }
     a { @apply underline underline-offset-2; }
-    pre { background-color: #24292e; }
+    pre { background-color: var(--color-code-bg); }
     p.is-editor-empty:first-child::before { content: attr(data-placeholder); @apply float-left text-text-muted opacity-60 pointer-events-none h-0; }
     .selectedCell { @apply bg-accent-muted; }
     &.ProseMirror-selectednode .iframe-embed { @apply outline-2 outline-accent outline-offset-2 rounded-lg; }
@@ -199,7 +205,7 @@
   }
 
   /* Code block with language selector */
-  .code-block-wrapper { @apply relative my-4; pre { @apply m-0 border border-border-muted rounded-lg p-4 pr-24; background-color: #24292e; } code { @apply bg-transparent p-0; } }
+  .code-block-wrapper { @apply relative my-4; pre { @apply m-0 border border-border-muted rounded-lg p-4 pr-24; background-color: var(--color-code-bg); } code { @apply bg-transparent p-0; } }
 
   /* Tabs - consolidated */
   [data-tabs] {
@@ -220,7 +226,7 @@
   .katex { @apply text-text; }
 
   /* rehype-pretty-code blocks */
-  [data-rehype-pretty-code-figure] { @apply my-4; pre { @apply border border-border-muted rounded-lg p-4; background-color: #24292e; } code { @apply p-0 bg-transparent; } }
+  [data-rehype-pretty-code-figure] { @apply my-4; pre { @apply border border-border-muted rounded-lg p-4; background-color: var(--color-code-bg); } code { @apply p-0 bg-transparent; } }
 
   /* ===== CALLOUTS / ADMONITIONS ===== */
   [data-callout] {
@@ -248,7 +254,7 @@
 
   /* ===== CODE TABS ===== */
   .code-tabs { @apply border border-border-muted rounded-lg overflow-hidden my-4; }
-  .code-tabs-list { @apply flex gap-0 border-b border-border-muted; background-color: #1e2228; }
+  .code-tabs-list { @apply flex gap-0 border-b border-border-muted; background-color: var(--color-code-tabs-bg); }
   .code-tabs-btn { @apply px-4 py-2 text-small text-text-muted border-b-2 border-transparent transition-colors cursor-pointer hover:text-text; background: transparent; }
   .code-tabs-btn-active { @apply text-accent border-accent; }
   .code-tabs pre { @apply m-0 border-0 rounded-none; }
@@ -342,6 +348,7 @@
 
   /* ===== FORM CONTROLS ===== */
   .icon-btn { @apply p-2 rounded transition-colors cursor-pointer inline-flex items-center justify-center hover:bg-surface-2; }
+  .icon-btn-remove { @apply text-text-muted hover:text-error; }
   .input { @apply w-full py-2 px-4 bg-surface-0 border border-border rounded transition-all focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-muted placeholder:text-text-muted placeholder:opacity-60; }
   .input-ghost { @apply w-full bg-transparent border-0 outline-none placeholder:text-text-muted placeholder:opacity-60; }
 
@@ -864,6 +871,7 @@
   .data-table-th { @apply text-left text-small text-text-muted border-b border-surface-2 p-3 font-medium; }
   .data-table-td { @apply p-3 border-b border-surface-2; }
   .data-table-row { @apply transition-colors hover:bg-surface-1/40; }
+  .data-table-row:target { @apply bg-surface-2; }
   .data-table-row:last-child .data-table-td { @apply border-b-0; }
   /* Every sortable header, React or stored HTML, is a button inside a cell that
      carries `aria-sort`; base.css resets the button and draws the arrow from the
@@ -1032,15 +1040,15 @@
   .telegram-connect { @apply flex justify-center py-4; }
   .telegram-pending { @apply flex flex-col items-center gap-3 px-3 py-4; }
   .telegram-deep-link {
-    @apply flex items-center gap-1.5 px-4 py-2 rounded-md bg-[#2AABEE] text-white font-medium text-small transition-opacity;
+    @apply flex items-center gap-1.5 px-4 py-2 rounded-md bg-telegram text-white font-medium text-small transition-opacity;
     @apply hover:opacity-90;
   }
   .telegram-subs { @apply flex flex-col gap-1 px-3 pb-3; }
   .telegram-subscribe-btn {
     @apply flex items-center gap-1.5 px-3 py-2 rounded-md text-small font-medium cursor-pointer transition-colors;
-    background: color-mix(in oklch, #2AABEE 12%, transparent);
-    color: #2AABEE;
-    &:hover { background: color-mix(in oklch, #2AABEE 22%, transparent); }
+    background: color-mix(in oklch, var(--color-telegram) 12%, transparent);
+    color: var(--color-telegram);
+    &:hover { background: color-mix(in oklch, var(--color-telegram) 22%, transparent); }
     &:disabled { @apply opacity-60 cursor-default; }
   }
   .telegram-subscribed { @apply flex items-center gap-1.5 px-3 py-2 text-small; }

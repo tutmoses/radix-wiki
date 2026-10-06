@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { json, errors, requireAuth } from '@/lib/api';
+import { json, errors, handleRoute, requireAuth } from '@/lib/api';
 import { getEditorScores } from '@/lib/scoring';
 import { getTreasuryBalance, getTreasuryAddress } from '@/lib/radix/balance';
 
@@ -10,7 +10,15 @@ export const dynamic = 'force-dynamic';
 
 const ADMIN_ADDRESS = process.env.ADMIN_ADDRESS || '';
 
-function computeShares(editors: { id: string; displayName: string | null; radixAddress: string; points: number }[]) {
+/** The admin's session, or the response that turns everyone else away. */
+async function requireAdmin(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if ('error' in auth) return auth;
+  if (auth.session.radixAddress !== ADMIN_ADDRESS) return { error: errors.forbidden('Admin access required') };
+  return auth;
+}
+
+function computeShares<T extends { points: number }>(editors: T[]) {
   const total = editors.reduce((sum, e) => sum + e.points, 0);
   if (total === 0) return { editors: [], totalPoints: 0 };
   return {
@@ -19,57 +27,37 @@ function computeShares(editors: { id: string; displayName: string | null; radixA
   };
 }
 
-function buildCsv(editors: { radixAddress: string; amount: number }[]): string {
-  const lines = ['Address,Amount'];
-  for (const e of editors) {
-    lines.push(`${e.radixAddress},${e.amount}`);
-  }
-  return lines.join('\n');
-}
-
 export async function GET(request: NextRequest) {
-  try {
-    const auth = await requireAuth(request);
-    if ('error' in auth) return auth.error;
-    if (auth.session.radixAddress !== ADMIN_ADDRESS) return errors.forbidden('Admin access required');
+  return handleRoute(async () => {
+    const admin = await requireAdmin(request);
+    if ('error' in admin) return admin.error;
 
-    const format = new URL(request.url).searchParams.get('format');
     const [balance, scored] = await Promise.all([getTreasuryBalance(), getEditorScores()]);
-    const active = scored.filter(e => e.points > 0);
-    const { editors, totalPoints: tp } = computeShares(active);
+    const { editors, totalPoints } = computeShares(scored.filter(e => e.points > 0));
+    const withAmounts = editors.map(e => ({ ...e, amountXrd: Math.floor(balance * e.share * 100) / 100 }));
 
-    if (format === 'csv') {
-      const withAmounts = editors.map(e => ({ radixAddress: e.radixAddress, amount: Math.floor(balance * e.share * 100) / 100 }));
-      const csv = buildCsv(withAmounts.filter(e => e.amount >= 1));
-      return new NextResponse(csv, { headers: { 'Content-Type': 'text/csv', 'Content-Disposition': 'attachment; filename="airdrop.csv"' } });
+    if (new URL(request.url).searchParams.get('format') === 'csv') {
+      const rows = withAmounts.filter(e => e.amountXrd >= 1).map(e => `${e.radixAddress},${e.amountXrd}`);
+      return new NextResponse(['Address,Amount', ...rows].join('\n'), { headers: { 'Content-Type': 'text/csv', 'Content-Disposition': 'attachment; filename="airdrop.csv"' } });
     }
 
     const airdrops = await prisma.airdrop.findMany({ orderBy: { createdAt: 'desc' }, take: 20 });
 
     return json({
       treasury: { address: getTreasuryAddress(), balance },
-      totalPoints: tp,
-      editors: editors.map(e => ({
-        ...e,
-        amountXrd: Math.floor(balance * e.share * 100) / 100,
-      })),
+      totalPoints,
+      editors: withAmounts,
       airdrops,
     });
-  } catch (error) {
-    console.error('Failed to fetch rewards:', error);
-    return errors.internal('Failed to fetch rewards');
-  }
+  }, 'Failed to fetch rewards');
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const auth = await requireAuth(request);
-    if ('error' in auth) return auth.error;
-    if (auth.session.radixAddress !== ADMIN_ADDRESS) return errors.forbidden('Admin access required');
+  return handleRoute(async () => {
+    const admin = await requireAdmin(request);
+    if ('error' in admin) return admin.error;
 
-    const body = await request.json();
-    const { txHash, totalXrd, snapshot } = body;
-
+    const { txHash, totalXrd, snapshot } = await request.json();
     if (!txHash || !totalXrd || !snapshot) {
       return errors.badRequest('txHash, totalXrd, and snapshot are required');
     }
@@ -84,8 +72,5 @@ export async function POST(request: NextRequest) {
     });
 
     return json(airdrop, 201);
-  } catch (error) {
-    console.error('Failed to record airdrop:', error);
-    return errors.internal('Failed to record airdrop');
-  }
+  }, 'Failed to record airdrop');
 }

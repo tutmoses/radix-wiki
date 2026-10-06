@@ -11,6 +11,7 @@ import type { ComboboxOptionProps } from 'wiki-formant/combobox';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth, useClickOutside, usePagePath, useFetch } from '@/hooks';
 import { cn, shortenAddress, pagePath } from '@/lib/utils';
+import { SITE_NAME } from '@/lib/site';
 import { AGO, useNow } from '@/lib/now';
 import { isoDate, relativeTime } from 'wiki-formant/freshness';
 import type { PageSummary } from '@/lib/wiki';
@@ -171,7 +172,7 @@ function PageToolsDropdown({ onClose, historyPath, mdxPath, tagPath, slug, isPag
     } finally { setWatchBusy(false); }
   };
 
-  const title = isPage && slug ? pageTitle ?? slug.replace(/-/g, ' ') : 'RADIX Wiki';
+  const title = isPage && slug ? pageTitle ?? slug.replace(/-/g, ' ') : SITE_NAME;
 
   return (
     <Dropdown onClose={onClose}>
@@ -332,8 +333,8 @@ export function Header() {
           </button>
 
           <Link href="/" className="row shrink-0">
-            <Image src="/logo.png" alt="RADIX Wiki" width={240} height={240} className="size-8 object-contain" priority />
-            <span className="logo-text">RADIX Wiki</span>
+            <Image src="/logo.png" alt={SITE_NAME} width={240} height={240} className="size-8 object-contain" priority />
+            <span className="logo-text">{SITE_NAME}</span>
           </Link>
 
           {/* One field for both breakpoints: shown inline above `sm`, revealed by
@@ -427,5 +428,3 @@ export function Header() {
     </header>
   );
 }
-
-export default Header;

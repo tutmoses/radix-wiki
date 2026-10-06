@@ -12,7 +12,7 @@
 import { prisma } from '@/lib/prisma/client';
 import { categoryLabel, pageUrl, pagePath } from '@/lib/utils';
 import { isoDate } from 'wiki-formant/freshness';
-import { SIBLING_WIKI, SITE_URL } from '@/lib/site';
+import { SIBLING_WIKI, SITE_NAME, SITE_URL } from '@/lib/site';
 import { NOT_HIDDEN, searchPages, summarizePage, SUMMARY_SELECT } from '@/lib/wiki';
 import { listEnvelope } from 'wiki-formant/pagination';
 import { MCP_RATE_LIMIT, MCP_RATE_LIMIT_TEXT } from '@/lib/api';
@@ -40,7 +40,7 @@ const INSTRUCTIONS = [
 const RESOURCES: McpResource[] = [
   {
     uri: 'radix-wiki://llms.txt',
-    name: 'RADIX Wiki LLM Briefing',
+    name: `${SITE_NAME} LLM Briefing`,
     description: 'Narrative briefing document with investment thesis, technical overview, and page index.',
     mimeType: 'text/plain',
     // Built in-process rather than fetched from `${SITE_URL}/llms.txt`, which

@@ -23,7 +23,7 @@ interface ContentDiff {
 }
 
 export type BlockChange = SharedBlockChange<ContentDiff>;
-export type RevisionDiff = SharedRevisionDiff<ContentDiff>;
+type RevisionDiff = SharedRevisionDiff<ContentDiff>;
 
 const text = (block: Block | null): string =>
   block?.type === 'content' ? (block as ContentBlock).text : '';

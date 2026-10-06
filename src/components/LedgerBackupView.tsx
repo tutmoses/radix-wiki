@@ -8,6 +8,7 @@ import { useFetch, useAuth, useStore } from '@/hooks';
 import { Dropdown } from '@/components/ui';
 import type { RestoredPage, LedgerAnchor } from '@/lib/radix/ledger';
 import { DASHBOARD_URL } from '@/lib/radix/config';
+import { sendJson } from '@/lib/utils';
 
 interface LedgerStatus {
   anchor: LedgerAnchor | null;
@@ -60,11 +61,7 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
     setBackupError(null);
     setTxHash(null);
     try {
-      const res = await fetch('/api/ledger/prepare', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tagPath, slug }),
-      });
+      const res = await sendJson('/api/ledger/prepare', 'POST', { tagPath, slug });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `Failed (${res.status})`);
@@ -76,11 +73,7 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
       setTxHash(hash);
       setStage('done');
       // Persist tx hash to database (fire-and-forget)
-      fetch('/api/ledger/confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tagPath, slug, txHash: hash }),
-      }).catch(() => {});
+      sendJson('/api/ledger/confirm', 'POST', { tagPath, slug, txHash: hash }).catch(() => {});
     } catch (err) {
       setBackupError(err instanceof Error ? err.message : 'Backup failed');
       setStage('error');

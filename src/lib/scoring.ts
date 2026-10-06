@@ -6,7 +6,7 @@ import { shortenAddress, pagePath } from '@/lib/utils';
 
 const WEIGHTS = { page: 150, edit: 80, contribution: 80, comment: 70, tenure: 50 } as const;
 
-export interface ScoreInput {
+interface ScoreInput {
   pages: number;
   edits: number;
   contributions: number;
@@ -45,7 +45,7 @@ interface EditorRow {
   comment_slots: bigint;
 }
 
-export interface EditorScore {
+interface EditorScore {
   id: string;
   displayName: string | null;
   radixAddress: string;

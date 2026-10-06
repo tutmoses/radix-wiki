@@ -58,15 +58,13 @@ export async function postGateway<T>(
   body: Record<string, unknown>,
   label: string,
 ): Promise<T | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(`${GATEWAY_URL}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       cache: 'no-store',
-      signal: controller.signal,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!res.ok) {
       console.error(`[${label}] Gateway ${res.status}: ${await res.text().catch(() => '')}`);
@@ -76,8 +74,6 @@ export async function postGateway<T>(
   } catch (err) {
     console.error(`[${label}] Gateway error:`, err);
     return null;
-  } finally {
-    clearTimeout(timer);
   }
 }
 

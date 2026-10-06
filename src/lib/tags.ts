@@ -1,6 +1,7 @@
 // src/lib/tags.ts — the tag hierarchy and the walks over it.
 
 import type { MetadataKeyDefinition as FormantMetadataKey } from 'wiki-formant/taxonomy';
+import { categoryLabel } from '@/lib/utils';
 
 /** The shared definition plus this wiki's two extra key types and its `required` flag. */
 export interface MetadataKeyDefinition extends FormantMetadataKey {
@@ -213,6 +214,9 @@ function resolveTagPath(pathSegments: string[], hierarchy: TagNode[] = TAG_HIERA
 // Convenience wrappers
 export const findTagByPath = (pathSegments: string[]): TagNode | null => resolveTagPath(pathSegments).node;
 export const isValidTagPath = (pathSegments: string[]): boolean => resolveTagPath(pathSegments).isValid;
+/** A tag path's display name: its declared name, else its last segment unslugged. */
+export const tagLabel = (pathSegments: string[]): string =>
+  categoryLabel(findTagByPath(pathSegments)?.name) || (pathSegments.at(-1) ?? '').replace(/-/g, ' ');
 export const isAuthorOnlyPath = (tagPath: string): boolean => resolveTagPath(tagPath.split('/')).isAuthorOnly;
 export const canEditAuthorOnlyPage = (page: { authorId: string; editorIds?: string[] }, userId: string): boolean =>
   page.authorId === userId || (page.editorIds ?? []).includes(userId);
@@ -234,7 +238,7 @@ export const getMainArticle = (tagPath: string): string | undefined => resolveTa
 export const getSortOrder = (pathSegments: string[]): SortOrder => resolveTagPath(pathSegments).sort;
 export const getVisibleTags = (hierarchy: TagNode[] = TAG_HIERARCHY): TagNode[] => hierarchy.filter(n => !n.hidden);
 
-export interface TagPathEntry {
+interface TagPathEntry {
   path: string;
   node: TagNode;
   /** Inherited: a node beneath a hidden one is hidden too. */

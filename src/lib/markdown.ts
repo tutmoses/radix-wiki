@@ -93,7 +93,7 @@ export function atomicToMarkdown(block: AtomicBlock): string {
 }
 
 /** The whole block tree as markdown. Containers flatten in document order. */
-export function blocksToMarkdown(blocks: Block[]): string {
+function blocksToMarkdown(blocks: Block[]): string {
   return renderBlockTree<Block>(blocks, {
     atomic: b => (b.type === 'infobox' || b.type === 'columns' ? '' : atomicToMarkdown(b)),
     containers: BLOCK_SHAPE.containers,

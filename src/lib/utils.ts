@@ -48,6 +48,10 @@ export function pageUrl(tagPath: string, slug: string): string {
   return `${SITE_URL}${pagePath(tagPath, slug)}`;
 }
 
+/** A JSON body sent from the browser to one of the wiki's own routes. */
+export const sendJson = (url: string, method: 'POST' | 'PUT' | 'PATCH', body: unknown) =>
+  fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
 // ========== CONTENT SNIPPET ==========
 
 /** Collapse stored HTML to display text: tags out, entities decoded, whitespace normalised. */
@@ -67,8 +71,7 @@ export function getContentSnippet(content: unknown, maxLen = 150): string {
   for (const block of content) {
     if (block?.type === 'content' && typeof block.text === 'string') {
       const text = toPlainText(block.text.replace(/<h[1-6][^>]*>.*?<\/h[1-6]>/gi, ''));
-      if (!text) continue;
-      return text.length > maxLen ? text.slice(0, maxLen).trimEnd() + '…' : text;
+      if (text) return clampSnippet(text, maxLen);
     }
   }
   return '';

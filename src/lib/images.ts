@@ -20,7 +20,7 @@ export const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/we
  *  we are willing to pull into memory. */
 export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
-export type StandardImage = { buffer: Buffer; contentType: 'image/webp'; extension: 'webp'; width: number; originalFormat: string };
+type StandardImage = { buffer: Buffer; contentType: 'image/webp'; extension: 'webp'; width: number; originalFormat: string };
 
 /**
  * Normalise any accepted image to the standard: at most MAX_WIDTH wide, WebP,

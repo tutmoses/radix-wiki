@@ -5,30 +5,19 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
 import { ArrowLeft, Save, Trash2, Link2, X } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Button, Input, StatusCard } from '@/components/ui';
 import { useAuth, useClickOutside, useStore } from '@/hooks';
-import { cn, pagePath } from '@/lib/utils';
+import { cn, pagePath, sendJson } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { findInfobox } from '@/components/BlockRenderer';
 import { isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, XRD_NOT_A_FEE, type MetadataKeyDefinition } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
-import { Banner } from './PageContent';
+import { Banner, BlockEditor, InfoboxEditor } from './PageContent';
 import type { WikiPage, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
 import { useTypeahead } from 'wiki-formant/react';
-
-const BlockEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.BlockEditor), {
-  ssr: false,
-  loading: () => <div className="h-64 skeleton rounded-lg" />,
-});
-
-const InfoboxEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.InfoboxEditor), {
-  ssr: false,
-  loading: () => <div className="h-32 skeleton rounded-lg" />,
-});
 
 // ========== METADATA FIELDS ==========
 function RichInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
@@ -343,7 +332,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
       const body = exists
         ? { title, content, bannerImage, metadata, newSlug, editorIds, revisionMessage: revisionMessage.trim() || undefined }
         : { title, content, bannerImage, metadata, tagPath, slug: newSlug || slug };
-      const res = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const res = await sendJson(endpoint, method, body);
       const data = await res.json();
       if (res.ok) {
         if (data.isFirstContribution) useStore.getState().showToast('Your first contribution! Welcome to the wiki.');

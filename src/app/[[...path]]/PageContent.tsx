@@ -14,8 +14,9 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { LinkPreview } from '@/components/LinkPreview';
 import { Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
-import { categoryLabel, cn, generateBannerSvg, getContentSnippet, pagePath } from '@/lib/utils';
+import { categoryLabel, cn, generateBannerSvg, getContentSnippet, pagePath, sendJson } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
+import { SITE_NAME } from '@/lib/site';
 import { AGO, useNow } from '@/lib/now';
 import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder, type TagNode } from '@/lib/tags';
 import { categoryHref, type Control, type FacetControlGroup, type FacetFilters, type SharedFacet } from '@/lib/taxonomy';
@@ -27,12 +28,12 @@ import type { Block } from '@/types/blocks';
 
 const LazyPageEditor = dynamic(() => import('./PageEditor'), {
   ssr: false,
-  loading: () => <div className="h-64 skeleton rounded-lg" />,
+  loading: () => <div className="h-64 skeleton" />,
 });
 
 const HistoryView = dynamic(() => import('@/components/HistoryView'), {
   ssr: false,
-  loading: () => <div className="h-64 skeleton rounded-lg" />,
+  loading: () => <div className="h-64 skeleton" />,
 });
 
 export { HistoryView };
@@ -40,14 +41,14 @@ export { HistoryView };
 const Discussion = dynamic(() => import('@/components/Discussion').then(m => m.Discussion), { ssr: false });
 const UserStats = dynamic(() => import('@/components/UserStats').then(m => m.UserStats));
 
-const BlockEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.BlockEditor), { ssr: false, loading: () => <div className="h-64 skeleton rounded-lg" /> });
-const InfoboxEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.InfoboxEditor), { ssr: false, loading: () => <div className="h-32 skeleton rounded-lg" /> });
+export const BlockEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.BlockEditor), { ssr: false, loading: () => <div className="h-64 skeleton" /> });
+export const InfoboxEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.InfoboxEditor), { ssr: false, loading: () => <div className="h-32 skeleton" /> });
 
 export function PageSkeleton() {
   return (
     <div className="stack">
       <div className="h-8 w-48 skeleton rounded" />
-      <div className="h-48 skeleton rounded-lg" />
+      <div className="h-48 skeleton" />
       <div className="h-6 w-3/4 skeleton rounded" />
       <div className="h-6 w-1/2 skeleton rounded" />
     </div>
@@ -157,7 +158,7 @@ export function SortToggle({ sort, tagPath, filters = {}, letter }: { sort: Sort
 }
 
 // ========== SECTION INDEX ==========
-export interface PageRef { title: string; href: string }
+interface PageRef { title: string; href: string }
 export interface SubcategorySummary {
   name: string; href: string; description?: string;
   /** Pages anywhere in this subcategory's subtree. */
@@ -351,7 +352,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const res = await fetch('/api/wiki', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'Homepage', content, bannerImage }) });
+      const res = await sendJson('/api/wiki', 'PUT', { title: 'Homepage', content, bannerImage });
       if (res.ok) router.push('/');
       else alert((await res.json()).error || 'Failed to save');
     } catch { alert('Failed to save'); }
@@ -410,7 +411,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
       {infobox && infoboxHasContent(infobox) ? (
         <div className="page-with-infobox">
           <div className="page-main-content stack">{mainContent}</div>
-          <InfoboxSidebar block={infobox} title="RADIX Wiki" />
+          <InfoboxSidebar block={infobox} title={SITE_NAME} />
         </div>
       ) : (
         mainContent
@@ -575,7 +576,7 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
 }
 
 // ========== SEE ALSO ==========
-export type RelatedPage = Pick<WikiPage, 'id' | 'title' | 'slug' | 'tagPath'> & { snippet?: string };
+type RelatedPage = Pick<WikiPage, 'id' | 'title' | 'slug' | 'tagPath'> & { snippet?: string };
 /** `sharedFacet` names the axis the ranking found in common, so the heading can be the way into the whole set. */
 export type RelatedPages = { pages: RelatedPage[]; sharedFacet: SharedFacet | null };
 

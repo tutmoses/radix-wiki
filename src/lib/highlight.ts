@@ -6,6 +6,7 @@ import rehypeStringify from 'rehype-stringify';
 import rehypePrettyCode from 'rehype-pretty-code';
 import type { Block, AtomicBlock, CodeTabsBlock } from '@/types/blocks';
 import { mapBlockTreeAsync } from 'wiki-formant/blocks';
+import { escXml } from 'wiki-formant/feed';
 import { BLOCK_SHAPE } from '@/lib/block-shape';
 
 const processor = unified()
@@ -30,20 +31,16 @@ async function highlightAtomicBlock(block: AtomicBlock): Promise<AtomicBlock> {
   if (block.type === 'codeTabs') {
     const tabs = await Promise.all(
       block.tabs.map(async tab => {
-        const html = `<pre><code class="language-${escapeHtml(String(tab.language))}">${escapeHtml(tab.code)}</code></pre>`;
+        // The only escape codeTabs gets: its fields are wallet-authored and skip the
+        // sanitiser, and rehype would re-serialise a `"` that closed the class
+        // attribute as a live handler.
+        const html = `<pre><code class="language-${escXml(String(tab.language))}">${escXml(tab.code)}</code></pre>`;
         return { ...tab, code: await highlightHtml(html) };
       })
     );
     return { ...block, tabs } as CodeTabsBlock;
   }
   return block;
-}
-
-// The only escape codeTabs gets: its fields are wallet-authored and skip the
-// sanitiser, and rehype would re-serialise a `"` that closed the class attribute
-// as a live handler.
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 export async function highlightBlocks(blocks: Block[]): Promise<Block[]> {

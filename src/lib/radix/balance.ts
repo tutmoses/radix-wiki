@@ -10,7 +10,7 @@ import type { AuthSession } from '@/types';
 export type BalanceAction = { type: 'create' | 'edit' | 'comment'; tagPath: string };
 
 /** Total $XRD across every fungible vault an account holds. */
-export async function getXrdBalance(address: string, label = 'balance'): Promise<number> {
+async function getXrdBalance(address: string, label = 'balance'): Promise<number> {
   const amounts = await paginatedGatewayFetch<number, { items?: { amount: string }[] }>(
     '/state/entity/page/fungible-vaults/',
     { address, resource_address: XRD_ADDRESS },

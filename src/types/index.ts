@@ -32,8 +32,6 @@ export type PageMetadata = Record<string, string>;
 export type WikiPage = Omit<Page, 'content' | 'metadata'> & {
   content: Prisma.JsonValue;
   metadata?: PageMetadata | null;
-  bannerImage?: string | null;
-  version: string;
   author?: WikiAuthor;
   _count?: { revisions: number };
   /** Set on list rows, where it stands in for `content` (which they null out). */

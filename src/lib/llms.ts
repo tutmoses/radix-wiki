@@ -97,7 +97,7 @@ export function pageLine(p: { title: string; tagPath: string | null; slug: strin
  * moved every llms ETag and re-sent a multi-megabyte export that had not
  * changed a byte.
  */
-export async function corpusValidators(depth = '') {
+async function corpusValidators(depth = '') {
   const agg = await prisma.page.aggregate({ _count: true, _max: { updatedAt: true }, where: CORPUS_WHERE });
   const stamp = agg._max.updatedAt ?? new Date(0);
   return {

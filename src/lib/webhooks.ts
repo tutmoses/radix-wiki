@@ -8,6 +8,7 @@ import { createHmac, randomBytes } from 'crypto';
 import { prisma } from '@/lib/prisma/client';
 import { pageUrl, shortenAddress } from '@/lib/utils';
 import { SITE_URL } from '@/lib/site';
+import { escXml } from 'wiki-formant/feed';
 
 export type WebhookEvent = 'page.created' | 'page.updated' | 'page.deleted' | 'comment.created';
 
@@ -35,9 +36,6 @@ interface Notification {
 /** The homepage row carries no tag path, and its URL is the site root, not a path. */
 const notificationUrl = (page: Notification['page']): string =>
   page.tagPath ? pageUrl(page.tagPath, page.slug) : SITE_URL;
-
-const escapeHtml = (s: string): string =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 export function generateWebhookSecret(): string {
   return randomBytes(32).toString('hex');
@@ -132,16 +130,16 @@ export function sendMessage(chatId: string, text: string): Promise<boolean> {
 function formatMessage({ event, page, revision, actor, comment }: Notification): string {
   const [icon, label] = EVENTS[event];
   const excerpt = comment
-    ? `"${escapeHtml(comment.content.slice(0, 200))}${comment.content.length > 200 ? '…' : ''}"`
+    ? `"${escXml(comment.content.slice(0, 200))}${comment.content.length > 200 ? '…' : ''}"`
     : null;
 
   // Blank strings are the message's own spacing, so only nulls are dropped.
   return [
-    `${icon} <b>${label}: ${escapeHtml(page.title)}</b>`,
+    `${icon} <b>${label}: ${escXml(page.title)}</b>`,
     '',
     page.tagPath ? `Section: ${page.tagPath}` : null,
     revision ? `Version: ${revision.version}` : null,
-    `By: ${escapeHtml(actor?.displayName || (actor && shortenAddress(actor.radixAddress)) || 'Someone')}`,
+    `By: ${escXml(actor?.displayName || (actor && shortenAddress(actor.radixAddress)) || 'Someone')}`,
     ...(excerpt ? ['', excerpt] : []),
     '',
     `🔗 ${notificationUrl(page)}`,
@@ -185,10 +183,10 @@ export function formatAnnouncement(a: {
   title: string; url: string; excerpt?: string; kicker?: string; footer?: string;
 }): string {
   const lines = [
-    a.kicker ? `<b>${escapeHtml(a.kicker)}</b>` : null,
-    `📰 <b>${escapeHtml(a.title)}</b>`,
-    a.excerpt ? `\n${escapeHtml(a.excerpt)}` : null,
-    a.footer ? `\n<i>${escapeHtml(a.footer)}</i>` : null,
+    a.kicker ? `<b>${escXml(a.kicker)}</b>` : null,
+    `📰 <b>${escXml(a.title)}</b>`,
+    a.excerpt ? `\n${escXml(a.excerpt)}` : null,
+    a.footer ? `\n<i>${escXml(a.footer)}</i>` : null,
     `\n🔗 ${a.url}`,
   ];
   return lines.filter(Boolean).join('\n');

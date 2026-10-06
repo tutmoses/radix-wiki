@@ -30,7 +30,7 @@ interface RevisionData {
   author?: { id: string; displayName?: string | null; shortAddress: string; avatarUrl?: string | null };
 }
 
-export type HistoryData = { currentVersion: string; revisions: RevisionData[] } | null;
+type HistoryData = { currentVersion: string; revisions: RevisionData[] } | null;
 
 const TYPE_BADGE: Record<string, { label: string; variant: 'danger' | 'warning' | 'secondary' }> = {
   major: { label: 'Major', variant: 'danger' },

@@ -22,6 +22,8 @@ import { SITE_URL } from '@/lib/site';
 import { ogImageUrl } from '@/lib/og';
 import { absolutise as absolutiseFrom, clampWords, escXml, type FeedItem } from 'wiki-formant/feed';
 import { leafBlocks } from '@/lib/block-shape';
+import { prisma } from '@/lib/prisma/client';
+import { RECAP_PREFIX, SERIES_SLUG, scoreline, type LedgerState } from '@/lib/week-in-review';
 
 export { feedResponse } from 'wiki-formant/feed';
 
@@ -93,11 +95,23 @@ export function feedItem(
   };
 }
 
-/** Recaps oldest first, each carrying its issue number: the chronological rank
- *  among its siblings, so #1 is the oldest. scripts/week-in-review.mjs agrees. */
-export function recapIssues<T extends { slug: string; metadata: unknown; createdAt: Date }>(recaps: T[]) {
-  return recaps
-    .map(p => ({ ...p, date: publishedAt(p.metadata, p.createdAt) }))
-    .sort((a, b) => a.date.getTime() - b.date.getTime())
-    .map((p, i) => ({ ...p, issue: i + 1 }));
+/** Every recap oldest first, each carrying its issue number — the chronological
+ *  rank among its siblings, so #1 is the oldest; scripts/week-in-review.mjs
+ *  agrees — and the series' running record. /week-in-review.xml and
+ *  /api/announce both read the series through this. */
+export async function getRecaps() {
+  const [recaps, index] = await Promise.all([
+    prisma.page.findMany({
+      where: { tagPath: 'blog', slug: { startsWith: RECAP_PREFIX } },
+      select: { slug: true, title: true, content: true, metadata: true, bannerImage: true, createdAt: true },
+    }),
+    prisma.page.findFirst({ where: { tagPath: 'blog', slug: SERIES_SLUG }, select: { metadata: true } }),
+  ]);
+  return {
+    recaps: recaps
+      .map(p => ({ ...p, date: publishedAt(p.metadata, p.createdAt) }))
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+      .map((p, i) => ({ ...p, issue: i + 1 })),
+    scoreline: scoreline((index?.metadata as { state?: LedgerState } | null)?.state),
+  };
 }

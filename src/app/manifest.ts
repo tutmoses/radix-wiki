@@ -1,9 +1,10 @@
 import type { MetadataRoute } from 'next';
+import { SITE_NAME } from '@/lib/site';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'RADIX Wiki',
-    short_name: 'RADIX Wiki',
+    name: SITE_NAME,
+    short_name: SITE_NAME,
     description: 'A decentralized wiki powered by Radix DLT',
     start_url: '/',
     display: 'standalone',

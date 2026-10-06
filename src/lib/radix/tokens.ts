@@ -17,7 +17,7 @@ export interface TokenSummary {
 }
 
 /** One metadata entry the page does not already show as the name, symbol, icon, description or info link. */
-export interface TokenMetadataRow {
+interface TokenMetadataRow {
   key: string;
   values: string[];
 }
@@ -48,10 +48,8 @@ export interface TokenDetail extends TokenSummary {
 
 /** Single GET against the OciSwap public API. Returns parsed JSON, or null. */
 async function ociswap<T>(path: string, label: string): Promise<T | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10_000);
   try {
-    const res = await fetch(`${OCISWAP_API}${path}`, { cache: 'no-store', signal: controller.signal });
+    const res = await fetch(`${OCISWAP_API}${path}`, { cache: 'no-store', signal: AbortSignal.timeout(10_000) });
     if (!res.ok) {
       console.error(`[${label}] OciSwap ${res.status}`);
       return null;
@@ -60,8 +58,6 @@ async function ociswap<T>(path: string, label: string): Promise<T | null> {
   } catch (err) {
     console.error(`[${label}] error`, err);
     return null;
-  } finally {
-    clearTimeout(timer);
   }
 }
 
@@ -222,7 +218,7 @@ export const getTokenDetail = cache(
   unstable_cache(_getTokenDetailRaw, ['radix-token-detail-v3'], { revalidate: 60, tags: ['charts'] }),
 );
 
-export interface TokenHolder {
+interface TokenHolder {
   address: string;
   /** Tokens held, or for a non-fungible resource, the number of NFTs. */
   amount: number;
@@ -257,7 +253,7 @@ export const getTokenHolders = cache(
   unstable_cache(_fetchTokenHolders, ['radix-token-holders-v1'], { revalidate: 300, tags: ['charts'] }),
 );
 
-export interface DexStats {
+interface DexStats {
   /** Ociswap only: CaviarNine, DefiPlaza, Surge and Astrolescent are not in these figures. */
   volume7dXrd: number;
   swaps7d: number;

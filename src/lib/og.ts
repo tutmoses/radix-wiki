@@ -6,9 +6,7 @@
 
 import type { Metadata } from 'next';
 import { pageMetadata, type PageMetadataOptions } from 'wiki-formant/metadata';
-import { SITE_URL } from '@/lib/site';
-
-export const SITE_NAME = 'RADIX Wiki';
+import { SITE_NAME, SITE_URL } from '@/lib/site';
 
 /** URL of the generated 1200x630 card. `tagPath` picks the section palette; `banner` overrides the gradient. */
 export function ogImageUrl({ title, description, tagPath, banner }: {

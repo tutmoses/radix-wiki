@@ -5,9 +5,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Trash2, Copy, Check, Loader2, ExternalLink, Bell, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui';
-import { categoryLabel, cn } from '@/lib/utils';
+import { cn, sendJson } from '@/lib/utils';
 import { useStore, useWikiPathname } from '@/hooks';
-import { findTagByPath, isValidTagPath } from '@/lib/tags';
+import { tagLabel } from '@/lib/tags';
+import { parsePath } from '@/lib/path';
 import { useCopy } from 'wiki-formant/react';
 
 interface Webhook {
@@ -41,45 +42,18 @@ const EVENT_OPTIONS = [
   { value: 'comment.created', label: 'Comment created' },
 ] as const;
 
-/** Parse the current pathname into tagPath + slug context */
+/** The page or category on screen, as a subscription target; null where there is none. */
 function parseCurrentContext(pathname: string): { tagPath: string; slug: string | null; label: string } | null {
-  const segments = pathname.split('/').filter(Boolean);
-  if (segments.length === 0) return null;
-
-  // Skip static pages
-  const staticPages = new Set(['leaderboard', 'welcome', 'rewards']);
-  if (segments.length === 1 && staticPages.has(segments[0]!)) return null;
-
-  // Strip suffix (edit, history)
-  const suffixes = new Set(['edit', 'history', 'mdx']);
-  const clean = suffixes.has(segments.at(-1)!) ? segments.slice(0, -1) : segments;
-  if (clean.length === 0) return null;
-
-  // Check if it's a category (all segments form a valid tag path)
-  if (isValidTagPath(clean)) {
-    const tag = findTagByPath(clean);
-    const name = categoryLabel(tag?.name ?? '') || clean.at(-1)!.replace(/-/g, ' ');
-    return { tagPath: clean.join('/'), slug: null, label: name };
-  }
-
-  // Page: last segment is slug, rest is tagPath
-  if (clean.length >= 2) {
-    const slug = clean.at(-1)!;
-    const tagPath = clean.slice(0, -1).join('/');
-    const label = slug.replace(/-/g, ' ');
-    return { tagPath, slug, label };
-  }
-
-  return null;
+  const { tagPath, slug } = parsePath(pathname.split('/').filter(Boolean));
+  if (!tagPath) return null;
+  return slug
+    ? { tagPath, slug, label: slug.replace(/-/g, ' ') }
+    : { tagPath, slug: null, label: tagLabel(tagPath.split('/')) };
 }
 
 // ===== Telegram =====
 
-const postTelegram = (body: object) => fetch('/api/telegram', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(body),
-});
+const postTelegram = (body: object) => sendJson('/api/telegram', 'POST', body);
 
 /**
  * The `/api/telegram` client, shared by the settings panel and the header's
@@ -241,7 +215,7 @@ function TelegramSection() {
                       {sub.events.map(e => <span key={e} className="badge">{e.replace('.', ' ')}</span>)}
                     </div>
                   </div>
-                  <button onClick={() => handleUnsubscribe(sub.id)} className="icon-btn text-text-muted hover:text-error" title="Unsubscribe" aria-label="Unsubscribe">
+                  <button onClick={() => handleUnsubscribe(sub.id)} className="icon-btn icon-btn-remove" title="Unsubscribe" aria-label="Unsubscribe">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -288,12 +262,7 @@ export function WebhookSettings() {
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => { if (!cancelled) await fetchWebhooks(); };
-    load();
-    return () => { cancelled = true; };
-  }, [fetchWebhooks]);
+  useEffect(() => { fetchWebhooks(); }, [fetchWebhooks]);
 
   const toggleEvent = (event: string) => {
     setEvents(prev => prev.includes(event) ? prev.filter(e => e !== event) : [...prev, event]);
@@ -306,11 +275,7 @@ export function WebhookSettings() {
     setError('');
     setSubmitting(true);
 
-    const res = await fetch('/api/webhooks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, events, tagPathFilter: tagFilter || undefined }),
-    });
+    const res = await sendJson('/api/webhooks', 'POST', { url, events, tagPathFilter: tagFilter || undefined });
 
     if (res.ok) {
       const webhook = await res.json();
@@ -386,7 +351,7 @@ export function WebhookSettings() {
                     </div>
                     {w.tagPathFilter && <div className="text-xs text-text-muted">Filter: {w.tagPathFilter}</div>}
                   </div>
-                  <button onClick={() => handleDelete(w.id)} className="icon-btn text-text-muted hover:text-error" title="Delete webhook" aria-label="Delete webhook">
+                  <button onClick={() => handleDelete(w.id)} className="icon-btn icon-btn-remove" title="Delete webhook" aria-label="Delete webhook">
                     <Trash2 size={14} />
                   </button>
                 </div>

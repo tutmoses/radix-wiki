@@ -4,11 +4,12 @@
 
 import { useState } from 'react';
 import { Gift, Download, CheckCircle, ExternalLink } from 'lucide-react';
-import { SortHeader, useTableSort } from 'wiki-formant/react';
 import { useFetch, useAuth } from '@/hooks';
 import { Button } from '@/components/ui';
+import { DataTable, type Column } from '@/components/charts/DataTable';
 import { DASHBOARD_URL } from '@/lib/radix/config';
 import { formatDay } from 'wiki-formant/freshness';
+import { sendJson } from '@/lib/utils';
 
 interface EditorShare {
   id: string;
@@ -34,22 +35,25 @@ interface RewardsData {
   airdrops: AirdropRecord[];
 }
 
-const editorName = (e: EditorShare) => e.displayName || e.radixAddress;
-const EDITOR_COMPARATORS = {
-  editor: (a: EditorShare, b: EditorShare) => editorName(a).localeCompare(editorName(b)),
-  points: (a: EditorShare, b: EditorShare) => a.points - b.points,
-  share: (a: EditorShare, b: EditorShare) => a.share - b.share,
-  xrd: (a: EditorShare, b: EditorShare) => a.amountXrd - b.amountXrd,
-};
-const AIRDROP_COMPARATORS = {
-  date: (a: AirdropRecord, b: AirdropRecord) => Date.parse(a.createdAt) - Date.parse(b.createdAt),
-  total: (a: AirdropRecord, b: AirdropRecord) => a.totalXrd - b.totalXrd,
-  editors: (a: AirdropRecord, b: AirdropRecord) => a.editorCount - b.editorCount,
-  tx: (a: AirdropRecord, b: AirdropRecord) => (a.txHash ?? '').localeCompare(b.txHash ?? ''),
-};
-// Names and hashes read A–Z first; amounts and dates open largest and newest first.
-const firstDirection = (key: string): 'asc' | 'desc' => (key === 'editor' || key === 'tx' ? 'asc' : 'desc');
-const NONE: never[] = [];
+const EDITOR_COLUMNS: Column<EditorShare>[] = [
+  { k: 'editor', label: 'Editor', cellClass: 'font-medium', text: e => e.displayName || e.radixAddress, cell: e => e.displayName || e.radixAddress.slice(0, 16) + '...' },
+  { k: 'points', label: 'Points', className: 'text-right', num: e => e.points, cell: e => e.points.toLocaleString('en-US') },
+  { k: 'share', label: 'Share', className: 'text-right', num: e => e.share, cell: e => `${(e.share * 100).toFixed(1)}%` },
+  { k: 'xrd', label: '$XRD', className: 'text-right', cellClass: 'font-medium text-accent', num: e => e.amountXrd, cell: e => e.amountXrd.toLocaleString('en-US') },
+];
+const AIRDROP_COLUMNS: Column<AirdropRecord>[] = [
+  { k: 'date', label: 'Date', num: a => Date.parse(a.createdAt), cell: a => formatDay(a.createdAt) },
+  { k: 'total', label: 'Total $XRD', className: 'text-right', cellClass: 'font-medium', num: a => a.totalXrd, cell: a => a.totalXrd.toLocaleString('en-US') },
+  { k: 'editors', label: 'Editors', className: 'text-right', num: a => a.editorCount, cell: a => a.editorCount },
+  {
+    k: 'tx', label: 'Tx Hash', cellClass: 'font-mono text-small truncate max-w-48', text: a => a.txHash ?? '',
+    cell: a => (a.txHash ? (
+      <a href={`${DASHBOARD_URL}/transaction/${a.txHash}`} target="_blank" rel="noopener" className="row gap-1 text-accent">
+        {a.txHash.slice(0, 16)}... <ExternalLink size={12} />
+      </a>
+    ) : '—'),
+  },
+];
 
 export default function RewardsView() {
   const { isAuthenticated } = useAuth();
@@ -57,8 +61,6 @@ export default function RewardsView() {
   const [txHash, setTxHash] = useState('');
   const [recording, setRecording] = useState(false);
   const [recorded, setRecorded] = useState(false);
-  const editors = useTableSort<EditorShare, keyof typeof EDITOR_COMPARATORS>(data?.editors ?? NONE, { defaultKey: 'points', comparators: EDITOR_COMPARATORS, defaultDirection: firstDirection });
-  const airdrops = useTableSort<AirdropRecord, keyof typeof AIRDROP_COMPARATORS>(data?.airdrops ?? NONE, { defaultKey: 'date', comparators: AIRDROP_COMPARATORS, defaultDirection: firstDirection });
 
   if (!isAuthenticated) {
     return (
@@ -101,11 +103,7 @@ export default function RewardsView() {
         share: e.share,
         amountXrd: e.amountXrd,
       }));
-      const res = await fetch('/api/admin/rewards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ txHash: txHash.trim(), totalXrd: data.treasury.balance, snapshot }),
-      });
+      const res = await sendJson('/api/admin/rewards', 'POST', { txHash: txHash.trim(), totalXrd: data.treasury.balance, snapshot });
       if (res.ok) { setRecorded(true); setTxHash(''); }
     } finally {
       setRecording(false);
@@ -123,7 +121,7 @@ export default function RewardsView() {
       </div>
 
       {/* Treasury */}
-      <div className="surface rounded-lg p-4 stack-sm">
+      <div className="surface p-4 stack-sm">
         <h2 id="treasury" className="text-small text-text-muted uppercase tracking-wide">Treasury</h2>
         {isLoading ? (
           <div className="h-10 skeleton rounded" />
@@ -136,47 +134,20 @@ export default function RewardsView() {
       </div>
 
       {/* Editor shares */}
-      <div className="surface rounded-lg overflow-hidden">
-        <div className="p-4 border-b border-surface-2 row justify-between">
+      <div className="stack-sm">
+        <div className="spread">
           <h2 id="editor-shares">Editor Shares</h2>
           <Button onClick={handleDownloadCsv} variant="secondary" size="sm" className="gap-1" disabled={isLoading}>
             <Download size={14} /> CSV
           </Button>
         </div>
-        <table className="w-full">
-          <thead>
-            <tr className="text-left text-small text-text-muted border-b border-surface-2">
-              <SortHeader {...editors.headerProps('editor')} className="p-3">Editor</SortHeader>
-              <SortHeader {...editors.headerProps('points')} className="p-3 text-right">Points</SortHeader>
-              <SortHeader {...editors.headerProps('share')} className="p-3 text-right">Share</SortHeader>
-              <SortHeader {...editors.headerProps('xrd')} className="p-3 text-right">$XRD</SortHeader>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading && Array.from({ length: 5 }, (_, i) => (
-              <tr key={i} className="border-b border-surface-2">
-                <td className="p-3" colSpan={4}><div className="h-6 skeleton rounded" /></td>
-              </tr>
-            ))}
-            {editors.sorted.map(e => (
-              <tr key={e.id} className="border-b border-surface-2 last:border-0">
-                <td className="p-3">
-                  <span className="font-medium">{e.displayName || e.radixAddress.slice(0, 16) + '...'}</span>
-                </td>
-                <td className="p-3 text-right">{e.points.toLocaleString('en-US')}</td>
-                <td className="p-3 text-right">{(e.share * 100).toFixed(1)}%</td>
-                <td className="p-3 text-right font-medium text-accent">{e.amountXrd.toLocaleString('en-US')}</td>
-              </tr>
-            ))}
-            {data && data.editors.length === 0 && (
-              <tr><td colSpan={4} className="p-8 text-center text-text-muted">No editors with points yet.</td></tr>
-            )}
-          </tbody>
-        </table>
+        {isLoading
+          ? <div className="skeleton h-48" />
+          : <DataTable rows={data?.editors ?? []} columns={EDITOR_COLUMNS} defaultKey="points" rowKey={e => e.id} empty="No editors with points yet." />}
       </div>
 
       {/* Record airdrop */}
-      <div className="surface rounded-lg p-4 stack-sm">
+      <div className="surface p-4 stack-sm">
         <h2 id="record-airdrop">Record Airdrop</h2>
         <p className="text-small text-text-muted">After distributing via Radix Desktop Tool, paste the transaction hash to record it.</p>
         <div className="row gap-2">
@@ -198,36 +169,9 @@ export default function RewardsView() {
 
       {/* History */}
       {data && data.airdrops.length > 0 && (
-        <div className="surface rounded-lg overflow-hidden">
-          <div className="p-4 border-b border-surface-2">
-            <h2 id="airdrop-history">Airdrop History</h2>
-          </div>
-          <table className="w-full">
-            <thead>
-              <tr className="text-left text-small text-text-muted border-b border-surface-2">
-                <SortHeader {...airdrops.headerProps('date')} className="p-3">Date</SortHeader>
-                <SortHeader {...airdrops.headerProps('total')} className="p-3 text-right">Total $XRD</SortHeader>
-                <SortHeader {...airdrops.headerProps('editors')} className="p-3 text-right">Editors</SortHeader>
-                <SortHeader {...airdrops.headerProps('tx')} className="p-3">Tx Hash</SortHeader>
-              </tr>
-            </thead>
-            <tbody>
-              {airdrops.sorted.map(a => (
-                <tr key={a.id} className="border-b border-surface-2 last:border-0">
-                  <td className="p-3">{formatDay(a.createdAt)}</td>
-                  <td className="p-3 text-right font-medium">{a.totalXrd.toLocaleString('en-US')}</td>
-                  <td className="p-3 text-right">{a.editorCount}</td>
-                  <td className="p-3 font-mono text-small truncate max-w-48">
-                    {a.txHash ? (
-                      <a href={`${DASHBOARD_URL}/transaction/${a.txHash}`} target="_blank" rel="noopener" className="row gap-1 text-accent">
-                        {a.txHash.slice(0, 16)}... <ExternalLink size={12} />
-                      </a>
-                    ) : '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="stack-sm">
+          <h2 id="airdrop-history">Airdrop History</h2>
+          <DataTable rows={data.airdrops} columns={AIRDROP_COLUMNS} defaultKey="date" rowKey={a => a.id} empty="No airdrops yet." />
         </div>
       )}
     </div>

@@ -18,7 +18,7 @@ const HREF = /href=\\?"([^"\\?#]+)/g;
 /** Page ids are cuids; block ids are dashed UUIDs, which this can't span. */
 const CUID = /c[a-z0-9]{20,}/g;
 
-export interface MaintenanceItem { title: string; href: string; tagPath: string; detail: string }
+interface MaintenanceItem { title: string; href: string; tagPath: string; detail: string }
 export interface MaintenanceQueue { key: string; title: string; description: string; items: MaintenanceItem[] }
 
 type Row = {

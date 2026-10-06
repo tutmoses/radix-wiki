@@ -11,6 +11,9 @@ import { normaliseLinks } from 'wiki-formant/links';
 import type { Block } from '@/types/blocks';
 import { mapBlockTree } from 'wiki-formant/blocks';
 import { BLOCK_SHAPE } from '@/lib/block-shape';
+import { SITE_URL } from '@/lib/site';
+
+const SELF_HOST = new URL(SITE_URL).host;
 
 /**
  * Process HTML content for display: heading ids + anchors, alt attrs, table scroll boxes, link normalisation.
@@ -33,7 +36,7 @@ export function processHtml(html: string, citedRefs?: Set<number>, used?: Set<st
     /\salt\s*=/i.test(attrs) ? match : `<img${attrs} alt="">`,
   );
 
-  return normaliseLinks(scrollTables(withAlts), { selfHost: 'radix.wiki', citedRefs });
+  return normaliseLinks(scrollTables(withAlts), { selfHost: SELF_HOST, citedRefs });
 }
 
 /**

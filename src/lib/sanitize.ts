@@ -37,7 +37,7 @@ const YOUTUBE_ATTRS = [
 ];
 
 /** One stored HTML fragment, cleaned. Text without a tag passes untouched. */
-export const sanitizeHtml = createHtmlSanitizer({
+const sanitizeHtml = createHtmlSanitizer({
   iframeHosts: IFRAME_HOSTS,
   // `image` is the infographic kit's logo (`brand-assets/kit.mjs`), always a
   // data: PNG and held to that scheme below, so it can never fetch.

@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback, useActionState } from 'react';
 import { MessageSquare, Reply, Trash2, ChevronDown, ChevronUp, Send } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, sendJson } from '@/lib/utils';
 import { AGO, useNow } from '@/lib/now';
 import { relativeTime } from 'wiki-formant/freshness';
 import { Button } from '@/components/ui';
@@ -127,7 +127,7 @@ export function Discussion({ pageId }: { pageId: string; tagPath: string }) {
   useEffect(() => { fetchComments(); }, [fetchComments]);
 
   const handlePost = async (content: string, parentId?: string) => {
-    const res = await fetch('/api/comments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, parentId, pageId }) });
+    const res = await sendJson('/api/comments', 'POST', { content, parentId, pageId });
     if (res.ok) await fetchComments();
     else throw new Error((await res.json()).error || 'Failed to post comment');
   };

@@ -3,11 +3,12 @@
 import type { Metadata } from 'next';
 import { Suspense, type ReactNode } from 'react';
 import { notFound, redirect } from 'next/navigation';
-import { parsePath, getHomepage, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getEcosystemPageByAsset } from '@/lib/wiki';
+import { parsePath } from '@/lib/path';
+import { getHomepage, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getEcosystemPageByAsset } from '@/lib/wiki';
 import { getMaintenanceQueues } from '@/lib/maintenance';
 import { getSession } from '@/lib/auth';
 import { alphaControls, facetControls, facetFilters, filterPages, rankRelated, resolveLetter } from '@/lib/taxonomy';
-import { findTagByPath, getMainArticle, getSortOrder, tagPaths, type SortOrder } from '@/lib/tags';
+import { findTagByPath, getMainArticle, getSortOrder, tagLabel, tagPaths, type SortOrder } from '@/lib/tags';
 import { highlightBlocks } from '@/lib/highlight';
 import { processBlocks } from '@/lib/html';
 import { sanitizePage } from '@/lib/sanitize';
@@ -32,9 +33,9 @@ import ChartsOverview from '@/components/charts/ChartsOverview';
 import ValidatorsView from '@/components/charts/ValidatorsView';
 import TokensView from '@/components/charts/TokensView';
 import TokenDetailView from '@/components/charts/TokenDetailView';
-import { categoryLabel, clampSnippet, pageDescription, pagePath, pageUrl } from '@/lib/utils';
+import { clampSnippet, pageDescription, pagePath, pageUrl } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
-import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
+import { SITE_DESCRIPTION, SITE_NAME, SITE_ORGANIZATION, SITE_URL, SITE_WEBSITE, WIKI_LICENSE } from '@/lib/site';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { PageNav } from 'wiki-formant/react-server';
@@ -115,7 +116,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const tagSegments = parsed.tagPath.split('/');
     const tag = findTagByPath(tagSegments);
     const hub = await getCategoryHub(parsed.tagPath);
-    const categoryName = categoryLabel(tag?.name ?? '') || tagSegments.at(-1)?.replace(/-/g, ' ') || 'Category';
+    const categoryName = tagLabel(tagSegments);
     const parentPath = tagSegments.slice(0, -1).join(' › ');
     const hubExcerpt = (hub?.metadata as Record<string, string> | null)?.excerpt;
     const title = hub?.title || categoryName;
@@ -161,22 +162,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
-  const title = page?.title || 'RADIX Wiki';
+  const title = page?.title || SITE_NAME;
   // The short form for the tab and the SERP, where the template spends 13 of the
   // budget on " | RADIX Wiki"; the rule and its reasoning are in the package.
   // Social cards are not length-constrained the same way and keep `title`.
   const seoTitle = documentTitle(title, page?.metadata);
   const snippet = pageDescription(page);
-  const tagSegments = page?.tagPath?.split('/').filter(Boolean) || [];
-  const sectionName = tagSegments.length
-    ? categoryLabel(findTagByPath(tagSegments.slice(0, 1))?.name ?? '')
-    : undefined;
+  const sectionName = sectionOf(page?.tagPath);
   // The page's own excerpt where it has one, else its opening block, so the
   // description never goes stale against the article
   const description = snippet
     || (page
       ? `${title}${sectionName ? ` — a ${sectionName} article` : ''} on RADIX Wiki, the community-maintained knowledge base for the Radix DLT ecosystem.`
-      : 'RADIX Wiki — community-maintained knowledge base for Radix DLT, the layer-1 blockchain with linear scalability and asset-oriented smart contracts.');
+      : SITE_DESCRIPTION);
   const segments = path?.length ? path.join('/') : '';
   const canonical = segments ? `${SITE_URL}/${segments}` : SITE_URL;
 
@@ -234,16 +232,18 @@ function countWords(blocks: unknown): number {
   return text.split(/\s+/).filter(Boolean).length;
 }
 
-const WEBSITE = { '@type': 'WebSite', name: 'RADIX Wiki', url: SITE_URL };
-const PUBLISHER = { '@type': 'Organization', name: 'RADIX Wiki', url: SITE_URL, logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` } };
+/** The top-level section a page files under: `article:section` and `articleSection` both. */
+function sectionOf(tagPath: string | null | undefined): string | undefined {
+  const top = tagPath?.split('/')[0];
+  return top ? tagLabel([top]) : undefined;
+}
 
 /**
  * The page as an Article. The envelope and the citations are
  * `wiki-formant/metadata`; `extra` carries what only this wiki states.
  */
 function pageLd(page: WikiPage, url: string) {
-  const tagSegments = page.tagPath?.split('/').filter(Boolean) || [];
-  const section = tagSegments.length ? categoryLabel(findTagByPath(tagSegments.slice(0, 1))?.name ?? tagSegments[0] ?? '') : undefined;
+  const section = sectionOf(page.tagPath);
   const description = pageDescription(page);
   // Google recommends an image on every article; pages without a banner get the
   // same generated card the OG tags already use, rather than no image at all.
@@ -264,8 +264,8 @@ function pageLd(page: WikiPage, url: string) {
     // Name only — the wiki doesn't publish the displayName↔wallet mapping, so no
     // address identifier or explorer URL in structured data.
     author: { '@type': 'Person', name: page.author?.displayName || 'Anonymous' },
-    publisher: PUBLISHER,
-    isPartOf: WEBSITE,
+    publisher: SITE_ORGANIZATION,
+    isPartOf: SITE_WEBSITE,
     license: WIKI_LICENSE.url,
     citation: citationsFromReferences(references),
     extra: {
@@ -281,7 +281,7 @@ function pageLd(page: WikiPage, url: string) {
 /** `items` are the category's pages, or — for a container that holds none — its sections. */
 function categoryLd(name: string, url: string, items: ({ title: string; tagPath: string; slug: string } | { name: string; href: string })[], description?: string) {
   return collectionLd({
-    name, url, description, isPartOf: WEBSITE, max: 50,
+    name, url, description, isPartOf: SITE_WEBSITE, max: 50,
     items: items.map(item => ('href' in item
       ? { name: item.name, url: `${SITE_URL}${item.href}` }
       : { name: item.title, url: pageUrl(item.tagPath, item.slug) })),
@@ -364,7 +364,7 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
   if (parsed.type === 'category') {
     const tagSegments = parsed.tagPath.split('/');
     const tag = findTagByPath(tagSegments);
-    const categoryName = categoryLabel(tag?.name ?? '') || tagSegments.at(-1)?.replace(/-/g, ' ') || 'Category';
+    const categoryName = tagLabel(tagSegments);
     const categoryUrl = `${SITE_URL}/${parsed.tagPath}`;
 
     // `/<category>/edit` edits the hub article where one exists; categories

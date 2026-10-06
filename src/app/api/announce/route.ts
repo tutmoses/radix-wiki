@@ -12,11 +12,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { handleRoute, json, errors } from '@/lib/api';
-import { deliverWebhooks } from '@/lib/webhooks';
-import { broadcast, broadcastChatIds, formatAnnouncement } from '@/lib/webhooks';
+import { broadcast, broadcastChatIds, deliverWebhooks, formatAnnouncement } from '@/lib/webhooks';
 import { getContentSnippet, pageUrl } from '@/lib/utils';
-import { recapIssues } from '@/lib/feed';
-import { RECAP_PREFIX, SERIES_SLUG, issueLabel, scoreline, type LedgerState } from '@/lib/week-in-review';
+import { getRecaps } from '@/lib/feed';
+import { RECAP_PREFIX, issueLabel } from '@/lib/week-in-review';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,16 +48,10 @@ export async function POST(request: NextRequest) {
     let kicker: string | undefined;
     let footer: string | undefined;
     if (tagPath === 'blog' && slug.startsWith(RECAP_PREFIX)) {
-      const [siblings, index] = await Promise.all([
-        prisma.page.findMany({
-          where: { tagPath: 'blog', slug: { startsWith: RECAP_PREFIX } },
-          select: { slug: true, metadata: true, createdAt: true },
-        }),
-        prisma.page.findFirst({ where: { tagPath: 'blog', slug: SERIES_SLUG }, select: { metadata: true } }),
-      ]);
-      const issue = recapIssues(siblings).find(p => p.slug === slug)?.issue;
+      const { recaps, scoreline } = await getRecaps();
+      const issue = recaps.find(p => p.slug === slug)?.issue;
       if (issue) kicker = `Radix Week in Review, ${issueLabel(issue)}`;
-      footer = scoreline((index?.metadata as { state?: LedgerState } | null)?.state);
+      footer = scoreline;
     }
 
     const chats = channels ? broadcastChatIds() : [];

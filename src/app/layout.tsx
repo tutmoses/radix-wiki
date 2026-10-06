@@ -13,16 +13,14 @@ import { Sidebar } from '@/components/Sidebar';
 import { Footer } from '@/components/Footer';
 import { Toast } from '@/components/Toast';
 
-import { SITE_URL } from '@/lib/site';
-import { ogMetadata, SITE_NAME } from '@/lib/og';
+import { SITE_DESCRIPTION, SITE_NAME, SITE_ORGANIZATION, SITE_URL, SITE_WEBSITE } from '@/lib/site';
+import { ogMetadata } from '@/lib/og';
 
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-sans',
   display: 'swap',
 });
-
-const SITE_DESCRIPTION = 'Community-maintained knowledge base for Radix DLT — the layer-1 blockchain with linear scalability and asset-oriented smart contracts.';
 
 // Default card for URLs that declare none of their own. Next *replaces* rather than
 // merges these objects, so every page that sets one restates them via ogMetadata().
@@ -32,12 +30,12 @@ const SITE_CARD = ogMetadata({ title: SITE_NAME, description: SITE_DESCRIPTION, 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'RADIX Wiki',
-    template: '%s | RADIX Wiki',
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
   keywords: ['wiki', 'radix', 'blockchain', 'decentralized', 'web3', 'scrypto', 'defi', 'layer-1', 'radix dlt', 'xrd'],
-  authors: [{ name: 'RADIX Wiki' }],
+  authors: [{ name: SITE_NAME }],
   robots: {
     index: true,
     follow: true,
@@ -62,27 +60,23 @@ export const metadata: Metadata = {
 const SITE_JSON_LD = [
   {
     '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: 'RADIX Wiki',
-    url: SITE_URL,
-    description: 'Community-maintained knowledge base for Radix DLT — the layer-1 blockchain with linear scalability and asset-oriented smart contracts.',
+    ...SITE_ORGANIZATION,
+    description: SITE_DESCRIPTION,
     sameAs: ['https://twitter.com/RadixWiki', 'https://www.moltbook.com/u/RadixWiki', 'https://github.com/radixdlt', 'https://t.me/RadixDevelopers'],
   },
   {
     '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: 'RADIX Wiki',
-    url: SITE_URL,
+    ...SITE_WEBSITE,
     potentialAction: { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: `${SITE_URL}/search?q={search_term_string}` }, 'query-input': 'required name=search_term_string' },
   },
   {
     '@context': 'https://schema.org',
     '@type': 'WebAPI',
-    name: 'RADIX Wiki API',
+    name: `${SITE_NAME} API`,
     description: 'REST API and MCP server for reading and writing Radix ecosystem wiki content',
     url: `${SITE_URL}/api/wiki`,
     documentation: `${SITE_URL}/llms.txt`,
-    provider: { '@type': 'Organization', name: 'RADIX Wiki', url: SITE_URL },
+    provider: SITE_ORGANIZATION,
   },
 ];
 

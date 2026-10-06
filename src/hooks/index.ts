@@ -6,7 +6,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { create } from 'zustand';
 import QRCode from 'qrcode';
-import { isValidTagPath } from '@/lib/tags';
+import { parsePath } from '@/lib/path';
+import { sendJson } from '@/lib/utils';
 import type { AuthSession, RadixWalletData, WikiNotification } from '@/types';
 
 // ========== CLICK OUTSIDE HOOK ==========
@@ -94,19 +95,17 @@ export function useWikiPathname(): string {
 }
 
 export function usePagePath() {
-  const pathname = useWikiPathname();
-  const segments = pathname.split('/').filter(Boolean);
-  const last = segments[segments.length - 1];
-  const isEdit = last === 'edit';
-  const isHistory = last === 'history';
-  const viewSegs = (isEdit || isHistory) ? segments.slice(0, -1) : segments;
-  const isHomepage = viewSegs.length === 0;
-  const isCategory = !isHomepage && isValidTagPath(viewSegs);
-  const isPage = !isHomepage && !isCategory && viewSegs.length >= 2;
-  const viewPath = isHomepage ? '/' : `/${viewSegs.join('/')}`;
-  const tagPath = isPage ? viewSegs.slice(0, -1).join('/') : null;
-  const slug = isPage ? viewSegs[viewSegs.length - 1] : null;
-  return { isHomepage, isCategory, isPage, isEdit, isHistory, viewPath, tagPath, slug };
+  const { type, tagPath, slug, suffix } = parsePath(useWikiPathname().split('/').filter(Boolean));
+  const isHomepage = !tagPath && !slug && (type === 'homepage' || suffix !== null);
+  const isPage = !!slug;
+  return {
+    isHomepage, isPage,
+    isEdit: suffix === 'edit',
+    isHistory: suffix === 'history',
+    viewPath: isPage ? `/${tagPath}/${slug}` : '/',
+    tagPath: isPage ? tagPath : null,
+    slug: isPage ? slug : null,
+  };
 }
 
 // ========== STORE ==========
@@ -227,11 +226,7 @@ export const useStore = create<AppStore>()((set, get) => ({
   },
   markNotificationsRead: async (ids) => {
     try {
-      await fetch('/api/notifications', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids }),
-      });
+      await sendJson('/api/notifications', 'PATCH', { ids });
       if (ids) {
         set(s => ({
           notifications: s.notifications.map(n => ids.includes(n.id) ? { ...n, read: true } : n),

@@ -6,20 +6,18 @@ import { prisma } from '@/lib/prisma/client';
 import { Prisma } from '@prisma/client';
 import { pageUrl, pagePath } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
-import { SITE_URL } from '@/lib/site';
-import { isValidTagPath, isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys } from '@/lib/tags';
+import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
+import { findTagByPath, tagLabel, isValidTagPath, isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys } from '@/lib/tags';
 import { requireBalance } from '@/lib/radix/balance';
 import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, type BlockChange } from '@/lib/versioning';
-import { parsePath, orderByIds, searchPages, resolveBlockData, loadPageHistory, getCategoryPages, AUTHOR_SELECT, NOT_HIDDEN, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
+import { parsePath } from '@/lib/path';
+import { orderByIds, searchPages, resolveBlockData, loadPageHistory, getCategoryPages, AUTHOR_SELECT, NOT_HIDDEN, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
 import { blockIssues, validateBlocks } from '@/lib/block-utils';
 import { describeBlockIssues } from 'wiki-formant/validation';
 import { blocksToMdx } from '@/lib/mdx';
 import { pageToMarkdown } from '@/lib/markdown';
 import { markdownDocument } from 'wiki-formant/markdown';
-import { findTagByPath } from '@/lib/tags';
-import { categoryLabel } from '@/lib/utils';
-import { WIKI_LICENSE } from '@/lib/site';
 import type { WikiPageInput, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
 import { deliverWebhooks } from '@/lib/webhooks';
@@ -33,6 +31,9 @@ const INITIAL_VERSION = '1.0.0';
 /** A twin is the page again in another format: a search engine that reads
  *  one has the page already. Without this Google indexed `.md` beside the HTML. */
 const TWIN_ROBOTS = { 'X-Robots-Tag': 'noindex' };
+
+/** A page's unique key, for every lookup by path. */
+const pageKey = ({ tagPath, slug }: { tagPath: string; slug: string }) => ({ tagPath_slug: { tagPath, slug } });
 
 /** A page and its first revision, in one transaction — POST for an article, PUT
  *  for the homepage row when it does not exist yet. */
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     // MDX export
     if (parsed.type === 'mdx') {
       const page = await prisma.page.findUnique({
-        where: { tagPath_slug: { tagPath: parsed.tagPath, slug: parsed.slug } },
+        where: pageKey(parsed),
         include: { author: AUTHOR_SELECT },
       });
       if (!page) return errors.notFound('Page not found');
@@ -185,7 +186,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
 
     // Homepage or specific page
     const page = await prisma.page.findUnique({
-      where: { tagPath_slug: { tagPath: parsed.tagPath, slug: parsed.slug } },
+      where: pageKey(parsed),
       include: PAGE_INCLUDE,
     });
 
@@ -215,7 +216,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
         sections.length && `## Sections\n\n${sections.map(c => link(c.name, `${SITE_URL}/${parsed.tagPath}/${c.slug}`)).join('\n')}`,
         pages.length && `## Pages\n\n${pages.map(p => link(p.title, pageUrl(p.tagPath, p.slug))).join('\n')}`,
       ].filter(Boolean).join('\n\n');
-      const title = categoryLabel(tag?.name ?? '') || parsed.tagPath.split('/').at(-1)!.replace(/-/g, ' ');
+      const title = tagLabel(parsed.tagPath.split('/'));
       return new NextResponse(
         markdownDocument({ title, url: `${SITE_URL}/${parsed.tagPath}`, updated, license: WIKI_LICENSE }, body),
         { headers },
@@ -275,7 +276,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
       if ('error' in auth) return auth.error;
 
       const page = await prisma.page.findUnique({
-        where: { tagPath_slug: { tagPath: parsed.tagPath, slug: parsed.slug } },
+        where: pageKey(parsed),
         select: { id: true, title: true, content: true, bannerImage: true, version: true, authorId: true, editorIds: true, tagPath: true },
       });
       if (!page) return errors.notFound('Page not found');
@@ -333,7 +334,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
     if ('error' in auth) return auth.error;
 
     let slug = body.slug || slugifyHeading(title);
-    const existing = await prisma.page.findUnique({ where: { tagPath_slug: { tagPath, slug } } });
+    const existing = await prisma.page.findUnique({ where: pageKey({ tagPath, slug }) });
     if (existing) slug = `${slug}-${Date.now().toString(36)}`;
 
     const page = await createPage({
@@ -366,7 +367,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
       return errors.badRequest(`Invalid block structure: ${describeBlockIssues(blockIssues(content))}`);
     }
 
-    const existing = await prisma.page.findUnique({ where: { tagPath_slug: { tagPath: parsed.tagPath, slug: parsed.slug } } });
+    const existing = await prisma.page.findUnique({ where: pageKey(parsed) });
 
     // Homepage creation if it doesn't exist
     if (!existing && parsed.type === 'homepage') {
@@ -384,7 +385,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
 
     const slugUpdate = newSlug && newSlug !== existing.slug ? slugifyHeading(newSlug) : undefined;
     if (slugUpdate) {
-      const conflict = await prisma.page.findUnique({ where: { tagPath_slug: { tagPath: existing.tagPath, slug: slugUpdate } } });
+      const conflict = await prisma.page.findUnique({ where: pageKey({ tagPath: existing.tagPath, slug: slugUpdate }) });
       if (conflict) return errors.badRequest('A page with that slug already exists in this category');
     }
 
@@ -471,7 +472,7 @@ export async function DELETE(request: NextRequest, context: RouteContext<PathPar
     const auth = await requireAuth(request);
     if ('error' in auth) return auth.error;
 
-    const existing = await prisma.page.findUnique({ where: { tagPath_slug: { tagPath: parsed.tagPath, slug: parsed.slug } } });
+    const existing = await prisma.page.findUnique({ where: pageKey(parsed) });
     if (!existing) return errors.notFound('Page not found');
     if (isLockedPage(existing.tagPath, existing.slug)) return errors.forbidden('This page is locked and cannot be deleted');
 

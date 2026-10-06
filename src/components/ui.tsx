@@ -27,7 +27,7 @@ const btnStyles: Record<ButtonVariant, string> = {
 };
 const btnSizes: Record<ButtonSize, string> = { sm: 'px-3 py-1.5', md: 'px-4 py-2', lg: 'px-6 py-3', icon: 'p-2' };
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   isLoading?: boolean;
@@ -43,7 +43,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 Button.displayName = 'Button';
 
 // Input
-export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   hint?: string;
 }

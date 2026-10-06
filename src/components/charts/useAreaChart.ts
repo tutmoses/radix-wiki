@@ -7,6 +7,12 @@ import type { IChartApi, ISeriesApi, UTCTimestamp } from 'lightweight-charts';
 
 export type ChartPoint = { time: number; value: number };
 
+/** A `#rrggbb` theme token at an opacity, as the rgba() the canvas's colour parser reads. */
+function themeColour(token: string, alpha = 1): string {
+  const hex = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+  return `rgba(${[1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(', ')}, ${alpha})`;
+}
+
 /**
  * Creates the chart on mount, sized to its container and resized with it. `show` replaces
  * the series and fits the time scale to it. `timeVisible` is off for daily data, where an
@@ -26,10 +32,13 @@ export function useAreaChart(height: number, formatter: (n: number) => string, t
     import('lightweight-charts').then(({ createChart, AreaSeries, ColorType, LineType, CrosshairMode }) => {
       if (disposed || !containerRef.current) return;
 
+      const accent = themeColour('--color-accent');
+      const accentSoft = themeColour('--color-accent', 0.4);
+      const grid = themeColour('--color-chart-axis', 0.1);
       const chart = createChart(containerRef.current, {
-        layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#8b8fa3', fontFamily: 'inherit', fontSize: 10 },
-        grid: { vertLines: { color: 'rgba(139, 143, 163, 0.1)' }, horzLines: { color: 'rgba(139, 143, 163, 0.1)' } },
-        crosshair: { mode: CrosshairMode.Magnet, vertLine: { color: 'rgba(255, 157, 160, 0.4)', width: 1, style: 3 }, horzLine: { color: 'rgba(255, 157, 160, 0.4)', width: 1, style: 3 } },
+        layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: themeColour('--color-chart-axis'), fontFamily: 'inherit', fontSize: 10 },
+        grid: { vertLines: { color: grid }, horzLines: { color: grid } },
+        crosshair: { mode: CrosshairMode.Magnet, vertLine: { color: accentSoft, width: 1, style: 3 }, horzLine: { color: accentSoft, width: 1, style: 3 } },
         rightPriceScale: { visible: true, borderVisible: false, scaleMargins: { top: 0.1, bottom: 0.1 } },
         timeScale: { borderVisible: false, timeVisible, secondsVisible: false },
         handleScroll: false,
@@ -39,13 +48,13 @@ export function useAreaChart(height: number, formatter: (n: number) => string, t
       });
 
       seriesRef.current = chart.addSeries(AreaSeries, {
-        lineColor: '#ff9da0',
-        topColor: 'rgba(255, 157, 160, 0.4)',
-        bottomColor: 'rgba(255, 157, 160, 0.02)',
+        lineColor: accent,
+        topColor: accentSoft,
+        bottomColor: themeColour('--color-accent', 0.02),
         lineWidth: 2,
         lineType: LineType.Curved,
-        crosshairMarkerBackgroundColor: '#ff9da0',
-        crosshairMarkerBorderColor: '#ff9da0',
+        crosshairMarkerBackgroundColor: accent,
+        crosshairMarkerBorderColor: accent,
         priceFormat: { type: 'custom', formatter, minMove: 0.0001 },
       });
       chartRef.current = chart;

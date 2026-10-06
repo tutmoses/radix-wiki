@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { hashStr, seededRandom, paletteFor } from '@/lib/utils';
 import { CACHE } from '@/lib/api';
+import { SITE_NAME } from '@/lib/site';
 import sharp from 'sharp';
 
 export const runtime = 'nodejs';
@@ -48,7 +49,7 @@ function generatedBackground(title: string, tagPath: string) {
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const title = searchParams.get('title') || 'RADIX Wiki';
+  const title = searchParams.get('title') || SITE_NAME;
   const tagPath = searchParams.get('tagPath') || '';
   const description = searchParams.get('description') || 'A decentralized wiki powered by Radix DLT';
   const banner = storedBanner(searchParams.get('banner'));

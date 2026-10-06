@@ -10,18 +10,17 @@ import { prisma } from '@/lib/prisma/client';
 import { getContentSnippet, getMatchSnippet, pageUrl } from '@/lib/utils';
 import { isoDate } from 'wiki-formant/freshness';
 import { decodeEntities } from '@/lib/content';
-import { isValidTagPath, getSortOrder, getMetadataKeys, HIDDEN_TAG_PATHS, type SortOrder } from '@/lib/tags';
+import { getSortOrder, getMetadataKeys, HIDDEN_TAG_PATHS, type SortOrder } from '@/lib/tags';
 import type { WikiPage, IdeasPage } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, RssFeedBlock } from '@/types/blocks';
 import { computeRevisionDiff } from '@/lib/versioning';
 import { withChanges } from 'wiki-formant/history';
-import { STATIC_PATH_TYPES } from '@/lib/static-pages';
 import { leafBlocks } from '@/lib/block-shape';
 
 // ========== PRISMA QUERY FRAGMENTS ==========
 export const AUTHOR_SELECT = { select: { id: true, displayName: true, shortAddress: true, avatarUrl: true } } as const;
 export const PAGE_INCLUDE = { author: AUTHOR_SELECT, _count: { select: { revisions: true } } } as const;
-export const CATEGORY_SELECT = {
+const CATEGORY_SELECT = {
   id: true, slug: true, title: true, content: true, bannerImage: true,
   tagPath: true, metadata: true, version: true, createdAt: true, updatedAt: true,
   authorId: true, author: AUTHOR_SELECT,
@@ -50,74 +49,6 @@ const listRow = <T extends { content?: unknown }>(page: T): T =>
 export function cached<T extends (...args: any[]) => Promise<any>>(key: string, fn: T): T {
   const wrapped = async (...args: Parameters<T>) => plain(await fn(...args));
   return cache(unstable_cache(wrapped as T, [key], CACHE_OPTS)) as T;
-}
-
-// ========== UNIFIED PATH PARSING ==========
-
-const SUFFIXES = ['edit', 'history', 'mdx'] as const;
-type Suffix = typeof SUFFIXES[number];
-
-export interface ParsedPath {
-  type: 'homepage' | 'category' | 'page' | 'history' | 'edit' | 'mdx' | 'leaderboard' | 'welcome' | 'rewards' | 'search' | 'maintenance' | 'charts' | 'charts-validators' | 'charts-tokens' | 'token-detail' | 'invalid';
-  tagPath: string;
-  slug: string;
-  suffix: Suffix | null;
-  tokenAddress?: string;
-}
-
-export function parsePath(segments: string[] = [], mode: 'client' | 'api' = 'client'): ParsedPath {
-  const base: ParsedPath = { type: 'homepage', tagPath: '', slug: '', suffix: null };
-  if (segments.length === 0) return base;
-
-  // Static pages, including the two-segment /charts pair — one lookup over the
-  // same table that gives each of them its metadata and its sitemap row.
-  const staticType = STATIC_PATH_TYPES.get(segments.join('/'));
-  if (staticType) return { ...base, type: staticType as ParsedPath['type'] };
-
-  // A token address is the only other thing under /charts; nothing else is.
-  if (segments[0] === 'charts') {
-    if (segments.length === 3 && segments[1] === 'tokens' && segments[2]!.startsWith('resource_')) {
-      return { ...base, type: 'token-detail', tokenAddress: segments[2] };
-    }
-    return { ...base, type: 'invalid' };
-  }
-
-  // Single-segment suffix (e.g., /edit, /history, /mdx)
-  if (segments.length === 1 && SUFFIXES.includes(segments[0] as Suffix)) {
-    const suffix = segments[0] as Suffix;
-    if (mode === 'api' && suffix === 'edit') return { ...base, type: 'invalid' };
-    return { ...base, type: suffix, suffix };
-  }
-
-  // Check full path as tag (handles tags like 'history' that collide with suffixes).
-  // The empty slug is the category's own hub article, the way `''/''` is the
-  // homepage — so the API resolves it here too, and PUT lands on the hub row.
-  if (isValidTagPath(segments)) {
-    return { ...base, type: 'category', tagPath: segments.join('/') };
-  }
-
-  const lastSegment = segments[segments.length - 1];
-  const suffix = SUFFIXES.includes(lastSegment as Suffix) ? lastSegment as Suffix : null;
-  const pathSegments = suffix ? segments.slice(0, -1) : segments;
-
-  // Client: check if stripped path is a category
-  if (mode === 'client' && suffix && isValidTagPath(pathSegments)) {
-    return { ...base, type: suffix === 'edit' ? 'category' : suffix, tagPath: pathSegments.join('/'), suffix };
-  }
-
-  if (pathSegments.length < 2) return { ...base, type: 'invalid' };
-
-  const slug = pathSegments[pathSegments.length - 1]!;
-  const tagPathSegments = pathSegments.slice(0, -1);
-
-  if (!isValidTagPath(tagPathSegments)) {
-    return { ...base, type: 'invalid' };
-  }
-
-  const tagPath = tagPathSegments.join('/');
-  const type = suffix ?? 'page';
-  if (mode === 'api' && suffix === 'edit') return { ...base, type: 'invalid' };
-  return { type, tagPath, slug, suffix };
 }
 
 // ========== DATA FETCHING ==========

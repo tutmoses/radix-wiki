@@ -147,7 +147,7 @@ function PageListBlockEdit({ block, onUpdate }: BlockProps<PageListBlock>) {
   const addPage = () => { if (newPageId.trim()) { onUpdate?.({ ...block, pageIds: [...block.pageIds, newPageId.trim()] }); setNewPageId(''); } };
   return (
     <EditWrapper icon={FileText} label="Curated Page List">
-      {block.pageIds.length > 0 && <div className="stack-sm">{block.pageIds.map((id, i) => <div key={i} className="row"><span className="flex-1 text-small truncate">{id}</span><button onClick={() => onUpdate?.({ ...block, pageIds: block.pageIds.filter((_, j) => j !== i) })} className="icon-btn text-text-muted hover:text-error" title="Remove page" aria-label="Remove page"><Trash2 size={14} /></button></div>)}</div>}
+      {block.pageIds.length > 0 && <div className="stack-sm">{block.pageIds.map((id, i) => <div key={i} className="row"><span className="flex-1 text-small truncate">{id}</span><button onClick={() => onUpdate?.({ ...block, pageIds: block.pageIds.filter((_, j) => j !== i) })} className="icon-btn icon-btn-remove" title="Remove page" aria-label="Remove page"><Trash2 size={14} /></button></div>)}</div>}
       <div className="row"><input type="text" value={newPageId} onChange={e => setNewPageId(e.target.value)} placeholder="Page ID..." className="flex-1 input" /><Button size="sm" onClick={addPage} disabled={!newPageId.trim()}>Add</Button></div>
       <small>Add page IDs to create a curated list</small>
     </EditWrapper>
@@ -228,7 +228,7 @@ function LinkGridBlockEdit({ block, onUpdate }: BlockProps<LinkGridBlock>) {
           <div key={group.id} className="edit-wrapper">
             <div className="spread">
               <Input label="Heading" value={group.heading} onChange={e => updateGroup(gi, { ...group, heading: e.target.value })} />
-              <button onClick={() => removeGroup(gi)} className="icon-btn p-1 text-text-muted hover:text-error" title="Remove group" aria-label="Remove group"><Trash2 size={14} /></button>
+              <button onClick={() => removeGroup(gi)} className="icon-btn icon-btn-remove p-1" title="Remove group" aria-label="Remove group"><Trash2 size={14} /></button>
             </div>
             <Input label="Description (optional, HTML)" value={group.description || ''} onChange={e => updateGroup(gi, { ...group, description: e.target.value || undefined })} placeholder="Optional prose paragraph above the link pills" />
             <div className="stack-sm">
@@ -236,7 +236,7 @@ function LinkGridBlockEdit({ block, onUpdate }: BlockProps<LinkGridBlock>) {
                 <div key={li} className="row">
                   <input type="text" value={link.label} onChange={e => updateGroup(gi, { ...group, links: group.links.map((l, k) => k === li ? { ...l, label: e.target.value } : l) })} placeholder="Label" className="flex-1 input" />
                   <input type="text" value={link.href} onChange={e => updateGroup(gi, { ...group, links: group.links.map((l, k) => k === li ? { ...l, href: e.target.value } : l) })} placeholder="/path or https://..." className="flex-1 input" />
-                  <button onClick={() => updateGroup(gi, { ...group, links: group.links.filter((_, k) => k !== li) })} className="icon-btn text-text-muted hover:text-error" title="Remove link" aria-label="Remove link"><Trash2 size={14} /></button>
+                  <button onClick={() => updateGroup(gi, { ...group, links: group.links.filter((_, k) => k !== li) })} className="icon-btn icon-btn-remove" title="Remove link" aria-label="Remove link"><Trash2 size={14} /></button>
                 </div>
               ))}
               <Button size="sm" onClick={() => updateGroup(gi, { ...group, links: [...group.links, { label: '', href: '' }] })}>+ Add link</Button>
@@ -293,7 +293,7 @@ function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Colum
 
   return (
     <div className="column-editor">
-      <div className="spread"><span className="column-header">Column</span>{canDelete && <button onClick={onDelete} className="icon-btn p-1 text-text-muted hover:text-error" title="Delete column" aria-label="Delete column"><Trash2 size={14} /></button>}</div>
+      <div className="spread"><span className="column-header">Column</span>{canDelete && <button onClick={onDelete} className="icon-btn icon-btn-remove p-1" title="Delete column" aria-label="Delete column"><Trash2 size={14} /></button>}</div>
       {(column.blocks?.length ?? 0) === 0 ? (
         <div className="py-6 text-center"><p className="text-text-muted text-small mb-2">Empty column</p><InsertButton onInsert={add} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
       ) : (
@@ -354,7 +354,7 @@ function ReferencesBlockEdit({ block, onUpdate }: BlockProps<ReferencesBlock>) {
             <span className="text-text-muted text-small w-5 text-right">{i + 1}.</span>
             <input type="text" value={item.text} onChange={e => updateItem(i, { ...item, text: e.target.value })} placeholder="Source title, author, publisher (HTML allowed)" className="flex-1 input" />
             <input type="text" value={item.url || ''} onChange={e => updateItem(i, { ...item, url: e.target.value || undefined })} placeholder="https://source-url" className="flex-1 input" />
-            <button onClick={() => removeItem(i)} className="icon-btn text-text-muted hover:text-error" title="Remove reference" aria-label="Remove reference"><Trash2 size={14} /></button>
+            <button onClick={() => removeItem(i)} className="icon-btn icon-btn-remove" title="Remove reference" aria-label="Remove reference"><Trash2 size={14} /></button>
           </div>
         ))}
         <Button size="sm" onClick={addItem}>+ Add reference</Button>
@@ -407,7 +407,7 @@ const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelecte
 
   if (!meta) return (
     <div className={cn('block-unknown', compact ? 'p-3' : 'p-4 rounded-lg')}>
-      <div className="spread mb-2"><span className={cn('text-warning', compact ? 'text-small' : 'font-medium')}>Unknown block: {block.type}</span><button onClick={e => { e.stopPropagation(); onDelete(index); }} className="icon-btn p-1 text-text-muted hover:text-error" title="Delete block" aria-label="Delete block"><Trash2 size={iconSize} /></button></div>
+      <div className="spread mb-2"><span className={cn('text-warning', compact ? 'text-small' : 'font-medium')}>Unknown block: {block.type}</span><button onClick={e => { e.stopPropagation(); onDelete(index); }} className="icon-btn icon-btn-remove p-1" title="Delete block" aria-label="Delete block"><Trash2 size={iconSize} /></button></div>
     </div>
   );
   const Icon = meta.icon;
@@ -450,5 +450,3 @@ export function BlockEditor({ content, onChange }: { content: Block[]; onChange:
     </div>
   );
 }
-
-export default BlockEditor;
