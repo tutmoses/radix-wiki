@@ -33,7 +33,7 @@ try {
   const page = rows[0];
   const blocks = JSON.parse(JSON.stringify(page.content));
   if (JSON.stringify(blocks).includes(SENTINEL)) {
-    console.log('  already applied — no write');
+    console.log('  already applied – no write');
     process.exit(0);
   }
   const info = blocks.find((b) => b.id === '238b4a59-39d6-458e-954c-91f8bfa9bf1e');

@@ -25,7 +25,7 @@ try {
   const page = rows[0];
   const blocks = JSON.parse(JSON.stringify(page.content));
   if (blocks.some((b) => b.text?.includes(SENTINEL))) {
-    console.log('  already applied — no write');
+    console.log('  already applied – no write');
     process.exit(0);
   }
   const block = blocks.find((b) => b.type === 'content' && b.text.includes(FROM));

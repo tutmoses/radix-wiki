@@ -36,7 +36,7 @@ try {
   if (!rows.length) throw new Error('page not found');
   const page = rows[0];
   if (JSON.stringify(page.content).includes(SENTINEL)) {
-    console.log('  already applied — no write');
+    console.log('  already applied – no write');
     process.exit(0);
   }
   if (page.content.length !== 2 || page.content[0].type !== 'banner' || page.content[1].id !== 'block-blue-chick-nfts-1') throw new Error('block layout changed');
