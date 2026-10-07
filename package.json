@@ -24,6 +24,8 @@
     "@prisma/client": "^7.8.0",
     "@radixdlt/radix-dapp-toolkit": "^2.3.0",
     "@radixdlt/rola": "^2.1.0",
+    "@simplewebauthn/browser": "^14.0.0",
+    "@simplewebauthn/server": "^14.0.3",
     "@tiptap/core": "^2.10.0",
     "@tiptap/extension-code-block": "^2.10.0",
     "@tiptap/extension-image": "^2.10.0",

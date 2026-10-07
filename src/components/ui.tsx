@@ -20,12 +20,12 @@ type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
 
 const btnStyles: Record<ButtonVariant, string> = {
-  primary: 'bg-accent text-text-inverted hover:bg-accent-hover hover:text-text-inverted',
+  primary: 'btn-primary',
   secondary: 'bg-surface-2 border-border hover:brightness-110',
   ghost: 'hover:bg-surface-2',
   danger: 'bg-error/80 text-text hover:bg-error',
 };
-const btnSizes: Record<ButtonSize, string> = { sm: 'px-3 py-1.5', md: 'px-4 py-2', lg: 'px-6 py-3', icon: 'p-2' };
+const btnSizes: Record<ButtonSize, string> = { sm: 'px-3 py-1.5', md: '', lg: 'px-6 py-3', icon: 'p-2' };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -35,7 +35,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', isLoading, disabled, children, ...props }, ref) => (
-    <button ref={ref} className={cn('row justify-center font-medium rounded-md border border-transparent cursor-pointer transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed', btnStyles[variant], btnSizes[size], className)} disabled={disabled || isLoading} {...props}>
+    <button ref={ref} className={cn('btn', btnStyles[variant], btnSizes[size], className)} disabled={disabled || isLoading} {...props}>
       {isLoading ? <><span className="spinner h-4 w-4 text-current" />Loading...</> : children}
     </button>
   )

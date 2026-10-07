@@ -43,6 +43,8 @@ export const STATIC_PAGES: Record<string, StaticPage> = {
   // maintenance categories.
   search: { path: 'search', title: 'Search', description: 'Search the community-maintained RADIX Wiki.', noindex: true },
   maintenance: { path: 'maintenance', title: 'Maintenance', description: 'Pages flagged as outdated, orphaned, unsourced, or missing required metadata.', noindex: true },
+  // The wiki's own analytics, behind a passkey (`src/lib/admin.ts`).
+  stats: { path: 'stats', title: 'Stats', description: 'Visitors, pages and agent traffic for RADIX Wiki.', noindex: true },
 };
 
 /** Every route with a sitemap row, bar the homepage — its URL is the bare origin. */

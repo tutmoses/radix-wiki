@@ -86,7 +86,8 @@
   h1, h2, h3, h4 { &:first-child { @apply mt-0; } }
   h1 { @apply text-h1 font-bold mt-8; }
   h2 { @apply text-h2 font-semibold mt-8 border-b-2 border-border scroll-mt-[calc(var(--header-height)+1rem)]; }
-  h3 { @apply text-h3 font-normal mt-6 scroll-mt-[calc(var(--header-height)+1rem)]; }
+  /* `.stats-figures dd` takes the h3 type; base.css, a higher layer, resets its margins. */
+  h3, .stats-figures dd { @apply text-h3 font-normal mt-6 scroll-mt-[calc(var(--header-height)+1rem)]; }
   h4 { @apply text-h4 font-light mt-4 scroll-mt-[calc(var(--header-height)+1rem)]; }
 
   ul, ol { @apply pl-8; :is(ul, ol) { @apply mt-1 mb-0; } }
@@ -347,6 +348,10 @@
   .surface-interactive { @apply bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5 hover:shadow; }
 
   /* ===== FORM CONTROLS ===== */
+  /* <Button> composes these with its size; a button rendered outside React's <Button>, such as
+     wiki-formant's PasskeyButton, names them directly. */
+  .btn { @apply flex items-center gap-2 justify-center px-4 py-2 font-medium rounded-md border border-transparent cursor-pointer transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-primary { @apply bg-accent text-text-inverted hover:bg-accent-hover hover:text-text-inverted; }
   .icon-btn { @apply p-2 rounded transition-colors cursor-pointer inline-flex items-center justify-center hover:bg-surface-2; }
   .icon-btn-remove { @apply text-text-muted hover:text-error; }
   .input { @apply w-full py-2 px-4 bg-surface-0 border border-border rounded transition-all focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-muted placeholder:text-text-muted placeholder:opacity-60; }
@@ -650,6 +655,12 @@
   .maintenance-list { @apply grid grid-cols-1 md:grid-cols-2 gap-x-6 m-0 p-0 list-none; }
   .maintenance-item { @apply flex flex-wrap items-baseline gap-x-2 py-1.5 border-b border-border-muted; }
   .maintenance-detail { @apply text-text-muted text-xs; }
+
+  /* ===== STATS (/stats) =====
+     The layout and the bars' shape are wiki-formant/base.css; this is the colour. */
+  .stats-figures dt, .stats-list h2 { @apply text-text-muted; }
+  .stats-ranges a[aria-current], .stats-chart, .stats-list li { @apply text-accent; }
+  .stats-list li > span { @apply text-text; }
 
   /* ===== SEE ALSO ===== */
   .see-also { @apply mt-8 pt-6 border-t border-border-muted flex flex-col gap-3; }

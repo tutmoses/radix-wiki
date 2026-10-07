@@ -29,6 +29,7 @@ const WelcomeView = dynamic(() => import('@/components/WelcomeView'), { loading:
 const RewardsView = dynamic(() => import('@/components/RewardsView'), { loading: () => <PageSkeleton /> });
 const SearchView = dynamic(() => import('@/components/SearchView'), { loading: () => <PageSkeleton /> });
 const MaintenanceView = dynamic(() => import('@/components/MaintenanceView'), { loading: () => <PageSkeleton /> });
+const SiteStats = dynamic(() => import('@/components/SiteStats'), { loading: () => <PageSkeleton /> });
 import ChartsOverview from '@/components/charts/ChartsOverview';
 import ValidatorsView from '@/components/charts/ValidatorsView';
 import TokensView from '@/components/charts/TokensView';
@@ -324,7 +325,7 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
   // touching it anywhere in this render marks the whole route dynamic — which
   // it was: every article re-rendered from the database on every request while
   // `generateStaticParams` prebuilt a manifest nothing ever read and
-  // `revalidate` governed a cache nothing ever wrote. Two branches out of a
+  // `revalidate` governed a cache nothing ever wrote. Three branches out of a
   // dozen actually read a query string, so each awaits it for itself and the
   // rest prerender. Any new `await searchParams` above a branch undoes this for
   // the whole wiki; check `next build` still reports this route as SSG.
@@ -337,6 +338,10 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
 
   if (parsed.type === 'search') return <SearchView query={str((await searchParams).q) ?? ''} />;
   if (parsed.type === 'maintenance') return <MaintenanceView queues={await getMaintenanceQueues()} />;
+  if (parsed.type === 'stats') {
+    const query = await searchParams;
+    return <SiteStats days={str(query.days)} invite={str(query.invite)} />;
+  }
   if (parsed.type === 'leaderboard') return <LeaderboardView entries={(await getEditorScores()).map(publicScore)} />;
   if (parsed.type === 'welcome') return <WelcomeView />;
   if (parsed.type === 'rewards') return <RewardsView />;

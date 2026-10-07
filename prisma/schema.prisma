@@ -245,3 +245,20 @@ model LedgerDay {
 
   @@map("ledger_days")
 }
+
+// The passkey door to /stats. wiki-formant/passkey owns the SQL and names these
+// tables as they stand, so they carry no @@map. Every token is stored as its
+// hash; `npx passkey-invite <url>` prints the link that saves the first passkey.
+model Passkey {
+  id         String   @id
+  publicKey  String
+  counter    Int
+  transports String[]
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model PasskeyToken {
+  hash      String   @id
+  kind      String
+  expiresAt DateTime @db.Timestamptz(3)
+}

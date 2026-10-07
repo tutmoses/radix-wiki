@@ -13,7 +13,7 @@ import { SITE_URL } from '@/lib/site';
 import { prisma } from '@/lib/prisma/client';
 import { createTracker, type Sql } from 'wiki-formant/analytics';
 
-const sql: Sql = (query, ...values) => prisma.$queryRawUnsafe(query, ...values);
+export const sql: Sql = (query, ...values) => prisma.$queryRawUnsafe(query, ...values);
 
 // A search is filed against the page the reader searched from, else the site.
 // `total` at the call site is the match count before pagination, so the
