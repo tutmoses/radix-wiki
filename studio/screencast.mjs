@@ -17,7 +17,7 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { Director, CodeScene, stitch, muxNarration, composePresenter } from "radix-studio";
+import { Director, CodeScene, stitch, mux, composePresenter } from "radix-studio";
 import config from "./studio.config.mjs";
 
 const studioDir = dirname(new URL(import.meta.url).pathname);
@@ -60,7 +60,7 @@ stitch(director.segments, outFile, io);
 
 const cues = result?.cues ?? [];
 if (cues.length && !process.argv.includes("--silent")) {
-  muxNarration(outFile, cues.map((c) => ({ file: join(studioDir, "narration", name, c.audio), at: c.at })), io);
+  mux(outFile, { cues: cues.map((c) => ({ file: join(studioDir, "narration", name, c.audio), at: c.at })) }, io);
   log(`narration: ${cues.length} lines, first at ${cues[0].at.toFixed(2)}s, last at ${cues.at(-1).at.toFixed(2)}s`);
 } else {
   log("no narration muxed (silent)");
