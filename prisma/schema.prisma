@@ -52,7 +52,7 @@ model Page {
   /// leaves it alone — `migrate diff` emits `DROP COLUMN search_tsv` the moment it is
   /// undeclared. Never let push CREATE it either: Prisma writes a plain `tsvector`
   /// column with no generation expression, which stays empty forever and fails silently.
-  /// The column is created by hand; see scripts/fts-ddl.mjs. Read only via $queryRaw.
+  /// The column is created by hand with `npx fts-ddl pages`. Read only via $queryRaw.
   searchTsv   Unsupported("tsvector")? @map("search_tsv")
 
   @@unique([tagPath, slug])

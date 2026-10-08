@@ -63,7 +63,6 @@
 
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slide-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes spin { to { transform: rotate(360deg); } }
 
 @layer base {
   /* The page gutter: 16 / 24 / 32px at base / 640 / 1024 — the canonical scale
@@ -97,17 +96,6 @@
 
   a { @apply text-accent no-underline hover:text-accent-hover; }
   code { @apply text-[0.9em] px-1.5 py-0.5 bg-surface-2 rounded; }
-  /* Address wrap (STRUCTURE.md D8): a base rule, one scope for Radix address
-     and hash text. Inline code is where stored prose puts them, and a class
-     cannot reach it — `.break-anywhere` was defined here in July 2026 and
-     applied to nothing in the two months since, because the HTML that needs
-     it comes out of the database. A 64-character hash is one unbreakable
-     word, so its min-content width IS the whole string: 567px inside a 342px column, running off the
-     right of every phone. `overflow-wrap: anywhere` is the half that shrinks
-     min-content; `word-break` alone would not have. Code inside a <pre> keeps
-     its own rule below — that block scrolls on purpose, and wrapping a
-     listing is not reading it. */
-  :not(pre) > code { overflow-wrap: anywhere; word-break: break-word; }
   pre { @apply text-base border border-border-muted rounded-lg p-4 overflow-x-auto; background-color: var(--color-code-bg); code { @apply p-0 bg-transparent; } }
   blockquote { @apply border-l-4 border-accent pl-4 py-1 italic text-text-muted; }
 
@@ -370,8 +358,8 @@
   .badge-danger { @apply bg-danger-muted text-danger border border-danger/25; }
 
   /* ===== SKELETON / LOADING ===== */
-  .skeleton { @apply bg-surface-1 rounded-lg animate-pulse; }
-  .spinner { @apply inline-block rounded-full border-2 border-current border-t-transparent animate-[spin_0.6s_linear_infinite]; }
+  /* The pulse and the spinner's ring and spin are base.css; the surface is this wiki's. */
+  .skeleton { @apply bg-surface-1 rounded-lg; }
 
   /* ===== BREADCRUMBS (STRUCTURE.md D8 canonical) ===== */
   /* The trail is a <nav> wrapping an <ol> — a breadcrumb trail IS an ordered
@@ -379,8 +367,7 @@
      list, not the landmark, so the separators (<li aria-hidden>) lay out with
      the crumbs rather than around them. */
   .breadcrumbs { @apply text-small text-text-muted; }
-  .breadcrumbs ol { @apply flex flex-wrap items-center gap-1 list-none pl-0; }
-  .breadcrumbs .separator { @apply text-text-muted select-none; }
+  .breadcrumbs .separator { @apply text-text-muted; }
   .breadcrumb-link { @apply capitalize text-text-muted no-underline hover:text-accent; }
   .breadcrumb-current { @apply capitalize text-text; }
 
@@ -866,9 +853,6 @@
      between blocks inside a column is this wiki's. */
   .column-view { @apply gap-4; }
 
-  /* ===== EMPTY STATES ===== */
-  .empty-state { @apply py-12 text-center; }
-
   /* ===== CHARTS / DATA TABLES ===== */
   .ledger-unavailable { @apply flex items-start gap-3 bg-surface-1 border border-border-muted rounded-lg p-4; }
   .charts-stat-grid { @apply grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3; }
@@ -877,7 +861,7 @@
   .activity-metrics .toggle-option { @apply normal-case; }
   .charts-section-link { @apply inline-flex items-center gap-1 text-small text-accent hover:underline; }
 
-  .data-table-wrap { @apply bg-surface-1 border border-border-muted rounded-lg overflow-hidden overflow-x-auto; }
+  .data-table-wrap { @apply bg-surface-1 border border-border-muted rounded-lg overflow-y-hidden; }
   .data-table { @apply w-full text-small border-collapse; }
   .data-table-th { @apply text-left text-small text-text-muted border-b border-surface-2 p-3 font-medium; }
   .data-table-td { @apply p-3 border-b border-surface-2; }

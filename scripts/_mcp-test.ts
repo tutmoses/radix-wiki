@@ -17,6 +17,7 @@ import {
   createTester,
   transportChecks,
   versionCoherence,
+  standardVersionSources,
   agentCardParity,
   annotationChecks,
   conditionalGetChecks,
@@ -30,19 +31,11 @@ import serverManifest from '../server.json';
 const BASE = process.argv[2] ?? process.env.MCP_TEST_BASE ?? 'http://localhost:3000';
 const t = createTester({ base: BASE, clientName: 'radix-wiki-mcp-test' });
 const { rpc, call, payload, check } = t;
-const MCP = t.endpoint;
 
 (async () => {
   const init = await transportChecks(t, 'radix-wiki-mcp-test');
 
-  await versionCoherence(t, serverManifest.version, {
-    card: { url: `${BASE}/.well-known/agent-card.json`, at: j => j.version },
-    legacyCard: { url: `${BASE}/.well-known/agent.json`, at: j => j.version },
-    openapi: { url: `${BASE}/openapi.json`, at: j => (j.info as { version?: string })?.version },
-    openapiWellKnown: { url: `${BASE}/.well-known/openapi.json`, at: j => (j.info as { version?: string })?.version },
-    mcpManifest: { url: `${BASE}/.well-known/mcp.json`, at: j => j.version },
-    serverCard: { url: `${MCP}/server-card`, at: j => j.version },
-  }, init.result?.serverInfo?.version);
+  await versionCoherence(t, serverManifest.version, standardVersionSources(t, ['/openapi.json', '/.well-known/openapi.json']), init.result?.serverInfo?.version);
 
   await agentCardParity(t);
   await annotationChecks(t, { writes: ['get_challenge', 'login', 'create_page', 'edit_page'] });

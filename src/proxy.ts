@@ -1,19 +1,12 @@
 import { NextResponse, type NextRequest, type NextFetchEvent } from 'next/server';
-import { detectAiBot } from 'wiki-formant/crawlers';
-
+import { trackAiBot } from 'wiki-formant/crawlers';
 
 // The roster is `wiki-formant/crawlers`, shared with robots.ts, which used to
-// keep a second and different list of the same thing.
+// keep a second and different list of the same thing. track.ts is loaded only
+// for a bot: it pulls in Prisma, which a static import would load for every
+// request the proxy sees.
 export function proxy(request: NextRequest, event: NextFetchEvent) {
-  const botName = detectAiBot(request.headers.get('user-agent'));
-  if (!botName) return NextResponse.next();
-
-  // Imported here, not at the top: track.ts pulls in Prisma, which a static
-  // import would load for every request the proxy sees, bots or not.
-  event.waitUntil(
-    import('@/lib/track').then(m => m.trackEvent('AI Bot Visit', request.nextUrl.href, { bot: botName }, request.headers)),
-  );
-
+  trackAiBot(request, event, () => import('@/lib/track'));
   return NextResponse.next();
 }
 

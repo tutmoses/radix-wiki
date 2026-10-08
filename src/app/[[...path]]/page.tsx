@@ -36,7 +36,7 @@ import TokensView from '@/components/charts/TokensView';
 import TokenDetailView from '@/components/charts/TokenDetailView';
 import { clampSnippet, pageDescription, pagePath, pageUrl } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
-import { SITE_DESCRIPTION, SITE_NAME, SITE_ORGANIZATION, SITE_URL, SITE_WEBSITE, WIKI_LICENSE } from '@/lib/site';
+import { SITE_DESCRIPTION, SITE_NAME, SITE_REFS, SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { PageNav } from 'wiki-formant/react-server';
@@ -265,8 +265,8 @@ function pageLd(page: WikiPage, url: string) {
     // Name only — the wiki doesn't publish the displayName↔wallet mapping, so no
     // address identifier or explorer URL in structured data.
     author: { '@type': 'Person', name: page.author?.displayName || 'Anonymous' },
-    publisher: SITE_ORGANIZATION,
-    isPartOf: SITE_WEBSITE,
+    publisher: SITE_REFS.organization,
+    isPartOf: SITE_REFS.website,
     license: WIKI_LICENSE.url,
     citation: citationsFromReferences(references),
     extra: {
@@ -282,7 +282,7 @@ function pageLd(page: WikiPage, url: string) {
 /** `items` are the category's pages, or — for a container that holds none — its sections. */
 function categoryLd(name: string, url: string, items: ({ title: string; tagPath: string; slug: string } | { name: string; href: string })[], description?: string) {
   return collectionLd({
-    name, url, description, isPartOf: SITE_WEBSITE, max: 50,
+    name, url, description, isPartOf: SITE_REFS.website, max: 50,
     items: items.map(item => ('href' in item
       ? { name: item.name, url: `${SITE_URL}${item.href}` }
       : { name: item.title, url: pageUrl(item.tagPath, item.slug) })),

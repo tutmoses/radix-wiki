@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { SITE_URL } from '@/lib/site';
-import { aiCrawlerRules } from 'wiki-formant/crawlers';
+import { crawlerRules } from 'wiki-formant/crawlers';
 
 export default function robots(): MetadataRoute.Robots {
   // `/api/wiki/*/mdx$` is the markdown twin of a page, and it has to out-specify the
@@ -10,7 +10,7 @@ export default function robots(): MetadataRoute.Robots {
   // route outright settles it at 16 characters against 9.
   //
   // /api/mcp, the three llms exports, /openapi.json and /.well-known/ are
-  // `AGENT_SURFACE_PATHS`, which `aiCrawlerRules` allows in every group without
+  // `AGENT_SURFACE_PATHS`, which `crawlerRules` allows in every group without
   // being told. This list is what this origin serves beyond them.
   const aiAllow = ['/', '/api/wiki/', '/api/wiki/*/mdx$'];
   // The /edit, /history and /mdx VIEWS of a wiki page should not be indexed.
@@ -33,35 +33,18 @@ export default function robots(): MetadataRoute.Robots {
   // longest-match Allow precedence, which not every crawler implements.
   const views = ['edit', 'history', 'mdx'];
   const pageVariantDisallow = views.flatMap(v => [`/*/*/${v}$`, `/${v}$`]);
-  // A crawler obeys only its most-specific matching group, so every named agent
-  // needs its own disallow — omitting it grants that agent unrestricted access.
-  // The aiAllow entries still win over `/api/` by longest-match precedence,
-  // which is what keeps /api/mcp and /api/wiki/ reachable for agents.
-  // `_rsc=` is the React Server Components payload a <Link> prefetches. A
-  // crawler that renders the page runs those prefetches too, and Search
-  // Console's crawl stats put them at 43% of Googlebot's requests here against
-  // 10% for HTML — every rail link on every page, fetched again as its own URL.
-  // Nothing that reads robots.txt can use one.
-  const rscDisallow = ['/*?_rsc=', '/*&_rsc='];
-  const disallow = ['/api/', ...pageVariantDisallow, ...rscDisallow];
+  // The aiAllow entries win over `/api/` by longest-match precedence, which is
+  // what keeps /api/mcp and /api/wiki/ reachable for agents.
+  const disallow = ['/api/', ...pageVariantDisallow];
   // The roster is `wiki-formant/crawlers`, shared with src/proxy.ts, which used
   // to keep a second and different list of the same thing. Five agents the proxy
   // measured — Bytespider, CCBot, cohere-ai, Claude-Web, Meta-ExternalFetcher —
-  // had no group here at all, so by the rule above they were granted whatever
-  // `*` grants. They now get the same group as every other AI agent.
-  // Search engines get the HTML site and nothing else. The `*` group keeps the
-  // machine surface open to an agent it has never heard of, which is right for
-  // an agent and wrong for Google: it was spending its crawl on `/api/wiki/`
-  // JSON and on the `.md` twins, each the page it already has in another
-  // format. A named group replaces `*` for the agent it names rather than
-  // extending it, so every disallow is listed again.
-  const searchEngines = ['Googlebot', 'Bingbot'].map(userAgent => ({
-    userAgent,
-    allow: '/',
-    disallow: ['/api/', '/*.md$', ...pageVariantDisallow, ...rscDisallow],
-  }));
+  // had no group here at all, and a crawler obeys only its most-specific group,
+  // so they were granted whatever `*` grants. `crawlerRules` gives every group
+  // the `_rsc=` disallow and writes the Googlebot/Bingbot groups (no `/api/`,
+  // no `.md` twins) itself.
   return {
-    rules: [...aiCrawlerRules({ allow: '/', disallow, aiAllow }), ...searchEngines],
+    rules: crawlerRules({ allow: '/', disallow, aiAllow }),
     sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

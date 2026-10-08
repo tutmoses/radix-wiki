@@ -1,16 +1,17 @@
 // src/lib/site.ts – the canonical origin every absolute URL is built from, named
 // and placed as in caper and acuiq2 so one grep finds it in all three.
 import { ccBy40 } from 'wiki-formant/license';
+import { siteRefs } from 'wiki-formant/metadata';
 
 export const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 export const SITE_NAME = 'RADIX Wiki';
 export const SITE_DESCRIPTION = 'Community-maintained knowledge base for Radix DLT — the layer-1 blockchain with linear scalability and asset-oriented smart contracts.';
 
-// The wiki as schema.org names it. The layout states both on every page and
-// each Article and collection points back at the same two objects, which had
-// been declared twice and had already parted on the logo.
-export const SITE_ORGANIZATION = { '@type': 'Organization', name: SITE_NAME, url: SITE_URL, logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` } };
-export const SITE_WEBSITE = { '@type': 'WebSite', name: SITE_NAME, url: SITE_URL };
+// The wiki as schema.org names it: `@id` references to the Organization and
+// WebSite nodes the layout's `siteGraphLd` states once on every page. Each
+// Article and collection points at these rather than restating the nodes, which
+// had been declared twice and had already parted on the logo.
+export const SITE_REFS = siteRefs(SITE_URL);
 
 // The sister wiki, named in llms.txt and the MCP instructions so an agent that
 // arrives here with a question about DAOs in general finds where it is answered.

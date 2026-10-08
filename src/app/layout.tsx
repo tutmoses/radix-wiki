@@ -7,13 +7,14 @@ import { Beacon, SidebarProvider } from 'wiki-formant/react';
 import { sidebarBootScript } from 'wiki-formant/sidebar';
 import { SIDEBAR_BREAKPOINT, SIDEBAR_KEY } from '@/lib/sidebar';
 import { JsonLd } from 'wiki-formant/react-server';
+import { siteGraphLd } from 'wiki-formant/metadata';
 import { RadixProvider } from '@/components/RadixProvider';
 import { Header } from '@/components/Header';
 import { Sidebar } from '@/components/Sidebar';
 import { Footer } from '@/components/Footer';
 import { Toast } from '@/components/Toast';
 
-import { SITE_DESCRIPTION, SITE_NAME, SITE_ORGANIZATION, SITE_URL, SITE_WEBSITE } from '@/lib/site';
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
 import { ogMetadata } from '@/lib/og';
 
 const inter = Inter({
@@ -57,28 +58,19 @@ export const metadata: Metadata = {
   twitter: SITE_CARD.twitter,
 };
 
-const SITE_JSON_LD = [
-  {
-    '@context': 'https://schema.org',
-    ...SITE_ORGANIZATION,
-    description: SITE_DESCRIPTION,
-    sameAs: ['https://twitter.com/RadixWiki', 'https://www.moltbook.com/u/RadixWiki', 'https://github.com/radixdlt', 'https://t.me/RadixDevelopers'],
-  },
-  {
-    '@context': 'https://schema.org',
-    ...SITE_WEBSITE,
-    potentialAction: { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: `${SITE_URL}/search?q={search_term_string}` }, 'query-input': 'required name=search_term_string' },
-  },
-  {
-    '@context': 'https://schema.org',
-    '@type': 'WebAPI',
-    name: `${SITE_NAME} API`,
+const SITE_JSON_LD = siteGraphLd({
+  name: SITE_NAME,
+  url: SITE_URL,
+  description: SITE_DESCRIPTION,
+  logo: `${SITE_URL}/logo.png`,
+  sameAs: ['https://twitter.com/RadixWiki', 'https://www.moltbook.com/u/RadixWiki', 'https://github.com/radixdlt', 'https://t.me/RadixDevelopers'],
+  searchUrl: `${SITE_URL}/search?q={search_term_string}`,
+  api: {
     description: 'REST API and MCP server for reading and writing Radix ecosystem wiki content',
     url: `${SITE_URL}/api/wiki`,
     documentation: `${SITE_URL}/llms.txt`,
-    provider: SITE_ORGANIZATION,
   },
-];
+});
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   // suppressHydrationWarning: the sidebar boot script below stamps

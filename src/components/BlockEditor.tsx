@@ -376,6 +376,8 @@ function renderBlockEdit(block: Block | AtomicBlock, onUpdate?: (b: Block) => vo
     case 'tipJar': return <TipJarBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'banner': return <BannerBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'references': return <ReferencesBlockEdit block={block} onUpdate={onUpdate as any} />;
+    // codeTabs, stats and testimonial have no visual editor.
+    default: return null;
   }
 }
 

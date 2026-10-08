@@ -9,7 +9,7 @@
 // Shared-secret rather than wallet auth because the caller is a script, not a
 // person. With ANNOUNCE_SECRET unset the route does not exist.
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { handleRoute, json, errors } from '@/lib/api';
 import { broadcast, broadcastChatIds, deliverWebhooks, formatAnnouncement } from '@/lib/webhooks';
@@ -23,7 +23,7 @@ const SECRET = process.env.ANNOUNCE_SECRET || '';
 
 export async function POST(request: NextRequest) {
   return handleRoute(async () => {
-    if (!SECRET) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!SECRET) return errors.notFound();
     if (request.headers.get('authorization') !== `Bearer ${SECRET}`) return errors.unauthorized();
 
     const { tagPath, slug, channels = true } = await request.json() as

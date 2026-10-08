@@ -1,25 +1,20 @@
 // src/lib/api.ts - Shared API utilities
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { requireBalance, type BalanceAction } from '@/lib/radix/balance';
+import { json, errors } from 'wiki-formant/http';
 import type { AuthSession } from '@/types';
 
-export function json<T>(data: T, init?: number | ResponseInit): NextResponse {
-  return NextResponse.json(data, typeof init === 'number' ? { status: init } : init);
-}
-
-export const errors = {
-  unauthorized: () => json({ error: 'Unauthorized' }, 401),
-  forbidden: (msg = 'Forbidden') => json({ error: msg }, 403),
-  notFound: (msg = 'Not found') => json({ error: msg }, 404),
-  badRequest: (msg: string) => json({ error: msg }, 400),
-  internal: (msg = 'Internal server error') => json({ error: msg }, 500),
-} as const;
+// Web-standard `Response`, not `NextResponse`: the shared helpers in
+// `wiki-formant/http` answer that way — a 304 from `notModified`, a descriptor
+// from `descriptorResponse` — and the error shape is the one the other origins
+// give, so an agent gets the same body for the same mistake everywhere.
+export { json, errors, handleRoute } from 'wiki-formant/http';
 
 export type RouteContext<T = Record<string, string | string[]>> = { params: Promise<T> };
 
-export async function requireAuth(request?: NextRequest, action?: BalanceAction): Promise<{ session: AuthSession } | { error: NextResponse }> {
+export async function requireAuth(request?: NextRequest, action?: BalanceAction): Promise<{ session: AuthSession } | { error: Response }> {
   const session = await getSession(request);
   if (!session) return { error: errors.unauthorized() };
   if (action) {
@@ -53,16 +48,3 @@ export function cachedJson<T>(data: T, headers: Record<string, string> = CACHE.s
 // /.well-known/mcp.json all read it, so the route enforces exactly what the
 // documents claim — and all three repos had written the same three lines.
 export { MCP_RATE_LIMIT, MCP_RATE_LIMIT_TEXT } from 'wiki-formant/rate-limit';
-
-// `Response`, not `NextResponse`: the shared helpers in `wiki-formant/http`
-// answer with web-standard responses — a 304 from `notModified`, a descriptor
-// from `descriptorResponse` — and a route that returns one is still a valid
-// Next route handler.
-export async function handleRoute(fn: () => Promise<Response>, errorMsg = 'Internal server error'): Promise<Response> {
-  try {
-    return await fn();
-  } catch (error) {
-    console.error(errorMsg, error);
-    return errors.internal(errorMsg);
-  }
-}

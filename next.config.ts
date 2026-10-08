@@ -1,30 +1,24 @@
 // next.config.ts
 
 import type { NextConfig } from 'next';
+import { contentSecurityPolicy, securityHeaders } from 'wiki-formant/headers';
 
-// Content-Security-Policy (STRUCTURE.md S9). Enforcing in production, dev exempt
-// (Next's inline HMR runtime would trip it). Verified against home, article pages
-// with embeds/images, and the wallet-connect init before flipping from
-// Report-Only. 'unsafe-inline' is required (Next injects inline hydration + the
-// inline sidebar boot script, no nonce middleware); img/frame stay `https:`-broad
-// because published articles embed arbitrary hosts; connect-src covers the Radix
-// Gateway + wallet Connect Relay (both under *.radixdlt.com) and OciSwap.
+// Content-Security-Policy (STRUCTURE.md S9): the shared base from
+// `wiki-formant/headers`, with this origin's own source lists. Verified against
+// home, article pages with embeds/images, and the wallet-connect init before
+// flipping from Report-Only. img-src stays `https:`-broad because published
+// articles embed arbitrary hosts; frame-src too, on purpose — IFRAME_HOSTS in
+// src/lib/sanitize.ts decides which embeds survive, so the policy need not
+// repeat it. connect-src covers the Radix Gateway + wallet Connect Relay (both
+// under *.radixdlt.com) and OciSwap.
 const isProd = process.env.NODE_ENV === 'production';
-const csp = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "object-src 'none'",
-  "frame-ancestors 'none'",
-  "form-action 'self'",
-  "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline'",
-  "font-src 'self' data:",
-  "img-src 'self' data: blob: https:",
-  "connect-src 'self' https://*.radixdlt.com https://api.ociswap.com",
-  "frame-src https:",
-  "worker-src 'self' blob:",
-  "manifest-src 'self'",
-].join('; ');
+const csp = contentSecurityPolicy({
+  'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+  'connect-src': ["'self'", 'https://*.radixdlt.com', 'https://api.ociswap.com'],
+  'frame-src': ['https:'],
+  'worker-src': ["'self'", 'blob:'],
+  'manifest-src': ["'self'"],
+});
 
 const nextConfig: NextConfig = {
   // Studio renders boot a second dev server alongside your running one. Next 16
@@ -57,15 +51,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/:path*',
-        headers: [
-          ...(isProd ? [{ key: 'Content-Security-Policy', value: csp }] : []),
-          { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-          { key: 'X-DNS-Prefetch-Control', value: 'on' },
-        ],
+        headers: securityHeaders(isProd ? csp : null),
       },
     ];
   },
