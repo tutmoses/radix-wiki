@@ -21,6 +21,7 @@ export const config = {
   // The negative lookahead excludes /api wholesale, which would blind the
   // AI-bot counter to the machine surface – so the two agent-facing API
   // prefixes are matched back in explicitly. /api/view stays out: the beacon
-  // is sent by browsers, and collect() drops bots itself.
-  matcher: ['/((?!api|_next|favicon\\.ico|logo\\.png).*)', '/api/mcp', '/api/wiki/:path*'],
+  // is sent by browsers, and collect() drops bots itself. Each exclusion ends
+  // at a slash or the path's end: a bare `api` also skipped pages like /apiary.
+  matcher: ['/((?!api/|api$|_next/|favicon\\.ico$|logo\\.png$).*)', '/api/mcp', '/api/wiki/:path*'],
 };
