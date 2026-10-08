@@ -16,6 +16,7 @@ const SIBLINGS = ['caper.network', 'acuiq.com', 'miow.me'];
 export default async function SiteStats({ days: param, invite }: { days?: string | undefined; invite?: string | undefined }) {
   const signedIn = await gate.signedIn((await cookies()).get(gate.cookie)?.value);
   const days = statsDays(param);
+  const open = !signedIn && !invite && (await gate.open());
 
   return (
     <div className="stack">
@@ -28,10 +29,12 @@ export default async function SiteStats({ days: param, invite }: { days?: string
           <p className="text-text-muted">
             {invite
               ? `Save a passkey on this device to open ${new URL(SITE_URL).host}'s stats.`
-              : 'Sign in with a passkey saved for this site.'}
+              : open
+                ? `No passkey is saved for ${new URL(SITE_URL).host} yet. Save the first one here; any after that needs an invite.`
+                : 'Sign in with a passkey saved for this site.'}
           </p>
           <div className="stack-sm items-start">
-            <PasskeyButton endpoint="/api/passkey" invite={invite} className="btn btn-primary" errorClassName="text-error" />
+            <PasskeyButton endpoint="/api/passkey" invite={invite} create={open} className="btn btn-primary" errorClassName="text-error" />
           </div>
         </>
       )}
