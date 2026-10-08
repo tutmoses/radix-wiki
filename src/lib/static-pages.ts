@@ -22,8 +22,6 @@ interface StaticPage {
   absoluteTitle?: boolean;
   /** Card headline, when it should differ from a keyword-length document title. */
   imageTitle?: string;
-  /** llms.txt's own copy, where it has never been reconciled with the meta tag. */
-  llmsDescription?: string;
 }
 
 /** Declaration order is the sitemap's order. */
@@ -33,7 +31,7 @@ export const STATIC_PAGES: Record<string, StaticPage> = {
   // candidate Google picked for that query — it ranked a Core Concepts page at 63
   // instead, on a phrase the homepage's own lead sentence answers outright.
   homepage: { path: '', title: 'Radix Wiki: $XRD, Scrypto & the Radix DLT Crypto Ecosystem', description: 'Radix is a layer-1 protocol built for DeFi, founded by Dan Hughes and running on Cerberus consensus. The community wiki for $XRD, Scrypto and the Radix Engine.', absoluteTitle: true, imageTitle: SITE_NAME },
-  charts: { path: 'charts', title: 'Charts', description: 'Live Radix network statistics, validator directory, and ecosystem token analytics — successor to RadixCharts.', llmsDescription: 'Live Radix network statistics, validator directory, and ecosystem token analytics.', changeFrequency: 'daily', priority: 0.7 },
+  charts: { path: 'charts', title: 'Charts', description: 'Live Radix network statistics, validator directory, and ecosystem token analytics.', changeFrequency: 'daily', priority: 0.7 },
   'charts-validators': { path: 'charts/validators', title: 'Validators', description: 'Every Radix validator with its stake, fee, pending fee changes, 7-day uptime and owner stake, and how concentrated staking is.', changeFrequency: 'daily', priority: 0.7 },
   'charts-tokens': { path: 'charts/tokens', title: 'Tokens', description: 'Radix tokens traded on OciSwap in the last 24 hours, by volume, with price and 24h change.', changeFrequency: 'daily', priority: 0.7 },
   welcome: { path: 'welcome', title: 'Welcome', description: 'Get started with RADIX Wiki — connect your Radix wallet and begin contributing to the decentralized knowledge base.', changeFrequency: 'monthly', priority: 0.5 },
@@ -62,5 +60,5 @@ export const STATIC_PATH_TYPES = new Map(
 /** The /charts routes as llms.txt's Live Data list quotes them. */
 export const CHARTS_PAGES = ['charts', 'charts-validators', 'charts-tokens'].map(key => {
   const p = STATIC_PAGES[key]!;
-  return { path: p.path, title: p.title, description: p.llmsDescription ?? p.description };
+  return { path: p.path, title: p.title, description: p.description };
 });
