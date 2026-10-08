@@ -226,6 +226,26 @@ model Salt {
   value String
 }
 
+// Days counted before the site counted its own: Plausible's, to 2026-10-06,
+// page views only. digest adds them to any window that reaches back that far,
+// and nothing deletes them.
+model ViewDay {
+  siteId     String   @default("")
+  day        DateTime @db.Date
+  visitors   Int
+  pageviews  Int
+  visits     Int
+  bounces    Int
+  seconds    Int
+  pages      Json     @default("{}")
+  entryPages Json     @default("{}")
+  sources    Json     @default("{}")
+  countries  Json     @default("{}")
+  devices    Json     @default("{}")
+
+  @@id([siteId, day])
+}
+
 /// One UTC day of user transactions, summed from the Gateway's transaction stream by
 /// src/lib/radix/activity.ts. A row exists only once its whole day has been read, so a
 /// missing day is unread, never zero.
