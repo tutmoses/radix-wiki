@@ -5,7 +5,7 @@
 import { cookies } from 'next/headers';
 import { digest } from 'wiki-formant/analytics';
 import { PasskeyButton } from 'wiki-formant/passkey-button';
-import { Stats, statsDays } from 'wiki-formant/react-server';
+import { Stats, statsDays } from 'wiki-formant/stats';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { gate } from '@/lib/admin';
 import { SITE_URL } from '@/lib/site';
