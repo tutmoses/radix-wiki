@@ -58,7 +58,7 @@
      resolves to at 16px. */
   --measure: 63ch;
   --scrollbar-thumb: var(--color-border);
-  --scrollbar-thumb-hover: var(--color-border-muted);
+  --scrollbar-thumb-hover: var(--color-text-muted);
 }
 
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
