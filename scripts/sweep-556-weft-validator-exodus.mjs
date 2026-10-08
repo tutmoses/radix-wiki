@@ -19,7 +19,7 @@ await withClient(async (client) => {
   if (!rows.length) throw new Error('page not found');
   const page = rows[0];
   const blocks = JSON.parse(JSON.stringify(page.content));
-  if (blocks.some((b) => b.text?.includes(SENTINEL.slice(2)))) { console.log('  already applied — no write'); return; }
+  if (blocks.some((b) => b.text?.includes(SENTINEL.slice(2)))) { console.log('  already applied – no write'); return; }
   const hits = blocks.filter((b) => b.text?.includes(ANCHOR));
   if (hits.length !== 1) throw new Error(`anchor matched ${hits.length} blocks`);
   hits[0].text = hits[0].text.replace(ANCHOR, ANCHOR + ADD);
