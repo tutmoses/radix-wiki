@@ -2,11 +2,10 @@
 
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { TimeChart } from 'wiki-formant/chart';
 import { cn } from '@/lib/utils';
 import type { LedgerDayPoint } from '@/lib/radix/activity';
-import { formatAmount } from './format';
-import { useAreaChart } from './useAreaChart';
 
 type Metric = Exclude<keyof LedgerDayPoint, 'time'>;
 
@@ -22,30 +21,12 @@ const METRICS: { key: Metric; label: string }[] = [
   { key: 'royaltiesXrd', label: 'Royalties ($XRD)' },
 ];
 
-const RANGES = [
-  { key: '90d', label: '90D', days: 90 },
-  { key: '1y', label: '1Y', days: 365 },
-  { key: 'all', label: 'All', days: Infinity },
-] as const;
-
-const HEIGHT = 300;
 const longDay = (time: number) => new Date(time * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 export function ActivityChart({ days }: { days: LedgerDayPoint[] }) {
   const [metric, setMetric] = useState<Metric>('transactions');
-  const [range, setRange] = useState<(typeof RANGES)[number]['key']>('1y');
-  const { containerRef, ready, show } = useAreaChart(HEIGHT, formatAmount, false);
-
-  const shown = useMemo(() => {
-    const span = RANGES.find(r => r.key === range)!.days;
-    return days.slice(Math.max(0, days.length - span));
-  }, [days, range]);
-
-  useEffect(() => {
-    if (ready) show(shown.map(d => ({ time: d.time, value: d[metric] })));
-  }, [ready, show, shown, metric]);
-
-  const first = shown[0], last = shown.at(-1);
+  const series = useMemo(() => days.map(d => ({ time: d.time, value: d[metric] })), [days, metric]);
+  const first = days[0], last = days.at(-1);
 
   return (
     <div className="stack-sm">
@@ -56,21 +37,10 @@ export function ActivityChart({ days }: { days: LedgerDayPoint[] }) {
           </button>
         ))}
       </div>
-      <div className="asset-chart">
-        <div className="asset-chart-controls">
-          {RANGES.map(r => (
-            <button key={r.key} onClick={() => setRange(r.key)} className={cn('toggle-option', range === r.key && 'toggle-option-active')}>
-              {r.label}
-            </button>
-          ))}
-        </div>
-        <div ref={containerRef} className="asset-chart-container" style={{ minHeight: HEIGHT }}>
-          {!ready && <div className="skeleton rounded" style={{ height: HEIGHT }} />}
-        </div>
-      </div>
+      <TimeChart series={series} label={METRICS.find(m => m.key === metric)!.label} range="1y" aggregate="mean" fromZero height={300} />
       {first && last && (
         <p className="text-small text-text-muted">
-          One point per UTC day, from {longDay(first.time)} to {longDay(last.time)}. Counts cover the transactions
+          Daily figures from {longDay(first.time)} to {longDay(last.time)}, in UTC days. A week or month is the mean of its days. Counts cover the transactions
           people submit, not the ones the network makes for itself each round. An active account is one whose balance
           changed. Burned $XRD is the half of each network fee that is destroyed, plus any $XRD burned on purpose.
         </p>

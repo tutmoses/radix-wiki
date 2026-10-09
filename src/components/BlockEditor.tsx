@@ -8,6 +8,7 @@ import { EditorContent, type Editor } from '@tiptap/react';
 import { TABLE_ACTIONS, ToolbarButton, insertEmbed, runTableAction, toolbarActions, uploadImageTo, useWikiEditor, type ToolbarAction, type ToolbarKey } from 'wiki-formant/editor';
 import { BlockActions, useBlockOperations } from 'wiki-formant/react';
 import { BANNER_VARIANTS } from 'wiki-formant/text';
+import { CHART_RANGES } from 'wiki-formant/chart';
 import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, LayoutGrid, Info, Rss, QrCode, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock } from '@/lib/block-utils';
@@ -168,9 +169,9 @@ function AssetPriceBlockEdit({ block, onUpdate }: BlockProps<AssetPriceBlock>) {
         <div className="stack-xs">
           <label className="font-medium text-small">Default timeframe</label>
           <div className="toggle-group">
-            {(['24h', '7d', '30d'] as const).map(tf => (
-              <button key={tf} onClick={() => onUpdate?.({ ...block, chartTimeframe: tf })} className={`toggle-option ${(block.chartTimeframe || '7d') === tf ? 'toggle-option-active' : ''}`}>
-                {{ '24h': '24H', '7d': '7D', '30d': '30D' }[tf]}
+            {CHART_RANGES.map(tf => (
+              <button key={tf} onClick={() => onUpdate?.({ ...block, chartTimeframe: tf })} className={`toggle-option ${(block.chartTimeframe || '30d') === tf ? 'toggle-option-active' : ''}`}>
+                {tf === 'all' ? 'All' : tf.toUpperCase()}
               </button>
             ))}
           </div>

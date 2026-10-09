@@ -9,6 +9,7 @@
 // read by PageCard, so it is a full page row, not a narrowed ref. It was `any[]`,
 // which cost markdown.ts a cast and BlockRenderer two `(p: any)` annotations.
 import type { WikiPage } from '@/types';
+import type { ChartRange } from 'wiki-formant/chart';
 
 // ---- the shared leaf types --------------------------------------------------
 //
@@ -45,7 +46,7 @@ interface BaseBlock { id: string; type: BlockType; }
 export interface ContentBlock extends BaseBlock { type: 'content'; text: string; }
 export interface RecentPagesBlock extends BaseBlock { type: 'recentPages'; tagPath?: string; limit: number; resolvedPages?: WikiPage[]; }
 export interface PageListBlock extends BaseBlock { type: 'pageList'; pageIds: string[]; resolvedPages?: WikiPage[]; }
-export interface AssetPriceBlock extends BaseBlock { type: 'assetPrice'; resourceAddress?: string; showChange?: boolean; showChart?: boolean; chartTimeframe?: '24h' | '7d' | '30d'; }
+export interface AssetPriceBlock extends BaseBlock { type: 'assetPrice'; resourceAddress?: string; showChange?: boolean; showChart?: boolean; chartTimeframe?: ChartRange; }
 export interface RssFeedBlock extends BaseBlock { type: 'rssFeed'; url: string; limit?: number; resolvedItems?: { title: string; link: string; image?: string; source: string; date?: string; description?: string }[]; }
 export interface CodeTabsBlock extends BaseBlock { type: 'codeTabs'; tabs: CodeTab[]; }
 export interface StatsBlock extends BaseBlock { type: 'stats'; items: StatItem[]; columns: 2 | 3 | 4; }
