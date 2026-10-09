@@ -902,7 +902,7 @@
   /* ===== CHART (wiki-formant/chart) =====
      The layout and the pinned buttons are wiki-formant/base.css; this is the look. */
   .chart { @apply mt-1 rounded-lg border border-border-muted bg-surface-1 overflow-hidden; }
-  .chart-canvas { @apply text-accent text-[10px]; --chart-axis: var(--color-chart-axis); }
+  .chart-canvas { @apply text-accent text-[10px]; --chart-axis: var(--color-chart-axis); --chart-up: var(--color-success); --chart-down: var(--color-error); }
   .chart-status { @apply text-small text-text-muted; }
   .chart-controls button { @apply text-[10px] px-1.5 py-0.5 rounded-md border border-border opacity-100 hover:bg-surface-2; }
   .chart-controls button[aria-pressed='true'] { @apply bg-accent text-surface-0 border-accent; }

@@ -10,9 +10,11 @@ import { OCISWAP_API } from '@/lib/radix/config';
 /** OciSwap's UDF resolution for each one the chart asks for. */
 const UDF_RESOLUTION: Record<ChartResolution, string> = { hour: '60', '4h': '240', day: '1D' };
 
-// The UDF response is columnar – parallel `t` and `c` arrays – or `no_data` for a span
-// without a trade, or an error.
-type UdfResponse = { s?: string; t?: number[]; c?: (string | number)[] };
+// The UDF response is columnar – parallel time, open, high, low, close and volume
+// arrays, prices and volume as decimal strings – or `no_data` for a span without a
+// trade, or an error.
+type Column = (string | number)[];
+type UdfResponse = { s?: string; t?: number[]; o?: Column; h?: Column; l?: Column; c?: Column; v?: Column };
 
 export function TokenChart({ resourceAddress, defaultTimeframe = '30d', height = 260 }: { resourceAddress: string; defaultTimeframe?: ChartRange; height?: number }) {
   const load = useCallback(async (resolution: ChartResolution, from: number) => {
@@ -21,7 +23,8 @@ export function TokenChart({ resourceAddress, defaultTimeframe = '30d', height =
     const json: UdfResponse = await res.json();
     if (json.s === 'no_data') return [];
     if (json.s !== 'ok' || !Array.isArray(json.t)) throw new Error('No chart data');
-    return json.t.map((time, i) => ({ time, value: parseFloat(String(json.c?.[i])) || 0 }));
+    const at = (column: Column | undefined, i: number) => (column ? parseFloat(String(column[i])) || 0 : undefined);
+    return json.t.map((time, i) => ({ time, value: at(json.c, i) ?? 0, open: at(json.o, i), high: at(json.h, i), low: at(json.l, i), volume: at(json.v, i) }));
   }, [resourceAddress]);
 
   return <TimeChart series={load} label="Price in USD" range={defaultTimeframe} format={formatPriceSubscript} height={height} />;
