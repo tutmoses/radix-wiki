@@ -909,7 +909,7 @@
   .chart-canvas { @apply text-accent text-[10px]; --chart-axis: var(--color-chart-axis); --chart-up: var(--color-success); --chart-down: var(--color-error); }
   .chart-status { @apply text-small text-text-muted; }
   .chart-controls :is(button, a) { @apply text-[10px] px-1.5 py-0.5 rounded-md border border-border opacity-100 hover:bg-surface-2; }
-  .chart-controls :is([aria-pressed='true'], [aria-current]) { @apply bg-accent text-surface-0 border-accent; }
+  .chart-controls :is(button, a):is([aria-pressed='true'], [aria-current]) { @apply bg-accent text-surface-0 border-accent; }
   .recent-pages-grid { @apply grid grid-cols-1 lg:grid-cols-2 gap-4; }
 
   /* ===== LINK GRID ===== */
