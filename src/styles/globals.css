@@ -646,7 +646,7 @@
      The layout and the bars' shape are wiki-formant/base.css; this is the colour. */
   .stats-figures button > span, .stats-list h2 { @apply text-text-muted; }
   .stats-figures strong { @apply text-h3 font-normal; }
-  .stats-ranges a[aria-current], .stats-list li { @apply text-accent; }
+  .stats-list li { @apply text-accent; }
   .stats-list li > span { @apply text-text; }
 
   /* ===== SEE ALSO ===== */
@@ -904,8 +904,8 @@
   .chart { @apply mt-1 rounded-lg border border-border-muted bg-surface-1 overflow-hidden; }
   .chart-canvas { @apply text-accent text-[10px]; --chart-axis: var(--color-chart-axis); --chart-up: var(--color-success); --chart-down: var(--color-error); }
   .chart-status { @apply text-small text-text-muted; }
-  .chart-controls button { @apply text-[10px] px-1.5 py-0.5 rounded-md border border-border opacity-100 hover:bg-surface-2; }
-  .chart-controls button[aria-pressed='true'] { @apply bg-accent text-surface-0 border-accent; }
+  .chart-controls :is(button, a) { @apply text-[10px] px-1.5 py-0.5 rounded-md border border-border opacity-100 hover:bg-surface-2; }
+  .chart-controls :is([aria-pressed='true'], [aria-current]) { @apply bg-accent text-surface-0 border-accent; }
   .recent-pages-grid { @apply grid grid-cols-1 lg:grid-cols-2 gap-4; }
 
   /* ===== LINK GRID ===== */
