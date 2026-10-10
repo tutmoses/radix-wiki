@@ -70,7 +70,7 @@ function PageMeta({ page }: { page: WikiPage }) {
       )}
       <span>Last updated {relativeTime(page.updatedAt, now, AGO)}</span>
       <span className="font-mono">v{page.version}</span>
-      <Link href={`${pagePath(page.tagPath, page.slug)}/history`} className="link">
+      <Link href={`${pagePath(page.tagPath, page.slug)}/history`} prefetch={false} className="link">
         {revisions} revision{revisions === 1 ? '' : 's'}
       </Link>
       {page.lastVerifiedAt && <span>Verified {formatDay(page.lastVerifiedAt)}</span>}
@@ -614,7 +614,7 @@ function PageViewContent({ page, related, series, sections, listing, pageNav, no
       <PageMeta page={page} />
       <Discussion pageId={page.id} tagPath={page.tagPath} />
       {isAuthenticated && (
-        <Link href={`${pagePath(page.tagPath, page.slug)}/edit`} className="edit-cta">Something missing? Edit this page →</Link>
+        <Link href={`${pagePath(page.tagPath, page.slug)}/edit`} prefetch={false} className="edit-cta">Something missing? Edit this page →</Link>
       )}
     </>
   );

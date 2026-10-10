@@ -182,7 +182,7 @@ function PageToolsDropdown({ onClose, historyPath, mdxPath, tagPath, slug, isPag
           {watching ? 'Unwatch this page' : 'Watch this page'}
         </button>
       )}
-      {historyPath && <Link href={historyPath} className="dropdown-item" onClick={onClose}><History size={16} />Page history</Link>}
+      {historyPath && <Link href={historyPath} prefetch={false} className="dropdown-item" onClick={onClose}><History size={16} />Page history</Link>}
       {mdxPath && <a href={mdxPath} className="dropdown-item" download onClick={onClose}><FileCode size={16} />Download MDX</a>}
       {isPage && (
         <>
@@ -369,7 +369,7 @@ export function Header() {
           <div className="header-actions">
             <button onClick={() => setShowSearch(!showSearch)} className="icon-btn sm:hidden" title="Search" aria-label="Search" aria-expanded={showSearch}><Search size={20} /></button>
 
-            {canEdit && <Link href={editPath} className="icon-btn" title="Edit page" aria-label="Edit page"><Edit size={20} /></Link>}
+            {canEdit && <Link href={editPath} prefetch={false} className="icon-btn" title="Edit page" aria-label="Edit page"><Edit size={20} /></Link>}
 
             {(canShowHistory || canExportMdx) && (
               <div className="relative">

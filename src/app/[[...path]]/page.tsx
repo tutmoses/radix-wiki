@@ -66,7 +66,12 @@ export async function generateStaticParams() {
 const SECTION_CARD_PAGES = 6;
 
 export const dynamicParams = true;
-export const revalidate = 60;
+// A day, not a minute: every API write that changes what a page renders busts the
+// `wiki` tag (`revalidateTag` in the wiki, comments and auth routes), so an edit
+// shows at once and the timer only backstops. At 60s every article was re-rendered
+// and rewritten to ISR each minute. `CACHE_OPTS` in lib/wiki.ts must match, or its
+// shorter revalidate pins the page back down.
+export const revalidate = 86400;
 
 // Facet keys are open-ended — a tag path's `select` metadata keys decide them.
 type Props = { params: Promise<{ path?: string[] }>; searchParams: Promise<Record<string, string | string[] | undefined>> };

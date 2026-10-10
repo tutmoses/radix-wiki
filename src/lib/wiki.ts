@@ -29,7 +29,10 @@ export const PAGE_LIST_SELECT = {
   ...CATEGORY_SELECT,
   _count: { select: { revisions: true } },
 } as const;
-const CACHE_OPTS = { tags: ['wiki'], revalidate: 60 };
+/** A day, matching the catch-all page's `revalidate`: a page takes the shortest
+ *  revalidate of any cache it reads, so a minute here re-rendered every article each
+ *  minute. Writes bust the `wiki` tag, so the day is only a backstop. */
+const CACHE_OPTS = { tags: ['wiki'], revalidate: 86400 };
 
 /** A cache hit returns plain JSON, but a miss returns Prisma's live objects — whose
  *  computed-field results (author.shortAddress) are proxies carrying symbol

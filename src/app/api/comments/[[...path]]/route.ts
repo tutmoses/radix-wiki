@@ -1,6 +1,7 @@
 // src/app/api/comments/[[...path]]/route.ts
 
 import { NextRequest } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, CACHE, type RouteContext } from '@/lib/api';
 import { AUTHOR_SELECT } from '@/lib/wiki';
@@ -67,6 +68,8 @@ export async function POST(request: NextRequest) {
       },
       include: { author: AUTHOR_SELECT },
     });
+    // The ideas listing shows each page's reply count and last activity.
+    revalidateTag('wiki', { expire: 0 });
 
     // Fire-and-forget notifications
     if (page.authorId !== auth.session.userId) {
@@ -96,6 +99,7 @@ export async function DELETE(request: NextRequest, context: RouteContext<PathPar
     if (comment.authorId !== auth.session.userId) return errors.forbidden();
 
     await prisma.comment.delete({ where: { id } });
+    revalidateTag('wiki', { expire: 0 });
     return json({ success: true });
   }, 'Failed to delete comment');
 }
