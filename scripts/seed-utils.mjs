@@ -2,6 +2,7 @@
 
 import pg from 'pg';
 import { randomUUID, randomBytes } from 'crypto';
+import { execFileSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
@@ -13,6 +14,7 @@ config();
 export const uid = () => randomUUID();
 export const cuid = () => 'c' + randomBytes(12).toString('hex').slice(0, 24);
 export const AUTHOR_ID = 'cmk5t48vx0000005zc5se4dqz';
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 export const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 /** pages.metadata is jsonb and can be null; every caller wants an object. */
@@ -61,7 +63,7 @@ export function delta(now, was, { percent = true, staleDays = 10, gapDays = 0 } 
 // before writing (insertPages does this automatically).
 const _lockedPages = () => {
   try {
-    const tagsPath = resolve(dirname(fileURLToPath(import.meta.url)), '../src/lib/tags.ts');
+    const tagsPath = resolve(ROOT, 'src/lib/tags.ts');
     const src = readFileSync(tagsPath, 'utf8');
     const m = src.match(/LOCKED_PAGES\s*=\s*new Set\(\[([^\]]*)\]/);
     if (!m) return new Set();
@@ -118,11 +120,21 @@ export function assertLinkShapes(blocks, where = 'content') {
  * A throw rolls back whatever transaction was open and fails the process — every
  * one of these scripts writes to the live database, so a half-applied edit must
  * never be left behind and must never look like a success.
+ *
+ * A run that wrote anything ends by invalidating the `wiki` cache tag. Pages
+ * revalidate daily and the app's own write routes call `revalidateTag('wiki')`;
+ * a script bypasses those routes, so without this its edit stays stale for a day.
  */
 export async function withClient(fn) {
   const { Pool } = pg;
   const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, ssl: { rejectUnauthorized: false } });
   const client = await pool.connect();
+  let wrote = false;
+  const query = client.query.bind(client);
+  client.query = (sql, ...rest) => {
+    if (/^\s*(insert|update|delete)\b/i.test(typeof sql === 'string' ? sql : sql?.text ?? '')) wrote = true;
+    return query(sql, ...rest);
+  };
   try {
     return await fn(client);
   } catch (e) {
@@ -132,6 +144,18 @@ export async function withClient(fn) {
   } finally {
     client.release();
     await pool.end();
+    // In finally: a run that throws part-way may already have committed earlier writes.
+    if (wrote) invalidateWikiCache();
+  }
+}
+
+/** Mark every page and query cached under `wiki` stale on production (the linked project). */
+function invalidateWikiCache() {
+  try {
+    execFileSync('vercel', ['cache', 'invalidate', '--tag', 'wiki', '--yes'], { cwd: ROOT, stdio: 'ignore' });
+    console.log('cache: wiki tag invalidated');
+  } catch (e) {
+    console.warn(`cache: wiki tag NOT invalidated (${e.message}); run \`vercel cache invalidate --tag wiki\``);
   }
 }
 
