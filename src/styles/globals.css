@@ -85,8 +85,7 @@
   h1, h2, h3, h4 { &:first-child { @apply mt-0; } }
   h1 { @apply text-h1 font-bold mt-8; }
   h2 { @apply text-h2 font-semibold mt-8 border-b-2 border-border scroll-mt-[calc(var(--header-height)+1rem)]; }
-  /* `.stats-figures dd` takes the h3 type; base.css, a higher layer, resets its margins. */
-  h3, .stats-figures dd { @apply text-h3 font-normal mt-6 scroll-mt-[calc(var(--header-height)+1rem)]; }
+  h3 { @apply text-h3 font-normal mt-6 scroll-mt-[calc(var(--header-height)+1rem)]; }
   h4 { @apply text-h4 font-light mt-4 scroll-mt-[calc(var(--header-height)+1rem)]; }
 
   ul, ol { @apply pl-8; :is(ul, ol) { @apply mt-1 mb-0; } }
@@ -645,7 +644,8 @@
 
   /* ===== STATS (/stats) =====
      The layout and the bars' shape are wiki-formant/base.css; this is the colour. */
-  .stats-figures dt, .stats-list h2 { @apply text-text-muted; }
+  .stats-figures button > span, .stats-list h2 { @apply text-text-muted; }
+  .stats-figures strong { @apply text-h3 font-normal; }
   .stats-ranges a[aria-current], .stats-list li { @apply text-accent; }
   .stats-list li > span { @apply text-text; }
 
