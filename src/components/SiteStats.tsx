@@ -5,7 +5,7 @@
 import { cookies } from 'next/headers';
 import { digest } from 'wiki-formant/analytics';
 import { PasskeyButton } from 'wiki-formant/passkey-button';
-import { Stats, statsDays } from 'wiki-formant/stats';
+import { Stats, statsQuery } from 'wiki-formant/stats';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { gate } from '@/lib/admin';
 import { SITE_URL } from '@/lib/site';
@@ -13,9 +13,9 @@ import { sql } from '@/lib/track';
 
 const SIBLINGS = ['caper.network', 'acuiq.com', 'miow.me'];
 
-export default async function SiteStats({ days: param, invite }: { days?: string | undefined; invite?: string | undefined }) {
+export default async function SiteStats({ query, invite }: { query: Record<string, string | string[] | undefined>; invite?: string | undefined }) {
   const signedIn = await gate.signedIn((await cookies()).get(gate.cookie)?.value);
-  const days = statsDays(param);
+  const q = statsQuery(query);
   const open = !signedIn && !invite && (await gate.open());
 
   return (
@@ -23,7 +23,7 @@ export default async function SiteStats({ days: param, invite }: { days?: string
       <Breadcrumbs path={['stats']} leafTitle="Stats" />
       <h1 id="stats">Stats</h1>
       {signedIn && !invite ? (
-        <Stats digest={await digest(sql, { days, handle: 'radixwiki', siblings: SIBLINGS })} days={days} />
+        <Stats digest={await digest(sql, { ...q, handle: 'radixwiki', siblings: SIBLINGS })} {...q} />
       ) : (
         <>
           <p className="text-text-muted">

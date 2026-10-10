@@ -340,7 +340,7 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
   if (parsed.type === 'maintenance') return <MaintenanceView queues={await getMaintenanceQueues()} />;
   if (parsed.type === 'stats') {
     const query = await searchParams;
-    return <SiteStats days={str(query.days)} invite={str(query.invite)} />;
+    return <SiteStats query={query} invite={str(query.invite)} />;
   }
   if (parsed.type === 'leaderboard') return <LeaderboardView entries={(await getEditorScores()).map(publicScore)} />;
   if (parsed.type === 'welcome') return <WelcomeView />;
