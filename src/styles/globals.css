@@ -646,6 +646,10 @@
      The layout and the bars' shape are wiki-formant/base.css; this is the colour. */
   .stats-figures button > span, .stats-list h2 { @apply text-text-muted; }
   .stats-figures strong { @apply text-h3 font-normal; }
+  /* The change from the window before, coloured by whether it is the good way. */
+  .stats-delta { @apply text-[0.6em] font-medium; }
+  .stats-delta[data-better='true'] { @apply text-success; }
+  .stats-delta[data-better='false'] { @apply text-error; }
   .stats-list li { @apply text-accent; }
   .stats-list li > span { @apply text-text; }
 
