@@ -29,6 +29,9 @@ const nextConfig: NextConfig = {
   compress: true,
   
   experimental: {
+    // Next 16.3 turns Turbopack's build cache on and Vercel restores it from the last
+    // deployment; caper.network shipped a stylesheet two commits stale that way (Oct 2026).
+    turbopackFileSystemCacheForBuild: false,
     optimizePackageImports: ['lucide-react'],
   },
 
