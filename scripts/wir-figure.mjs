@@ -56,11 +56,20 @@ const signed = (n) => (n == null || !isFinite(n) ? '' : `${n > 0 ? '+' : '−'}$
 function biggestStakeMove(snap, prior, gapDays) {
   if (!prior?.top25?.length || !snap?.top25?.length || gapDays > 10) return null;
   const was = new Map(prior.top25.map((r) => [r[0], r[1]]));
+  const now = new Map(snap.top25.map((r) => [r[0], r[1]]));
   let best = null;
+  const consider = (address, diff, atLeast) => {
+    if (!best || Math.abs(diff) > Math.abs(best.diff)) best = { address, diff, atLeast };
+  };
   for (const [address, stake] of snap.top25) {
-    if (!was.has(address)) continue;
-    const diff = stake - was.get(address);
-    if (!best || Math.abs(diff) > Math.abs(best.diff)) best = { address, diff };
+    if (was.has(address)) consider(address, stake - was.get(address), false);
+  }
+  // A validator that fell out of the top 25 now holds no more than the 25th does, so its
+  // fall is at least the gap to that line. Skipping it hid WEFT's 131m exit in October 2026
+  // behind a 36m gain, and the figure called the gain the week's biggest move.
+  const floor = Math.min(...snap.top25.map((r) => r[1]));
+  for (const [address, stake] of prior.top25) {
+    if (!now.has(address)) consider(address, floor - stake, true);
   }
   return best && best.diff !== 0 ? best : null;
 }
@@ -97,7 +106,8 @@ function wirFigure(snap, prior, series, dev, devPrior) {
   const netMove = prior ? snap.totalStake - prior.totalStake : null;
   b += move
     ? statCard(L + cw + gap, y0, cw, 'BIGGEST STAKE MOVE', `${signed(move.diff)} XRD`, '',
-      netMove ? `of ${signed(netMove)} network-wide` : 'by a single validator')
+      move.atLeast ? 'at least: left the top 25'
+        : netMove ? `of ${signed(netMove)} network-wide` : 'by a single validator')
     : statCard(L + cw + gap, y0, cw, 'REGISTERED VALIDATORS', `${snap.registered}`, '',
       `${snap.active} of them in the active set`);
   b += statCard(L, y1, cw, 'A THIRD OF STAKE', `${snap.nakamoto} validators`,
