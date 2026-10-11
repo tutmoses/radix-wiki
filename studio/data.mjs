@@ -40,15 +40,21 @@ export async function pickCategory() {
   } catch { return "ecosystem"; }
 }
 
-// A recent content/ecosystem article — these always lead with an infobox, ideal
-// for the Ken Burns focal shot. Returns { tag_path, slug, title } or null.
+// The page named by TOUR_PAGE (`ecosystem/weft-finance`), so a routine can film the
+// page it just changed; otherwise a recent content/ecosystem article — these always
+// lead with an infobox, ideal for the Ken Burns focal shot. Returns
+// { tag_path, slug, title } or null.
 export async function pickPage() {
+  const want = process.env.TOUR_PAGE?.replace(/^\/|\/$/g, "");
   try {
-    const [r] = await q(
-      `SELECT tag_path, slug, title FROM pages
-         WHERE tag_path LIKE 'contents/%' OR tag_path LIKE 'ecosystem%'
-         ORDER BY updated_at DESC LIMIT 1`,
-    );
+    const [r] = want
+      ? await q(`SELECT tag_path, slug, title FROM pages WHERE tag_path || '/' || slug = $1`, [want])
+      : await q(
+          `SELECT tag_path, slug, title FROM pages
+             WHERE (tag_path LIKE 'contents/%' OR tag_path LIKE 'ecosystem%')
+               AND slug <> 'wiki-maintenance-log'
+             ORDER BY updated_at DESC LIMIT 1`,
+        );
     return r ?? null;
   } catch { return null; }
 }
