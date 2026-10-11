@@ -5,17 +5,17 @@
 import { useState, useCallback, useMemo, memo, type ReactNode } from 'react';
 import { useAccountQr } from '@/hooks';
 import { EditorContent, type Editor } from '@tiptap/react';
-import { TABLE_ACTIONS, ToolbarButton, insertEmbed, runTableAction, toolbarActions, uploadImageTo, useWikiEditor, type ToolbarAction, type ToolbarKey } from 'wiki-formant/editor';
+import { TABLE_ACTIONS, ToolbarButton, runTableAction, toolbarActions, uploadImageTo, useUrlPrompt, useWikiEditor, type ToolbarAction, type ToolbarKey } from 'wiki-formant/editor';
 import { BlockActions, useBlockOperations } from 'wiki-formant/react';
 import { BANNER_VARIANTS } from 'wiki-formant/text';
 import { CHART_RANGES } from 'wiki-formant/chart';
-import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, LayoutGrid, Info, Rss, QrCode, type LucideIcon } from 'lucide-react';
+import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Unlink, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, LayoutGrid, Info, Rss, QrCode, BarChart3, Code2, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock } from '@/lib/block-utils';
+import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, CODE_LANGS, DEFAULT_LANG, createBlock, duplicateBlock } from '@/lib/block-utils';
 import { resolveMapUrl } from 'wiki-formant/maps';
 import { Button, Input, Dropdown } from '@/components/ui';
 import { Iframe, YouTube, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock, HeadingIds } from '@/lib/tiptap/extensions';
-import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column, LinkGridBlock, LinkGridGroup, TipJarBlock, ReferencesBlock, ReferenceItem, BannerBlock } from '@/types/blocks';
+import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column, LinkGridBlock, LinkGridGroup, TipJarBlock, ReferencesBlock, ReferenceItem, BannerBlock, StatsBlock, StatItem, CodeTabsBlock, CodeTab } from '@/types/blocks';
 
 // The upload endpoint is this app's, so the hook takes the uploader rather than
 // owning one. Module-level because the hook's upload callback depends on it.
@@ -26,8 +26,6 @@ const uploadImage = uploadImageTo('/api/upload');
 // which had written all five character for character. Each repo carried
 // exactly one half of a two-part bug — the mid-render ref write here, the
 // missing blur flush there — and the shared hook carries both fixes.
-
-type UrlPromptKind = 'link' | 'embed';
 
 // The commands and their labels are `wiki-formant/editor`'s; the icons, and
 // upload and embed between the two groups, are this wiki's.
@@ -40,9 +38,6 @@ const TOOLBAR_ICONS: Partial<Record<ToolbarKey, LucideIcon>> = {
 const PRESSED = 'bg-accent text-text-inverted';
 
 function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
-  const [urlPrompt, setUrlPrompt] = useState<UrlPromptKind | null>(null);
-  const [urlValue, setUrlValue] = useState('');
-
   // This wiki's own nodes, built from its class names and icons. Memoised
   // because a fresh array would tear the editor down and lose the selection.
   const nodes = useMemo(() => [YouTube, Iframe, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock, HeadingIds], []);
@@ -56,28 +51,19 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
     uploadImage,
   });
 
-  const togglePrompt = (kind: UrlPromptKind) => { setUrlPrompt(urlPrompt === kind ? null : kind); setUrlValue(''); };
+  // The link field opens on the link the cursor is in, and emptying it unlinks.
+  const prompt = useUrlPrompt(editor, { resolveMapUrl });
 
   // `link` has no `run`: it needs a URL, so it opens the prompt.
   const actionButton = (a: ToolbarAction, e: Editor) => {
     const Icon = TOOLBAR_ICONS[a.key];
-    const pressed = isActive(a.active) || (a.key === 'link' && urlPrompt === 'link');
+    const pressed = isActive(a.active) || (a.key === 'link' && prompt.kind === 'link');
     return (
       <ToolbarButton key={a.key} label={a.label} pressed={a.active ? pressed : undefined}
-        onPress={() => (a.run ? a.run(e) : togglePrompt('link'))} className={cn('toolbar-btn', pressed && PRESSED)}>
+        onPress={() => (a.run ? a.run(e) : prompt.toggle('link'))} className={cn('toolbar-btn', pressed && PRESSED)}>
         {Icon && <Icon size={14} />}
       </ToolbarButton>
     );
-  };
-
-  const applyUrl = () => {
-    const url = urlValue.trim();
-    if (editor && url && urlPrompt) {
-      if (urlPrompt === 'link') editor.chain().focus().setLink({ href: url }).run();
-      else insertEmbed(editor, url, { resolveMapUrl });
-    }
-    setUrlPrompt(null);
-    setUrlValue('');
   };
 
   return (
@@ -86,8 +72,11 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
       {editor && (
         <div className="toolbar">
           {FORMAT_ACTIONS.map(a => actionButton(a, editor))}
+          {editor.isActive('link') && (
+            <ToolbarButton label="Remove link" onPress={() => editor.chain().focus().extendMarkRange('link').unsetLink().run()} className="toolbar-btn"><Unlink size={14} /></ToolbarButton>
+          )}
           <ToolbarButton label="Upload image" onPress={triggerUpload} className="toolbar-btn"><Upload size={14} /></ToolbarButton>
-          <ToolbarButton label="Embed" pressed={urlPrompt === 'embed'} onPress={() => togglePrompt('embed')} className={cn('toolbar-btn', urlPrompt === 'embed' && PRESSED)}><Globe size={14} /></ToolbarButton>
+          <ToolbarButton label="Embed" pressed={prompt.kind === 'embed'} onPress={() => prompt.toggle('embed')} className={cn('toolbar-btn', prompt.kind === 'embed' && PRESSED)}><Globe size={14} /></ToolbarButton>
           {INSERT_ACTIONS.map(a => actionButton(a, editor))}
           {editor.isActive('table') && (
             <>
@@ -99,20 +88,17 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
           )}
         </div>
       )}
-      {editor && urlPrompt && (
+      {editor && prompt.kind && (
         <div className="row">
           <Input
             autoFocus
-            value={urlValue}
-            onChange={e => setUrlValue(e.target.value)}
-            placeholder={urlPrompt === 'link' ? 'https://…' : 'YouTube, Twitter/X, Maps, or iframe URL'}
-            onKeyDown={e => {
-              if (e.key === 'Enter') { e.preventDefault(); applyUrl(); }
-              else if (e.key === 'Escape') { setUrlPrompt(null); setUrlValue(''); }
-            }}
+            value={prompt.value}
+            onChange={e => prompt.setValue(e.target.value)}
+            placeholder={prompt.kind === 'link' ? 'https://…' : 'YouTube, Twitter/X, Maps, or iframe URL'}
+            onKeyDown={prompt.onKeyDown}
           />
-          <Button size="sm" onClick={applyUrl}>Insert</Button>
-          <Button size="sm" variant="ghost" onClick={() => { setUrlPrompt(null); setUrlValue(''); }}>Cancel</Button>
+          <Button size="sm" onClick={prompt.apply}>Insert</Button>
+          <Button size="sm" variant="ghost" onClick={prompt.close}>Cancel</Button>
         </div>
       )}
       <div className={cn('tiptap-editor tiptap-field', isUploading && 'tiptap-field-disabled')}>
@@ -146,9 +132,15 @@ function RecentPagesBlockEdit({ block, onUpdate }: BlockProps<RecentPagesBlock>)
 function PageListBlockEdit({ block, onUpdate }: BlockProps<PageListBlock>) {
   const [newPageId, setNewPageId] = useState('');
   const addPage = () => { if (newPageId.trim()) { onUpdate?.({ ...block, pageIds: [...block.pageIds, newPageId.trim()] }); setNewPageId(''); } };
+  // The list renders in this order, so it is the author's to set.
+  const ops = {
+    move: (from: number, to: number) => { const pageIds = [...block.pageIds]; pageIds.splice(to, 0, ...pageIds.splice(from, 1)); onUpdate?.({ ...block, pageIds }); },
+    duplicate: () => {},
+    remove: (i: number) => onUpdate?.({ ...block, pageIds: block.pageIds.filter((_, j) => j !== i) }),
+  };
   return (
     <EditWrapper icon={FileText} label="Curated Page List">
-      {block.pageIds.length > 0 && <div className="stack-sm">{block.pageIds.map((id, i) => <div key={i} className="row"><span className="flex-1 text-small truncate">{id}</span><button onClick={() => onUpdate?.({ ...block, pageIds: block.pageIds.filter((_, j) => j !== i) })} className="icon-btn icon-btn-remove" title="Remove page" aria-label="Remove page"><Trash2 size={14} /></button></div>)}</div>}
+      {block.pageIds.length > 0 && <div className="stack-sm">{block.pageIds.map((id, i) => <div key={i} className="row"><span className="flex-1 text-small truncate">{id}</span><BlockActions index={i} total={block.pageIds.length} blockLabel="list item" ops={ops} icons={{ up: <ChevronUp size={14} />, down: <ChevronDown size={14} />, remove: <Trash2 size={14} /> }} className="row" buttonClassName="icon-btn block-action" /></div>)}</div>}
       <div className="row"><input type="text" value={newPageId} onChange={e => setNewPageId(e.target.value)} placeholder="Page ID..." className="flex-1 input" /><Button size="sm" onClick={addPage} disabled={!newPageId.trim()}>Add</Button></div>
       <small>Add page IDs to create a curated list</small>
     </EditWrapper>
@@ -194,6 +186,7 @@ export function InfoboxEditor({ block, onChange }: { block: InfoboxBlock; onChan
   const setBlocks = useCallback((blocks: AtomicBlock[]) => onChange?.({ ...block, blocks }), [block, onChange]);
   const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(block.blocks || [], setBlocks, DUPLICATE_ATOMIC);
   const handleBlockUpdate = useCallback((i: number, b: Block) => update(i, b as AtomicBlock), [update]);
+  const handleInsert = useCallback((b: Block, at?: number) => insert(b as AtomicBlock, at), [insert]);
   const add = (type: BlockType) => insert(createBlock(type) as AtomicBlock);
 
   return (
@@ -204,7 +197,7 @@ export function InfoboxEditor({ block, onChange }: { block: InfoboxBlock; onChan
           <div className="empty-state"><p className="text-text-muted text-small mb-2">Empty sidebar</p><InsertButton onInsert={add} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
         ) : (
           <>
-            {(block.blocks || []).map((b, i) => <BlockWrapper key={b.id} block={b} index={i} total={(block.blocks || []).length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={handleBlockUpdate} onDelete={remove} onDuplicate={duplicate} onMove={move} compact />)}
+            {(block.blocks || []).map((b, i) => <BlockWrapper key={b.id} block={b} index={i} total={(block.blocks || []).length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={handleBlockUpdate} onDelete={remove} onDuplicate={duplicate} onMove={move} onInsert={handleInsert} compact />)}
             <InsertButton onInsert={add} compact blockTypes={ATOMIC_BLOCK_TYPES} />
           </>
         )}
@@ -290,6 +283,7 @@ function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Colum
   const setBlocks = useCallback((blocks: AtomicBlock[]) => onUpdate({ ...column, blocks }), [column, onUpdate]);
   const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(column.blocks || [], setBlocks, DUPLICATE_ATOMIC);
   const handleUpdate = useCallback((i: number, b: Block) => update(i, b as AtomicBlock), [update]);
+  const handleInsert = useCallback((b: Block, at?: number) => insert(b as AtomicBlock, at), [insert]);
   const add = (type: BlockType) => insert(createBlock(type) as AtomicBlock);
 
   return (
@@ -299,7 +293,7 @@ function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Colum
         <div className="py-6 text-center"><p className="text-text-muted text-small mb-2">Empty column</p><InsertButton onInsert={add} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
       ) : (
         <div className="stack-sm">
-          {(column.blocks || []).map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={(column.blocks || []).length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={handleUpdate} onDelete={remove} onDuplicate={duplicate} onMove={move} compact />)}
+          {(column.blocks || []).map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={(column.blocks || []).length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={handleUpdate} onDelete={remove} onDuplicate={duplicate} onMove={move} onInsert={handleInsert} compact />)}
           <InsertButton onInsert={add} compact blockTypes={ATOMIC_BLOCK_TYPES} />
         </div>
       )}
@@ -364,6 +358,55 @@ function ReferencesBlockEdit({ block, onUpdate }: BlockProps<ReferencesBlock>) {
   );
 }
 
+function StatsBlockEdit({ block, onUpdate }: BlockProps<StatsBlock>) {
+  const updateItem = (i: number, item: StatItem) => onUpdate?.({ ...block, items: block.items.map((x, j) => j === i ? item : x) });
+  return (
+    <EditWrapper icon={BarChart3} label="Stats">
+      <div className="stack-xs">
+        <label className="font-medium text-small">Per row</label>
+        <div className="toggle-group">
+          {([2, 3, 4] as const).map(n => (
+            <button key={n} type="button" onClick={() => onUpdate?.({ ...block, columns: n })} className={cn('toggle-option', (block.columns ?? 4) === n && 'toggle-option-active')}>{n}</button>
+          ))}
+        </div>
+      </div>
+      <div className="stack-sm">
+        {block.items.map((item, i) => (
+          <div key={item.id} className="row">
+            <input type="text" value={item.value} onChange={e => updateItem(i, { ...item, value: e.target.value })} placeholder="Figure" className="input w-32" />
+            <input type="text" value={item.label} onChange={e => updateItem(i, { ...item, label: e.target.value })} placeholder="What it counts" className="flex-1 input" />
+            <button onClick={() => onUpdate?.({ ...block, items: block.items.filter((_, j) => j !== i) })} className="icon-btn icon-btn-remove" title="Remove figure" aria-label="Remove figure"><Trash2 size={14} /></button>
+          </div>
+        ))}
+        <Button size="sm" onClick={() => onUpdate?.({ ...block, items: [...block.items, { id: crypto.randomUUID(), value: '', label: '' }] })}>+ Add figure</Button>
+      </div>
+    </EditWrapper>
+  );
+}
+
+// `code` is source text, never HTML: the view escapes it before highlighting.
+function CodeTabsBlockEdit({ block, onUpdate }: BlockProps<CodeTabsBlock>) {
+  const updateTab = (i: number, tab: CodeTab) => onUpdate?.({ ...block, tabs: block.tabs.map((t, j) => j === i ? tab : t) });
+  return (
+    <EditWrapper icon={Code2} label="Code Tabs">
+      {block.tabs.map((tab, i) => (
+        <div key={i} className="stack-xs">
+          <div className="row">
+            <input type="text" value={tab.label} onChange={e => updateTab(i, { ...tab, label: e.target.value })} placeholder="Tab label" className="flex-1 input" />
+            <select value={tab.language} onChange={e => updateTab(i, { ...tab, language: e.target.value })} className="input w-36">
+              {/* A stored language outside the list stays selectable rather than reading as the first option. */}
+              {[...new Set([tab.language, ...CODE_LANGS])].map(l => <option key={l} value={l}>{l}</option>)}
+            </select>
+            <button onClick={() => onUpdate?.({ ...block, tabs: block.tabs.filter((_, j) => j !== i) })} className="icon-btn icon-btn-remove" title="Remove tab" aria-label="Remove tab"><Trash2 size={14} /></button>
+          </div>
+          <textarea value={tab.code} onChange={e => updateTab(i, { ...tab, code: e.target.value })} placeholder="Code" spellCheck={false} className="input code-tab-input" />
+        </div>
+      ))}
+      <Button size="sm" onClick={() => onUpdate?.({ ...block, tabs: [...block.tabs, { label: '', language: DEFAULT_LANG, code: '' }] })}>+ Add tab</Button>
+    </EditWrapper>
+  );
+}
+
 function renderBlockEdit(block: Block | AtomicBlock, onUpdate?: (b: Block) => void): ReactNode {
   switch (block.type) {
     case 'content': return <ContentBlockEdit block={block} onUpdate={onUpdate as any} />;
@@ -377,31 +420,38 @@ function renderBlockEdit(block: Block | AtomicBlock, onUpdate?: (b: Block) => vo
     case 'tipJar': return <TipJarBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'banner': return <BannerBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'references': return <ReferencesBlockEdit block={block} onUpdate={onUpdate as any} />;
-    // codeTabs, stats and testimonial have no visual editor.
+    case 'stats': return <StatsBlockEdit block={block} onUpdate={onUpdate} />;
+    case 'codeTabs': return <CodeTabsBlockEdit block={block} onUpdate={onUpdate} />;
+    // testimonial has no visual editor.
     default: return null;
   }
 }
 
-function InsertButton({ onInsert, compact, blockTypes = INSERTABLE_BLOCKS }: { onInsert: (type: BlockType) => void; compact?: boolean; blockTypes?: readonly BlockType[] }) {
+// `below` is the icon in a block's header that adds the next block under it.
+function InsertButton({ onInsert, compact, below, blockTypes = INSERTABLE_BLOCKS }: { onInsert: (type: BlockType) => void; compact?: boolean; below?: boolean; blockTypes?: readonly BlockType[] }) {
   const [showMenu, setShowMenu] = useState(false);
   return (
-    <div className="relative center">
-      <button onClick={() => setShowMenu(!showMenu)} className={cn('insert-btn', compact && 'rounded px-2 py-1 text-small')}>
-        <Plus size={compact ? 14 : 16} /><span>{compact ? 'Add' : 'Add block'}</span>
-      </button>
+    <div className={below ? 'relative' : 'relative center'}>
+      {below ? (
+        <button onClick={() => setShowMenu(!showMenu)} className="icon-btn p-1 text-text-muted" title="Add a block below" aria-label="Add a block below"><Plus size={compact ? 12 : 14} /></button>
+      ) : (
+        <button onClick={() => setShowMenu(!showMenu)} className={cn('insert-btn', compact && 'rounded px-2 py-1 text-small')}>
+          <Plus size={compact ? 14 : 16} /><span>{compact ? 'Add' : 'Add block'}</span>
+        </button>
+      )}
       {showMenu && (
-        <Dropdown onClose={() => setShowMenu(false)} className="left-1/2 -translate-x-1/2 w-64 p-2">
-          <div className="stack-sm">{blockTypes.map(type => { const { label, icon: Icon } = BLOCK_META[type]; return <button key={type} onClick={() => { onInsert(type); setShowMenu(false); }} className="dropdown-item rounded-md"><Icon size={18} /><span>{label}</span></button>; })}</div>
+        <Dropdown onClose={() => setShowMenu(false)} className={cn('w-64 p-2', !below && 'left-1/2 -translate-x-1/2')}>
+          <div className="stack-sm">{blockTypes.map(type => { const { label, hint, icon: Icon } = BLOCK_META[type]; return <button key={type} onClick={() => { onInsert(type); setShowMenu(false); }} className="dropdown-item rounded-md"><Icon size={18} className="shrink-0" /><span className="stack-xs"><span>{label}</span><span className="text-small text-text-muted">{hint}</span></span></button>; })}</div>
         </Dropdown>
       )}
     </div>
   );
 }
 
-const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelected, onSelect, onUpdate, onDelete, onDuplicate, onMove, compact }: {
+const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelected, onSelect, onUpdate, onDelete, onDuplicate, onMove, onInsert, compact }: {
   block: Block | AtomicBlock; index: number; total: number; isSelected: boolean;
   onSelect: (i: number) => void; onUpdate: (i: number, b: Block) => void; onDelete: (i: number) => void;
-  onDuplicate: (i: number) => void; onMove: (from: number, to: number) => void; compact?: boolean;
+  onDuplicate: (i: number) => void; onMove: (from: number, to: number) => void; onInsert: (b: Block, at?: number) => void; compact?: boolean;
 }) {
   const meta = BLOCK_META[block.type];
   const iconSize = compact ? 12 : 14;
@@ -424,17 +474,21 @@ const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelecte
     )}>
       <div className={cn('spread', compact ? 'mb-2' : 'mb-3')}>
         <div className="row">{!(compact || isContainer) && <div className="block-label"><Icon size={18} /><span className="block-label-text">{meta.label}</span></div>}</div>
-        <BlockActions
-          index={index} total={total} blockLabel={meta.label}
-          ops={{ move: onMove, duplicate: onDuplicate, remove: onDelete }}
-          icons={{
-            up: <ChevronUp size={iconSize} />,
-            down: <ChevronDown size={iconSize} />,
-            duplicate: compact ? undefined : <Copy size={iconSize} />,
-            remove: <Trash2 size={iconSize} />,
-          }}
-          className="block-actions" buttonClassName="icon-btn block-action"
-        />
+        <div className="block-actions">
+          {/* A container holds atomic blocks only, and a compact wrapper is one of its children. */}
+          <InsertButton below compact={compact} onInsert={type => onInsert(createBlock(type), index + 1)} blockTypes={compact ? ATOMIC_BLOCK_TYPES : INSERTABLE_BLOCKS} />
+          <BlockActions
+            index={index} total={total} blockLabel={meta.label}
+            ops={{ move: onMove, duplicate: onDuplicate, remove: onDelete }}
+            icons={{
+              up: <ChevronUp size={iconSize} />,
+              down: <ChevronDown size={iconSize} />,
+              duplicate: compact ? undefined : <Copy size={iconSize} />,
+              remove: <Trash2 size={iconSize} />,
+            }}
+            className="row" buttonClassName="icon-btn block-action"
+          />
+        </div>
       </div>
       {renderBlockEdit(block, handleUpdate)}
     </div>
@@ -448,7 +502,7 @@ export function BlockEditor({ content, onChange }: { content: Block[]; onChange:
   if (content.length === 0) return <div className="stack items-center empty-state"><p className="text-text-muted">No content yet. Add your first block!</p><InsertButton onInsert={add} /></div>;
   return (
     <div className="stack">
-      {content.map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={content.length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={update} onDelete={remove} onDuplicate={duplicate} onMove={move} />)}
+      {content.map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={content.length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={update} onDelete={remove} onDuplicate={duplicate} onMove={move} onInsert={insert} />)}
       <InsertButton onInsert={add} />
     </div>
   );

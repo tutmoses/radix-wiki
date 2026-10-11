@@ -48,6 +48,7 @@
   --radius-lg: 0.75rem;
   --shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.25);
   --header-height: 4rem;
+  --editor-bar-height: 3.5rem;
   --sidebar-width: 18rem;
   --content-width: 72rem;
   /* The reading measure, as a CEILING. There was none: prose was constrained
@@ -686,6 +687,10 @@
 
   /* ===== TOOLBAR (editor) ===== */
   .toolbar { @apply sticky top-[var(--header-height)] z-40 flex flex-wrap gap-0.5 p-1 bg-surface-1 border border-border-muted rounded-md mb-2; }
+  /* The page editor's Back and Save, held under the site header for the whole
+     edit. A field's toolbar sticks under it there, rather than behind it. */
+  .editor-bar { @apply sticky top-[var(--header-height)] z-40 flex items-center justify-between gap-4 h-[var(--editor-bar-height)] bg-surface-0 border-b border-border-muted; }
+  .page-editor .toolbar { top: calc(var(--header-height) + var(--editor-bar-height)); }
   .toolbar-btn { @apply p-1.5 rounded transition-colors text-text-muted hover:bg-surface-2 hover:text-text; }
   .toolbar-divider { @apply w-px h-6 bg-border-muted mx-1 self-center; }
 
@@ -702,9 +707,11 @@
   .block-wrapper-compact { @apply relative p-3 rounded-md border border-transparent hover:border-border-muted hover:bg-surface-2/50 transition-colors; }
   .block-label { @apply flex items-center gap-2 text-text-muted; }
   .block-label-text { @apply text-small font-medium uppercase; }
-  .block-actions { @apply flex items-center gap-2 opacity-0 transition-opacity; .group:hover & { @apply opacity-100; } }
+  .block-actions { @apply flex items-center gap-2 opacity-0 transition-opacity; .group:hover &, &:has(.dropdown) { @apply opacity-100; } }
   /* BlockActions renders delete last. */
   .block-action { @apply p-1 text-text-muted disabled:opacity-30; &:last-child { @apply hover:text-error; } }
+
+  .code-tab-input { @apply font-mono text-small min-h-32 resize-y; }
 
   .insert-btn { @apply flex items-center gap-2 text-text-muted hover:text-text border border-dashed border-border-muted hover:border-border rounded-md transition-colors px-3 py-1.5; }
 

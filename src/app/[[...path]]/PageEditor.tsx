@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save, Trash2, Link2, X } from 'lucide-react';
@@ -17,7 +17,7 @@ import { createBlock } from '@/lib/block-utils';
 import { Banner, BlockEditor, InfoboxEditor } from './PageContent';
 import type { WikiPage, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
-import { useTypeahead } from 'wiki-formant/react';
+import { useSaveShortcut, useTypeahead, useUnsavedChanges } from 'wiki-formant/react';
 
 // ========== METADATA FIELDS ==========
 function RichInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
@@ -253,6 +253,20 @@ function EditorWhitelist({ editors, onAdd, onRemove }: {
 }
 
 // ========== PAGE EDITOR ==========
+// What the form opens on, and what it is compared against to know it is dirty.
+function initialFields(page: WikiPage | undefined, slug: string) {
+  return page
+    ? {
+        title: page.title,
+        content: page.content as unknown as Block[],
+        bannerImage: page.bannerImage || null,
+        metadata: (page.metadata as PageMetadata) || {},
+        editSlug: page.slug,
+        editorIds: (page as WikiPage & { editorIds?: string[] }).editorIds ?? [],
+      }
+    : { title: '', content: [createBlock('content')], bannerImage: null, metadata: {} as PageMetadata, editSlug: slug, editorIds: [] as string[] };
+}
+
 export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string; slug: string }) {
   const router = useRouter();
   const { user } = useAuth();
@@ -287,30 +301,26 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
     return () => { cancelled = true; };
   }, [isCreating, tagPath]);
 
+  const initial = useMemo(() => initialFields(page, slug), [page, slug]);
   useEffect(() => {
-    if (page) {
-      setTitle(page.title);
-      setContent(page.content as unknown as Block[]);
-      setBannerImage(page.bannerImage || null);
-      setMetadata((page.metadata as PageMetadata) || {});
-      setEditSlug(page.slug);
-      const ids = (page as WikiPage & { editorIds?: string[] }).editorIds ?? [];
-      setEditorIds(ids);
-      if (ids.length > 0) {
-        fetch(`/api/users/search?ids=${ids.join(',')}`)
-          .then(r => r.json()).then(setEditors).catch(() => {});
-      } else {
-        setEditors([]);
-      }
+    setTitle(initial.title);
+    setContent(initial.content);
+    setBannerImage(initial.bannerImage);
+    setMetadata(initial.metadata);
+    setEditSlug(initial.editSlug);
+    setEditorIds(initial.editorIds);
+    if (initial.editorIds.length > 0) {
+      fetch(`/api/users/search?ids=${initial.editorIds.join(',')}`)
+        .then(r => r.json()).then(setEditors).catch(() => {});
     } else {
-      setTitle('');
-      setContent([createBlock('content')]);
-      setBannerImage(null);
-      setMetadata({});
-      setEditorIds([]);
       setEditors([]);
     }
-  }, [page, tagPath, slug]);
+  }, [initial]);
+
+  const initialJson = useMemo(() => JSON.stringify(initial), [initial]);
+  const dirty = JSON.stringify({ title, content, bannerImage, metadata, editSlug, editorIds }) !== initialJson;
+  // A save leaves by a full page load, which would trip the guard it just passed.
+  const confirmLeave = useUnsavedChanges(dirty && !isSaving);
 
   const save = async () => {
     if (!title.trim()) { setSaveError('Title is required.'); return; }
@@ -352,6 +362,9 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
     finally { setIsDeleting(false); }
   };
 
+  const canSave = (isCreating ? !!title.trim() : true) && (gate ? gate.allowed : true);
+  useSaveShortcut(() => { if (canSave && !isSaving) save(); });
+
   if (page && user && isAuthorOnlyPath(page.tagPath) && !canEditAuthorOnlyPage(page, user.id)) {
     return <StatusCard status="notAuthorized" backHref={viewPath} />;
   }
@@ -360,7 +373,6 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
     return <StatusCard status="locked" backHref={viewPath} />;
   }
 
-  const canSave = (isCreating ? !!title.trim() : true) && (gate ? gate.allowed : true);
   // On a shared board the card is the board's, not its filer's: whoever passes
   // the edit gate can delete it too.
   const canDelete = !isCreating && (isAuthor || (isSharedPath(tagPath) && gate?.allowed === true));
@@ -373,13 +385,14 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const updateInfobox = (block: Block) => setContent([...content.filter(b => b.type !== 'infobox'), block]);
 
   return (
-    <article className="stack">
+    <article className="stack page-editor">
       <Breadcrumbs path={[...tagPath.split('/'), slug].filter(Boolean)} suffix={isCreating ? 'Create' : 'Edit'} />
+      {/* A child of the article, not the header, so it stays stuck for the whole edit. */}
+      <div className="editor-bar">
+        <Link href={backHref} onClick={e => { if (!confirmLeave()) e.preventDefault(); }} className="row link-muted"><ArrowLeft size={16} /><span>{isCreating ? 'Back to Category' : 'Back to Page'}</span></Link>
+        <Button onClick={save} disabled={isSaving || !canSave} size="sm" title="Save (⌘S)"><Save size={16} />{saveLabel}</Button>
+      </div>
       <header className="stack pb-6 border-b border-border">
-        <div className="spread">
-          <Link href={backHref} className="row link-muted"><ArrowLeft size={16} /><span>{isCreating ? 'Back to Category' : 'Back to Page'}</span></Link>
-          <Button onClick={save} disabled={isSaving || !canSave} size="sm"><Save size={16} />{saveLabel}</Button>
-        </div>
         {gate && !gate.allowed ? (
           <div data-callout="warning"><p>{gate.error}</p></div>
         ) : gate === null ? (

@@ -9,8 +9,8 @@ import { BLOCK_SHAPE } from '@/lib/block-shape';
 export const CODE_LANGS = ['javascript', 'typescript', 'css', 'json', 'bash', 'python', 'rust', 'sql', 'html', 'xml', 'jsx', 'tsx', 'markdown', 'yaml', 'toml'] as const;
 export const DEFAULT_LANG = 'rust';
 
-// One row per block type: label and icon for the editor, what inserting it
-// makes, and which menus offer it -- `insertable` the page menu, `atomic` the
+// One row per block type: label, icon and a one-line hint for the editor's
+// Add menu, what inserting it makes, and which menus offer it -- `insertable` the page menu, `atomic` the
 // infobox and column menus. Both lists derive in the order written here.
 //
 // Counted against the live database rather than assumed: `store` and `footer`
@@ -18,28 +18,28 @@ export const DEFAULT_LANG = 'rust';
 // 3 revisions) and `testimonial` (1 page, 5 revisions) DO have live content --
 // an earlier version of this comment called all four unused, which would have
 // broken two pages -- so they stay valid and renderable, just not insertable.
-// `tipJar` is likewise unused today but stays offered in the editor.
-// codeTabs is valid and renderable (one live tutorial) with no editor UI.
-type BlockSpec = { label: string; icon: LucideIcon; insertable?: true; atomic?: true; create: () => Omit<Block, 'id'> };
+// `tipJar` is likewise unused today but stays offered in the editor. Stats has
+// an editor, so the revisions that carry it can be edited, but is not offered.
+type BlockSpec = { label: string; icon: LucideIcon; hint: string; insertable?: true; atomic?: true; create: () => Omit<Block, 'id'> };
 
 // What inserting a core type makes is `wiki-formant/blocks`', identical in all three wikis.
 const CORE = coreBlockDefaults();
 
 export const BLOCK_META: Record<BlockType, BlockSpec> = {
-  content: { label: 'Content', icon: Pencil, insertable: true, atomic: true, create: CORE.content },
-  banner: { label: 'Notice Banner', icon: AlertTriangle, insertable: true, atomic: true, create: CORE.banner },
-  columns: { label: 'Columns', icon: Columns, insertable: true, create: CORE.columns },
-  recentPages: { label: 'Recent Pages', icon: Clock, insertable: true, atomic: true, create: CORE.recentPages },
-  pageList: { label: 'Page List', icon: FileText, insertable: true, atomic: true, create: CORE.pageList },
-  assetPrice: { label: 'Asset Price', icon: TrendingUp, insertable: true, atomic: true, create: () => ({ type: 'assetPrice', resourceAddress: 'resource_rdx1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxradxrd', showChange: true }) },
-  rssFeed: { label: 'RSS Feed', icon: Rss, insertable: true, atomic: true, create: () => ({ type: 'rssFeed', url: 'https://tutmoses.github.io/rss-feed/feeds.json', limit: 15 }) },
-  codeTabs: { label: 'Code Tabs', icon: Code2, atomic: true, create: CORE.codeTabs },
-  linkGrid: { label: 'Link Grid', icon: LayoutGrid, insertable: true, atomic: true, create: CORE.linkGrid },
-  tipJar: { label: 'Tip Jar', icon: QrCode, insertable: true, atomic: true, create: () => ({ type: 'tipJar', address: '', label: 'Tip the author ☕️', message: 'Support independent writing on Radix — scan to send $XRD.' }) },
-  references: { label: 'References', icon: ListOrdered, insertable: true, atomic: true, create: CORE.references },
-  infobox: { label: 'Infobox', icon: Info, create: CORE.infobox },
-  stats: { label: 'Stats', icon: BarChart3, create: CORE.stats },
-  testimonial: { label: 'Testimonial', icon: MessageSquareQuote, create: () => ({ type: 'testimonial', quote: 'An amazing product that changed everything.', author: 'Jane Doe', role: 'CEO' }) },
+  content: { label: 'Content', icon: Pencil, hint: 'Text, headings, images, tables and embeds', insertable: true, atomic: true, create: CORE.content },
+  banner: { label: 'Notice Banner', icon: AlertTriangle, hint: 'A notice at the top of the page', insertable: true, atomic: true, create: CORE.banner },
+  columns: { label: 'Columns', icon: Columns, hint: 'Two to four columns of blocks', insertable: true, create: CORE.columns },
+  recentPages: { label: 'Recent Pages', icon: Clock, hint: 'The latest pages, from one category or all', insertable: true, atomic: true, create: CORE.recentPages },
+  pageList: { label: 'Page List', icon: FileText, hint: 'Pages you pick, in your order', insertable: true, atomic: true, create: CORE.pageList },
+  assetPrice: { label: 'Asset Price', icon: TrendingUp, hint: "A Radix token's live price and chart", insertable: true, atomic: true, create: () => ({ type: 'assetPrice', resourceAddress: 'resource_rdx1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxradxrd', showChange: true }) },
+  rssFeed: { label: 'RSS Feed', icon: Rss, hint: 'Items from an RSS or JSON feed', insertable: true, atomic: true, create: () => ({ type: 'rssFeed', url: 'https://tutmoses.github.io/rss-feed/feeds.json', limit: 15 }) },
+  codeTabs: { label: 'Code Tabs', icon: Code2, hint: 'Code samples, a tab per language', insertable: true, atomic: true, create: CORE.codeTabs },
+  linkGrid: { label: 'Link Grid', icon: LayoutGrid, hint: 'Links in groups under headings', insertable: true, atomic: true, create: CORE.linkGrid },
+  tipJar: { label: 'Tip Jar', icon: QrCode, hint: 'A QR code for tips to a Radix account', insertable: true, atomic: true, create: () => ({ type: 'tipJar', address: '', label: 'Tip the author ☕️', message: 'Support independent writing on Radix — scan to send $XRD.' }) },
+  references: { label: 'References', icon: ListOrdered, hint: 'Numbered sources the text cites', insertable: true, atomic: true, create: CORE.references },
+  infobox: { label: 'Infobox', icon: Info, hint: 'A sidebar beside the article', create: CORE.infobox },
+  stats: { label: 'Stats', icon: BarChart3, hint: 'A row of headline figures', create: CORE.stats },
+  testimonial: { label: 'Testimonial', icon: MessageSquareQuote, hint: 'A quote and who said it', create: () => ({ type: 'testimonial', quote: 'An amazing product that changed everything.', author: 'Jane Doe', role: 'CEO' }) },
 };
 
 /** Every type the wire format accepts — the /openapi.json Block enum reads it. */
