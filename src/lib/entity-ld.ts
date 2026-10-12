@@ -72,6 +72,8 @@ export function articleType(tagPath: string | null | undefined): string {
  * declare difficulty and estimated time; both are CreativeWork properties, so
  * they belong on the article rather than in a separate entity. Deliberately not
  * `HowTo` — these are prose tutorials, and HowTo without a step list is invalid.
+ * Prerequisites stay out: `competencyRequired` belongs to `LearningResource`, and
+ * validators reject it on a `TechArticle`.
  */
 export function articleLearningProps(
   tagPath: string | null | undefined,
@@ -82,12 +84,11 @@ export function articleLearningProps(
   const md = (metadata ?? {}) as Record<string, string>;
   const level = categoryLabel(md.difficulty) || undefined;
   const time = isoDuration(md.estimatedTime);
-  if (!level && !time && !md.prerequisites) return {};
+  if (!level && !time) return {};
   return {
     learningResourceType: 'Tutorial',
     ...(level && { educationalLevel: level }),
     ...(time && { timeRequired: time }),
-    ...(md.prerequisites && { competencyRequired: md.prerequisites }),
   };
 }
 
