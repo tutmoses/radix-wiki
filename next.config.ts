@@ -87,6 +87,8 @@ const nextConfig: NextConfig = {
       { source: '/contents/history/history-of-radix', destination: '/contents/history', permanent: true },
       { source: '/ecosystem/radix-desktop-tool', destination: '/developers/tools/radix-desktop-tool', permanent: true },
       { source: '/ecosystem/radix-ecosystem-fund', destination: '/contents/history/radix-ecosystem-funding', permanent: true },
+      { source: '/ecosystem/validator-subsidy-sunset', destination: '/contents/history/validator-subsidy-sunset', permanent: true },
+      { source: '/ecosystem/rrc-404', destination: '/contents/tech/core-protocols/rrc-404', permanent: true },
       { source: '/contents/tech/comparison', destination: '/contents/tech/comparisons', permanent: true },
       { source: '/contents/tech/comparison/polkadot', destination: '/contents/tech/comparisons/radix-vs-polkadot', permanent: true },
       // The ideas board was reseeded as the DAO transition's work queue; these are
