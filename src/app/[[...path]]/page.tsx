@@ -16,7 +16,7 @@ import { NowProvider } from '@/lib/now';
 // Payloads carry wallet-authored titles and excerpts, so they go out through
 // `wiki-formant/react-server`'s JsonLd, which escapes an authored `</script>`.
 import { JsonLd } from 'wiki-formant/react-server';
-import { articleLd, citationsFromReferences, collectionLd, documentTitle } from 'wiki-formant/metadata';
+import { articleLd, citationsFromReferences, collectionLd, documentTitle, faqPageLd, questionPairs } from 'wiki-formant/metadata';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { STATIC_PAGES } from '@/lib/static-pages';
 import { prisma } from '@/lib/prisma/client';
@@ -284,6 +284,19 @@ function pageLd(page: WikiPage, url: string) {
   });
 }
 
+/**
+ * The page as an FAQPage, when its content blocks ask two or more questions in
+ * their own h2/h3 headings; null otherwise. Columns nest content blocks, so the
+ * walk is over leaves.
+ */
+function pageFaqLd(page: WikiPage, url: string) {
+  if (!Array.isArray(page.content)) return null;
+  const html = leafBlocks(page.content as unknown as Block[])
+    .map(b => (b.type === 'content' ? b.text || '' : ''))
+    .join('\n');
+  return faqPageLd(questionPairs(html), url);
+}
+
 /** `items` are the category's pages, or — for a container that holds none — its sections. */
 function categoryLd(name: string, url: string, items: ({ title: string; tagPath: string; slug: string } | { name: string; href: string })[], description?: string) {
   return collectionLd({
@@ -519,9 +532,11 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
   const series = mainArticle && mainArticle !== `${parsed.tagPath}/${parsed.slug}` ? await getPageRef(mainArticle) : null;
   const pathSegments = [...parsed.tagPath.split('/'), parsed.slug];
   const pageUrl = `${SITE_URL}/${pathSegments.join('/')}`;
+  const faq = page && pageFaqLd(page, pageUrl);
   return (
     <>
       {page && <JsonLd data={pageLd(page, pageUrl)} />}
+      {faq && <JsonLd data={faq} />}
       <PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} related={related} series={series} pageNav={pageNav} nowMs={nowMs} />
     </>
   );

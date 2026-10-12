@@ -4,14 +4,14 @@
 // agent surfaces; what stays here is what a card is supposed to differ in.
 
 import { agentCard, descriptorHandler, skillsFromTools } from 'wiki-formant/well-known';
-import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
+import { SITE_DESCRIPTION, SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 
 // Skills come from the MCP tool manifest, so the card can never advertise a
 // capability the server does not have.
 const AGENT_CARD = agentCard({
   name: 'Radix Wiki',
-  description: 'Community-maintained knowledge base for Radix DLT — the layer-1 blockchain with linear scalability and asset-oriented smart contracts.',
+  description: SITE_DESCRIPTION,
   url: SITE_URL,
   version: SERVER_INFO.version,
   skills: skillsFromTools(TOOLS),

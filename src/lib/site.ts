@@ -5,7 +5,7 @@ import { siteRefs } from 'wiki-formant/metadata';
 
 export const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 export const SITE_NAME = 'RADIX Wiki';
-export const SITE_DESCRIPTION = 'Community-maintained knowledge base for Radix DLT — the layer-1 blockchain with linear scalability and asset-oriented smart contracts.';
+export const SITE_DESCRIPTION = 'RADIX Wiki is a community-edited encyclopedia that documents Radix, a layer-1 blockchain with asset-oriented smart contracts, for its users and builders.';
 
 // The wiki as schema.org names it: `@id` references to the Organization and
 // WebSite nodes the layout's `siteGraphLd` states once on every page. Each
