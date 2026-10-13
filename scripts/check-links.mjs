@@ -197,8 +197,9 @@ await withClient(async (client) => {
 
   const brokenInternal = [...internalToPages.entries()]
     // A page's own /history and /edit are routes parsePath() resolves from the page
-    // path (run 526: the 1 Oct legal rewrites link "this page's history").
-    .filter(([p]) => !livePaths.has(p) && !livePaths.has(p.replace(/\/(history|edit)$/, '')))
+    // path (run 526: the 1 Oct legal rewrites link "this page's history"). A facet
+    // view is the category path plus a query (run 586: /ecosystem?status=… on the FAQ).
+    .filter(([u]) => { const p = u.split('?')[0]; return !livePaths.has(p) && !livePaths.has(p.replace(/\/(history|edit)$/, '')); })
     .map(([p, pages]) => ({ url: p, pages }));
 
   const embeds = [...embedToPages.entries()].map(([url, { kind }]) => ({ kind, url }));
