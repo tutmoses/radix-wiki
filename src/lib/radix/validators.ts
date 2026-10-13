@@ -196,6 +196,22 @@ function nakamoto(stakes: number[]): number {
   return 0;
 }
 
+/**
+ * Network emissions are scheduled at about 300 million $XRD a year (2,853.88 an epoch at 288
+ * epochs a day), shared among active validators by stake: see
+ * /contents/tech/core-concepts/network-emissions, which also measured 297.2m minted in the
+ * twelve months to 9 August 2026.
+ */
+const ANNUAL_EMISSION_XRD = 300e6;
+
+/**
+ * What a staker with an active validator earns in a year, before compounding: the network's
+ * emission over the active stake, less the validator's fee. An estimate in both directions.
+ * Mainnet's reliability floor is 1.0, so an epoch with one missed proposal earns nothing, and
+ * stake units appreciate rather than pay out.
+ */
+export const stakerApr = (fee: number, activeStake: number) => (activeStake > 0 ? (ANNUAL_EMISSION_XRD / activeStake) * (1 - fee) : 0);
+
 export function summarizeStaking(validators: Validator[]): StakingSummary {
   const active = validators.filter((v) => v.isActive);
   const stakes = active.map((v) => v.totalStake).sort((a, b) => b - a);

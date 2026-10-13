@@ -222,6 +222,12 @@ interface TokenHolder {
   address: string;
   /** Tokens held, or for a non-fungible resource, the number of NFTs. */
   amount: number;
+  /**
+   * The name the holder gives itself in its own on-ledger metadata, such as a dApp's
+   * component. Only a self-declared name: the wiki does not attribute private or treasury
+   * accounts to their owners (v4.5.0 of the Radix Foundation page dropped that tracing as not privacy conscious).
+   */
+  name?: string;
 }
 
 export interface TokenHolders {
@@ -243,14 +249,28 @@ async function _fetchTokenHolders(address: string): Promise<TokenHolders> {
   );
   // Thrown rather than returned, so the cache keeps no failure and no holder count of 0.
   if (typeof page?.total_count !== 'number') throw new GatewayUnavailableError('/extensions/resource-holders/page', 'token-holders');
+  const items = page.items ?? [];
+  // Validators are named from the validator directory; everything else names itself or stays an address.
+  const others = items.map((h) => h.holder_address).filter((a) => !a.startsWith('validator_'));
+  const entities = others.length
+    ? await postGateway<{ items?: GatewayEntity[] }>('/state/entity/details', { addresses: others }, 'token-holder-names')
+    : null;
+  const names = new Map((entities?.items ?? []).flatMap((e) => {
+    const name = readMetadata(e.metadata, 'name')?.trim();
+    return e.address && name ? [[e.address, name] as const] : [];
+  }));
   return {
     total: page.total_count,
-    top: (page.items ?? []).map((h) => ({ address: h.holder_address, amount: num(h.amount ?? h.non_fungible_ids_count) })),
+    top: items.map((h) => ({
+      address: h.holder_address,
+      amount: num(h.amount ?? h.non_fungible_ids_count),
+      ...(names.has(h.holder_address) && { name: names.get(h.holder_address) }),
+    })),
   };
 }
 
 export const getTokenHolders = cache(
-  unstable_cache(_fetchTokenHolders, ['radix-token-holders-v1'], { revalidate: 300, tags: ['charts'] }),
+  unstable_cache(_fetchTokenHolders, ['radix-token-holders-v2'], { revalidate: 300, tags: ['charts'] }),
 );
 
 interface DexStats {

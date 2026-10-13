@@ -3,7 +3,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { TimeChart, type ChartRange, type ChartResolution } from 'wiki-formant/chart';
+import { TimeChart, type ChartMarker, type ChartRange, type ChartResolution } from 'wiki-formant/chart';
 import { formatPriceSubscript } from './format';
 import { OCISWAP_API } from '@/lib/radix/config';
 
@@ -16,7 +16,7 @@ const UDF_RESOLUTION: Record<ChartResolution, string> = { hour: '60', '4h': '240
 type Column = (string | number)[];
 type UdfResponse = { s?: string; t?: number[]; o?: Column; h?: Column; l?: Column; c?: Column; v?: Column };
 
-export function TokenChart({ resourceAddress, defaultTimeframe = '30d', height = 260 }: { resourceAddress: string; defaultTimeframe?: ChartRange; height?: number }) {
+export function TokenChart({ resourceAddress, defaultTimeframe = '30d', height = 260, markers }: { resourceAddress: string; defaultTimeframe?: ChartRange; height?: number; markers?: ChartMarker[] }) {
   const load = useCallback(async (resolution: ChartResolution, from: number) => {
     const to = Math.floor(Date.now() / 1000);
     const res = await fetch(`${OCISWAP_API}/udf/history?symbol=${resourceAddress}&resolution=${UDF_RESOLUTION[resolution]}&from=${from}&to=${to}&countback=5000&currencyCode=USD`);
@@ -27,5 +27,5 @@ export function TokenChart({ resourceAddress, defaultTimeframe = '30d', height =
     return json.t.map((time, i) => ({ time, value: at(json.c, i) ?? 0, open: at(json.o, i), high: at(json.h, i), low: at(json.l, i), volume: at(json.v, i) }));
   }, [resourceAddress]);
 
-  return <TimeChart series={load} label="Price in USD" range={defaultTimeframe} format={formatPriceSubscript} height={height} />;
+  return <TimeChart series={load} label="Price in USD" range={defaultTimeframe} format={formatPriceSubscript} height={height} markers={markers} />;
 }

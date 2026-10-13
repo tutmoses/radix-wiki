@@ -2,15 +2,16 @@
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Globe } from 'lucide-react';
 import { getTokenDetail, getTokenHolders, type TokenDetail, type TokenHolders, type TokenRole } from '@/lib/radix/tokens';
 import { getNetworkStats } from '@/lib/radix/network';
-import { dashboardEntity } from '@/lib/radix/config';
+import { dashboardEntity, XRD_ADDRESS } from '@/lib/radix/config';
+import { NETWORK_MARKERS } from '@/lib/radix/events';
 import { TokenChart } from './TokenChart';
 import { HoldersTable, type HolderRow } from './HoldersTable';
 import { CopyAddress } from './CopyAddress';
+import { EntityIcon } from './EntityIcon';
 import { formatUsd, formatPercent, formatAmount, formatPriceSubscript } from './format';
 import { cn, pagePath, shortenAddress } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
@@ -26,7 +27,8 @@ type Row = [label: string, value: ReactNode];
 /**
  * Holders as the table shows them. A validator holds the $XRD staked with it, and 59 of the
  * 100 largest $XRD holders were validators in September 2026, so a validator gets the name
- * the validator table shows. Accounts and components name themselves and stay addresses.
+ * the validator table shows. An account or component shows the name its own metadata gives
+ * it, such as the Hyperlane Warp Route's 700m $XRD, and stays an address without one.
  */
 async function holderRows(holders: TokenHolders, supply: number | undefined): Promise<HolderRow[]> {
   const stats = holders.top.some((h) => h.address.startsWith('validator_')) ? await getNetworkStats().catch(() => null) : null;
@@ -34,7 +36,7 @@ async function holderRows(holders: TokenHolders, supply: number | undefined): Pr
   return holders.top.map((h) => ({
     ...h,
     ...dashboardEntity(h.address),
-    name: names.get(h.address),
+    name: names.get(h.address) ?? h.name,
     share: supply ? h.amount / supply : undefined,
   }));
 }
@@ -100,7 +102,8 @@ function TokenInfobox({ token, wikiPage }: { token: TokenDetail; wikiPage?: Wiki
       )} />
       <InfoTable title="Market" rows={known(
         ['Market cap', usd(token.marketCap)],
-        ['24h volume', usd(token.volume24h)],
+        // OciSwap's pools only, which for $XRD is a sliver of what trades on other venues.
+        ['24h volume (OciSwap)', usd(token.volume24h)],
       )} />
       <InfoTable title="Metadata" rows={token.metadata.map(({ key, values }) => [
         key.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase()).replace(/^Dapp/, 'dApp'),
@@ -133,11 +136,7 @@ export default async function TokenDetailView({ address, wikiPage }: { address: 
         <div className="token-summary">
           <div className="token-card token-identity">
             <div className="row">
-              {token.iconUrl ? (
-                <Image src={token.iconUrl} alt={token.symbol || token.name} width={48} height={48} className="rounded-full shrink-0" unoptimized />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-surface-2 shrink-0" />
-              )}
+              <EntityIcon src={token.iconUrl} name={token.symbol || token.name} large />
               <div className="stack-xs min-w-0">
                 <h1 id={slugifyHeading(token.name || token.symbol) || 'token'} className="token-name">
                   {token.name || token.symbol}
@@ -182,7 +181,7 @@ export default async function TokenDetailView({ address, wikiPage }: { address: 
         <TokenInfobox token={token} wikiPage={wikiPage} />
 
         <div className="token-body stack">
-          {token.price > 0 && <TokenChart resourceAddress={token.address} defaultTimeframe="30d" height={320} />}
+          {token.price > 0 && <TokenChart resourceAddress={token.address} defaultTimeframe="30d" height={320} markers={token.address === XRD_ADDRESS ? NETWORK_MARKERS : undefined} />}
           {rows && rows.length > 0 && (
             <section className="stack-sm">
               <h2 id="largest-holders" className="charts-section-title">Largest holders</h2>

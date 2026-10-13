@@ -173,6 +173,27 @@ export const TOOLS: McpToolSpec[] = [
     },
   },
   {
+    name: 'get_network_activity',
+    title: 'Radix network activity',
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+    description:
+      'Daily Radix mainnet activity, one row per UTC day since Babylon (28 September 2023): transactions, active accounts, new accounts, '
+      + 'components and resources created, NFTs minted, and fees, $XRD burned and royalties in $XRD. Summed from the Gateway transaction stream; counts cover user transactions only. '
+      + 'Narrow with from/to. The same rows chart at /charts and download at /api/charts/activity?format=csv.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        from: { type: 'string', description: 'First day, YYYY-MM-DD (default: 30 days before the last stored day)' },
+        to: { type: 'string', description: 'Last day, YYYY-MM-DD (default: the last stored day)' },
+      },
+    },
+    skill: {
+      id: 'network-activity',
+      tags: ['radix', 'on-chain', 'analytics', 'transactions', 'xrd'],
+      examples: ['How many transactions did Radix process last week?', 'How much XRD was burned in September 2026?', 'Did activity recover after the August 2026 halt?'],
+    },
+  },
+  {
     name: 'get_challenge',
     title: 'Start a login',
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },

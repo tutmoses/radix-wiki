@@ -10,6 +10,7 @@
 // which cost markdown.ts a cast and BlockRenderer two `(p: any)` annotations.
 import type { WikiPage } from '@/types';
 import type { ChartRange } from 'wiki-formant/chart';
+import type { ActivityMetric } from '@/lib/radix/metrics';
 
 // ---- the shared leaf types --------------------------------------------------
 //
@@ -39,7 +40,7 @@ export type ReferenceItem = SharedReferenceItem & { id: string; url?: string };
 /** The editor mutates the link list in place, so it is not readonly. */
 export type LinkGridGroup = SharedLinkGridGroup & { id: string; links: LinkGridLink[] };
 
-export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice' | 'infobox' | 'rssFeed' | 'codeTabs' | 'stats' | 'testimonial' | 'linkGrid' | 'tipJar' | 'references' | 'banner';
+export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice' | 'networkChart' | 'infobox' | 'rssFeed' | 'codeTabs' | 'stats' | 'testimonial' | 'linkGrid' | 'tipJar' | 'references' | 'banner';
 
 interface BaseBlock { id: string; type: BlockType; }
 
@@ -47,6 +48,8 @@ export interface ContentBlock extends BaseBlock { type: 'content'; text: string;
 export interface RecentPagesBlock extends BaseBlock { type: 'recentPages'; tagPath?: string; limit: number; resolvedPages?: WikiPage[]; }
 export interface PageListBlock extends BaseBlock { type: 'pageList'; pageIds: string[]; resolvedPages?: WikiPage[]; }
 export interface AssetPriceBlock extends BaseBlock { type: 'assetPrice'; resourceAddress?: string; showChange?: boolean; showChart?: boolean; chartTimeframe?: ChartRange; }
+/** Daily network activity, live: the /charts series for one metric, fetched on the reader's side. */
+export interface NetworkChartBlock extends BaseBlock { type: 'networkChart'; metric: ActivityMetric; range?: ChartRange; }
 export interface RssFeedBlock extends BaseBlock { type: 'rssFeed'; url: string; limit?: number; resolvedItems?: { title: string; link: string; image?: string; source: string; date?: string; description?: string }[]; }
 export interface CodeTabsBlock extends BaseBlock { type: 'codeTabs'; tabs: CodeTab[]; }
 export interface StatsBlock extends BaseBlock { type: 'stats'; items: StatItem[]; columns: 2 | 3 | 4; }
@@ -63,7 +66,7 @@ import type { BannerVariant } from 'wiki-formant/text';
 export interface BannerBlock extends BaseBlock { type: 'banner'; variant: BannerVariant; text?: string; }
 
 // Atomic blocks that can be nested inside containers
-export type AtomicBlock = ContentBlock | RecentPagesBlock | PageListBlock | AssetPriceBlock | RssFeedBlock | CodeTabsBlock | StatsBlock | TestimonialBlock | LinkGridBlock | TipJarBlock | ReferencesBlock | BannerBlock;
+export type AtomicBlock = ContentBlock | RecentPagesBlock | PageListBlock | AssetPriceBlock | NetworkChartBlock | RssFeedBlock | CodeTabsBlock | StatsBlock | TestimonialBlock | LinkGridBlock | TipJarBlock | ReferencesBlock | BannerBlock;
 
 export interface InfoboxBlock extends BaseBlock {
   type: 'infobox';

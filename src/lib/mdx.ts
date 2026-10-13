@@ -14,6 +14,7 @@ function convertAtomicBlock(block: AtomicBlock): string {
     case 'recentPages': return `<RecentPages limit={${block.limit}}${block.tagPath ? ` tagPath="${block.tagPath}"` : ''} />`;
     case 'pageList': return `<PageList pageIds={${JSON.stringify(block.pageIds)}} />`;
     case 'assetPrice': return `<AssetPrice ${[block.resourceAddress && `resourceAddress="${block.resourceAddress}"`, block.showChange && 'showChange'].filter(Boolean).join(' ')} />`;
+    case 'networkChart': return `<NetworkChart metric="${block.metric}"${block.range ? ` range="${block.range}"` : ''} />`;
     case 'rssFeed': return `<RssFeed url="${block.url}" limit={${block.limit || 20}} />`;
     default: return atomicToMarkdown(block);
   }

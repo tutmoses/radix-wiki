@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { Coins, ArrowLeft } from 'lucide-react';
 import { getTopTokens, TOP_TOKENS_LIMIT } from '@/lib/radix/tokens';
 import { TokensTable } from './TokensTable';
+import { tokenRows } from './rows';
 
 export default async function TokensView() {
   const tokens = await getTopTokens();
+  const rows = await tokenRows(tokens);
 
   return (
     <div className="stack">
@@ -22,7 +24,7 @@ export default async function TokensView() {
           {tokens.length} of OciSwap's {TOP_TOKENS_LIMIT} highest-ranked tokens traded in the last 24 hours, sorted by volume. Prices and volume from OciSwap.
         </p>
       </div>
-      <TokensTable tokens={tokens} />
+      <TokensTable tokens={rows} />
     </div>
   );
 }

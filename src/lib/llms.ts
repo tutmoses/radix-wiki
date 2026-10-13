@@ -267,6 +267,7 @@ export async function buildLlmsTxt(): Promise<string> {
     '## Live Data',
     '',
     ...CHARTS_PAGES.map(p => `- [${p.title}](${SITE_URL}/${p.path}): ${p.description}`),
+    `- [Network activity data](${SITE_URL}/api/charts/activity): the daily series behind /charts as JSON, or CSV with ?format=csv; also the MCP tool get_network_activity`,
     '',
     '### Categories',
     '',

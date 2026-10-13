@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useEffect, useRef, memo, useMemo, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, memo, useMemo, type ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, FileText, Copy, Check, AlertTriangle, Megaphone, CalendarClock, type LucideIcon } from 'lucide-react';
@@ -27,10 +27,13 @@ import { processHtml } from '@/lib/html';
 import { useAccountQr, useFetch } from '@/hooks';
 import { Badge } from '@/components/ui';
 import type { WikiPage, PageMetadata } from '@/types';
-import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, InfoboxBlock, AtomicBlock, TipJarBlock, BannerVariant, TestimonialBlock } from '@/types/blocks';
+import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, NetworkChartBlock, RssFeedBlock, InfoboxBlock, AtomicBlock, TipJarBlock, BannerVariant, TestimonialBlock } from '@/types/blocks';
 import { getMetadataKeys } from '@/lib/tags';
 import { metadataRows } from '@/lib/taxonomy';
 import { TokenChart } from '@/components/charts/TokenChart';
+import { TimeChart } from 'wiki-formant/chart';
+import { NETWORK_MARKERS } from '@/lib/radix/events';
+import { activityLabel } from '@/lib/radix/metrics';
 import { formatPriceSubscript } from '@/components/charts/format';
 // The rendered-article passes are `wiki-formant/dom`, run by the hooks that
 // wrap them, shared with caper.
@@ -148,6 +151,28 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
     </div>
   );
 }
+
+type ActivityRow = { date: string } & Record<string, number>;
+
+/** One metric of the /charts daily series, read from the same API the CSV downloads from. */
+function NetworkChartBlockView({ block }: { block: NetworkChartBlock }) {
+  const label = activityLabel(block.metric);
+  const load = useCallback(async () => {
+    const res = await fetch('/api/charts/activity');
+    if (!res.ok) throw new Error('Network activity is unavailable');
+    const { rows } = (await res.json()) as { rows: ActivityRow[] };
+    return rows.map(r => ({ time: Date.parse(`${r.date}T00:00:00Z`) / 1000, value: r[block.metric] ?? 0 }));
+  }, [block.metric]);
+  return (
+    <div className="stack-sm">
+      <span className="text-small text-text-muted">{label} on the Radix network, per day</span>
+      <TimeChart series={load} label={label} ranges={DAILY_RANGES} range={block.range ?? '1y'} aggregate="mean" fromZero markers={NETWORK_MARKERS} />
+      <Link href={`/charts?m=${block.metric}`} className="charts-section-link">All network charts →</Link>
+    </div>
+  );
+}
+
+const DAILY_RANGES = ['30d', '90d', '1y', 'all'] as const;
 
 interface RssFeedItem { title: string; link: string; image?: string; source: string; date?: string; description?: string; }
 
@@ -335,6 +360,7 @@ function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
     case 'recentPages': return <RecentPagesBlockView block={block} />;
     case 'pageList': return <PageListBlockView block={block} />;
     case 'assetPrice': return <AssetPriceBlockView block={block} />;
+    case 'networkChart': return <NetworkChartBlockView block={block} />;
     case 'rssFeed': return <RssFeedBlockView block={block} />;
     // Every tree reaching this renderer went through `highlightBlocks`, which
     // escapes each tab's source before highlighting it into markup.

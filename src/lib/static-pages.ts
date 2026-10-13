@@ -31,7 +31,7 @@ export const STATIC_PAGES: Record<string, StaticPage> = {
   // was not the candidate Google picked for that query – it ranked a Core Concepts
   // page at 63 instead, on a phrase the homepage's own lead sentence answers outright.
   homepage: { path: '', title: 'Radix Wiki: What Is Radix ($XRD)? The Radix DLT Ecosystem', description: 'Radix is a layer-1 protocol built for DeFi, founded by Dan Hughes and running on Cerberus consensus. The community wiki for $XRD, Scrypto and the Radix Engine.', absoluteTitle: true, imageTitle: SITE_NAME },
-  charts: { path: 'charts', title: 'Charts', description: 'Live Radix network statistics, validator directory, and ecosystem token analytics.', changeFrequency: 'daily', priority: 0.7 },
+  charts: { path: 'charts', title: 'Charts', description: 'Live Radix network charts: daily activity since Babylon, the $XRD price, staking and OciSwap trading week by week, top tokens and validators.', changeFrequency: 'daily', priority: 0.7 },
   'charts-validators': { path: 'charts/validators', title: 'Validators', description: 'Every Radix validator with its stake, fee, pending fee changes, 7-day uptime and owner stake, and how concentrated staking is.', changeFrequency: 'daily', priority: 0.7 },
   'charts-tokens': { path: 'charts/tokens', title: 'Tokens', description: 'Radix tokens traded on OciSwap in the last 24 hours, by volume, with price and 24h change.', changeFrequency: 'daily', priority: 0.7 },
   welcome: { path: 'welcome', title: 'Welcome', description: 'Get started with RADIX Wiki — connect your Radix wallet and begin contributing to the decentralized knowledge base.', changeFrequency: 'monthly', priority: 0.5 },

@@ -9,13 +9,14 @@ import { TABLE_ACTIONS, ToolbarButton, runTableAction, toolbarActions, uploadIma
 import { BlockActions, useBlockOperations } from 'wiki-formant/react';
 import { BANNER_VARIANTS } from 'wiki-formant/text';
 import { CHART_RANGES } from 'wiki-formant/chart';
-import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Unlink, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, LayoutGrid, Info, Rss, QrCode, BarChart3, Code2, type LucideIcon } from 'lucide-react';
+import { Activity, Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Unlink, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, LayoutGrid, Info, Rss, QrCode, BarChart3, Code2, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, CODE_LANGS, DEFAULT_LANG, createBlock, duplicateBlock } from '@/lib/block-utils';
 import { resolveMapUrl } from 'wiki-formant/maps';
+import { ACTIVITY_METRICS, type ActivityMetric } from '@/lib/radix/metrics';
 import { Button, Input, Dropdown } from '@/components/ui';
 import { Iframe, YouTube, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock, HeadingIds } from '@/lib/tiptap/extensions';
-import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column, LinkGridBlock, LinkGridGroup, TipJarBlock, ReferencesBlock, ReferenceItem, BannerBlock, StatsBlock, StatItem, CodeTabsBlock, CodeTab } from '@/types/blocks';
+import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, NetworkChartBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column, LinkGridBlock, LinkGridGroup, TipJarBlock, ReferencesBlock, ReferenceItem, BannerBlock, StatsBlock, StatItem, CodeTabsBlock, CodeTab } from '@/types/blocks';
 
 // The upload endpoint is this app's, so the hook takes the uploader rather than
 // owning one. Module-level because the hook's upload callback depends on it.
@@ -169,6 +170,30 @@ function AssetPriceBlockEdit({ block, onUpdate }: BlockProps<AssetPriceBlock>) {
           </div>
         </div>
       )}
+    </EditWrapper>
+  );
+}
+
+function NetworkChartBlockEdit({ block, onUpdate }: BlockProps<NetworkChartBlock>) {
+  return (
+    <EditWrapper icon={Activity} label="Network Chart">
+      <div className="stack-xs">
+        <label className="font-medium text-small">Metric</label>
+        <select value={block.metric} onChange={e => onUpdate?.({ ...block, metric: e.target.value as ActivityMetric })} className="input">
+          {ACTIVITY_METRICS.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
+        </select>
+      </div>
+      <div className="stack-xs">
+        <label className="font-medium text-small">Default range</label>
+        <div className="toggle-group">
+          {(['30d', '90d', '1y', 'all'] as const).map(r => (
+            <button key={r} onClick={() => onUpdate?.({ ...block, range: r })} className={`toggle-option ${(block.range || '1y') === r ? 'toggle-option-active' : ''}`}>
+              {r === 'all' ? 'All' : r.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
+      <small className="text-text-muted">The same daily series as /charts, updated once a day</small>
     </EditWrapper>
   );
 }
@@ -413,6 +438,7 @@ function renderBlockEdit(block: Block | AtomicBlock, onUpdate?: (b: Block) => vo
     case 'recentPages': return <RecentPagesBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'pageList': return <PageListBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'assetPrice': return <AssetPriceBlockEdit block={block} onUpdate={onUpdate as any} />;
+    case 'networkChart': return <NetworkChartBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'rssFeed': return <RssFeedBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'columns': return <ColumnsBlockEdit block={block} onUpdate={onUpdate as any} />;
     case 'infobox': return <InfoboxEditor block={block} onChange={onUpdate as any} />;

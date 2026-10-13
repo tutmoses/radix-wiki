@@ -18,6 +18,7 @@ import { decodeEntities, inlineToMarkdown, markdownDocument } from 'wiki-formant
 import { coreAtomicToMarkdown, renderBlockTree, linkList } from 'wiki-formant/blocks';
 import { pageUrl } from '@/lib/utils';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
+import { activityLabel } from '@/lib/radix/metrics';
 import type { Block, AtomicBlock } from '@/types/blocks';
 import { BLOCK_SHAPE } from '@/lib/block-shape';
 
@@ -55,6 +56,9 @@ export function atomicToMarkdown(block: AtomicBlock): string {
 
     case 'assetPrice':
       return `_Live asset price widget — ${block.resourceAddress ? `${SITE_URL}/charts/tokens/${block.resourceAddress}` : `${SITE_URL}/charts`}_`;
+
+    case 'networkChart':
+      return `_Live network chart: ${activityLabel(block.metric)} per day — ${SITE_URL}/charts?m=${block.metric}_`;
 
     case 'testimonial':
       return `> "${decode(block.quote)}"\n> — ${block.author}${block.role ? `, ${block.role}` : ''}`;

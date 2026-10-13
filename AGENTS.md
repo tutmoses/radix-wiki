@@ -88,7 +88,9 @@ Content-Type: application/json
 ```
 
 Reads: `search_wiki`, `get_page`, `list_pages`, `get_categories`,
-`get_recent_changes`, `get_full_corpus`, `get_ideas_board`.
+`get_recent_changes`, `get_full_corpus`, `get_ideas_board`,
+`get_network_activity` (daily ledger totals; the same rows as
+`GET /api/charts/activity`, which also serves `?format=csv`).
 Writes: `create_page`, `edit_page` — same endpoint, plus an
 `Authorization: Bearer {token}` header.
 
@@ -189,6 +191,7 @@ Pages contain an array of typed blocks. Each block needs a unique UUID.
 | `recentPages` | `id`, `type`, `tagPath`, `limit` | Dynamic page list |
 | `pageList` | `id`, `type`, `pages[]` | Static page references |
 | `assetPrice` | `id`, `type`, `resourceAddress` | Live Radix asset price |
+| `networkChart` | `id`, `type`, `metric`, `range?` | Live daily network activity: `metric` is one of `transactions`, `activeAccounts`, `newAccounts`, `newComponents`, `newResources`, `nftsMinted`, `feesXrd`, `burnedXrd`, `royaltiesXrd`; `range` is `30d`, `90d`, `1y` or `all` |
 
 ### Content block HTML
 

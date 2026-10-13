@@ -59,7 +59,7 @@ const { rpc, call, payload, check } = t;
   console.log(`\n=== tools ===`);
   const list = await rpc('tools/list');
   const toolNames = (list.result?.tools ?? []).map(t => t.name);
-  const expected = ['search_wiki', 'get_page', 'list_pages', 'get_categories', 'get_recent_changes', 'get_full_corpus', 'get_ideas_board', 'get_challenge', 'login', 'create_page', 'edit_page'];
+  const expected = ['search_wiki', 'get_page', 'list_pages', 'get_categories', 'get_recent_changes', 'get_full_corpus', 'get_ideas_board', 'get_network_activity', 'get_challenge', 'login', 'create_page', 'edit_page'];
   check('tools/list', expected.every(n => toolNames.includes(n)), `${toolNames.length} tools: ${toolNames.join(', ')}`);
 
   const prompts = await rpc('prompts/list');
@@ -90,6 +90,9 @@ const { rpc, call, payload, check } = t;
 
   const ideas = payload(await call('get_ideas_board')) as { columns?: unknown[]; totalCards?: number };
   check('get_ideas_board', Array.isArray(ideas?.columns), `${ideas?.totalCards} cards in ${ideas?.columns?.length} columns`);
+
+  const activity = payload(await call('get_network_activity')) as { rows?: { date: string }[] };
+  check('get_network_activity', (activity?.rows?.length ?? 0) > 0, `${activity?.rows?.length ?? 0} days to ${activity?.rows?.at(-1)?.date}`);
 
   const size = payload(await call('get_full_corpus', { sizeOnly: true })) as { characters?: number; totalPages?: number; branches?: unknown[] };
   check('get_full_corpus(sizeOnly)', (size?.characters ?? 0) > 10_000 && Array.isArray(size?.branches),

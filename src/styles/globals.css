@@ -379,6 +379,7 @@
   /* ===== RESPONSIVE ===== */
   .hidden-mobile { display: none; }
   @media (min-width: 640px) { .hidden-mobile { display: revert; } }
+  @media (min-width: 640px) { .show-mobile { display: none; } }
 
   /* ===== APP SHELL (layout.tsx) ===== */
   .app-main { @apply min-h-[calc(100dvh-var(--header-height))] flex-1 min-w-0 transition-all duration-200; }
@@ -866,11 +867,20 @@
 
   /* ===== CHARTS / DATA TABLES ===== */
   .ledger-unavailable { @apply flex items-start gap-3 bg-surface-1 border border-border-muted rounded-lg p-4; }
-  .charts-stat-grid { @apply grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3; }
+  /* Fits however many cards a row has: five on /charts, six on the validators page, four for OciSwap. */
+  .charts-stat-grid { @apply grid grid-cols-2 gap-3; @media (min-width: 640px) { grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); } }
   .charts-section-title { @apply text-h4 font-semibold; }
-  .activity-metrics { @apply flex flex-wrap gap-1 text-small; }
-  .activity-metrics .toggle-option { @apply normal-case; }
+  /* One scrolling row on a phone, where nine pills wrapped to five rows above the chart. */
+  .metric-pills { @apply flex flex-nowrap gap-1 overflow-x-auto pb-1 text-small sm:flex-wrap sm:overflow-visible sm:pb-0; }
+  .metric-pills .toggle-option { @apply normal-case shrink-0 whitespace-nowrap; }
+  .metric-headline { @apply flex flex-wrap items-baseline gap-x-3 gap-y-1; }
+  .metric-events { @apply text-small leading-relaxed; }
   .charts-section-link { @apply inline-flex items-center gap-1 text-small text-accent hover:underline; }
+  .charts-recap { @apply inline-flex items-center gap-2 self-start px-3 py-2 text-small bg-surface-1 border border-border-muted rounded-lg transition-colors hover:border-accent; }
+  .table-wiki-link { @apply shrink-0 text-text-muted hover:text-accent; }
+  .entity-icon { @apply w-5 h-5 rounded-full shrink-0 object-cover; }
+  .entity-icon-fallback { @apply inline-flex items-center justify-center bg-surface-2 text-[10px] font-semibold uppercase text-text-muted; }
+  .entity-icon-lg { @apply w-12 h-12 text-h4; }
 
   .data-table-wrap { @apply bg-surface-1 border border-border-muted rounded-lg overflow-y-hidden; }
   .data-table { @apply w-full text-small border-collapse; }

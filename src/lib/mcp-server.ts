@@ -21,6 +21,7 @@ import { CORPUS_WHERE, buildLlmsTxt, corpusSections } from '@/lib/llms';
 import { TAG_HIERARCHY, getMetadataKeys, type TagNode } from '@/lib/tags';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 import { RADIX_CONFIG } from '@/lib/radix/config';
+import { getLedgerDayRows } from '@/lib/radix/activity';
 import { trackMcpCall } from '@/lib/track';
 import { McpToolError, readArgs, withAdjustments, type McpServerConfig, type McpPrompt, type McpResource } from 'wiki-formant/mcp';
 import { CORPUS_BUDGET, sliceCorpus } from 'wiki-formant/corpus';
@@ -402,6 +403,24 @@ async function edit_page(args: Record<string, unknown>, auth: string | null) {
   };
 }
 
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+async function get_network_activity(raw: Record<string, unknown>) {
+  const args = readArgs(raw);
+  const from = args.str('from');
+  const to = args.str('to');
+  if ((from && !ISO_DAY.test(from)) || (to && !ISO_DAY.test(to))) throw new McpToolError('`from` and `to` are dates, YYYY-MM-DD.');
+  const all = await getLedgerDayRows(undefined, to);
+  // Thirty days by default: three years of rows is a CSV download, not a tool answer.
+  const rows = from ? all.filter(r => r.date >= from) : all.slice(-30);
+  return {
+    scope: 'Radix mainnet, UTC days, user transactions only; feesXrd, burnedXrd and royaltiesXrd in $XRD',
+    firstStoredDay: all[0]?.date ?? null,
+    rows,
+    csv: `${SITE_URL}/api/charts/activity?format=csv${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`,
+  };
+}
+
 // ========== WIRING ==========
 
 type Handler = (args: Record<string, unknown>) => Promise<unknown>;
@@ -415,6 +434,7 @@ export function serverConfig(auth: string | null): McpServerConfig {
     get_recent_changes,
     get_full_corpus,
     get_ideas_board,
+    get_network_activity,
     get_challenge,
     login,
     create_page: args => create_page(args, auth),

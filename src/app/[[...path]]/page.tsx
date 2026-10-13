@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { Suspense, type ReactNode } from 'react';
 import { notFound, redirect } from 'next/navigation';
 import { parsePath } from '@/lib/path';
-import { getHomepage, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getEcosystemPageByAsset } from '@/lib/wiki';
+import { getHomepage, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getPageByAsset } from '@/lib/wiki';
 import { getMaintenanceQueues } from '@/lib/maintenance';
 import { getSession } from '@/lib/auth';
 import { alphaControls, facetControls, facetFilters, filterPages, rankRelated, resolveLetter } from '@/lib/taxonomy';
@@ -16,6 +16,7 @@ import { NowProvider } from '@/lib/now';
 // Payloads carry wallet-authored titles and excerpts, so they go out through
 // `wiki-formant/react-server`'s JsonLd, which escapes an authored `</script>`.
 import { JsonLd } from 'wiki-formant/react-server';
+import { chartsHeadline } from '@/lib/radix/headline';
 import { articleLd, citationsFromReferences, collectionLd, documentTitle, faqPageLd, questionPairs } from 'wiki-formant/metadata';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { STATIC_PAGES } from '@/lib/static-pages';
@@ -102,7 +103,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (staticPage) {
     const { path: staticPath, title, description, noindex, absoluteTitle, imageTitle } = staticPage;
     const url = staticPath ? `${SITE_URL}/${staticPath}` : SITE_URL;
-    const og = ogMetadata({ title, description, url, imageTitle });
+    // /charts unfurls with its numbers; the meta description stays the fixed one search indexes.
+    const live = parsed.type === 'charts' ? await chartsHeadline() : null;
+    const og = ogMetadata({ title, description: live ?? description, url, imageTitle });
     return {
       title: absoluteTitle ? { absolute: title } : title,
       description,
@@ -367,7 +370,7 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
   if (parsed.type === 'charts-validators') return <ValidatorsView />;
   if (parsed.type === 'charts-tokens') return <TokensView />;
   if (parsed.type === 'token-detail' && parsed.tokenAddress) {
-    const wikiPage = await getEcosystemPageByAsset(parsed.tokenAddress);
+    const wikiPage = await getPageByAsset(parsed.tokenAddress);
     return <TokenDetailView address={parsed.tokenAddress} wikiPage={wikiPage} />;
   }
 

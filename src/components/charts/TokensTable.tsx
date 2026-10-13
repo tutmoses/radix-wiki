@@ -3,38 +3,55 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
+import { BookOpen } from 'lucide-react';
 import { DataTable, type Column } from './DataTable';
+import { EntityIcon } from './EntityIcon';
 import { formatUsd, formatPercent, formatPriceSubscript } from './format';
 import type { TokenSummary } from '@/lib/radix/tokens';
 
-const COLUMNS: Column<TokenSummary>[] = [
+/** A token row, with the wiki article that names it in `assets` where there is one. */
+export type TokenRow = TokenSummary & { wikiPath?: string };
+
+const COLUMNS: Column<TokenRow>[] = [
   {
     k: 'name', label: 'Token', text: t => t.symbol || t.name,
     cell: t => (
-      <Link href={`/charts/tokens/${t.address}`} className="row group">
-        {t.iconUrl ? (
-          <Image src={t.iconUrl} alt={t.symbol || t.name} width={20} height={20} className="rounded-full shrink-0" unoptimized />
-        ) : (
-          <div className="w-5 h-5 rounded-full bg-surface-2 shrink-0" />
+      <div className="row">
+        <Link href={`/charts/tokens/${t.address}`} className="row group min-w-0">
+          <EntityIcon src={t.iconUrl} name={t.symbol || t.name} />
+          <div className="stack-xs min-w-0">
+            <span className="font-medium group-hover:text-accent transition-colors truncate">{t.symbol || t.name}</span>
+            {t.symbol && t.name && t.symbol !== t.name && <span className="text-xs text-text-muted truncate">{t.name}</span>}
+          </div>
+        </Link>
+        {t.wikiPath && (
+          <Link href={t.wikiPath} className="table-wiki-link" title="Wiki article" aria-label={`${t.symbol || t.name} on the wiki`}>
+            <BookOpen size={14} />
+          </Link>
         )}
-        <div className="stack-xs min-w-0">
-          <span className="font-medium group-hover:text-accent transition-colors truncate">{t.symbol || t.name}</span>
-          {t.symbol && t.name && t.symbol !== t.name && <span className="text-xs text-text-muted truncate">{t.name}</span>}
-        </div>
-      </Link>
+      </div>
     ),
   },
-  { k: 'price', label: 'Price', className: 'text-right', cellClass: 'font-medium', num: t => t.price, cell: t => <>${formatPriceSubscript(t.price)}</> },
+  {
+    k: 'price', label: 'Price', className: 'text-right', cellClass: 'font-medium', num: t => t.price,
+    // The volume column is hidden on a phone, so the price carries it on a second line there.
+    cell: t => (
+      <>
+        ${formatPriceSubscript(t.price)}
+        <div className="show-mobile text-xs text-text-muted font-normal">{formatUsd(t.volume24h)} vol.</div>
+      </>
+    ),
+  },
   {
     // The only column that colours its own cell, by which way the token moved.
     k: 'change24h', label: '24h %', className: 'text-right', num: t => t.change24h ?? -Infinity,
     cellClass: t => (t.change24h === undefined ? undefined : t.change24h >= 0 ? 'text-success' : 'text-error'),
     cell: t => (t.change24h === undefined ? '—' : `${t.change24h >= 0 ? '+' : ''}${formatPercent(t.change24h)}`),
   },
-  { k: 'volume24h', label: 'Volume 24h', className: 'text-right hidden-mobile', num: t => t.volume24h ?? 0, cell: t => formatUsd(t.volume24h) },
+  // OciSwap's pools only: on 13 October 2026 it counted $25 of $XRD volume where CoinGecko, across every venue, counted $18.7K.
+  { k: 'volume24h', label: 'OciSwap vol. 24h', className: 'text-right hidden-mobile', num: t => t.volume24h ?? 0, cell: t => formatUsd(t.volume24h) },
 ];
 
-export function TokensTable({ tokens, limit }: { tokens: TokenSummary[]; limit?: number }) {
-  return <DataTable rows={tokens} columns={COLUMNS} defaultKey="volume24h" rowKey={t => t.address} limit={limit} empty="No tokens found." />;
+export function TokensTable({ tokens, limit }: { tokens: TokenRow[]; limit?: number }) {
+  return <DataTable rows={tokens} columns={COLUMNS} defaultKey="volume24h" rowKey={t => t.address} limit={limit} empty="OciSwap did not answer, so there are no prices to show. Try again in a minute." />;
 }

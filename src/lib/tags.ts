@@ -57,7 +57,10 @@ export const TAG_HIERARCHY: TagNode[] = [
         children: [
           { name: 'Comparisons', slug: 'comparisons', description: 'Side-by-side comparisons of Radix against Ethereum, Solana, and other ledgers — feature, performance, and architecture differences.' },
           { name: 'Core Concepts', slug: 'core-concepts', description: 'Foundational ideas behind Radix — assets as primitives, atomic composability, finality, sharding, and DeFi-native design.' },
-          { name: 'Core Protocols', slug: 'core-protocols', mainArticle: 'contents/tech/core-protocols/radix-engine', description: 'The protocols that power Radix — Cerberus consensus, Radix Engine state machine, transaction manifests, and the ledger model.' },
+          // `assets` so the $XRD article names its token: its infobox shows the live price,
+          // and /charts and the token page link back to it.
+          { name: 'Core Protocols', slug: 'core-protocols', mainArticle: 'contents/tech/core-protocols/radix-engine', description: 'The protocols that power Radix — Cerberus consensus, Radix Engine state machine, transaction manifests, and the ledger model.',
+            metadataKeys: [{ key: 'assets', label: 'Asset:', type: 'resource_address' }] },
           { name: 'Releases', slug: 'releases', mainArticle: 'contents/tech/releases/protocol-updates', description: 'Major Radix protocol upgrades and Babylon-era release notes — what shipped, when, and what each release unlocks.' },
           { name: 'Research', slug: 'research', description: 'Active research efforts driving the Radix roadmap — Xi’an, Hyperscale, MFA Security Shield, RAC, and academic papers behind them.' },
           { name: 'Operations', slug: 'operations', hidden: true },

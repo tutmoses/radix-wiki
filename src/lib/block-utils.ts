@@ -2,9 +2,10 @@
 
 import type { Block, BlockType } from '@/types/blocks';
 import { coreAtomicValidator, createBlockValidator, duplicateBlockIds } from 'wiki-formant/validation';
-import { Clock, FileText, Columns, TrendingUp, Pencil, Info, Rss, Code2, BarChart3, MessageSquareQuote, LayoutGrid, QrCode, ListOrdered, AlertTriangle, type LucideIcon } from 'lucide-react';
+import { Activity, Clock, FileText, Columns, TrendingUp, Pencil, Info, Rss, Code2, BarChart3, MessageSquareQuote, LayoutGrid, QrCode, ListOrdered, AlertTriangle, type LucideIcon } from 'lucide-react';
 import { coreBlockDefaults, someBlock } from 'wiki-formant/blocks';
 import { BLOCK_SHAPE } from '@/lib/block-shape';
+import { isActivityMetric } from '@/lib/radix/metrics';
 
 export const CODE_LANGS = ['javascript', 'typescript', 'css', 'json', 'bash', 'python', 'rust', 'sql', 'html', 'xml', 'jsx', 'tsx', 'markdown', 'yaml', 'toml'] as const;
 export const DEFAULT_LANG = 'rust';
@@ -32,6 +33,7 @@ export const BLOCK_META: Record<BlockType, BlockSpec> = {
   recentPages: { label: 'Recent Pages', icon: Clock, hint: 'The latest pages, from one category or all', insertable: true, atomic: true, create: CORE.recentPages },
   pageList: { label: 'Page List', icon: FileText, hint: 'Pages you pick, in your order', insertable: true, atomic: true, create: CORE.pageList },
   assetPrice: { label: 'Asset Price', icon: TrendingUp, hint: "A Radix token's live price and chart", insertable: true, atomic: true, create: () => ({ type: 'assetPrice', resourceAddress: 'resource_rdx1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxradxrd', showChange: true }) },
+  networkChart: { label: 'Network Chart', icon: Activity, hint: 'Daily Radix network activity, live', insertable: true, atomic: true, create: () => ({ type: 'networkChart', metric: 'transactions', range: '1y' }) },
   rssFeed: { label: 'RSS Feed', icon: Rss, hint: 'Items from an RSS or JSON feed', insertable: true, atomic: true, create: () => ({ type: 'rssFeed', url: 'https://tutmoses.github.io/rss-feed/feeds.json', limit: 15 }) },
   codeTabs: { label: 'Code Tabs', icon: Code2, hint: 'Code samples, a tab per language', insertable: true, atomic: true, create: CORE.codeTabs },
   linkGrid: { label: 'Link Grid', icon: LayoutGrid, hint: 'Links in groups under headings', insertable: true, atomic: true, create: CORE.linkGrid },
@@ -78,6 +80,8 @@ const { validateBlocks: validate, blockIssues } = createBlockValidator({
         return b.resourceAddress === undefined || typeof b.resourceAddress === 'string';
       case 'rssFeed':
         return typeof b.url === 'string';
+      case 'networkChart':
+        return isActivityMetric(b.metric) && (b.range === undefined || typeof b.range === 'string');
       case 'testimonial':
         return typeof b.quote === 'string' && typeof b.author === 'string';
       case 'tipJar':

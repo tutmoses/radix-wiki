@@ -179,3 +179,17 @@ export const getLedgerDays = unstable_cache(
   ['ledger-days-v1'],
   { revalidate: 3600, tags: ['ledger-days'] },
 );
+
+/** One stored day as the API, the CSV and the MCP tool give it: the date as YYYY-MM-DD. */
+export type LedgerDayRow = Omit<LedgerDayPoint, 'time'> & { date: string };
+
+export const ACTIVITY_COLUMNS: (keyof LedgerDayRow)[] = [
+  'date', 'transactions', 'activeAccounts', 'newAccounts', 'newComponents', 'newResources', 'nftsMinted', 'feesXrd', 'burnedXrd', 'royaltiesXrd',
+];
+
+/** Stored days from `from` to `to` (inclusive, YYYY-MM-DD, either optional), oldest first. */
+export async function getLedgerDayRows(from?: string, to?: string): Promise<LedgerDayRow[]> {
+  return (await getLedgerDays())
+    .map(({ time, ...totals }) => ({ date: new Date(time * 1000).toISOString().slice(0, 10), ...totals }))
+    .filter(r => (!from || r.date >= from) && (!to || r.date <= to));
+}

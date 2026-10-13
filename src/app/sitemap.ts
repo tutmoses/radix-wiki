@@ -6,7 +6,7 @@ import { isValidTagPath, tagPaths } from '@/lib/tags';
 import { SITEMAP_PAGES } from '@/lib/static-pages';
 import { pageUrl } from '@/lib/utils';
 import { SITE_URL } from '@/lib/site';
-import { NOT_HIDDEN } from '@/lib/wiki';
+import { NOT_HIDDEN, getAssetPages } from '@/lib/wiki';
 
 // `revalidate` alone, not `force-dynamic` beside it. The two contradict each
 // other and force-dynamic wins, so this route was rebuilt per request and
@@ -30,11 +30,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Hidden paths are wiki-internal: the maintenance log keeps its URL but is
   // not article space, and at several rewrites a day it also dated every
   // category above it as changed today.
-  const pages = await prisma.page.findMany({
-    where: { tagPath: NOT_HIDDEN },
-    select: { tagPath: true, slug: true, updatedAt: true },
-    orderBy: { updatedAt: 'desc' },
-  });
+  const [pages, assetPages] = await Promise.all([
+    prisma.page.findMany({
+      where: { tagPath: NOT_HIDDEN },
+      select: { tagPath: true, slug: true, updatedAt: true },
+      orderBy: { updatedAt: 'desc' },
+    }),
+    getAssetPages().catch(() => ({})),
+  ]);
+  // A token page earns a row when a wiki article documents the token: most other resources
+  // are pages with nothing to say. Not OciSwap's traded list either, whose minute-long cache
+  // would pull this route's hour down to a minute.
+  const tokenAddresses = Object.keys(assetPages).filter(a => a.startsWith('resource_'));
 
   // The root tag is the homepage, already the first row — as a category it
   // came out a second time, at `${SITE_URL}/`.
@@ -71,6 +78,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${SITE_URL}/${p.path}`,
       changeFrequency: p.changeFrequency,
       priority: p.priority,
+    })),
+    ...tokenAddresses.map(address => ({
+      url: `${SITE_URL}/charts/tokens/${address}`,
+      changeFrequency: 'daily' as const,
+      priority: 0.5,
     })),
     // Hub articles (empty slug) are omitted here: their URL is the category's own,
     // already emitted above.

@@ -16,6 +16,7 @@ import type { Block, RecentPagesBlock, PageListBlock, RssFeedBlock } from '@/typ
 import { computeRevisionDiff } from '@/lib/versioning';
 import { withChanges } from 'wiki-formant/history';
 import { leafBlocks } from '@/lib/block-shape';
+import { RECAP_PREFIX } from '@/lib/week-in-review';
 
 // ========== PRISMA QUERY FRAGMENTS ==========
 export const AUTHOR_SELECT = { select: { id: true, displayName: true, shortAddress: true, avatarUrl: true } } as const;
@@ -72,12 +73,47 @@ export const getHomepage = () => getPage('', '');
  */
 export const getCategoryHub = async (tagPath: string) => tagPath ? getPage(tagPath, '') : null;
 
-export const getEcosystemPageByAsset = cached('getEcosystemPageByAsset',
-  async (resourceAddress: string): Promise<{ tagPath: string; slug: string; title: string } | null> => {
-    return prisma.page.findFirst({
-      where: { tagPath: { startsWith: 'ecosystem' }, metadata: { path: ['assets'], equals: resourceAddress } },
-      select: { tagPath: true, slug: true, title: true },
-    });
+export type PageRef = { tagPath: string; slug: string; title: string };
+const PAGE_REF_SELECT = { tagPath: true, slug: true, title: true } as const;
+
+/** The article a token belongs to: the page whose `assets` names it, an ecosystem project's or $XRD's own. */
+export const getPageByAsset = cached('getPageByAsset',
+  async (resourceAddress: string): Promise<PageRef | null> => {
+    return prisma.page.findFirst({ where: { metadata: { path: ['assets'], equals: resourceAddress } }, select: PAGE_REF_SELECT });
+  },
+);
+
+/** Every page that names a token in `assets`, by the token's address, for the token tables. */
+export const getAssetPages = cached('getAssetPages',
+  async (): Promise<Record<string, PageRef>> => {
+    const rows = await prisma.page.findMany({ where: { metadata: { path: ['assets'], not: Prisma.AnyNull } }, select: { ...PAGE_REF_SELECT, metadata: true } });
+    return Object.fromEntries(rows.flatMap(({ metadata, ...ref }) => {
+      const asset = (metadata as Record<string, unknown> | null)?.assets;
+      return typeof asset === 'string' ? [[asset, ref]] : [];
+    }));
+  },
+);
+
+/**
+ * Ecosystem pages by the validator they document: the address in a page's first block, its
+ * infobox (a few older pages write that as a content block holding a table). Body text is
+ * not enough, since a staking guide or a weekly recap names a dozen validators it is not about.
+ */
+export const getValidatorPages = cached('getValidatorPages',
+  async (): Promise<Record<string, PageRef>> => {
+    const rows = await prisma.$queryRaw<(PageRef & { address: string })[]>`
+      SELECT DISTINCT ON (m[1]) m[1] AS address, tag_path AS "tagPath", slug, title
+      FROM pages, regexp_matches((content->0)::text, '(validator_rdx1[0-9a-z]{54})', 'g') AS m
+      WHERE tag_path LIKE 'ecosystem%'
+      ORDER BY m[1], updated_at DESC`;
+    return Object.fromEntries(rows.map(({ address, ...ref }) => [address, ref]));
+  },
+);
+
+/** The newest Radix Week in Review recap. */
+export const getLatestRecap = cached('getLatestRecap',
+  async (): Promise<PageRef | null> => {
+    return prisma.page.findFirst({ where: { tagPath: 'blog', slug: { startsWith: RECAP_PREFIX } }, orderBy: { createdAt: 'desc' }, select: PAGE_REF_SELECT });
   },
 );
 
