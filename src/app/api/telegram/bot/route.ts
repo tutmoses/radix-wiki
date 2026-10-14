@@ -1,7 +1,7 @@
 // src/app/api/telegram/bot/route.ts — Telegram bot webhook
 
 import { prisma } from '@/lib/prisma/client';
-import { json } from '@/lib/api';
+import { json } from 'wiki-formant/http';
 import { sendMessage } from '@/lib/webhooks';
 
 export async function POST(request: Request) {

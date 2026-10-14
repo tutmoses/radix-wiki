@@ -4,12 +4,8 @@ import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { matchSnippet, openingText } from 'wiki-formant/text';
 import { describe } from 'wiki-formant/metadata';
-import { SITE_URL } from '@/lib/site';
-
-// The deterministic pair behind the generative banner is `wiki-formant/seeded`,
-// shared with caper.
-export { hashStr, seededRandom } from 'wiki-formant/seeded';
 import { hashStr, seededRandom } from 'wiki-formant/seeded';
+import { SITE_URL } from '@/lib/site';
 
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));

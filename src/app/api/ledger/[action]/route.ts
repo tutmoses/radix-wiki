@@ -1,7 +1,8 @@
 // src/app/api/ledger/[action]/route.ts — On-chain wiki backup: prepare, confirm, status, recover
 
 import { prisma } from '@/lib/prisma/client';
-import { requireAuth, handleRoute, json, cachedJson, errors, CACHE, type RouteContext } from '@/lib/api';
+import { handleRoute, json, errors } from 'wiki-formant/http';
+import { requireAuth, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { buildPageBackupManifest, readAnchorFromLedger, readLedgerBackup } from '@/lib/radix/ledger';
 import { blocksToMdx } from '@/lib/mdx';
 import type { NextRequest } from 'next/server';

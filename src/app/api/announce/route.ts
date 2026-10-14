@@ -11,7 +11,7 @@
 
 import type { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { handleRoute, json, errors } from '@/lib/api';
+import { handleRoute, json, errors } from 'wiki-formant/http';
 import { broadcast, broadcastChatIds, deliverWebhooks, formatAnnouncement } from '@/lib/webhooks';
 import { pageUrl } from '@/lib/utils';
 import { describe } from 'wiki-formant/metadata';

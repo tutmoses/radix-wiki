@@ -3,7 +3,8 @@
 // `?from=` and `?to=` (YYYY-MM-DD) narrow it; `?format=csv` downloads it. The rows are the
 // ones the chart draws and the MCP `get_network_activity` tool returns, from one reader.
 
-import { cachedJson, CACHE, errors } from '@/lib/api';
+import { errors } from 'wiki-formant/http';
+import { cachedJson, CACHE } from '@/lib/api';
 import { ACTIVITY_COLUMNS, getLedgerDayRows } from '@/lib/radix/activity';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 

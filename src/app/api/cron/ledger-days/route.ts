@@ -4,7 +4,7 @@
 // 404 to everyone, so an unconfigured deployment has no way to start a stream read.
 
 import { revalidateTag } from 'next/cache';
-import { json, errors } from '@/lib/api';
+import { json, errors } from 'wiki-formant/http';
 import { syncLedgerDays } from '@/lib/radix/activity';
 
 export const maxDuration = 300;

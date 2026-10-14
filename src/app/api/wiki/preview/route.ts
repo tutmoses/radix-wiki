@@ -3,7 +3,8 @@
 
 import { NextRequest } from 'next/server';
 import { getPage } from '@/lib/wiki';
-import { cachedJson, CACHE, handleRoute } from '@/lib/api';
+import { handleRoute } from 'wiki-formant/http';
+import { cachedJson, CACHE } from '@/lib/api';
 import { describe } from 'wiki-formant/metadata';
 import { openingText } from 'wiki-formant/text';
 

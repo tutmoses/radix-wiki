@@ -1,6 +1,7 @@
 // src/app/api/leaderboard/route.ts
 
-import { json, handleRoute, parsePagination, paginatedResponse } from '@/lib/api';
+import { json, handleRoute } from 'wiki-formant/http';
+import { parsePagination, paginatedResponse } from 'wiki-formant/pagination';
 import { getEditorScores, publicScore } from '@/lib/scoring';
 
 export const dynamic = 'force-dynamic';

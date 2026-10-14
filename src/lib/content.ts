@@ -9,8 +9,6 @@ import { coreAtomicText, renderBlockTree } from 'wiki-formant/blocks';
 import { BLOCK_SHAPE } from '@/lib/block-shape';
 import type { Block, AtomicBlock } from '@/types/blocks';
 
-export { decodeEntities } from 'wiki-formant/markdown';
-
 function atomicText(block: Block | AtomicBlock): string {
   switch (block.type) {
     // Page lists are resolved server-side, so they read only after

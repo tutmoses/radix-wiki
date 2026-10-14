@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { getSession, createSession, destroySession, verifySignedChallenge } from '@/lib/auth';
-import { json, errors, handleRoute } from '@/lib/api';
+import { json, errors, handleRoute } from 'wiki-formant/http';
 import type { SignedChallenge, RadixAccount, RadixPersona } from '@/types';
 
 export async function GET() {

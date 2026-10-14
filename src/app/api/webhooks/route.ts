@@ -2,7 +2,8 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { json, errors, handleRoute, requireAuth } from '@/lib/api';
+import { json, errors, handleRoute } from 'wiki-formant/http';
+import { requireAuth } from '@/lib/api';
 import { generateWebhookSecret, VALID_EVENTS, type WebhookEvent } from '@/lib/webhooks';
 
 export async function GET(request: NextRequest) {

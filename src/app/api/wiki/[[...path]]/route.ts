@@ -9,8 +9,10 @@ import { slugifyHeading } from 'wiki-formant/headings';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { findTagByPath, tagLabel, isValidTagPath, isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys } from '@/lib/tags';
 import { requireBalance } from '@/lib/radix/balance';
-import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, cachedJson, CACHE, type RouteContext } from '@/lib/api';
-import { computeRevisionDiff, formatVersion, parseVersion, incrementVersion, type BlockChange } from '@/lib/versioning';
+import { parsePagination, paginatedResponse } from 'wiki-formant/pagination';
+import { requireAuth, cachedJson, CACHE, type RouteContext } from '@/lib/api';
+import { formatVersion, parseVersion, incrementVersion } from 'wiki-formant/versioning';
+import { computeRevisionDiff, type BlockChange } from '@/lib/versioning';
 import { parsePath } from '@/lib/path';
 import { orderByIds, searchPages, resolveBlockData, loadPageHistory, getCategoryPages, AUTHOR_SELECT, NOT_HIDDEN, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
 import { blockIssues, validateBlocks } from '@/lib/block-utils';
@@ -22,7 +24,7 @@ import type { WikiPageInput, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
 import { deliverWebhooks } from '@/lib/webhooks';
 import { trackSearch } from '@/lib/track';
-import { VARY_ACCEPT, corpusEtag, markdownHeaders, notModified, teachingNotFound, wantsMarkdown } from 'wiki-formant/http';
+import { VARY_ACCEPT, corpusEtag, markdownHeaders, notModified, teachingNotFound, wantsMarkdown, json, errors, handleRoute } from 'wiki-formant/http';
 
 type PathParams = { path?: string[] };
 

@@ -2,7 +2,7 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { json, handleRoute } from '@/lib/api';
+import { json, handleRoute } from 'wiki-formant/http';
 
 export async function GET(request: NextRequest) {
   return handleRoute(async () => {

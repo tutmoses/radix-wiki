@@ -2,7 +2,9 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { json, handleRoute, requireAuth, parsePagination, paginatedResponse } from '@/lib/api';
+import { json, handleRoute } from 'wiki-formant/http';
+import { parsePagination, paginatedResponse } from 'wiki-formant/pagination';
+import { requireAuth } from '@/lib/api';
 import { AUTHOR_SELECT } from '@/lib/wiki';
 
 export async function GET(request: NextRequest) {

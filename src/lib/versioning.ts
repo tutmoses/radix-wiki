@@ -14,8 +14,6 @@ import {
 } from 'wiki-formant/revisions';
 import type { Block, ContentBlock } from '@/types/blocks';
 
-export { formatVersion, incrementVersion, parseVersion } from 'wiki-formant/versioning';
-
 /** The history view renders both sides, so the leaf diff is the raw HTML. */
 interface ContentDiff {
   from: string;

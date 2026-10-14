@@ -2,7 +2,8 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { json, errors, handleRoute, requireAuth, type RouteContext } from '@/lib/api';
+import { json, errors, handleRoute } from 'wiki-formant/http';
+import { requireAuth, type RouteContext } from '@/lib/api';
 
 export async function DELETE(request: NextRequest, context: RouteContext<{ id: string }>) {
   return handleRoute(async () => {

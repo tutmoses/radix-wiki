@@ -3,7 +3,8 @@
 import { NextRequest } from 'next/server';
 import { randomBytes } from 'crypto';
 import { prisma } from '@/lib/prisma/client';
-import { json, errors, handleRoute, requireAuth } from '@/lib/api';
+import { json, errors, handleRoute } from 'wiki-formant/http';
+import { requireAuth } from '@/lib/api';
 import { VALID_EVENTS, type WebhookEvent } from '@/lib/webhooks';
 
 const BOT_USERNAME = process.env.TELEGRAM_SUB_BOT_USERNAME;

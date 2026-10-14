@@ -3,7 +3,9 @@
 import { NextRequest } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
-import { json, errors, handleRoute, requireAuth, parsePagination, paginatedResponse, CACHE, type RouteContext } from '@/lib/api';
+import { json, errors, handleRoute } from 'wiki-formant/http';
+import { parsePagination, paginatedResponse } from 'wiki-formant/pagination';
+import { requireAuth, CACHE, type RouteContext } from '@/lib/api';
 import { AUTHOR_SELECT } from '@/lib/wiki';
 import type { CommentInput } from '@/types';
 import { deliverWebhooks } from '@/lib/webhooks';

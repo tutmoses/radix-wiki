@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { ArrowLeft, Save, Trash2, Link2, X } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Button, Input, StatusCard } from '@/components/ui';
-import { useAuth, useClickOutside, useStore } from '@/hooks';
+import { useAuth, useStore } from '@/hooks';
 import { cn, pagePath, sendJson } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { findInfobox } from '@/components/BlockRenderer';
@@ -17,7 +17,7 @@ import { createBlock } from '@/lib/block-utils';
 import { Banner, BlockEditor, InfoboxEditor } from './PageContent';
 import type { WikiPage, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
-import { useSaveShortcut, useTypeahead, useUnsavedChanges } from 'wiki-formant/react';
+import { useSaveShortcut, useTypeahead, useUnsavedChanges, useClickOutside } from 'wiki-formant/react';
 
 // ========== METADATA FIELDS ==========
 function RichInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {

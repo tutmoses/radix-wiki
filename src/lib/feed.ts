@@ -27,8 +27,6 @@ import { leafBlocks } from '@/lib/block-shape';
 import { prisma } from '@/lib/prisma/client';
 import { RECAP_PREFIX, SERIES_SLUG, scoreline, type LedgerState } from '@/lib/week-in-review';
 
-export { feedResponse } from 'wiki-formant/feed';
-
 /** Blog posts carry a `metadata.date` ("2026-08-02" or "2026/03/15"); fall back to the row's createdAt. */
 export function publishedAt(metadata: unknown, createdAt: Date): Date {
   const raw = (metadata as Record<string, string> | null)?.date?.replace(/\//g, '-');

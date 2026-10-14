@@ -9,14 +9,6 @@ import { parsePath } from '@/lib/path';
 import { sendJson } from '@/lib/utils';
 import type { AuthSession, RadixWalletData, WikiNotification } from '@/types';
 
-// ========== CLICK OUTSIDE HOOK ==========
-
-// `wiki-formant/react`, shared with the other wikis — all three had written this,
-// and only this copy carried the `offsetParent` guard that keeps a container
-// hidden at the current breakpoint from claiming outside-clicks. The package
-// took this version; re-exported so call sites keep importing from `@/hooks`.
-export { useClickOutside } from 'wiki-formant/react';
-
 // ========== FETCH HOOK ==========
 
 export function useFetch<T>(url: string | null | undefined, opts?: { transform?: (data: any) => T; interval?: number }) {

@@ -11,7 +11,7 @@ import { getMatchSnippet, pageUrl } from '@/lib/utils';
 import { describe } from 'wiki-formant/metadata';
 import { openingText } from 'wiki-formant/text';
 import { isoDate } from 'wiki-formant/freshness';
-import { decodeEntities } from '@/lib/content';
+import { decodeEntities } from 'wiki-formant/markdown';
 import { getSortOrder, getMetadataKeys, HIDDEN_TAG_PATHS, type SortOrder } from '@/lib/tags';
 import type { WikiPage, IdeasPage } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, RssFeedBlock } from '@/types/blocks';

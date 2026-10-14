@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { requireBalance, type BalanceAction } from '@/lib/radix/balance';
-import { errors, handleRoute } from '@/lib/api';
+import { errors, handleRoute } from 'wiki-formant/http';
 
 const GATE_TYPES = new Set(['create', 'edit', 'comment']);
 

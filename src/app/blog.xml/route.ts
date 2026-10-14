@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma/client';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
-import { feedItem, feedResponse, publishedAt } from '@/lib/feed';
+import { feedResponse } from 'wiki-formant/feed';
+import { feedItem, publishedAt } from '@/lib/feed';
 import { licenseNote } from 'wiki-formant/license';
 
 export const dynamic = 'force-dynamic';

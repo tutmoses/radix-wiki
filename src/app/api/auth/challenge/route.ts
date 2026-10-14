@@ -1,7 +1,7 @@
 // src/app/api/auth/challenge/route.ts
 
 import { generateChallenge } from '@/lib/auth';
-import { json, handleRoute } from '@/lib/api';
+import { json, handleRoute } from 'wiki-formant/http';
 
 export async function GET() {
   return handleRoute(async () => {

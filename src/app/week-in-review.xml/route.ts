@@ -6,7 +6,8 @@
 // channel description so the one number the series owns travels with every copy.
 
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
-import { feedItem, feedResponse, getRecaps } from '@/lib/feed';
+import { feedResponse } from 'wiki-formant/feed';
+import { feedItem, getRecaps } from '@/lib/feed';
 import { SERIES_SLUG, issueLabel } from '@/lib/week-in-review';
 import { licenseNote } from 'wiki-formant/license';
 

@@ -2,7 +2,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { json, errors, handleRoute, requireAuth } from '@/lib/api';
+import { json, errors, handleRoute } from 'wiki-formant/http';
+import { requireAuth } from '@/lib/api';
 import { getEditorScores } from '@/lib/scoring';
 import { getTreasuryBalance, getTreasuryAddress } from '@/lib/radix/balance';
 

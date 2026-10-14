@@ -15,7 +15,7 @@ import { isoDate } from 'wiki-formant/freshness';
 import { SIBLING_WIKI, SITE_NAME, SITE_URL } from '@/lib/site';
 import { NOT_HIDDEN, searchPages, summarizePage, SUMMARY_SELECT } from '@/lib/wiki';
 import { listEnvelope } from 'wiki-formant/pagination';
-import { MCP_RATE_LIMIT, MCP_RATE_LIMIT_TEXT } from '@/lib/api';
+import { MCP_RATE_LIMIT, MCP_RATE_LIMIT_TEXT } from 'wiki-formant/rate-limit';
 import { extractText } from '@/lib/content';
 import { CORPUS_WHERE, buildLlmsTxt, corpusSections } from '@/lib/llms';
 import { TAG_HIERARCHY, getMetadataKeys, type TagNode } from '@/lib/tags';

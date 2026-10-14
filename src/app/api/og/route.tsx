@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
-import { hashStr, seededRandom, paletteFor } from '@/lib/utils';
+import { hashStr, seededRandom } from 'wiki-formant/seeded';
+import { paletteFor } from '@/lib/utils';
 import { CACHE } from '@/lib/api';
 import { SITE_NAME } from '@/lib/site';
 import sharp from 'sharp';

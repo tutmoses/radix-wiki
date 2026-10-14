@@ -8,7 +8,7 @@ import { ArrowLeft, FileText } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { cn } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
-import { useClickOutside } from '@/hooks';
+import { useClickOutside } from 'wiki-formant/react';
 
 // Dropdown
 export function Dropdown({ onClose, children, className, ...props }: HTMLAttributes<HTMLDivElement> & { onClose: () => void }) {

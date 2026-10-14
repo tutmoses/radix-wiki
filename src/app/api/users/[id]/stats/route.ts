@@ -1,7 +1,8 @@
 // src/app/api/users/[id]/stats/route.ts
 
 import { prisma } from '@/lib/prisma/client';
-import { json, errors, handleRoute, type RouteContext } from '@/lib/api';
+import { json, errors, handleRoute } from 'wiki-formant/http';
+import { type RouteContext } from '@/lib/api';
 import { computePoints, totalPoints, ringScore } from '@/lib/scoring';
 
 type PathParams = { id: string };
