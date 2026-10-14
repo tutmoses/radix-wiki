@@ -1,3 +1,9 @@
 {
-  "crons": [{ "path": "/api/cron/ledger-days", "schedule": "20 0 * * *" }]
+  "ignoreCommand": "P=$VERCEL_GIT_PREVIOUS_SHA; [ -n \"$P\" ] && { git cat-file -e $P || git fetch -q --deepen=500; } && git diff --quiet $P HEAD -- . ':!scripts' ':!studio' ':!brand-assets' ':!.claude' ':!.github'",
+  "crons": [
+    {
+      "path": "/api/cron/ledger-days",
+      "schedule": "20 0 * * *"
+    }
+  ]
 }
