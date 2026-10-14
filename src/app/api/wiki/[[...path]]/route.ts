@@ -30,10 +30,6 @@ type PathParams = { path?: string[] };
 
 const INITIAL_VERSION = '1.0.0';
 
-/** A twin is the page again in another format: a search engine that reads
- *  one has the page already. Without this Google indexed `.md` beside the HTML. */
-const TWIN_ROBOTS = { 'X-Robots-Tag': 'noindex' };
-
 /** A page's unique key, for every lookup by path. */
 const pageKey = ({ tagPath, slug }: { tagPath: string; slug: string }) => ({ tagPath_slug: { tagPath, slug } });
 
@@ -95,7 +91,8 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
         headers: {
           'Content-Type': 'text/mdx; charset=utf-8',
           'Content-Disposition': `attachment; filename="${page.slug || 'homepage'}.mdx"`,
-          ...TWIN_ROBOTS,
+          // A twin of the HTML page, like the markdown ones: not for the index.
+          'X-Robots-Tag': 'noindex',
         },
       });
     }
@@ -208,7 +205,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       }, null);
       const lastModified = updated?.toUTCString();
       const etag = corpusEtag([parsed.tagPath, pages.length, updated]);
-      const headers = markdownHeaders(lastModified, { etag, extra: { ...CACHE.medium, ...TWIN_ROBOTS, ...VARY_ACCEPT } });
+      const headers = markdownHeaders(lastModified, { etag, noindex: true, extra: { ...CACHE.medium, ...VARY_ACCEPT } });
       const unchanged = notModified(request, etag, lastModified ?? null, headers);
       if (unchanged) return unchanged;
 
@@ -249,7 +246,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       // 9110 requires.
       const lastModified = page.updatedAt.toUTCString();
       const etag = corpusEtag([page.tagPath, page.slug, page.version, page.updatedAt]);
-      const headers = markdownHeaders(lastModified, { etag, extra: { ...CACHE.medium, ...TWIN_ROBOTS, ...VARY_ACCEPT } });
+      const headers = markdownHeaders(lastModified, { etag, noindex: true, extra: { ...CACHE.medium, ...VARY_ACCEPT } });
       const unchanged = notModified(request, etag, lastModified, headers);
       if (unchanged) return unchanged;
       const md = pageToMarkdown({

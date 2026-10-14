@@ -1,13 +1,11 @@
 // src/lib/html.ts — HTML post-processing for wiki content rendering.
 //
 // Heading ids, table scroll boxes and anchor normalisation are
-// `wiki-formant/headings`, `/dom` and `/links`. What stays here is this wiki's own
+// `wiki-formant/headings`' `articleHtml`. What stays here is this wiki's own
 // decisions: which slug rule its published anchors were minted under, its own
-// host, and the h1 demotion.
+// host, the h1 demotion and the empty alts.
 
-import { scrollTables } from 'wiki-formant/dom';
-import { injectHeadingIds, slugifyHeading } from 'wiki-formant/headings';
-import { normaliseLinks } from 'wiki-formant/links';
+import { articleHtml, slugifyHeading } from 'wiki-formant/headings';
 import type { Block } from '@/types/blocks';
 import { mapBlockTree } from 'wiki-formant/blocks';
 import { BLOCK_SHAPE } from '@/lib/block-shape';
@@ -16,27 +14,21 @@ import { SITE_URL } from '@/lib/site';
 const SELF_HOST = new URL(SITE_URL).host;
 
 /**
- * Process HTML content for display: heading ids + anchors, alt attrs, table scroll boxes, link normalisation.
+ * Process HTML content for display: alt attrs, heading ids + anchors, table scroll boxes, link normalisation.
  * `used` is the page's heading ids so far, shared across its blocks.
  */
 export function processHtml(html: string, citedRefs?: Set<number>, used?: Set<string>): string {
   if (!html.trim()) return html;
 
-  // Demote h1 in content to h2 (the page title is the only h1), then ids and a
-  // hover permalink anchor on what is left. `slugifyHeading` is passed rather
-  // than defaulted because it is the rule this wiki's published anchors were
-  // minted under, and an id is a URL.
-  const withHeadings = injectHeadingIds(
-    html.replace(/<h1(\s[^>]*)?>([\s\S]*?)<\/h1>/gi, '<h2$1>$2</h2>'),
-    { slug: slugifyHeading, used },
-  );
+  // Demote h1 in content to h2 (the page title is the only h1). The sanitiser
+  // writes `<img … />`, so the alt goes before the slash.
+  const prepared = html
+    .replace(/<h1(\s[^>]*)?>([\s\S]*?)<\/h1>/gi, '<h2$1>$2</h2>')
+    .replace(/<img\b([^>]*?)\s*\/?>/gi, (match, attrs) => (/\salt\s*=/i.test(attrs) ? match : `<img${attrs} alt="">`));
 
-  // The sanitiser writes `<img … />`, so the alt goes before the slash.
-  const withAlts = withHeadings.replace(/<img\b([^>]*?)\s*\/?>/gi, (match, attrs) =>
-    /\salt\s*=/i.test(attrs) ? match : `<img${attrs} alt="">`,
-  );
-
-  return normaliseLinks(scrollTables(withAlts), { selfHost: SELF_HOST, citedRefs });
+  // `slugifyHeading` is passed rather than defaulted because it is the rule this
+  // wiki's published anchors were minted under, and an id is a URL.
+  return articleHtml(prepared, { slug: slugifyHeading, used, links: { selfHost: SELF_HOST, citedRefs } });
 }
 
 /**
