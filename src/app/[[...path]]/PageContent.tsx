@@ -391,7 +391,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   const mainContent = (
     <>
       <BlockRenderer content={mainBlocks} />
-      <div className="row-md justify-center flex-wrap">
+      <div className="row-lg justify-center flex-wrap">
         {!isAuthenticated && <Button size="lg" variant="primary" onClick={connect}>Connect Radix Wallet<ArrowRight size={18} /></Button>}
         <Link href="/contents"><Button variant="secondary" size="lg">Browse Content</Button></Link>
       </div>
@@ -518,7 +518,7 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
   // listing holds, so neither draws a visible heading — the outline they need is
   // carried by the section cards' own h2 and the listing's sr-only one.
   // A hub's title sits in its banner, so its controls ride above whichever comes first.
-  const hubControls = <div className="row-md justify-end empty:hidden">{controlItems}</div>;
+  const hubControls = <div className="row-lg justify-end empty:hidden">{controlItems}</div>;
   const listing = total > 0 && (
     <CategoryListing
       tagPath={tagPath} pages={pages} sort={sort} total={total}
@@ -554,7 +554,7 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
       <Breadcrumbs path={tagPath} />
       <div className="spread">
         <h1 id={slugifyHeading(tag?.name || tagPath[tagPath.length - 1] || '')}>{tag?.name || tagPath[tagPath.length - 1]}</h1>
-        <div className="row-md">{controlItems}</div>
+        <div className="row-lg">{controlItems}</div>
       </div>
       <CategoryHero description={tag?.description} mainArticle={mainArticle} />
       {sections}

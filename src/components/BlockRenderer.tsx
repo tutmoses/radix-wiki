@@ -110,9 +110,9 @@ function PageListBlockView({ block }: { block: PageListBlock }) {
     block.resolvedPages || !block.pageIds.length ? null : `/api/wiki?ids=${block.pageIds.join(',')}`,
   );
   const pages = block.resolvedPages || data || [];
-  if (isLoading) return <div className="row-md"><div className="flex-1 h-20 skeleton" /></div>;
+  if (isLoading) return <div className="row-lg"><div className="flex-1 h-20 skeleton" /></div>;
   if (!pages.length) return <p className="text-text-muted">No pages selected.</p>;
-  return <div className="row-md flex-wrap">{pages.map(p => <PageCard key={p.id} page={p} compact />)}</div>;
+  return <div className="row-lg flex-wrap">{pages.map(p => <PageCard key={p.id} page={p} compact />)}</div>;
 }
 
 type PriceData = { price: number; change24h?: number; symbol?: string; name?: string };

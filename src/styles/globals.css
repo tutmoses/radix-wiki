@@ -322,12 +322,6 @@
   }
 
   /* ===== LAYOUT ===== */
-  .stack { @apply flex flex-col gap-4; }
-  .stack-xs { @apply flex flex-col gap-1; }
-  .stack-sm { @apply flex flex-col gap-2; }
-  .row { @apply flex items-center gap-2; }
-  .row-md { @apply flex items-center gap-4; }
-  .spread { @apply flex items-center justify-between gap-4 flex-wrap; }
   .center { @apply flex items-center justify-center; }
 
   /* ===== SURFACES ===== */
@@ -349,7 +343,7 @@
   .dropdown-item { @apply w-full flex items-center gap-2 py-2 px-4 text-left transition-colors hover:bg-surface-2; }
 
   /* ===== BADGES ===== */
-  .badge { @apply inline-flex items-center py-0.5 px-2 text-small font-medium rounded-full bg-surface-2 text-text-muted; }
+  .badge { @apply py-0.5 px-2 text-small font-medium bg-surface-2 text-text-muted; }
   .badge-accent { @apply bg-accent-muted text-text border border-accent/25; }
   .badge-info { @apply bg-info-muted text-info border border-info/25; }
   .badge-success { @apply bg-success/12 text-success border border-success/25; }
@@ -795,18 +789,12 @@
 
   /* ===== PAGE WITH INFOBOX LAYOUT ===== */
   .page-with-infobox {
-    @apply grid gap-6;
-    grid-template-columns: 1fr;
-    grid-template-areas: "infobox" "content";
+    @apply gap-6;
 
     @media (min-width: 768px) {
       grid-template-columns: 2fr 1fr;
       grid-template-areas: "content infobox";
     }
-
-    > * { min-width: 0; }
-    > .infobox { grid-area: infobox; }
-    > .page-main-content { grid-area: content; }
   }
 
   /* Infobox sidebar */
@@ -834,7 +822,7 @@
   }
 
   /* Infobox editor sidebar */
-  .infobox-editor { grid-area: infobox; width: 100%; }
+  .infobox-editor { grid-area: infobox; width: 100%; min-width: 0; }
 
   /* One sticky slot for all three rails. It has to stay after `.infobox`, whose
      `overflow: hidden` a later `overflow-y: auto` is what beats. The query is px
