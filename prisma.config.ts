@@ -1,8 +1,9 @@
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { defineConfig } from 'prisma/config';
-import dotenv from 'dotenv';
 
-dotenv.config();
+// A local checkout keeps its URLs in .env; a Vercel build has none and needs none.
+if (existsSync('.env')) process.loadEnvFile();
 
 // Prefer DIRECT_URL: this file is read only by the Prisma CLI, and every CLI
 // operation that connects (db push, migrate diff, studio) needs a direct
@@ -21,7 +22,7 @@ dotenv.config();
 // Paths are resolved against this file, not the cwd, so the CLI works from a
 // subdirectory.
 export default defineConfig({
-  schema: path.join(import.meta.dirname, 'prisma', 'schema.prisma'),
+  schema: path.join(import.meta.dirname, 'prisma', 'schema'),
   migrations: {
     path: path.join(import.meta.dirname, 'prisma', 'migrations'),
   },

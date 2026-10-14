@@ -193,59 +193,6 @@ model Airdrop {
   @@map("airdrops")
 }
 
-// Page views and events, counted by wiki-formant/analytics. Its SQL names these
-// tables as written, so they carry no @@map. A visitor is a hash under the day's
-// Salt, which is replaced daily; rows older than 400 days are deleted.
-model View {
-  id        BigInt   @id @default(autoincrement())
-  siteId    String   @default("")
-  path      String
-  source    String?
-  country   String?
-  device    String
-  visitor   String
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-
-  @@index([siteId, createdAt])
-}
-
-model Event {
-  id        BigInt   @id @default(autoincrement())
-  siteId    String   @default("")
-  name      String
-  path      String?
-  props     Json     @default("{}")
-  visitor   String?
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-
-  @@index([siteId, name, createdAt])
-}
-
-model Salt {
-  day   String @id
-  value String
-}
-
-// Days counted before the site counted its own: Plausible's, to 2026-10-06,
-// page views only. digest adds them to any window that reaches back that far,
-// and nothing deletes them.
-model ViewDay {
-  siteId     String   @default("")
-  day        DateTime @db.Date
-  visitors   Int
-  pageviews  Int
-  visits     Int
-  bounces    Int
-  seconds    Int
-  pages      Json     @default("{}")
-  entryPages Json     @default("{}")
-  sources    Json     @default("{}")
-  countries  Json     @default("{}")
-  devices    Json     @default("{}")
-
-  @@id([siteId, day])
-}
-
 /// One UTC day of user transactions, summed from the Gateway's transaction stream by
 /// src/lib/radix/activity.ts. A row exists only once its whole day has been read, so a
 /// missing day is unread, never zero.
@@ -264,21 +211,4 @@ model LedgerDay {
   stateVersion   Int?     @map("state_version")
 
   @@map("ledger_days")
-}
-
-// The passkey door to /stats. wiki-formant/passkey owns the SQL and names these
-// tables as they stand, so they carry no @@map. Every token is stored as its
-// hash; `npx passkey-invite <url>` prints the link that saves the first passkey.
-model Passkey {
-  id         String   @id
-  publicKey  String
-  counter    Int
-  transports String[]
-  createdAt  DateTime @default(now()) @db.Timestamptz(3)
-}
-
-model PasskeyToken {
-  hash      String   @id
-  kind      String
-  expiresAt DateTime @db.Timestamptz(3)
 }
