@@ -114,7 +114,7 @@ async function probeEmbed({ kind, url }) {
   return { kind, ...probe, ...(unverifiable ? { unverifiable, reason: unverifiable } : {}) };
 }
 
-// Uploads are normalised by /api/upload (src/lib/images.ts), but seed scripts write
+// Uploads are normalised by /api/upload, but seed scripts write
 // straight to the DB and editors can paste a foreign URL, so images can still enter
 // off-standard. Format isn't the signal — a handful of PNG/JPEGs are kept on purpose
 // because re-encoding them came out larger — weight and host are.

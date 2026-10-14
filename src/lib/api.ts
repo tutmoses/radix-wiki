@@ -1,6 +1,5 @@
 // src/lib/api.ts - Shared API utilities
 
-import type { NextRequest } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { requireBalance, type BalanceAction } from '@/lib/radix/balance';
 import { json, errors } from 'wiki-formant/http';
@@ -14,7 +13,7 @@ export { json, errors, handleRoute } from 'wiki-formant/http';
 
 export type RouteContext<T = Record<string, string | string[]>> = { params: Promise<T> };
 
-export async function requireAuth(request?: NextRequest, action?: BalanceAction): Promise<{ session: AuthSession } | { error: Response }> {
+export async function requireAuth(request?: Request, action?: BalanceAction): Promise<{ session: AuthSession } | { error: Response }> {
   const session = await getSession(request);
   if (!session) return { error: errors.unauthorized() };
   if (action) {

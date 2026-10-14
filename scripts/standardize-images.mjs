@@ -4,9 +4,9 @@
 //
 // Standard: max 1600px wide (the prose column is ~800px, so 2x covers retina),
 // WebP, quality 80 for photographs / 90 for PNG sources whose text would smear.
-// src/lib/images.ts is the canonical definition — it enforces this on every
-// upload. The values are mirrored here because a .mjs script can't import TS;
-// change them there first, then here.
+// src/app/api/upload/route.ts is the canonical definition — it enforces this on
+// every upload. The values are mirrored here because a .mjs script can't import
+// TS; change them there first, then here.
 //
 // Blob URLs are referenced from four places — all four are rewritten:
 //   pages.content, pages.banner_image, revisions.content, revisions.changes
