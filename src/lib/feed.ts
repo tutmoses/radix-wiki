@@ -17,7 +17,9 @@
 // request — telling every poller the feed had changed when it had not.
 
 import type { Block, AtomicBlock } from '@/types/blocks';
-import { getContentSnippet, pageUrl } from '@/lib/utils';
+import { pageUrl } from '@/lib/utils';
+import { describe } from 'wiki-formant/metadata';
+import { openingText } from 'wiki-formant/text';
 import { SITE_URL } from '@/lib/site';
 import { ogImageUrl } from '@/lib/og';
 import { absolutise as absolutiseFrom, clampWords, escXml, type FeedItem } from 'wiki-formant/feed';
@@ -83,7 +85,7 @@ export function feedItem(
   p: { slug: string; title: string; content: unknown; metadata: unknown; bannerImage: string | null; date: Date },
   over?: { title?: string; categories?: string[] },
 ): FeedItem {
-  const description = clampWords((p.metadata as Record<string, string> | null)?.excerpt || getContentSnippet(p.content));
+  const description = clampWords((p.metadata as Record<string, string> | null)?.excerpt || describe(openingText(p.content)));
   return {
     title: p.title,
     url: pageUrl('blog', p.slug),

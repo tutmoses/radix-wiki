@@ -15,7 +15,9 @@ import {
 import { NOT_HIDDEN } from '@/lib/wiki';
 import { prisma } from '@/lib/prisma/client';
 import { TAG_HIERARCHY, tagPaths } from '@/lib/tags';
-import { categoryLabel, getContentSnippet, pageUrl } from '@/lib/utils';
+import { categoryLabel, pageUrl } from '@/lib/utils';
+import { describe } from 'wiki-formant/metadata';
+import { openingText } from 'wiki-formant/text';
 import { isoDate } from 'wiki-formant/freshness';
 import { SIBLING_WIKI, SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { extractText } from '@/lib/content';
@@ -63,7 +65,7 @@ export async function corpusSections(tagPath?: string): Promise<CorpusSection[]>
   });
   return pages.map(p => {
     const body = extractText((p.content as unknown as Block[]) || []);
-    const snippet = getContentSnippet(p.content);
+    const snippet = describe(openingText(p.content));
     const section = `## ${p.title}\n\nURL: ${pageUrl(p.tagPath, p.slug)}\nUpdated: ${isoDate(p.updatedAt)}\n${snippet ? `Summary: ${cleanSnippet(snippet)}\n` : ''}\n${body}`;
     return { path: `${p.tagPath}/${p.slug}`, tagPath: p.tagPath, section };
   });
@@ -84,7 +86,7 @@ export function pageLine(p: { title: string; tagPath: string | null; slug: strin
   return formantPageLine({
     title: p.title,
     url: pageUrl(p.tagPath ?? '', p.slug ?? ''),
-    excerpt: getContentSnippet(p.content),
+    excerpt: describe(openingText(p.content)),
     updated: p.updatedAt,
   });
 }

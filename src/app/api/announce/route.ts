@@ -13,7 +13,9 @@ import type { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { handleRoute, json, errors } from '@/lib/api';
 import { broadcast, broadcastChatIds, deliverWebhooks, formatAnnouncement } from '@/lib/webhooks';
-import { getContentSnippet, pageUrl } from '@/lib/utils';
+import { pageUrl } from '@/lib/utils';
+import { describe } from 'wiki-formant/metadata';
+import { openingText } from 'wiki-formant/text';
 import { getRecaps } from '@/lib/feed';
 import { RECAP_PREFIX, issueLabel } from '@/lib/week-in-review';
 
@@ -37,7 +39,7 @@ export async function POST(request: NextRequest) {
     if (!page) return errors.notFound('Page not found');
 
     const meta = (page.metadata ?? {}) as Record<string, string>;
-    const excerpt = meta.excerpt || getContentSnippet(page.content, 240);
+    const excerpt = meta.excerpt || describe(openingText(page.content), 240);
     const url = pageUrl(page.tagPath, page.slug);
 
     // Subscribers and webhooks, through the same path an API write would take.

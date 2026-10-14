@@ -17,7 +17,7 @@ import { NowProvider } from '@/lib/now';
 // `wiki-formant/react-server`'s JsonLd, which escapes an authored `</script>`.
 import { JsonLd } from 'wiki-formant/react-server';
 import { chartsHeadline } from '@/lib/radix/headline';
-import { articleLd, citationsFromReferences, collectionLd, documentTitle, faqPageLd, questionPairs } from 'wiki-formant/metadata';
+import { articleLd, citationsFromReferences, collectionLd, describe, documentTitle, faqPageLd, questionPairs } from 'wiki-formant/metadata';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { STATIC_PAGES } from '@/lib/static-pages';
 import { prisma } from '@/lib/prisma/client';
@@ -35,7 +35,7 @@ import ChartsOverview from '@/components/charts/ChartsOverview';
 import ValidatorsView from '@/components/charts/ValidatorsView';
 import TokensView from '@/components/charts/TokensView';
 import TokenDetailView from '@/components/charts/TokenDetailView';
-import { clampSnippet, pageDescription, pagePath, pageUrl } from '@/lib/utils';
+import { pageDescription, pagePath, pageUrl } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_REFS, SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import Link from 'next/link';
@@ -514,7 +514,7 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
     const ordered = await getCategoryPages(parsed.tagPath);
     const ranked = rankRelated(page, ordered.filter(p => p.slug !== parsed.slug), parsed.tagPath);
     related = {
-      pages: ranked.pages.map(p => ({ id: p.id, title: p.title, slug: p.slug, tagPath: p.tagPath, snippet: clampSnippet(p.snippet, 100) })),
+      pages: ranked.pages.map(p => ({ id: p.id, title: p.title, slug: p.slug, tagPath: p.tagPath, snippet: describe(p.snippet, 100) })),
       sharedFacet: ranked.sharedFacet,
     };
     const { prev, next } = adjacentPages(ordered, p => p.slug === parsed.slug);

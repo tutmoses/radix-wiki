@@ -14,7 +14,9 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { LinkPreview } from '@/components/LinkPreview';
 import { Button, Card, Input, StatusCard } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
-import { categoryLabel, cn, generateBannerSvg, getContentSnippet, pagePath, sendJson } from '@/lib/utils';
+import { categoryLabel, cn, generateBannerSvg, pagePath, sendJson } from '@/lib/utils';
+import { describe } from 'wiki-formant/metadata';
+import { openingText } from 'wiki-formant/text';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { SITE_NAME } from '@/lib/site';
 import { AGO, useNow } from '@/lib/now';
@@ -471,7 +473,7 @@ function CategoryListing({ tagPath, pages, sort, total, facetGroups, filters, le
                         <h3 className="m-0!">{p.title}</h3>
                         {p.metadata?.status && <span>{p.metadata.status}</span>}
                       </div>
-                      {(() => { const snippet = (p.metadata as Record<string, string> | null)?.excerpt || p.snippet || getContentSnippet(p.content); return snippet && <p className="text-text-muted text-small line-clamp-2">{snippet}</p>; })()}
+                      {(() => { const snippet = (p.metadata as Record<string, string> | null)?.excerpt || p.snippet || describe(openingText(p.content)); return snippet && <p className="text-text-muted text-small line-clamp-2">{snippet}</p>; })()}
                     </div>
                   </Card>
                 </Link>

@@ -4,7 +4,8 @@
 import { NextRequest } from 'next/server';
 import { getPage } from '@/lib/wiki';
 import { cachedJson, CACHE, handleRoute } from '@/lib/api';
-import { getContentSnippet } from '@/lib/utils';
+import { describe } from 'wiki-formant/metadata';
+import { openingText } from 'wiki-formant/text';
 
 export async function GET(request: NextRequest) {
   return handleRoute(async () => {
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
     const page = await getPage(tagPath, slug);
     if (!page) return cachedJson({ found: false }, CACHE.medium);
     return cachedJson(
-      { found: true, title: page.title, excerpt: getContentSnippet(page.content, 220), bannerImage: page.bannerImage ?? null },
+      { found: true, title: page.title, excerpt: describe(openingText(page.content), 220), bannerImage: page.bannerImage ?? null },
       CACHE.medium,
     );
   });

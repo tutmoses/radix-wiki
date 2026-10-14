@@ -7,7 +7,9 @@ import {
 } from 'wiki-formant/search';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma/client';
-import { getContentSnippet, getMatchSnippet, pageUrl } from '@/lib/utils';
+import { getMatchSnippet, pageUrl } from '@/lib/utils';
+import { describe } from 'wiki-formant/metadata';
+import { openingText } from 'wiki-formant/text';
 import { isoDate } from 'wiki-formant/freshness';
 import { decodeEntities } from '@/lib/content';
 import { getSortOrder, getMetadataKeys, HIDDEN_TAG_PATHS, type SortOrder } from '@/lib/tags';
@@ -47,7 +49,7 @@ const plain = <T>(value: T): T => value == null ? value : JSON.parse(JSON.string
  *  cards was otherwise shipping 200 full block arrays to the browser, and the homepage
  *  was carrying the whole maintenance log inside its "recently updated" strip. */
 const listRow = <T extends { content?: unknown }>(page: T): T =>
-  ({ ...page, content: null, snippet: getContentSnippet(page.content) });
+  ({ ...page, content: null, snippet: describe(openingText(page.content)) });
 
 /** Shorthand for cache(unstable_cache(fn, [key], CACHE_OPTS)) */
 export function cached<T extends (...args: any[]) => Promise<any>>(key: string, fn: T): T {
@@ -336,7 +338,7 @@ export function summarizePage(p: { title: string; tagPath: string; slug: string;
     // that expression has to stay byte-identical to the generated column's, or the
     // literal and full-text tiers disagree about what counts as prose.
     snippet: (headline ? decodeEntities(headline).trim() : '')
-      || (query ? getMatchSnippet(p.content, query) : getContentSnippet(p.content)),
+      || (query ? getMatchSnippet(p.content, query) : describe(openingText(p.content))),
     updatedAt: isoDate(p.updatedAt),
     ...(p.lastVerifiedAt ? { lastVerified: isoDate(p.lastVerifiedAt) } : {}),
     ...(meta ? { metadata: meta } : {}),

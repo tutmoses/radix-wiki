@@ -2,8 +2,8 @@
 
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { matchSnippet } from 'wiki-formant/text';
-import { decodeEntities } from '@/lib/content';
+import { matchSnippet, openingText } from 'wiki-formant/text';
+import { describe } from 'wiki-formant/metadata';
 import { SITE_URL } from '@/lib/site';
 
 // The deterministic pair behind the generative banner is `wiki-formant/seeded`,
@@ -54,44 +54,12 @@ export const sendJson = (url: string, method: 'POST' | 'PUT' | 'PATCH', body: un
 
 // ========== CONTENT SNIPPET ==========
 
-/** Collapse stored HTML to display text: tags out, entities decoded, whitespace normalised. */
-function toPlainText(html: string): string {
-  return decodeEntities(html.replace(/<[^>]+>/g, ' '))
-    .replace(/\s+/g, ' ')
-    // A tag becomes a space, so prose that wrapped a link or <strong> around the
-    // word before a comma came out as "the Radix network ." Close those up again.
-    .replace(/\s+([,.;:!?%)\]])/g, '$1')
-    .replace(/([(\[])\s+/g, '$1')
-    .trim();
-}
-
-/** Extract plain text snippet from page content blocks (skips infobox, strips HTML, truncates) */
-export function getContentSnippet(content: unknown, maxLen = 150): string {
-  if (!Array.isArray(content)) return '';
-  for (const block of content) {
-    if (block?.type === 'content' && typeof block.text === 'string') {
-      const text = toPlainText(block.text.replace(/<h[1-6][^>]*>.*?<\/h[1-6]>/gi, ''));
-      if (text) return clampSnippet(text, maxLen);
-    }
-  }
-  return '';
-}
-
 /** The description a page publishes: the excerpt an editor wrote, else the opening
  *  content block. The meta description and the Article JSON-LD both read this, so
  *  a page cannot describe itself two ways. */
 export function pageDescription(page: { metadata?: unknown; content?: unknown } | null | undefined): string {
   const excerpt = (page?.metadata as Record<string, unknown> | null | undefined)?.excerpt;
-  if (typeof excerpt === 'string' && excerpt.trim()) return excerpt.trim();
-  return getContentSnippet(page?.content);
-}
-
-/** Shorten a snippet a list row already carries. List rows ship one 150-char snippet
- *  instead of their article, so a caller wanting a tighter cut (the related-pages
- *  rail wants 100) re-cuts that string. */
-export function clampSnippet(snippet: string | null | undefined, maxLen: number): string {
-  if (!snippet) return '';
-  return snippet.length > maxLen ? snippet.slice(0, maxLen).trimEnd() + '…' : snippet;
+  return describe((typeof excerpt === 'string' && excerpt) || openingText(page?.content));
 }
 
 /**
@@ -106,7 +74,7 @@ export function clampSnippet(snippet: string | null | undefined, maxLen: number)
  * `content` block rather than the whole page flattened.
  */
 export function getMatchSnippet(content: unknown, query: string, maxLen = 200): string {
-  return matchSnippet(content, query, () => getContentSnippet(content, maxLen), maxLen);
+  return matchSnippet(content, query, () => describe(openingText(content), maxLen), maxLen);
 }
 
 // ========== GENERATIVE BANNER ==========

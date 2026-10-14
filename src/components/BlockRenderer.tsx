@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, memo, useMemo, type ReactNode } from 'r
 import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, FileText, Copy, Check, AlertTriangle, Megaphone, CalendarClock, type LucideIcon } from 'lucide-react';
-import { cn, generateBannerSvg, getContentSnippet, pagePath } from '@/lib/utils';
+import { cn, generateBannerSvg, pagePath } from '@/lib/utils';
 import { AGO, useNow } from '@/lib/now';
 import { formatDay, relativeTime } from 'wiki-formant/freshness';
 import { findTagByPath } from '@/lib/tags';
@@ -38,7 +38,8 @@ import { formatPriceSubscript } from '@/components/charts/format';
 // The rendered-article passes are `wiki-formant/dom`, run by the hooks that
 // wrap them, shared with caper.
 import { useArticlePasses, useCopy, useTweetEmbeds } from 'wiki-formant/react';
-import { bannerVariant } from 'wiki-formant/text';
+import { bannerVariant, openingText } from 'wiki-formant/text';
+import { describe } from 'wiki-formant/metadata';
 import { InfoboxAside, InfoboxFacts, formatFactValue } from 'wiki-formant/react-server';
 import { OCISWAP_API } from '@/lib/radix/config';
 
@@ -76,7 +77,7 @@ const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; com
         <PageThumb page={page} />
         <div className="page-card-body">
           <span className="page-card-title">{page.title}</span>
-          {(() => { const snippet = page.snippet ?? getContentSnippet(page.content); return snippet && <p className="page-card-snippet">{snippet}</p>; })()}
+          {(() => { const snippet = page.snippet ?? describe(openingText(page.content)); return snippet && <p className="page-card-snippet">{snippet}</p>; })()}
           <div className="page-card-meta">
             <small className="row text-text-muted"><Clock size={12} />{relativeTime(page.updatedAt, now, AGO)}</small>
             {leafTag && <Badge variant="secondary" className="truncate max-w-full">{leafTag.name}</Badge>}
