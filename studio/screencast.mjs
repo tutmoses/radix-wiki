@@ -5,7 +5,7 @@
 //    node studio/screencast.mjs <name> [--out f.mp4] [--size 1920x1080] [--silent]
 //    node studio/screencast.mjs first-blueprint
 //
-//  The third path alongside make.mjs (films the live app) and radix-studio's
+//  The third path alongside `npx radix-studio` (films the live app) and radix-studio's
 //  scripts/film.mjs (renders a synthetic 3D set). A screencast films CODE, so
 //  like a film it needs NO dev server, no port and no product to boot: CodeScene
 //  builds its editor and shell with setContent.
