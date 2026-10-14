@@ -68,7 +68,7 @@ export const getMaintenanceQueues = cached('getMaintenanceQueues', async (): Pro
     {
       key: 'outdated',
       title: 'Outdated',
-      description: 'Last verified more than 180 days ago. Re-check the facts against current sources, then stamp the page with scripts/mark-verified.mjs.',
+      description: 'Last verified more than 180 days ago. Re-check the facts against current sources, then stamp the page with npx mark-verified.',
       items: outdated.map(p => ({ title: p.title, href: href(p), tagPath: p.tagPath, detail: `${daysSince(p.lastVerifiedAt ?? p.updatedAt, nowMs)} days` })),
     },
     {

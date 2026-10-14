@@ -2,7 +2,7 @@
 //
 // The numbers live on a real wiki page at /contents/tech/operations/network-weekly:
 // machine state in pages.metadata.state, visible blocks re-rendered from it, the same
-// shape as maintenance-log.mjs. A week-over-week delta needs last week's reading, and
+// shape as wiki-formant's maintenance-log bin. A week-over-week delta needs last week's reading, and
 // this is the only thing that remembers it.
 //
 //   node scripts/network-snapshot.mjs capture [--dry-run]     # read the ledger, store the week

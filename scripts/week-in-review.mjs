@@ -2,7 +2,7 @@
 //
 // The series index lives at /blog/week-in-review. Its machine state (the scored
 // prediction ledger, and one throughline per recap) is in pages.metadata.state;
-// the visible blocks are re-rendered from it, the same shape as maintenance-log.mjs.
+// the visible blocks are re-rendered from it, the same shape as wiki-formant's maintenance-log bin.
 //
 //   node scripts/week-in-review.mjs read                 # print state JSON
 //   node scripts/week-in-review.mjs write '<json>'       # replace state, then sync
