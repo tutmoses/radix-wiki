@@ -438,26 +438,25 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
     const pages = filterPages(all, filters, letter);
 
     // Subcategory cards carry what they hold, not just how many: a section index
-    // that lists articles is navigation, one that lists numbers is a wall. A
-    // subcategory that is itself a container (Tech) lists its own sections, since
-    // six arbitrary articles from a 86-page subtree describe nothing.
+    // that lists articles is navigation, one that lists numbers is a wall. A card
+    // lists the articles filed directly in its subcategory, in that listing's own
+    // order, then its sections, so neither half of a mixed one (Resources) hides.
     const visibleChildren = (tag?.children ?? []).filter(c => !c.hidden);
     const refs = visibleChildren.length ? await getSubtreeRefs(parsed.tagPath) : [];
-    const allSubcategories: SubcategorySummary[] = visibleChildren.map(child => {
+    const allSubcategories: SubcategorySummary[] = await Promise.all(visibleChildren.map(async child => {
       const childPath = `${parsed.tagPath}/${child.slug}`;
-      const held = refs.filter(r => r.tagPath === childPath || r.tagPath.startsWith(`${childPath}/`));
-      const grandchildren = (child.children ?? []).filter(c => !c.hidden);
+      const direct = await getCategoryPages(childPath);
       return {
         name: child.name,
         href: `/${childPath}`,
         description: child.description,
-        total: held.length,
-        isSections: grandchildren.length > 0,
-        links: grandchildren.length
-          ? grandchildren.map(g => ({ title: g.name, href: `/${childPath}/${g.slug}` }))
-          : held.slice(0, SECTION_CARD_PAGES).map(r => ({ title: r.title, href: `/${r.tagPath}/${r.slug}` })),
+        total: refs.filter(r => r.tagPath === childPath || r.tagPath.startsWith(`${childPath}/`)).length,
+        links: [
+          ...direct.slice(0, SECTION_CARD_PAGES).map(p => ({ title: p.title, href: `/${childPath}/${p.slug}` })),
+          ...(child.children ?? []).filter(c => !c.hidden).map(g => ({ title: g.name, href: `/${childPath}/${g.slug}` })),
+        ],
       };
-    });
+    }));
     // A hub article heads its own category, so the pointer to a main article
     // elsewhere is only for the categories that don't have one.
     const hub = await withProcessedContent(await getCategoryHub(parsed.tagPath));

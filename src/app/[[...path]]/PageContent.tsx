@@ -163,10 +163,8 @@ export interface SubcategorySummary {
   name: string; href: string; description?: string;
   /** Pages anywhere in this subcategory's subtree. */
   total: number;
-  /** What the card lists: this subcategory's own sections where it has them, else its first few pages. */
+  /** What the card lists: its first few articles, then its sections. */
   links: PageRef[];
-  /** Whether `links` are sections rather than articles. */
-  isSections: boolean;
 }
 
 /**
@@ -180,27 +178,22 @@ function SectionIndex({ subcategories }: { subcategories: SubcategorySummary[] }
   if (!subcategories.length) return null;
   return (
     <div className="section-index">
-      {subcategories.map(child => {
-        const rest = child.isSections ? 0 : child.total - child.links.length;
-        return (
-          <div key={child.href} className="section-card">
-            <h2 className="section-card-title"><Link href={child.href}>{child.name}</Link></h2>
-            {child.description && <p className="section-card-desc">{child.description}</p>}
-            {child.links.length > 0 && (
-              <ul className="section-card-links">
-                {child.links.map(l => (
-                  <li key={l.href}><Link href={l.href} className="link">{l.title}</Link></li>
-                ))}
-              </ul>
-            )}
-            <Link href={child.href} className="section-card-more">
-              {child.total === 0 ? 'Browse section'
-                : rest > 0 ? `${rest} more page${rest === 1 ? '' : 's'}`
-                : `All ${child.total} page${child.total === 1 ? '' : 's'}`} →
-            </Link>
-          </div>
-        );
-      })}
+      {subcategories.map(child => (
+        <div key={child.href} className="section-card">
+          <h2 className="section-card-title"><Link href={child.href}>{child.name}</Link></h2>
+          {child.description && <p className="section-card-desc">{child.description}</p>}
+          {child.links.length > 0 && (
+            <ul className="section-card-links">
+              {child.links.map(l => (
+                <li key={l.href}><Link href={l.href} className="link">{l.title}</Link></li>
+              ))}
+            </ul>
+          )}
+          <Link href={child.href} className="section-card-more">
+            {child.total === 0 ? 'Browse section' : `All ${child.total} page${child.total === 1 ? '' : 's'}`} →
+          </Link>
+        </div>
+      ))}
     </div>
   );
 }
