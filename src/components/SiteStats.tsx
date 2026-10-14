@@ -1,5 +1,5 @@
 // src/components/SiteStats.tsx – the wiki's own analytics, behind a passkey.
-// The figures are the ones radix-studio's stats.py reads, with the same handle
+// The figures are the ones radix-studio's stats.mjs reads, with the same handle
 // and sibling sites.
 
 import { cookies } from 'next/headers';
