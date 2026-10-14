@@ -177,7 +177,7 @@
   /* ===== HEADING PERMALINK ANCHORS ===== */
   :is(h2, h3, h4):has(> .heading-anchor) { @apply relative; }
   .heading-anchor {
-    @apply absolute top-0 -left-5 no-underline text-text-muted opacity-0 transition-opacity;
+    @apply absolute top-0 -left-5 text-text-muted opacity-0 transition-opacity;
     font-weight: 400;
     &::before { content: '#'; }
     &:hover { @apply text-accent; }
@@ -242,9 +242,9 @@
   [data-callout-title] { @apply font-semibold mb-1; }
 
   /* ===== CODE TABS ===== */
-  .code-tabs { @apply border border-border-muted rounded-lg overflow-hidden my-4; }
-  .code-tabs-list { @apply flex gap-0 border-b border-border-muted; background-color: var(--color-code-tabs-bg); }
-  .code-tabs-btn { @apply px-4 py-2 text-small text-text-muted border-b-2 border-transparent transition-colors cursor-pointer hover:text-text; background: transparent; }
+  .code-tabs { @apply border border-border-muted rounded-lg my-4; }
+  .code-tabs-list { @apply gap-0 border-b border-border-muted; background-color: var(--color-code-tabs-bg); }
+  .code-tabs-btn { @apply px-4 py-2 text-small text-text-muted border-b-2 border-transparent transition-colors hover:text-text; background: transparent; }
   .code-tabs-btn-active { @apply text-accent border-accent; }
   .code-tabs pre { @apply m-0 border-0 rounded-none; }
 
@@ -261,7 +261,7 @@
   .tip-jar-address-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* ===== EDITORIAL NOTICE BANNERS ===== */
-  .editorial-banner { @apply flex items-start gap-3 p-3 my-3 rounded-lg border text-small; }
+  .editorial-banner { @apply items-start gap-3 p-3 my-3 rounded-lg border text-small; }
   .editorial-banner-icon { @apply shrink-0 mt-0.5; }
   .editorial-banner-body { @apply flex-1 min-w-0 m-0; }
   .editorial-banner-stub, .editorial-banner-cleanup { @apply border-info/30 bg-info/10; .editorial-banner-icon { @apply text-info; } }
@@ -273,8 +273,7 @@
   .references-list { @apply list-decimal pl-6 text-small text-text-muted; }
   .reference-item { @apply pl-1 mb-1; scroll-margin-top: calc(var(--header-height) + 1rem); a { @apply text-accent hover:underline; } }
   .reference-item:target { @apply bg-accent-muted rounded; }
-  .reference-link { @apply no-underline; }
-  .ref-backlink { @apply no-underline text-accent hover:text-accent-hover; }
+  .ref-backlink { @apply text-accent hover:text-accent-hover; }
 
   /* ===== INLINE CITATIONS ===== */
   sup.cite, sup.cite a { @apply text-accent no-underline text-[0.7em] align-super; }
@@ -667,8 +666,8 @@
   .category-grid { @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4; }
 
   /* ===== STAT GRID ===== */
-  .stat-grid { @apply grid grid-cols-2 sm:grid-cols-5 gap-3; }
-  .stat-card { @apply flex flex-col gap-1 items-center p-3 bg-surface-1 rounded-lg; }
+  .stat-grid { @apply sm:grid-cols-5 gap-3; }
+  .stat-card { @apply gap-1 items-center p-3 bg-surface-1 rounded-lg; }
   .stat-value { @apply text-h4 font-semibold; }
   .stat-suffix { @apply ml-0.5 text-small font-normal text-text-muted; }
   .stat-label { @apply text-text-muted text-xs text-center; }
@@ -816,12 +815,11 @@
   /* Infobox sidebar */
   .infobox-heading { @apply mt-0 border-b-0 text-small font-bold uppercase tracking-wide text-text-muted; }
   .infobox-facts { @apply m-0; }
-  .infobox-series { @apply flex flex-col items-center gap-0.5 text-center text-small text-text-muted pb-3 border-b border-border-muted; }
+  .infobox-series { @apply items-center gap-0.5 text-center text-small text-text-muted pb-3 border-b border-border-muted; }
 
   .infobox {
     @apply bg-surface-1 border border-border-muted rounded-lg overflow-hidden p-4;
     width: 100%;
-    overflow-wrap: anywhere;
     container-type: inline-size;
     table { table-layout: fixed; width: 100%; white-space: normal; }
     /* Labels are short and values are the reading, so an even split wastes the
@@ -922,10 +920,10 @@
 
   /* ===== CHART (wiki-formant/chart) =====
      The layout and the pinned buttons are wiki-formant/base.css; this is the look. */
-  .chart { @apply mt-1 rounded-lg border border-border-muted bg-surface-1 overflow-hidden; }
+  .chart { @apply mt-1 rounded-lg border border-border-muted bg-surface-1; }
   .chart-canvas { @apply text-accent text-[10px]; --chart-axis: var(--color-chart-axis); --chart-up: var(--color-success); --chart-down: var(--color-error); }
   .chart-status { @apply text-small text-text-muted; }
-  .chart-controls :is(button, a) { @apply text-[10px] px-1.5 py-0.5 rounded-md border border-border opacity-100 hover:bg-surface-2; }
+  .chart-controls :is(button, a) { @apply text-[10px] rounded-md border border-border opacity-100 hover:bg-surface-2; }
   .chart-controls :is(button, a):is([aria-pressed='true'], [aria-current]) { @apply bg-accent text-surface-0 border-accent; }
   .recent-pages-grid { @apply grid grid-cols-1 lg:grid-cols-2 gap-4; }
 
