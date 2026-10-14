@@ -2,48 +2,46 @@
 
 'use client';
 
-import { useState, useCallback, useMemo, memo, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { useAccountQr } from '@/hooks';
-import { EditorContent, type Editor } from '@tiptap/react';
-import { TABLE_ACTIONS, ToolbarButton, runTableAction, toolbarActions, uploadImageTo, useUrlPrompt, useWikiEditor, type ToolbarAction, type ToolbarKey } from 'wiki-formant/editor';
-import { BlockActions, useBlockOperations } from 'wiki-formant/react';
-import { BANNER_VARIANTS } from 'wiki-formant/text';
-import { CODE_LANGS, DEFAULT_LANG } from 'wiki-formant/blocks';
+import { EditorContent } from '@tiptap/react';
+import { UrlPromptField, WikiToolbar, toolbarActions, uploadImageTo, useUrlPrompt, useWikiEditor, type ToolbarKey } from 'wiki-formant/editor';
+import {
+  BannerFields, BlockEditor as FormantBlockEditor, Choice, CodeTabsFields, ColumnsFields, Field, InfoboxFields, LimitField, LinkGridFields,
+  PageListFields, ReferencesFields, StatsFields, type BlockEditorKit, type BlockMeta, type BlockSchema, type ChoiceProps, type FieldProps, type MenuProps,
+} from 'wiki-formant/block-editor';
 import { CHART_RANGES } from 'wiki-formant/chart';
-import { Activity, Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Clock, FileText, Columns, Settings, Bold, Italic, Link2, Unlink, Heading2, Heading3, Heading4, List, TrendingUp, TableIcon, Globe, LayoutList, LayoutGrid, Info, Rss, QrCode, BarChart3, Code2, type LucideIcon } from 'lucide-react';
+import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Bold, Italic, Link2, Unlink, Heading2, Heading3, Heading4, List, TableIcon, Globe, LayoutList, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock } from '@/lib/block-utils';
 import { resolveMapUrl } from 'wiki-formant/maps';
-import { ACTIVITY_METRICS, type ActivityMetric } from '@/lib/radix/metrics';
-import { Button, Input, Dropdown } from '@/components/ui';
+import { ACTIVITY_METRICS } from '@/lib/radix/metrics';
+import { Button, Dropdown } from '@/components/ui';
 import { Iframe, YouTube, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock, HeadingIds } from '@/lib/tiptap/extensions';
-import type { Block, BlockType, ContentBlock, RecentPagesBlock, PageListBlock, AssetPriceBlock, NetworkChartBlock, RssFeedBlock, ColumnsBlock, InfoboxBlock, AtomicBlock, Column, LinkGridBlock, LinkGridGroup, TipJarBlock, ReferencesBlock, ReferenceItem, BannerBlock, StatsBlock, StatItem, CodeTabsBlock, CodeTab } from '@/types/blocks';
+import type { AtomicBlock, Block, BlockType, InfoboxBlock, AssetPriceBlock, NetworkChartBlock, RssFeedBlock, TipJarBlock, RecentPagesBlock } from '@/types/blocks';
 
 // The upload endpoint is this app's, so the hook takes the uploader rather than
 // owning one. Module-level because the hook's upload callback depends on it.
 const uploadImage = uploadImageTo('/api/upload');
 
-// The upload POST, the paste scrubber, the embed dispatch, the extension set
-// and the editor's own state are `wiki-formant/editor`, shared with caper,
-// which had written all five character for character. Each repo carried
-// exactly one half of a two-part bug — the mid-render ref write here, the
-// missing blur flush there — and the shared hook carries both fixes.
-
-// The commands and their labels are `wiki-formant/editor`'s; the icons, and
-// upload and embed between the two groups, are this wiki's.
+// The editor's state, its toolbar's layout and the address field are
+// `wiki-formant/editor`, shared with caper and acuiq2; the icons, the classes and
+// this wiki's own nodes are what is left here.
 const FORMAT_ACTIONS = toolbarActions(['bold', 'italic', 'code', 'link', 'h2', 'h3', 'h4', 'bulletList', 'blockquote', 'codeBlock', 'divider']);
 const INSERT_ACTIONS = toolbarActions(['table', 'tabs']);
-const TOOLBAR_ICONS: Partial<Record<ToolbarKey, LucideIcon>> = {
-  bold: Bold, italic: Italic, code: Code, link: Link2, h2: Heading2, h3: Heading3, h4: Heading4,
-  bulletList: List, blockquote: Quote, codeBlock: Code, divider: Minus, table: TableIcon, tabs: LayoutList,
+const TOOLBAR_ICONS: Partial<Record<ToolbarKey, ReactNode>> & { unlink: ReactNode; upload: ReactNode; embed: ReactNode } = {
+  bold: <Bold size={14} />, italic: <Italic size={14} />, code: <Code size={14} />, link: <Link2 size={14} />,
+  h2: <Heading2 size={14} />, h3: <Heading3 size={14} />, h4: <Heading4 size={14} />, bulletList: <List size={14} />,
+  blockquote: <Quote size={14} />, codeBlock: <Code size={14} />, divider: <Minus size={14} />, table: <TableIcon size={14} />,
+  tabs: <LayoutList size={14} />, unlink: <Unlink size={14} />, upload: <Upload size={14} />, embed: <Globe size={14} />,
 };
-const PRESSED = 'bg-accent text-text-inverted';
+const TOOLBAR_CLASSES = { toolbar: 'toolbar', button: 'toolbar-btn', pressed: 'toolbar-btn-on', divider: 'toolbar-divider', tableButton: 'toolbar-btn text-xs', danger: 'hover:text-error' };
+const PROMPT_CLASSES = { row: 'row', input: 'input', apply: 'btn btn-primary', cancel: 'btn' };
 
 function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   // This wiki's own nodes, built from its class names and icons. Memoised
   // because a fresh array would tear the editor down and lose the selection.
   const nodes = useMemo(() => [YouTube, Iframe, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock, HeadingIds], []);
-
   const { editor, fileInputRef, isUploading, handleFileChange, triggerUpload, isActive } = useWikiEditor({
     value,
     onChange,
@@ -52,57 +50,17 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
     proseClass: 'prose prose-invert',
     uploadImage,
   });
-
   // The link field opens on the link the cursor is in, and emptying it unlinks.
   const prompt = useUrlPrompt(editor, { resolveMapUrl });
-
-  // `link` has no `run`: it needs a URL, so it opens the prompt.
-  const actionButton = (a: ToolbarAction, e: Editor) => {
-    const Icon = TOOLBAR_ICONS[a.key];
-    const pressed = isActive(a.active) || (a.key === 'link' && prompt.kind === 'link');
-    return (
-      <ToolbarButton key={a.key} label={a.label} pressed={a.active ? pressed : undefined}
-        onPress={() => (a.run ? a.run(e) : prompt.toggle('link'))} className={cn('toolbar-btn', pressed && PRESSED)}>
-        {Icon && <Icon size={14} />}
-      </ToolbarButton>
-    );
-  };
 
   return (
     <div className="stack-sm">
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" className="hidden" onChange={handleFileChange} />
       {editor && (
-        <div className="toolbar">
-          {FORMAT_ACTIONS.map(a => actionButton(a, editor))}
-          {editor.isActive('link') && (
-            <ToolbarButton label="Remove link" onPress={() => editor.chain().focus().extendMarkRange('link').unsetLink().run()} className="toolbar-btn"><Unlink size={14} /></ToolbarButton>
-          )}
-          <ToolbarButton label="Upload image" onPress={triggerUpload} className="toolbar-btn"><Upload size={14} /></ToolbarButton>
-          <ToolbarButton label="Embed" pressed={prompt.kind === 'embed'} onPress={() => prompt.toggle('embed')} className={cn('toolbar-btn', prompt.kind === 'embed' && PRESSED)}><Globe size={14} /></ToolbarButton>
-          {INSERT_ACTIONS.map(a => actionButton(a, editor))}
-          {editor.isActive('table') && (
-            <>
-              <div className="toolbar-divider" />
-              {TABLE_ACTIONS.map(([cmd, txt, danger]) => (
-                <button key={cmd} type="button" onClick={() => runTableAction(editor, cmd)} className={cn('toolbar-btn text-xs', danger && 'hover:text-error')}>{txt}</button>
-              ))}
-            </>
-          )}
-        </div>
+        <WikiToolbar editor={editor} isActive={isActive} prompt={prompt} actions={FORMAT_ACTIONS} trailing={INSERT_ACTIONS}
+          onUpload={triggerUpload} embed icons={TOOLBAR_ICONS} classNames={TOOLBAR_CLASSES} />
       )}
-      {editor && prompt.kind && (
-        <div className="row">
-          <Input
-            autoFocus
-            value={prompt.value}
-            onChange={e => prompt.setValue(e.target.value)}
-            placeholder={prompt.kind === 'link' ? 'https://…' : 'YouTube, Twitter/X, Maps, or iframe URL'}
-            onKeyDown={prompt.onKeyDown}
-          />
-          <Button size="sm" onClick={prompt.apply}>Insert</Button>
-          <Button size="sm" variant="ghost" onClick={prompt.close}>Cancel</Button>
-        </div>
-      )}
+      <UrlPromptField prompt={prompt} placeholders={{ embed: 'YouTube, Twitter/X, Maps, or iframe URL' }} classNames={PROMPT_CLASSES} />
       <div className={cn('tiptap-editor tiptap-field', isUploading && 'tiptap-field-disabled')}>
         <EditorContent editor={editor} />
         {isUploading && <div className="text-center text-text-muted text-small py-2">Uploading image...</div>}
@@ -111,426 +69,185 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
   );
 }
 
-// ========== EDIT COMPONENTS ==========
-function EditWrapper({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: ReactNode }) {
-  return <div className="edit-wrapper"><div className="edit-wrapper-label"><Icon size={18} /><span className="font-medium">{label}</span></div>{children}</div>;
-}
+// ========== THIS WIKI'S BLOCKS ==========
+// The list, the cards, the menus and the core blocks' fields are
+// `wiki-formant/block-editor`; these are the types only this wiki has.
 
-type BlockProps<T extends Block> = { block: T; onUpdate?: (b: T) => void };
+type EditProps<T extends Block> = { block: T; onUpdate: (b: T) => void };
 
-const ContentBlockEdit = memo(function ContentBlockEdit({ block, onUpdate }: BlockProps<ContentBlock>) {
-  return <RichTextEditor value={block.text} onChange={text => onUpdate?.({ ...block, text })} placeholder="Write content..." />;
-});
-
-function RecentPagesBlockEdit({ block, onUpdate }: BlockProps<RecentPagesBlock>) {
+function RecentPagesEdit({ block, onUpdate }: EditProps<RecentPagesBlock>) {
   return (
-    <EditWrapper icon={Clock} label="Recent Pages Widget">
-      <Input label="Filter by category (optional)" value={block.tagPath || ''} onChange={e => onUpdate?.({ ...block, tagPath: e.target.value || undefined })} placeholder="e.g., contents/tech" hint="Leave empty to show all recent pages" />
-      <div className="row"><span>Show</span><input type="number" min={1} max={20} value={block.limit} onChange={e => onUpdate?.({ ...block, limit: parseInt(e.target.value) || 5 })} className="input w-16 text-center" /><span>pages</span></div>
-    </EditWrapper>
+    <div className="stack-sm">
+      <Field label="Filter by category (optional)" hint="Leave empty to show all recent pages">
+        <input type="text" className="input" value={block.tagPath || ''} onChange={e => onUpdate({ ...block, tagPath: e.target.value || undefined })} placeholder="e.g., contents/tech" />
+      </Field>
+      <LimitField label="Pages to show" value={block.limit} onChange={limit => onUpdate({ ...block, limit })} />
+    </div>
   );
 }
 
-function PageListBlockEdit({ block, onUpdate }: BlockProps<PageListBlock>) {
-  const [newPageId, setNewPageId] = useState('');
-  const addPage = () => { if (newPageId.trim()) { onUpdate?.({ ...block, pageIds: [...block.pageIds, newPageId.trim()] }); setNewPageId(''); } };
-  // The list renders in this order, so it is the author's to set.
-  const ops = {
-    move: (from: number, to: number) => { const pageIds = [...block.pageIds]; pageIds.splice(to, 0, ...pageIds.splice(from, 1)); onUpdate?.({ ...block, pageIds }); },
-    duplicate: () => {},
-    remove: (i: number) => onUpdate?.({ ...block, pageIds: block.pageIds.filter((_, j) => j !== i) }),
-  };
-  return (
-    <EditWrapper icon={FileText} label="Curated Page List">
-      {block.pageIds.length > 0 && <div className="stack-sm">{block.pageIds.map((id, i) => <div key={i} className="row"><span className="flex-1 text-small truncate">{id}</span><BlockActions index={i} total={block.pageIds.length} blockLabel="list item" ops={ops} icons={{ up: <ChevronUp size={14} />, down: <ChevronDown size={14} />, remove: <Trash2 size={14} /> }} className="row" buttonClassName="icon-btn block-action" /></div>)}</div>}
-      <div className="row"><input type="text" value={newPageId} onChange={e => setNewPageId(e.target.value)} placeholder="Page ID..." className="flex-1 input" /><Button size="sm" onClick={addPage} disabled={!newPageId.trim()}>Add</Button></div>
-      <small>Add page IDs to create a curated list</small>
-    </EditWrapper>
-  );
-}
+const rangeOptions = (ranges: readonly string[]) => ranges.map(r => ({ value: r, label: r === 'all' ? 'All' : r.toUpperCase() }));
 
-function AssetPriceBlockEdit({ block, onUpdate }: BlockProps<AssetPriceBlock>) {
+function AssetPriceEdit({ block, onUpdate }: EditProps<AssetPriceBlock>) {
   return (
-    <EditWrapper icon={TrendingUp} label="Asset Price Widget">
-      <div className="stack-sm">
-        <label className="font-medium">Resource Address</label>
-        <input type="text" value={block.resourceAddress || ''} onChange={e => onUpdate?.({ ...block, resourceAddress: e.target.value })} placeholder="resource_rdx1..." className="input font-mono" />
-        <small className="text-text-muted">Enter any Radix resource address to fetch its price</small>
-      </div>
-      <label className="row"><input type="checkbox" checked={block.showChange ?? true} onChange={e => onUpdate?.({ ...block, showChange: e.target.checked })} className="w-4 h-4 rounded border-border" />Show 24h change</label>
-      <label className="row"><input type="checkbox" checked={block.showChart ?? false} onChange={e => onUpdate?.({ ...block, showChart: e.target.checked })} className="w-4 h-4 rounded border-border" />Show price chart</label>
+    <div className="stack-sm">
+      <Field label="Resource address" hint="Any Radix resource address; its price is fetched live">
+        <input type="text" value={block.resourceAddress || ''} onChange={e => onUpdate({ ...block, resourceAddress: e.target.value })} placeholder="resource_rdx1..." className="input font-mono" />
+      </Field>
+      <label className="row"><input type="checkbox" checked={block.showChange ?? true} onChange={e => onUpdate({ ...block, showChange: e.target.checked })} />Show 24h change</label>
+      <label className="row"><input type="checkbox" checked={block.showChart ?? false} onChange={e => onUpdate({ ...block, showChart: e.target.checked })} />Show price chart</label>
       {block.showChart && (
-        <div className="stack-xs">
-          <label className="font-medium text-small">Default timeframe</label>
-          <div className="toggle-group">
-            {CHART_RANGES.map(tf => (
-              <button key={tf} onClick={() => onUpdate?.({ ...block, chartTimeframe: tf })} className={`toggle-option ${(block.chartTimeframe || '30d') === tf ? 'toggle-option-active' : ''}`}>
-                {tf === 'all' ? 'All' : tf.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        </div>
+        <Choice label="Default timeframe" value={block.chartTimeframe || '30d'} options={rangeOptions(CHART_RANGES)} onChange={tf => onUpdate({ ...block, chartTimeframe: tf as AssetPriceBlock['chartTimeframe'] })} />
       )}
-    </EditWrapper>
+    </div>
   );
 }
 
-function NetworkChartBlockEdit({ block, onUpdate }: BlockProps<NetworkChartBlock>) {
+function NetworkChartEdit({ block, onUpdate }: EditProps<NetworkChartBlock>) {
   return (
-    <EditWrapper icon={Activity} label="Network Chart">
-      <div className="stack-xs">
-        <label className="font-medium text-small">Metric</label>
-        <select value={block.metric} onChange={e => onUpdate?.({ ...block, metric: e.target.value as ActivityMetric })} className="input">
+    <div className="stack-sm">
+      <Field label="Metric">
+        <select value={block.metric} onChange={e => onUpdate({ ...block, metric: e.target.value as NetworkChartBlock['metric'] })} className="input">
           {ACTIVITY_METRICS.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
         </select>
-      </div>
-      <div className="stack-xs">
-        <label className="font-medium text-small">Default range</label>
-        <div className="toggle-group">
-          {(['30d', '90d', '1y', 'all'] as const).map(r => (
-            <button key={r} onClick={() => onUpdate?.({ ...block, range: r })} className={`toggle-option ${(block.range || '1y') === r ? 'toggle-option-active' : ''}`}>
-              {r === 'all' ? 'All' : r.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      </div>
+      </Field>
+      <Choice label="Default range" value={block.range || '1y'} options={rangeOptions(['30d', '90d', '1y', 'all'])} onChange={range => onUpdate({ ...block, range: range as NetworkChartBlock['range'] })} />
       <small className="text-text-muted">The same daily series as /charts, updated once a day</small>
-    </EditWrapper>
-  );
-}
-
-function RssFeedBlockEdit({ block, onUpdate }: BlockProps<RssFeedBlock>) {
-  return (
-    <EditWrapper icon={Rss} label="RSS Feed Widget">
-      <Input label="Feed URL" value={block.url} onChange={e => onUpdate?.({ ...block, url: e.target.value })} placeholder="https://example.com/feeds.json" />
-      <div className="row"><span>Show</span><input type="number" min={1} max={100} value={block.limit || 20} onChange={e => onUpdate?.({ ...block, limit: parseInt(e.target.value) || 20 })} className="input w-16 text-center" /><span>items per page</span></div>
-    </EditWrapper>
-  );
-}
-
-export function InfoboxEditor({ block, onChange }: { block: InfoboxBlock; onChange?: (block: InfoboxBlock) => void }) {
-  const setBlocks = useCallback((blocks: AtomicBlock[]) => onChange?.({ ...block, blocks }), [block, onChange]);
-  const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(block.blocks || [], setBlocks, DUPLICATE_ATOMIC);
-  const handleBlockUpdate = useCallback((i: number, b: Block) => update(i, b as AtomicBlock), [update]);
-  const handleInsert = useCallback((b: Block, at?: number) => insert(b as AtomicBlock, at), [insert]);
-  const add = (type: BlockType) => insert(createBlock(type) as AtomicBlock);
-
-  return (
-    <div className="edit-wrapper">
-      <div className="edit-wrapper-label"><Info size={18} /><span className="font-medium">Sidebar Content</span></div>
-      <div className="stack-sm">
-        {(block.blocks?.length ?? 0) === 0 ? (
-          <div className="empty-state"><p className="text-text-muted text-small mb-2">Empty sidebar</p><InsertButton onInsert={add} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
-        ) : (
-          <>
-            {(block.blocks || []).map((b, i) => <BlockWrapper key={b.id} block={b} index={i} total={(block.blocks || []).length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={handleBlockUpdate} onDelete={remove} onDuplicate={duplicate} onMove={move} onInsert={handleInsert} compact />)}
-            <InsertButton onInsert={add} compact blockTypes={ATOMIC_BLOCK_TYPES} />
-          </>
-        )}
-      </div>
     </div>
   );
 }
 
-function LinkGridBlockEdit({ block, onUpdate }: BlockProps<LinkGridBlock>) {
-  const updateGroup = (i: number, group: LinkGridGroup) =>
-    onUpdate?.({ ...block, groups: block.groups.map((g, j) => j === i ? group : g) });
-  const removeGroup = (i: number) =>
-    onUpdate?.({ ...block, groups: block.groups.filter((_, j) => j !== i) });
-  const addGroup = () =>
-    onUpdate?.({ ...block, groups: [...block.groups, { id: crypto.randomUUID(), heading: 'Group', links: [] }] });
-
+function RssFeedEdit({ block, onUpdate }: EditProps<RssFeedBlock>) {
   return (
-    <EditWrapper icon={LayoutGrid} label="Link Grid">
-      <Input label="Intro (optional)" value={block.intro || ''} onChange={e => onUpdate?.({ ...block, intro: e.target.value || undefined })} placeholder="Optional preface paragraph" />
-      <div className="stack">
-        {block.groups.map((group, gi) => (
-          <div key={group.id} className="edit-wrapper">
-            <div className="spread">
-              <Input label="Heading" value={group.heading} onChange={e => updateGroup(gi, { ...group, heading: e.target.value })} />
-              <button onClick={() => removeGroup(gi)} className="icon-btn icon-btn-remove p-1" title="Remove group" aria-label="Remove group"><Trash2 size={14} /></button>
-            </div>
-            <Input label="Description (optional, HTML)" value={group.description || ''} onChange={e => updateGroup(gi, { ...group, description: e.target.value || undefined })} placeholder="Optional prose paragraph above the link pills" />
-            <div className="stack-sm">
-              {group.links.map((link, li) => (
-                <div key={li} className="row">
-                  <input type="text" value={link.label} onChange={e => updateGroup(gi, { ...group, links: group.links.map((l, k) => k === li ? { ...l, label: e.target.value } : l) })} placeholder="Label" className="flex-1 input" />
-                  <input type="text" value={link.href} onChange={e => updateGroup(gi, { ...group, links: group.links.map((l, k) => k === li ? { ...l, href: e.target.value } : l) })} placeholder="/path or https://..." className="flex-1 input" />
-                  <button onClick={() => updateGroup(gi, { ...group, links: group.links.filter((_, k) => k !== li) })} className="icon-btn icon-btn-remove" title="Remove link" aria-label="Remove link"><Trash2 size={14} /></button>
-                </div>
-              ))}
-              <Button size="sm" onClick={() => updateGroup(gi, { ...group, links: [...group.links, { label: '', href: '' }] })}>+ Add link</Button>
-            </div>
-          </div>
-        ))}
-        <Button size="sm" onClick={addGroup}>+ Add group</Button>
-      </div>
-    </EditWrapper>
-  );
-}
-
-function ColumnsBlockEdit({ block, onUpdate }: BlockProps<ColumnsBlock>) {
-  const [showSettings, setShowSettings] = useState(false);
-  const gapClass = { sm: 'gap-2', md: 'gap-4', lg: 'gap-6' }[block.gap || 'md'];
-  const gaps = ['sm', 'md', 'lg'] as const;
-  const aligns = ['start', 'center', 'end', 'stretch'] as const;
-
-  const updateColumn = (i: number, col: Column) => onUpdate?.({ ...block, columns: block.columns.map((c, j) => j === i ? col : c) });
-  const deleteColumn = (i: number) => block.columns.length > 1 && onUpdate?.({ ...block, columns: block.columns.filter((_, j) => j !== i) });
-  const addColumn = () => block.columns.length < 4 && onUpdate?.({ ...block, columns: [...block.columns, { id: crypto.randomUUID(), blocks: [] }] });
-
-  return (
-    <div className="stack">
-      <div className="spread">
-        <div className="row text-text-muted"><Columns size={18} /><span className="font-medium">{block.columns.length} Column Layout</span></div>
-        <div className="row">
-          <button onClick={() => setShowSettings(!showSettings)} className={cn('icon-btn p-1', showSettings && 'bg-surface-2')} title="Column settings" aria-label="Column settings"><Settings size={14} /></button>
-          {block.columns.length < 4 && <button onClick={addColumn} className="text-accent text-small hover:text-accent-hover">+ Add Column</button>}
-        </div>
-      </div>
-      {showSettings && (
-        <div className="toggle-group">
-          <div className="row"><span className="text-small text-text-muted">Gap:</span><div className="row flex-wrap">{gaps.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, gap: opt })} className={(block.gap || 'md') === opt ? 'toggle-option border-accent bg-accent text-text-inverted' : 'toggle-option'}>{opt}</button>)}</div></div>
-          <div className="row"><span className="text-small text-text-muted">Align:</span><div className="row flex-wrap">{aligns.map(opt => <button key={opt} onClick={() => onUpdate?.({ ...block, align: opt })} className={(block.align || 'start') === opt ? 'toggle-option border-accent bg-accent text-text-inverted' : 'toggle-option'}>{opt}</button>)}</div></div>
-        </div>
-      )}
-      <div className={cn('flex', gapClass)}>{block.columns.map((col, i) => <ColumnEditor key={col.id} column={col} onUpdate={c => updateColumn(i, c)} onDelete={() => deleteColumn(i)} canDelete={block.columns.length > 1} />)}</div>
+    <div className="stack-sm">
+      <Field label="Feed URL">
+        <input type="text" className="input" value={block.url} onChange={e => onUpdate({ ...block, url: e.target.value })} placeholder="https://example.com/feeds.json" />
+      </Field>
+      <LimitField label="Items per page" value={block.limit || 20} onChange={limit => onUpdate({ ...block, limit })} />
     </div>
   );
 }
 
-// ========== BLOCK OPERATIONS ==========
-// `useBlockOperations` is `wiki-formant/react`; creating and duplicating a block
-// stay here, since the union is this repo's. A container holds atomic blocks only.
-const DUPLICATE = { duplicate: duplicateBlock };
-const DUPLICATE_ATOMIC = { duplicate: (b: AtomicBlock) => duplicateBlock(b) as AtomicBlock };
-
-function ColumnEditor({ column, onUpdate, onDelete, canDelete }: { column: Column; onUpdate: (col: Column) => void; onDelete: () => void; canDelete: boolean }) {
-  const setBlocks = useCallback((blocks: AtomicBlock[]) => onUpdate({ ...column, blocks }), [column, onUpdate]);
-  const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(column.blocks || [], setBlocks, DUPLICATE_ATOMIC);
-  const handleUpdate = useCallback((i: number, b: Block) => update(i, b as AtomicBlock), [update]);
-  const handleInsert = useCallback((b: Block, at?: number) => insert(b as AtomicBlock, at), [insert]);
-  const add = (type: BlockType) => insert(createBlock(type) as AtomicBlock);
-
-  return (
-    <div className="column-editor">
-      <div className="spread"><span className="column-header">Column</span>{canDelete && <button onClick={onDelete} className="icon-btn icon-btn-remove p-1" title="Delete column" aria-label="Delete column"><Trash2 size={14} /></button>}</div>
-      {(column.blocks?.length ?? 0) === 0 ? (
-        <div className="py-6 text-center"><p className="text-text-muted text-small mb-2">Empty column</p><InsertButton onInsert={add} compact blockTypes={ATOMIC_BLOCK_TYPES} /></div>
-      ) : (
-        <div className="stack-sm">
-          {(column.blocks || []).map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={(column.blocks || []).length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={handleUpdate} onDelete={remove} onDuplicate={duplicate} onMove={move} onInsert={handleInsert} compact />)}
-          <InsertButton onInsert={add} compact blockTypes={ATOMIC_BLOCK_TYPES} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TipJarBlockEdit({ block, onUpdate }: BlockProps<TipJarBlock>) {
+function TipJarEdit({ block, onUpdate }: EditProps<TipJarBlock>) {
   const { address, isValid, qr } = useAccountQr(block.address);
   return (
-    <EditWrapper icon={QrCode} label="Tip Jar (QR)">
-      <Input label="Heading" value={block.label || ''} onChange={e => onUpdate?.({ ...block, label: e.target.value })} placeholder="Tip the author ☕️" />
-      <div className="stack-sm">
-        <label className="font-medium">Radix account address</label>
-        <input type="text" value={block.address || ''} onChange={e => onUpdate?.({ ...block, address: e.target.value })} placeholder="account_rdx12..." className="input font-mono" />
-        <small className={!address || isValid ? 'text-text-muted' : 'text-error'}>
-          {!address ? 'Paste your Radix account address — a scannable QR generates automatically.' : isValid ? 'Valid Radix account address.' : 'Not a valid Radix account address (must start with account_rdx or account_tdx_2_).'}
-        </small>
-      </div>
-      <Input label="Message" value={block.message || ''} onChange={e => onUpdate?.({ ...block, message: e.target.value })} placeholder="Support independent writing on Radix." />
+    <div className="stack-sm">
+      <Field label="Heading">
+        <input type="text" className="input" value={block.label || ''} onChange={e => onUpdate({ ...block, label: e.target.value })} placeholder="Tip the author ☕️" />
+      </Field>
+      <Field label="Radix account address">
+        <input type="text" value={block.address || ''} onChange={e => onUpdate({ ...block, address: e.target.value })} placeholder="account_rdx12..." className="input font-mono" />
+      </Field>
+      <small className={!address || isValid ? 'text-text-muted' : 'text-error'}>
+        {!address ? 'Paste your Radix account address — a scannable QR generates automatically.' : isValid ? 'Valid Radix account address.' : 'Not a valid Radix account address (must start with account_rdx or account_tdx_2_).'}
+      </small>
+      <Field label="Message">
+        <input type="text" className="input" value={block.message || ''} onChange={e => onUpdate({ ...block, message: e.target.value })} placeholder="Support independent writing on Radix." />
+      </Field>
       {qr && <div className="tip-jar-qr tip-jar-qr-preview" dangerouslySetInnerHTML={{ __html: qr }} />}
-    </EditWrapper>
+    </div>
   );
 }
 
-function BannerBlockEdit({ block, onUpdate }: BlockProps<BannerBlock>) {
-  return (
-    <EditWrapper icon={Info} label="Notice Banner">
-      <div className="stack-sm">
-        <label className="font-medium">Type</label>
-        <div className="toggle-group flex-wrap">
-          {BANNER_VARIANTS.map(v => (
-            <button key={v.value} type="button" onClick={() => onUpdate?.({ ...block, variant: v.value })} className={cn('toggle-option', block.variant === v.value && 'toggle-option-active')}>{v.label}</button>
-          ))}
-        </div>
-      </div>
-      <Input label="Custom message (optional)" value={block.text || ''} onChange={e => onUpdate?.({ ...block, text: e.target.value || undefined })} placeholder="Leave empty to use the default notice text" />
-    </EditWrapper>
-  );
-}
-
-function ReferencesBlockEdit({ block, onUpdate }: BlockProps<ReferencesBlock>) {
-  const items = block.items || [];
-  const updateItem = (i: number, item: ReferenceItem) => onUpdate?.({ ...block, items: items.map((x, j) => j === i ? item : x) });
-  const removeItem = (i: number) => onUpdate?.({ ...block, items: items.filter((_, j) => j !== i) });
-  const addItem = () => onUpdate?.({ ...block, items: [...items, { id: crypto.randomUUID(), text: '', url: '' }] });
-  return (
-    <EditWrapper icon={List} label="References">
-      <Input label="Heading" value={block.title || ''} onChange={e => onUpdate?.({ ...block, title: e.target.value || undefined })} placeholder="References" />
-      <div className="stack-sm">
-        {items.map((item, i) => (
-          <div key={item.id} className="row">
-            <span className="text-text-muted text-small w-5 text-right">{i + 1}.</span>
-            <input type="text" value={item.text} onChange={e => updateItem(i, { ...item, text: e.target.value })} placeholder="Source title, author, publisher (HTML allowed)" className="flex-1 input" />
-            <input type="text" value={item.url || ''} onChange={e => updateItem(i, { ...item, url: e.target.value || undefined })} placeholder="https://source-url" className="flex-1 input" />
-            <button onClick={() => removeItem(i)} className="icon-btn icon-btn-remove" title="Remove reference" aria-label="Remove reference"><Trash2 size={14} /></button>
-          </div>
-        ))}
-        <Button size="sm" onClick={addItem}>+ Add reference</Button>
-      </div>
-    </EditWrapper>
-  );
-}
-
-function StatsBlockEdit({ block, onUpdate }: BlockProps<StatsBlock>) {
-  const updateItem = (i: number, item: StatItem) => onUpdate?.({ ...block, items: block.items.map((x, j) => j === i ? item : x) });
-  return (
-    <EditWrapper icon={BarChart3} label="Stats">
-      <div className="stack-xs">
-        <label className="font-medium text-small">Per row</label>
-        <div className="toggle-group">
-          {([2, 3, 4] as const).map(n => (
-            <button key={n} type="button" onClick={() => onUpdate?.({ ...block, columns: n })} className={cn('toggle-option', (block.columns ?? 4) === n && 'toggle-option-active')}>{n}</button>
-          ))}
-        </div>
-      </div>
-      <div className="stack-sm">
-        {block.items.map((item, i) => (
-          <div key={item.id} className="row">
-            <input type="text" value={item.value} onChange={e => updateItem(i, { ...item, value: e.target.value })} placeholder="Figure" className="input w-32" />
-            <input type="text" value={item.label} onChange={e => updateItem(i, { ...item, label: e.target.value })} placeholder="What it counts" className="flex-1 input" />
-            <button onClick={() => onUpdate?.({ ...block, items: block.items.filter((_, j) => j !== i) })} className="icon-btn icon-btn-remove" title="Remove figure" aria-label="Remove figure"><Trash2 size={14} /></button>
-          </div>
-        ))}
-        <Button size="sm" onClick={() => onUpdate?.({ ...block, items: [...block.items, { id: crypto.randomUUID(), value: '', label: '' }] })}>+ Add figure</Button>
-      </div>
-    </EditWrapper>
-  );
-}
-
-// `code` is source text, never HTML: the view escapes it before highlighting.
-function CodeTabsBlockEdit({ block, onUpdate }: BlockProps<CodeTabsBlock>) {
-  const updateTab = (i: number, tab: CodeTab) => onUpdate?.({ ...block, tabs: block.tabs.map((t, j) => j === i ? tab : t) });
-  return (
-    <EditWrapper icon={Code2} label="Code Tabs">
-      {block.tabs.map((tab, i) => (
-        <div key={i} className="stack-xs">
-          <div className="row">
-            <input type="text" value={tab.label} onChange={e => updateTab(i, { ...tab, label: e.target.value })} placeholder="Tab label" className="flex-1 input" />
-            <select value={tab.language} onChange={e => updateTab(i, { ...tab, language: e.target.value })} className="input w-36">
-              {/* A stored language outside the list stays selectable rather than reading as the first option. */}
-              {[...new Set([tab.language, ...CODE_LANGS])].map(l => <option key={l} value={l}>{l}</option>)}
-            </select>
-            <button onClick={() => onUpdate?.({ ...block, tabs: block.tabs.filter((_, j) => j !== i) })} className="icon-btn icon-btn-remove" title="Remove tab" aria-label="Remove tab"><Trash2 size={14} /></button>
-          </div>
-          <textarea value={tab.code} onChange={e => updateTab(i, { ...tab, code: e.target.value })} placeholder="Code" spellCheck={false} className="input code-tab-input" />
-        </div>
-      ))}
-      <Button size="sm" onClick={() => onUpdate?.({ ...block, tabs: [...block.tabs, { label: '', language: DEFAULT_LANG, code: '' }] })}>+ Add tab</Button>
-    </EditWrapper>
-  );
-}
-
-function renderBlockEdit(block: Block | AtomicBlock, onUpdate?: (b: Block) => void): ReactNode {
+function renderBody(block: Block, onUpdate: (b: Block) => void): ReactNode {
   switch (block.type) {
-    case 'content': return <ContentBlockEdit block={block} onUpdate={onUpdate as any} />;
-    case 'recentPages': return <RecentPagesBlockEdit block={block} onUpdate={onUpdate as any} />;
-    case 'pageList': return <PageListBlockEdit block={block} onUpdate={onUpdate as any} />;
-    case 'assetPrice': return <AssetPriceBlockEdit block={block} onUpdate={onUpdate as any} />;
-    case 'networkChart': return <NetworkChartBlockEdit block={block} onUpdate={onUpdate as any} />;
-    case 'rssFeed': return <RssFeedBlockEdit block={block} onUpdate={onUpdate as any} />;
-    case 'columns': return <ColumnsBlockEdit block={block} onUpdate={onUpdate as any} />;
-    case 'infobox': return <InfoboxEditor block={block} onChange={onUpdate as any} />;
-    case 'linkGrid': return <LinkGridBlockEdit block={block} onUpdate={onUpdate as any} />;
-    case 'tipJar': return <TipJarBlockEdit block={block} onUpdate={onUpdate as any} />;
-    case 'banner': return <BannerBlockEdit block={block} onUpdate={onUpdate as any} />;
-    case 'references': return <ReferencesBlockEdit block={block} onUpdate={onUpdate as any} />;
-    case 'stats': return <StatsBlockEdit block={block} onUpdate={onUpdate} />;
-    case 'codeTabs': return <CodeTabsBlockEdit block={block} onUpdate={onUpdate} />;
-    // testimonial has no visual editor.
-    default: return null;
+    case 'content': return <RichTextEditor value={block.text} onChange={text => onUpdate({ ...block, text })} />;
+    case 'recentPages': return <RecentPagesEdit block={block} onUpdate={onUpdate} />;
+    case 'pageList': return <PageListFields block={block} onUpdate={onUpdate} />;
+    case 'assetPrice': return <AssetPriceEdit block={block} onUpdate={onUpdate} />;
+    case 'networkChart': return <NetworkChartEdit block={block} onUpdate={onUpdate} />;
+    case 'rssFeed': return <RssFeedEdit block={block} onUpdate={onUpdate} />;
+    case 'tipJar': return <TipJarEdit block={block} onUpdate={onUpdate} />;
+    case 'codeTabs': return <CodeTabsFields block={block} onUpdate={onUpdate} />;
+    case 'stats': return <StatsFields block={block} onUpdate={onUpdate} />;
+    case 'linkGrid': return <LinkGridFields block={block} onUpdate={onUpdate} />;
+    case 'references': return <ReferencesFields block={block} onUpdate={onUpdate} />;
+    case 'banner': return <BannerFields block={block} onUpdate={onUpdate} />;
+    case 'columns': return <ColumnsFields block={block} onUpdate={onUpdate} />;
+    case 'infobox': return <InfoboxFields block={block} onUpdate={onUpdate} />;
+    // A testimonial has no fields here, and is kept as it is.
+    case 'testimonial': return null;
   }
 }
 
-// `below` is the icon in a block's header that adds the next block under it.
-function InsertButton({ onInsert, compact, below, blockTypes = INSERTABLE_BLOCKS }: { onInsert: (type: BlockType) => void; compact?: boolean; below?: boolean; blockTypes?: readonly BlockType[] }) {
-  const [showMenu, setShowMenu] = useState(false);
+// ========== THE KIT ==========
+
+function LabelledField({ label, hint, children }: FieldProps) {
+  return (
+    <label className="stack-xs">
+      <span className="font-medium text-small">{label}</span>
+      {children}
+      {hint && <small className="text-text-muted">{hint}</small>}
+    </label>
+  );
+}
+
+function ToggleChoice({ label, value, options, onChange }: ChoiceProps) {
+  return (
+    <div className="stack-xs">
+      <span className="font-medium text-small">{label}</span>
+      <div className="toggle-group flex-wrap" role="group" aria-label={label}>
+        {options.map(o => (
+          <button key={o.value} type="button" aria-pressed={value === o.value} onClick={() => onChange(o.value)} className={cn('toggle-option', value === o.value && 'toggle-option-active')}>{o.label}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DropdownMenu({ open, onOpenChange, trigger, below, children }: MenuProps) {
   return (
     <div className={below ? 'relative' : 'relative center'}>
-      {below ? (
-        <button onClick={() => setShowMenu(!showMenu)} className="icon-btn p-1 text-text-muted" title="Add a block below" aria-label="Add a block below"><Plus size={compact ? 12 : 14} /></button>
-      ) : (
-        <button onClick={() => setShowMenu(!showMenu)} className={cn('insert-btn', compact && 'rounded px-2 py-1 text-small')}>
-          <Plus size={compact ? 14 : 16} /><span>{compact ? 'Add' : 'Add block'}</span>
-        </button>
-      )}
-      {showMenu && (
-        <Dropdown onClose={() => setShowMenu(false)} className={cn('w-64 p-2', !below && 'left-1/2 -translate-x-1/2')}>
-          <div className="stack-sm">{blockTypes.map(type => { const { label, hint, icon: Icon } = BLOCK_META[type]; return <button key={type} onClick={() => { onInsert(type); setShowMenu(false); }} className="dropdown-item rounded-md"><Icon size={18} className="shrink-0" /><span className="stack-xs"><span>{label}</span><span className="text-small text-text-muted">{hint}</span></span></button>; })}</div>
+      {trigger}
+      {open && (
+        <Dropdown onClose={() => onOpenChange(false)} className={cn('w-64 p-2', !below && 'left-1/2 -translate-x-1/2')}>
+          <div className="stack-sm">{children}</div>
         </Dropdown>
       )}
     </div>
   );
 }
 
-const BlockWrapper = memo(function BlockWrapper({ block, index, total, isSelected, onSelect, onUpdate, onDelete, onDuplicate, onMove, onInsert, compact }: {
-  block: Block | AtomicBlock; index: number; total: number; isSelected: boolean;
-  onSelect: (i: number) => void; onUpdate: (i: number, b: Block) => void; onDelete: (i: number) => void;
-  onDuplicate: (i: number) => void; onMove: (from: number, to: number) => void; onInsert: (b: Block, at?: number) => void; compact?: boolean;
-}) {
-  const meta = BLOCK_META[block.type];
-  const iconSize = compact ? 12 : 14;
-  const handleSelect = useCallback(() => onSelect(index), [onSelect, index]);
-  const handleUpdate = useCallback((b: Block) => onUpdate(index, b), [onUpdate, index]);
+const KIT: BlockEditorKit = {
+  classNames: {
+    list: 'stack', nestedList: 'stack-sm', empty: 'empty-state text-text-muted',
+    card: 'block-wrapper group', cardHead: 'spread mb-3', cardLabel: 'block-label', cardActions: 'block-actions', action: 'icon-btn block-action',
+    addBlock: 'insert-btn', menuItem: 'dropdown-item rounded-md', menuText: 'stack-xs', menuHint: 'text-small text-text-muted',
+    stack: 'stack-sm', row: 'row', nest: 'edit-wrapper', columns: 'block-columns',
+    input: 'input', lang: 'w-36', code: 'code-tab-input', figure: 'w-32', number: 'w-20', muted: 'text-text-muted text-small',
+  },
+  icons: { add: <Plus size={14} />, up: <ChevronUp size={14} />, down: <ChevronDown size={14} />, duplicate: <Copy size={14} />, remove: <Trash2 size={14} /> },
+  Field: LabelledField,
+  Choice: ToggleChoice,
+  Menu: DropdownMenu,
+  Add: ({ onPress, children }) => <Button size="sm" className="self-start" onClick={onPress}>{children}</Button>,
+};
 
-  if (!meta) return (
-    <div className={cn('block-unknown', compact ? 'p-3' : 'p-4 rounded-lg')}>
-      <div className="spread mb-2"><span className={cn('text-warning', compact ? 'text-small' : 'font-medium')}>Unknown block: {block.type}</span><button onClick={e => { e.stopPropagation(); onDelete(index); }} className="icon-btn icon-btn-remove p-1" title="Delete block" aria-label="Delete block"><Trash2 size={iconSize} /></button></div>
-    </div>
-  );
-  const Icon = meta.icon;
-  const isContainer = block.type === 'columns' || block.type === 'infobox';
-  return (
-    <div onClick={handleSelect} className={cn(
-      'group',
-      compact
-        ? cn('block-wrapper-compact', isSelected && 'border-accent bg-accent/5')
-        : cn('block-wrapper', isContainer && 'block-wrapper-container', isSelected && 'border-accent bg-accent/5')
-    )}>
-      <div className={cn('spread', compact ? 'mb-2' : 'mb-3')}>
-        <div className="row">{!(compact || isContainer) && <div className="block-label"><Icon size={18} /><span className="block-label-text">{meta.label}</span></div>}</div>
-        <div className="block-actions">
-          {/* A container holds atomic blocks only, and a compact wrapper is one of its children. */}
-          <InsertButton below compact={compact} onInsert={type => onInsert(createBlock(type), index + 1)} blockTypes={compact ? ATOMIC_BLOCK_TYPES : INSERTABLE_BLOCKS} />
-          <BlockActions
-            index={index} total={total} blockLabel={meta.label}
-            ops={{ move: onMove, duplicate: onDuplicate, remove: onDelete }}
-            icons={{
-              up: <ChevronUp size={iconSize} />,
-              down: <ChevronDown size={iconSize} />,
-              duplicate: compact ? undefined : <Copy size={iconSize} />,
-              remove: <Trash2 size={iconSize} />,
-            }}
-            className="row" buttonClassName="icon-btn block-action"
-          />
-        </div>
-      </div>
-      {renderBlockEdit(block, handleUpdate)}
-    </div>
-  );
-});
+const META = Object.fromEntries(
+  Object.entries(BLOCK_META).map(([type, { label, hint, icon: Icon }]) => [type, { label, hint, icon: <Icon size={16} className="shrink-0" /> }]),
+) as Record<BlockType, BlockMeta>;
+
+const SCHEMA: BlockSchema<Block> = {
+  meta: type => META[type],
+  create: createBlock,
+  duplicate: duplicateBlock,
+  renderBody,
+  types: INSERTABLE_BLOCKS,
+  nestedTypes: ATOMIC_BLOCK_TYPES,
+};
+// The infobox is edited in its own rail, and holds atomic blocks only.
+const INFOBOX_SCHEMA: BlockSchema<Block> = { ...SCHEMA, types: ATOMIC_BLOCK_TYPES };
 
 // ========== PUBLIC API ==========
 export function BlockEditor({ content, onChange }: { content: Block[]; onChange: (content: Block[]) => void }) {
-  const { selectedIndex, setSelectedIndex, update, remove, duplicate, move, insert } = useBlockOperations(content, onChange, DUPLICATE);
-  const add = (type: BlockType) => insert(createBlock(type));
-  if (content.length === 0) return <div className="stack items-center empty-state"><p className="text-text-muted">No content yet. Add your first block!</p><InsertButton onInsert={add} /></div>;
+  return <FormantBlockEditor blocks={content} onChange={onChange} schema={SCHEMA} kit={KIT} />;
+}
+
+export function InfoboxEditor({ block, onChange }: { block: InfoboxBlock; onChange?: (block: InfoboxBlock) => void }) {
   return (
-    <div className="stack">
-      {content.map((block, i) => <BlockWrapper key={block.id} block={block} index={i} total={content.length} isSelected={selectedIndex === i} onSelect={setSelectedIndex} onUpdate={update} onDelete={remove} onDuplicate={duplicate} onMove={move} onInsert={insert} />)}
-      <InsertButton onInsert={add} />
+    <div className="edit-wrapper">
+      <div className="edit-wrapper-label"><Info size={18} /><span className="font-medium">Sidebar Content</span></div>
+      <FormantBlockEditor blocks={block.blocks ?? []} onChange={blocks => onChange?.({ ...block, blocks: blocks as AtomicBlock[] })} schema={INFOBOX_SCHEMA} kit={KIT} />
     </div>
   );
 }

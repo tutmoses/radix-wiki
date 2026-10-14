@@ -692,6 +692,7 @@
   .editor-bar { @apply sticky top-[var(--header-height)] z-40 flex items-center justify-between gap-4 h-[var(--editor-bar-height)] bg-surface-0 border-b border-border-muted; }
   .page-editor .toolbar { top: calc(var(--header-height) + var(--editor-bar-height)); }
   .toolbar-btn { @apply p-1.5 rounded transition-colors text-text-muted hover:bg-surface-2 hover:text-text; }
+  .toolbar-btn-on { @apply bg-accent text-text-inverted; }
   .toolbar-divider { @apply w-px h-6 bg-border-muted mx-1 self-center; }
 
   /* ===== TIPTAP FIELD ===== */
@@ -703,10 +704,9 @@
   .edit-wrapper-label { @apply flex items-center gap-2 text-text-muted; }
 
   .block-wrapper { @apply relative p-4 rounded-lg border border-border-muted hover:border-border transition-colors; }
-  .block-wrapper-container { @apply bg-surface-1/30; }
-  .block-wrapper-compact { @apply relative p-3 rounded-md border border-transparent hover:border-border-muted hover:bg-surface-2/50 transition-colors; }
-  .block-label { @apply flex items-center gap-2 text-text-muted; }
-  .block-label-text { @apply text-small font-medium uppercase; }
+  .block-wrapper[data-nested] { @apply p-3 rounded-md; }
+  .block-wrapper[data-selected] { @apply border-accent bg-accent/5; }
+  .block-label { @apply flex items-center gap-2 text-text-muted text-small font-medium uppercase; }
   .block-actions { @apply flex items-center gap-2 opacity-0 transition-opacity; .group:hover &, &:has(.dropdown) { @apply opacity-100; } }
   /* BlockActions renders delete last. */
   .block-action { @apply p-1 text-text-muted disabled:opacity-30; &:last-child { @apply hover:text-error; } }
@@ -715,10 +715,7 @@
 
   .insert-btn { @apply flex items-center gap-2 text-text-muted hover:text-text border border-dashed border-border-muted hover:border-border rounded-md transition-colors px-3 py-1.5; }
 
-  .column-editor { @apply flex-1 flex flex-col gap-2 p-3 bg-surface-1/50 border border-dashed border-border-muted rounded-lg; }
-  .column-header { @apply text-small text-text-muted uppercase tracking-wide; }
-
-  .block-unknown { @apply rounded border border-warning/50 bg-warning/10; }
+  .block-columns { @apply grid gap-4 md:grid-flow-col md:auto-cols-fr; }
 
   /* ===== TOGGLE OPTIONS (gap/align pickers) ===== */
   .toggle-group { @apply flex items-center gap-4 p-3 bg-surface-2 rounded-lg; }
