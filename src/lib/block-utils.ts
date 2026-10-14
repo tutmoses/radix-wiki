@@ -7,9 +7,6 @@ import { coreBlockDefaults, someBlock } from 'wiki-formant/blocks';
 import { BLOCK_SHAPE } from '@/lib/block-shape';
 import { isActivityMetric } from '@/lib/radix/metrics';
 
-export const CODE_LANGS = ['javascript', 'typescript', 'css', 'json', 'bash', 'python', 'rust', 'sql', 'html', 'xml', 'jsx', 'tsx', 'markdown', 'yaml', 'toml'] as const;
-export const DEFAULT_LANG = 'rust';
-
 // One row per block type: label, icon and a one-line hint for the editor's
 // Add menu, what inserting it makes, and which menus offer it -- `insertable` the page menu, `atomic` the
 // infobox and column menus. Both lists derive in the order written here.

@@ -34,4 +34,4 @@ const manifest = mcpManifest({
   },
 });
 
-export const GET = descriptorHandler(manifest, { extra: { 'Access-Control-Allow-Origin': '*' } });
+export const GET = descriptorHandler(manifest);

@@ -1,16 +1,14 @@
 // src/lib/tiptap/extensions.tsx — this wiki's binding of the shared editor nodes.
 //
 // The nodes themselves are `wiki-formant/tiptap`, shared with caper. What stays
-// here is the part that is this wiki's: the class tokens, the icon set, the
-// language list, and the API route a shortened map URL has to be resolved
-// through.
+// here is the part that is this wiki's: the class tokens, the icon set and the
+// API route a shortened map URL has to be resolved through.
 
 'use client';
 
 import { ChevronDown, Check, Code, Plus, X } from 'lucide-react';
 import { createCodeBlock, createHeadingIds, createMapEmbed, createTabs } from 'wiki-formant/tiptap';
 import { slugifyHeading } from 'wiki-formant/headings';
-import { CODE_LANGS, DEFAULT_LANG } from '@/lib/block-utils';
 import { resolveMapUrl } from 'wiki-formant/maps';
 
 export { Iframe, YouTube, TwitterEmbed } from 'wiki-formant/tiptap';
@@ -18,8 +16,6 @@ export { Iframe, YouTube, TwitterEmbed } from 'wiki-formant/tiptap';
 export const MapEmbed = createMapEmbed({ resolveMapUrl });
 
 export const CodeBlock = createCodeBlock({
-  langs: CODE_LANGS,
-  defaultLang: DEFAULT_LANG,
   classNames: {
     wrapper: 'code-block-wrapper relative',
     control: 'absolute top-2 right-2 z-10',
