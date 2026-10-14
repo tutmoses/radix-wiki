@@ -1,7 +1,7 @@
 // next.config.ts
 
 import type { NextConfig } from 'next';
-import { contentSecurityPolicy, securityHeaders } from 'wiki-formant/headers';
+import { contentSecurityPolicy, withWikiDefaults } from 'wiki-formant/headers';
 
 // Content-Security-Policy (STRUCTURE.md S9): the shared base from
 // `wiki-formant/headers`, with this origin's own source lists. Verified against
@@ -11,7 +11,6 @@ import { contentSecurityPolicy, securityHeaders } from 'wiki-formant/headers';
 // src/lib/sanitize.ts decides which embeds survive, so the policy need not
 // repeat it. connect-src covers the Radix Gateway + wallet Connect Relay (both
 // under *.radixdlt.com) and OciSwap.
-const isProd = process.env.NODE_ENV === 'production';
 const csp = contentSecurityPolicy({
   'img-src': ["'self'", 'data:', 'blob:', 'https:'],
   'connect-src': ["'self'", 'https://*.radixdlt.com', 'https://api.ociswap.com'],
@@ -20,43 +19,14 @@ const csp = contentSecurityPolicy({
   'manifest-src': ["'self'"],
 });
 
-const nextConfig: NextConfig = {
-  // Studio renders boot a second dev server alongside your running one. Next 16
-  // allows only one dev server per distDir (the lock lives at <distDir>/lock),
-  // so the studio runs on its own distDir to coexist with `:3000`. Off unless
-  // STUDIO_DIST_DIR is set, so normal dev/build keep the default `.next`.
-  ...(process.env.STUDIO_DIST_DIR ? { distDir: process.env.STUDIO_DIST_DIR } : {}),
+export default withWikiDefaults({
   compress: true,
-  
-  experimental: {
-    // Next 16.3 turns Turbopack's build cache on and Vercel restores it from the last
-    // deployment; caper.network shipped a stylesheet two commits stale that way (Oct 2026).
-    turbopackFileSystemCacheForBuild: false,
-    optimizePackageImports: ['lucide-react'],
-  },
 
-  // Image optimization for external sources
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '*.public.blob.vercel-storage.com',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.blob.vercel-storage.com',
-      },
+      { protocol: 'https', hostname: '*.public.blob.vercel-storage.com' },
+      { protocol: 'https', hostname: '*.blob.vercel-storage.com' },
     ],
-    formats: ['image/avif', 'image/webp'],
-  },
-  
-  async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: securityHeaders(isProd ? csp : null),
-      },
-    ];
   },
 
   async redirects() {
@@ -125,6 +95,4 @@ const nextConfig: NextConfig = {
       ],
     };
   },
-};
-
-export default nextConfig;
+} satisfies NextConfig, { csp });

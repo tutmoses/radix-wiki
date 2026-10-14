@@ -1,35 +1,4 @@
-import { existsSync } from 'node:fs';
-import path from 'node:path';
 import { defineConfig } from 'prisma/config';
+import { prismaConfig } from 'wiki-formant/db';
 
-// A local checkout keeps its URLs in .env; a Vercel build has none and needs none.
-if (existsSync('.env')) process.loadEnvFile();
-
-// Prefer DIRECT_URL: this file is read only by the Prisma CLI, and every CLI
-// operation that connects (db push, migrate diff, studio) needs a direct
-// session-mode connection. Supabase's pooled PgBouncer endpoint on 6543 (what
-// DATABASE_URL points at) cannot serve those and hangs rather than failing.
-// The app runtime never loads this file — it builds its adapter from
-// DATABASE_URL — so preferring the direct URL here leaves request-path pooling
-// untouched, and makes the "temporarily edit DATABASE_URL to :5432" dance in
-// CLAUDE.md unnecessary for any repo that sets DIRECT_URL.
-//
-// Fall back to a placeholder so `prisma generate` (which only reads the schema
-// and never connects) can run where neither is set, such as a Vercel preview
-// build. CLI operations that actually connect fail loudly against it, which is
-// the intended behaviour when both are missing.
-//
-// Paths are resolved against this file, not the cwd, so the CLI works from a
-// subdirectory.
-export default defineConfig({
-  schema: path.join(import.meta.dirname, 'prisma', 'schema'),
-  migrations: {
-    path: path.join(import.meta.dirname, 'prisma', 'migrations'),
-  },
-  datasource: {
-    url:
-      process.env.DIRECT_URL ??
-      process.env.DATABASE_URL ??
-      'postgresql://placeholder:placeholder@localhost:5432/placeholder',
-  },
-});
+export default defineConfig(prismaConfig(import.meta.dirname));
