@@ -47,11 +47,8 @@ export async function POST(request: NextRequest) {
     // The session belongs to the address the proof verified, never to one the
     // body merely names. `accounts` is unsigned: keying the user on accounts[0]
     // let anyone sign a challenge with their own key and log in as any address
-    // on the ledger. A persona proof names no account, so it cannot log in.
+    // on the ledger. A persona proof names no account, so verification refuses it.
     const address = signedChallenge.address;
-    if (!address.startsWith('account_')) {
-      return errors.badRequest('Sign in with an account proof');
-    }
     const account = accounts.find(a => a.address === address);
 
     let user = await prisma.user.findUnique({ where: { radixAddress: address } });

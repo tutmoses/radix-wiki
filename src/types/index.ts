@@ -3,9 +3,9 @@
 import type { User, Page, Comment, Notification, Prisma } from '@prisma/client';
 
 // Auth types. The session and the wallet proof are shaped by the stack that
-// produces them, @/lib/rola; re-exported here so the rest of the app keeps
+// produces them, @/lib/auth; re-exported here so the rest of the app keeps
 // importing its types from one place.
-export type { AuthSession, SignedChallenge } from '@/lib/rola';
+export type { AuthSession, SignedChallenge } from '@/lib/auth';
 
 export interface RadixPersona {
   identityAddress: string;
