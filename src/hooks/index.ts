@@ -5,7 +5,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { create } from 'zustand';
-import QRCode from 'qrcode';
 import { parsePath } from '@/lib/path';
 import { sendJson } from '@/lib/utils';
 import type { AuthSession, RadixWalletData, WikiNotification } from '@/types';
@@ -44,30 +43,6 @@ export function useFetch<T>(url: string | null | undefined, opts?: { transform?:
   }, [url]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { data, isLoading, error };
-}
-
-// ========== ACCOUNT QR HOOK ==========
-
-const RADIX_ACCOUNT_RE = /^account_(rdx|tdx_2_)1[a-z0-9]{50,}$/;
-
-/** The tip-jar QR code, shared by the block view and its editor. */
-export function useAccountQr(rawAddress: string | undefined) {
-  const [rendered, setRendered] = useState<string | null>(null);
-  const address = (rawAddress || '').trim();
-  const isValid = RADIX_ACCOUNT_RE.test(address);
-
-  useEffect(() => {
-    if (!isValid) return;
-    let active = true;
-    QRCode.toString(address, { type: 'svg', errorCorrectionLevel: 'M', margin: 1, color: { dark: '#1a1d29', light: '#ffffff' } })
-      .then(svg => { if (active) setRendered(svg); })
-      .catch(() => { if (active) setRendered(null); });
-    return () => { active = false; };
-  }, [address, isValid]);
-
-  // Masked here instead of cleared from the effect, so an invalid address never
-  // shows the previous address's code.
-  return { address, isValid, qr: isValid ? rendered : null };
 }
 
 // ========== PAGE PATH HOOK ==========

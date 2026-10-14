@@ -5,6 +5,7 @@
 import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type HTMLAttributes } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, FileText } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { cn } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { useClickOutside } from '@/hooks';
@@ -105,3 +106,11 @@ export function StatusCard({ status, backHref }: { status: keyof typeof STATUS; 
   );
 }
 
+/** The tip-jar QR, shared by the block view and its editor; `.tip-jar-qr` sizes it. */
+export function TipJarQr({ address, className }: { address: string; className?: string }) {
+  return (
+    <div className={cn('tip-jar-qr', className)}>
+      <QRCodeSVG value={address} level="M" marginSize={1} fgColor="#1a1d29" bgColor="#ffffff" />
+    </div>
+  );
+}

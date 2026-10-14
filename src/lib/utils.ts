@@ -164,3 +164,11 @@ export function generateIdenticon(address: string): { cells: boolean[]; fg: stri
   const hue = Math.floor(rand() * 360);
   return { cells, fg: `hsl(${hue}, 65%, 65%)`, bg: `hsl(${hue}, 25%, 20%)` };
 }
+
+const RADIX_ACCOUNT_RE = /^account_(rdx|tdx_2_)1[a-z0-9]{50,}$/;
+
+/** The tip-jar address, trimmed and checked; shared by the block view and its editor. */
+export function tipAddress(raw: string | undefined) {
+  const address = (raw || '').trim();
+  return { address, isValid: RADIX_ACCOUNT_RE.test(address) };
+}

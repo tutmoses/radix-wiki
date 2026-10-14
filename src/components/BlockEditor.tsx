@@ -3,20 +3,18 @@
 'use client';
 
 import { useMemo, type ReactNode } from 'react';
-import { useAccountQr } from '@/hooks';
-import { EditorContent } from '@tiptap/react';
-import { UrlPromptField, WikiToolbar, toolbarActions, uploadImageTo, useUrlPrompt, useWikiEditor, type ToolbarKey } from 'wiki-formant/editor';
+import { EditorContent, UrlPromptField, WikiToolbar, toolbarActions, uploadImageTo, useUrlPrompt, useWikiEditor, type ToolbarKey } from 'wiki-formant/editor';
 import {
   BannerFields, BlockEditor as FormantBlockEditor, Choice, CodeTabsFields, ColumnsFields, Field, InfoboxFields, LimitField, LinkGridFields,
   PageListFields, ReferencesFields, StatsFields, type BlockEditorKit, type BlockMeta, type BlockSchema, type ChoiceProps, type FieldProps, type MenuProps,
 } from 'wiki-formant/block-editor';
 import { CHART_RANGES } from 'wiki-formant/chart';
 import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Bold, Italic, Link2, Unlink, Heading2, Heading3, Heading4, List, TableIcon, Globe, LayoutList, Info } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, tipAddress } from '@/lib/utils';
 import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock } from '@/lib/block-utils';
 import { resolveMapUrl } from 'wiki-formant/maps';
 import { ACTIVITY_METRICS } from '@/lib/radix/metrics';
-import { Button, Dropdown } from '@/components/ui';
+import { Button, Dropdown, TipJarQr } from '@/components/ui';
 import { Iframe, YouTube, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock, HeadingIds } from '@/lib/tiptap/extensions';
 import type { AtomicBlock, Block, BlockType, InfoboxBlock, AssetPriceBlock, NetworkChartBlock, RssFeedBlock, TipJarBlock, RecentPagesBlock } from '@/types/blocks';
 
@@ -129,7 +127,7 @@ function RssFeedEdit({ block, onUpdate }: EditProps<RssFeedBlock>) {
 }
 
 function TipJarEdit({ block, onUpdate }: EditProps<TipJarBlock>) {
-  const { address, isValid, qr } = useAccountQr(block.address);
+  const { address, isValid } = tipAddress(block.address);
   return (
     <div className="stack-sm">
       <Field label="Heading">
@@ -144,7 +142,7 @@ function TipJarEdit({ block, onUpdate }: EditProps<TipJarBlock>) {
       <Field label="Message">
         <input type="text" className="input" value={block.message || ''} onChange={e => onUpdate({ ...block, message: e.target.value })} placeholder="Support independent writing on Radix." />
       </Field>
-      {qr && <div className="tip-jar-qr tip-jar-qr-preview" dangerouslySetInnerHTML={{ __html: qr }} />}
+      {isValid && <TipJarQr address={address} className="tip-jar-qr-preview" />}
     </div>
   );
 }

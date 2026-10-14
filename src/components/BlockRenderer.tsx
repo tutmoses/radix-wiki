@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, memo, useMemo, type ReactNode } from 'r
 import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, FileText, Copy, Check, AlertTriangle, Megaphone, CalendarClock, type LucideIcon } from 'lucide-react';
-import { cn, generateBannerSvg, pagePath } from '@/lib/utils';
+import { cn, generateBannerSvg, pagePath, tipAddress } from '@/lib/utils';
 import { AGO, useNow } from '@/lib/now';
 import { formatDay, relativeTime } from 'wiki-formant/freshness';
 import { findTagByPath } from '@/lib/tags';
@@ -24,8 +24,8 @@ import {
   StatsView,
 } from 'wiki-formant/block-views';
 import { processHtml } from '@/lib/html';
-import { useAccountQr, useFetch } from '@/hooks';
-import { Badge } from '@/components/ui';
+import { useFetch } from '@/hooks';
+import { Badge, TipJarQr } from '@/components/ui';
 import type { WikiPage, PageMetadata } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, NetworkChartBlock, RssFeedBlock, InfoboxBlock, AtomicBlock, TipJarBlock, BannerVariant, TestimonialBlock } from '@/types/blocks';
 import { getMetadataKeys } from '@/lib/tags';
@@ -305,14 +305,14 @@ function TipJarBlockView({ block }: { block: TipJarBlock }) {
   // `useCopy` from `wiki-formant/react`. The version here had no rejection
   // handler, so a denied clipboard left the button saying "Copied".
   const { copied, copy } = useCopy();
-  const { address, isValid, qr } = useAccountQr(block.address);
+  const { address, isValid } = tipAddress(block.address);
 
   return (
     <div className="tip-jar">
       {block.label && <div className="tip-jar-label">{block.label}</div>}
       {block.message && <p className="tip-jar-message">{block.message}</p>}
-      {qr ? (
-        <div className="tip-jar-qr" dangerouslySetInnerHTML={{ __html: qr }} />
+      {isValid ? (
+        <TipJarQr address={address} />
       ) : (
         <div className="tip-jar-placeholder">{address && !isValid ? 'Not a valid Radix account address.' : 'No tip address set.'}</div>
       )}
