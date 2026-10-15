@@ -6,18 +6,11 @@ import { isValidTagPath, tagPaths } from '@/lib/tags';
 import { SITEMAP_PAGES } from '@/lib/static-pages';
 import { pageUrl } from '@/lib/utils';
 import { SITE_URL } from '@/lib/site';
+import { treeSitemap } from 'wiki-formant/sitemap';
 import { NOT_HIDDEN, getAssetPages } from '@/lib/wiki';
 
-// Rendered per request. `revalidate = 3600` (2026-09-05 to 2026-10-15) froze
-// the sitemap at each deploy: Next stamps a metadata route's prerender with
-// its own `cache-control: public, max-age=0, must-revalidate`, and Vercel
-// served that prerender as a HIT for the whole day after a build — never
-// stale, never regenerated, deaf to the `wiki` tag — while the ISR routes that
-// carry no Cache-Control of their own (pages, /api/charts/snapshot) went stale
-// on time. `next start` regenerated it correctly, so the fault is the platform's,
-// not the query's. Pages created between deploys were missing until the next
-// one. A sitemap is fetched a few dozen times a day; one query each is cheaper
-// than an ETag on a stale list.
+// Rendered per request, never `revalidate`: Vercel never regenerates a metadata
+// route's ISR prerender, so an hourly sitemap froze at each deploy (STRUCTURE.md S13).
 export const dynamic = 'force-dynamic';
 
 const HIGH_PRIORITY_PATHS = ['contents/tech/research', 'contents/tech/releases', 'contents/tech/core-protocols', 'contents/tech/core-concepts'];
@@ -50,13 +43,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // came out a second time, at `${SITE_URL}/`.
   const categoryPaths = tagPaths().filter(t => t.path && !t.hidden).map(t => t.path);
 
-  // Newest page under each category → real lastModified (pages already ordered updatedAt desc)
-  const catModified = new Map<string, Date>();
-  for (const path of categoryPaths) {
-    const latest = pages.find(p => p.tagPath === path || p.tagPath.startsWith(`${path}/`));
-    if (latest) catModified.set(path, latest.updatedAt);
-  }
-
   // The homepage moves when any page does. A lastmod that reads "now" on every
   // fetch is one Google learns to disregard, and it disregards the honest ones
   // with it — so the static routes below carry none rather than a fake one.
@@ -70,13 +56,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // llms.txt is the address every agent tries first.
   return [
     { url: SITE_URL, lastModified: latest, changeFrequency: 'daily', priority: 1 },
-    ...categoryPaths.map(path => ({
-      url: `${SITE_URL}/${path}`,
-      // A category with no pages has no honest date; the site's newest is not one.
-      lastModified: catModified.get(path),
-      changeFrequency: 'weekly' as const,
-      priority: 0.8,
-    })),
     ...SITEMAP_PAGES.map(p => ({
       url: `${SITE_URL}/${p.path}`,
       changeFrequency: p.changeFrequency,
@@ -87,15 +66,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'daily' as const,
       priority: 0.5,
     })),
-    // Hub articles (empty slug) are omitted here: their URL is the category's own,
-    // already emitted above.
-    ...pages
-      .filter(p => p.tagPath && p.slug && isValidTagPath(p.tagPath.split('/')))
-      .map(p => ({
-        url: pageUrl(p.tagPath, p.slug),
-        lastModified: p.updatedAt,
-        changeFrequency: 'weekly' as const,
-        priority: pagePriority(p.tagPath),
-      })),
+    // Each category dated by its newest page; a hub article (empty slug) dates
+    // its category and takes no row of its own, since its URL is the category's.
+    ...treeSitemap(pages.filter(p => p.tagPath && isValidTagPath(p.tagPath.split('/'))), {
+      sections: categoryPaths,
+      sectionRow: path => ({ url: `${SITE_URL}/${path}`, changeFrequency: 'weekly', priority: 0.8 }),
+      pageRow: p => ({ url: pageUrl(p.tagPath, p.slug), changeFrequency: 'weekly', priority: pagePriority(p.tagPath) }),
+    }),
   ];
 }
