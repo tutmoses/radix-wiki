@@ -4,7 +4,7 @@
 // and were answering it twice, through two entry points and five copies of the
 // same parameter list. One `Notification` is built per change and handed to each.
 
-import { createHmac, randomBytes } from 'crypto';
+import { createHash, createHmac, randomBytes } from 'crypto';
 import { prisma } from '@/lib/prisma/client';
 import { pageUrl, shortenAddress } from '@/lib/utils';
 import { SITE_URL } from '@/lib/site';
@@ -122,6 +122,15 @@ async function telegramApi(method: string, body: Record<string, unknown>): Promi
     return false;
   }
 }
+
+/**
+ * The `secret_token` the bot's webhook is registered with, which Telegram sends
+ * back as `X-Telegram-Bot-Api-Secret-Token` on every update. Derived from the bot
+ * token, so it needs no variable of its own; register it once with
+ * `setWebhook?url=<SITE_URL>/api/telegram/bot&secret_token=<this>`.
+ */
+export const telegramWebhookSecret = (): string | null =>
+  BOT_TOKEN ? createHash('sha256').update(`webhook:${BOT_TOKEN}`).digest('hex') : null;
 
 export function sendMessage(chatId: string, text: string): Promise<boolean> {
   return telegramApi('sendMessage', { chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: false });

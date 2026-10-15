@@ -2,9 +2,17 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { json } from 'wiki-formant/http';
-import { sendMessage } from '@/lib/webhooks';
+import { sendMessage, telegramWebhookSecret } from '@/lib/webhooks';
+import { secretMatches } from '@/lib/api';
 
 export async function POST(request: Request) {
+  // Anyone can POST here. Without Telegram's secret header, a forged update could
+  // pause any chat's notifications with /stop, or bind a chat it names to the
+  // forger's own account with /start.
+  const secret = telegramWebhookSecret();
+  if (!secret || !secretMatches(request.headers.get('x-telegram-bot-api-secret-token'), secret)) {
+    return new Response(null, { status: 401 });
+  }
   try {
     const update = await request.json();
     const message = update?.message;

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma/client';
 import { handleRoute, json, errors } from 'wiki-formant/http';
 import { requireAuth, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { buildPageBackupManifest, readAnchorFromLedger, readLedgerBackup } from '@/lib/radix/ledger';
+import { postGateway } from '@/lib/radix/gateway';
 import { blocksToMdx } from '@/lib/mdx';
 import type { NextRequest } from 'next/server';
 
@@ -32,13 +33,26 @@ async function prepare(radixAddress: string, { tagPath, slug }: Body) {
   });
 }
 
-async function confirm({ tagPath, slug, txHash }: Body) {
+type CommittedDetails = { transaction?: { transaction_status?: string; affected_global_entities?: string[] } };
+
+async function confirm(radixAddress: string, { tagPath, slug, txHash }: Body) {
   if (!tagPath || !slug || !txHash) return errors.badRequest('tagPath, slug, and txHash are required');
 
-  await prisma.page.update({
-    where: { tagPath_slug: { tagPath, slug } },
-    data: { backupTxHash: txHash },
-  });
+  // Only a committed transaction on the caller's own account counts as a backup:
+  // any signed-in wallet could otherwise stamp any page with any string.
+  const details = await postGateway<CommittedDetails>(
+    '/transaction/committed-details',
+    { intent_hash: txHash, opt_ins: { affected_global_entities: true } },
+    'ledger-confirm',
+  );
+  const tx = details?.transaction;
+  if (tx?.transaction_status !== 'CommittedSuccess' || !tx.affected_global_entities?.includes(radixAddress)) {
+    return errors.badRequest('txHash is not a committed transaction on your account');
+  }
+
+  // Raw, so a backup leaves updated_at alone: it is not an edit to the page.
+  const updated = await prisma.$executeRaw`UPDATE pages SET backup_tx_hash = ${txHash} WHERE tag_path = ${tagPath} AND slug = ${slug}`;
+  if (!updated) return errors.notFound('Page not found');
 
   return json({ ok: true });
 }
@@ -87,6 +101,6 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     const auth = await requireAuth(request);
     if ('error' in auth) return auth.error;
     const body = await request.json() as Body;
-    return action === 'prepare' ? prepare(auth.session.radixAddress, body) : confirm(body);
+    return action === 'prepare' ? prepare(auth.session.radixAddress, body) : confirm(auth.session.radixAddress, body);
   }, action === 'prepare' ? 'Failed to prepare ledger backup' : 'Failed to confirm backup');
 }

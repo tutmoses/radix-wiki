@@ -6,12 +6,13 @@
 import { revalidateTag } from 'next/cache';
 import { json, errors } from 'wiki-formant/http';
 import { syncLedgerDays } from '@/lib/radix/activity';
+import { secretMatches } from '@/lib/api';
 
 export const maxDuration = 300;
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
+  if (!secret || !secretMatches(request.headers.get('authorization'), `Bearer ${secret}`)) {
     return errors.notFound();
   }
   try {

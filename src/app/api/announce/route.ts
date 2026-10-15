@@ -17,6 +17,7 @@ import { pageUrl } from '@/lib/utils';
 import { describe } from 'wiki-formant/metadata';
 import { openingText } from 'wiki-formant/text';
 import { getRecaps } from '@/lib/feed';
+import { secretMatches } from '@/lib/api';
 import { RECAP_PREFIX, issueLabel } from '@/lib/week-in-review';
 
 export const dynamic = 'force-dynamic';
@@ -26,7 +27,7 @@ const SECRET = process.env.ANNOUNCE_SECRET || '';
 export async function POST(request: NextRequest) {
   return handleRoute(async () => {
     if (!SECRET) return errors.notFound();
-    if (request.headers.get('authorization') !== `Bearer ${SECRET}`) return errors.unauthorized();
+    if (!secretMatches(request.headers.get('authorization'), `Bearer ${SECRET}`)) return errors.unauthorized();
 
     const { tagPath, slug, channels = true } = await request.json() as
       { tagPath?: string; slug?: string; channels?: boolean };

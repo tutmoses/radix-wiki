@@ -4,7 +4,8 @@ import { NextRequest } from 'next/server';
 import { randomBytes } from 'crypto';
 import { prisma } from '@/lib/prisma/client';
 import { json, errors, handleRoute } from 'wiki-formant/http';
-import { requireAuth } from '@/lib/api';
+import { clientKey } from 'wiki-formant/rate-limit';
+import { IP_LIMITS, overBudget, requireAuth } from '@/lib/api';
 import { VALID_EVENTS, type WebhookEvent } from '@/lib/webhooks';
 
 const BOT_USERNAME = process.env.TELEGRAM_SUB_BOT_USERNAME;
@@ -32,6 +33,9 @@ export async function POST(request: NextRequest) {
   return handleRoute(async () => {
     const auth = await requireAuth(request);
     if ('error' in auth) return auth.error;
+    // Each call writes a link token or a subscription, for a wallet that costs nothing.
+    const limited = overBudget(clientKey('telegram', request.headers), IP_LIMITS.settings);
+    if (limited) return limited;
 
     const body = await request.json();
     const { tagPath, pageSlug, events } = body as {

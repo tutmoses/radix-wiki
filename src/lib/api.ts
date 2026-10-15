@@ -1,8 +1,10 @@
 // src/lib/api.ts - Shared API utilities
 
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { getSession } from '@/lib/auth';
 import { requireBalance, type BalanceAction } from '@/lib/radix/balance';
 import { json, errors } from 'wiki-formant/http';
+import { rateLimit, rateLimitedResponse, type RateLimitOptions } from 'wiki-formant/rate-limit';
 import type { AuthSession } from '@/types';
 
 export type RouteContext<T = Record<string, string | string[]>> = { params: Promise<T> };
@@ -11,10 +13,39 @@ export async function requireAuth(request?: Request, action?: BalanceAction): Pr
   const session = await getSession(request);
   if (!session) return { error: errors.unauthorized() };
   if (action) {
+    // A balance gates who may write, not how often: one holder could otherwise
+    // post without end, and every write purges the whole `wiki` cache tag.
+    const limited = overBudget(`write:${session.userId}`, WRITE_LIMIT);
+    if (limited) return { error: limited };
     const check = await requireBalance(session, action);
     if (!check.ok) return { error: check.response };
   }
   return { session };
+}
+
+const WRITE_LIMIT: RateLimitOptions = { capacity: 30, refillPerSec: 0.2 };
+
+/** Budgets for what a signed-in wallet can do without holding $XRD. A wallet costs
+ *  nothing to mint, so these are keyed on the caller's address (`clientKey`), never
+ *  on a user id a fresh wallet per burst would renew. */
+export const IP_LIMITS = {
+  challenge: { capacity: 10, refillPerSec: 1 / 30 },
+  upload: { capacity: 30, refillPerSec: 0.1 },
+  settings: { capacity: 20, refillPerSec: 1 / 60 },
+} satisfies Record<string, RateLimitOptions>;
+
+/** The 429 for a caller over `key`'s budget, or null while they are within it. */
+export function overBudget(key: string, opts: RateLimitOptions): Response | null {
+  const result = rateLimit(key, opts);
+  return result.ok ? null : rateLimitedResponse(result.retryAfterSec);
+}
+
+/** Whether a presented secret is the expected one, in constant time. Both are
+ *  hashed first, so their lengths match and neither is compared directly. */
+export function secretMatches(given: string | null | undefined, expected: string | undefined): boolean {
+  if (!given || !expected) return false;
+  const digest = (s: string) => createHash('sha256').update(s).digest();
+  return timingSafeEqual(digest(given), digest(expected));
 }
 
 export const CACHE = {

@@ -23,6 +23,7 @@ import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 import { RADIX_CONFIG } from '@/lib/radix/config';
 import { getLedgerDayRows } from '@/lib/radix/activity';
 import { trackMcpCall } from '@/lib/track';
+import { generateChallenge } from '@/lib/auth';
 import { McpToolError, readArgs, withAdjustments, type McpServerConfig, type McpPrompt, type McpResource } from 'wiki-formant/mcp';
 import { CORPUS_BUDGET, sliceCorpus } from 'wiki-formant/corpus';
 import type { Block } from '@/types/blocks';
@@ -311,13 +312,15 @@ async function get_ideas_board(raw: Record<string, unknown>) {
 // token, and the client sends it as an `Authorization` header on the POSTs
 // that carry subsequent write calls (the CORS allow-list already names it).
 
+// Made here rather than fetched from /api/auth/challenge: that route budgets
+// each caller's address, and a fetch from this function arrives from the
+// server's own, so every agent would share one bucket. This route's own limit
+// already holds each agent to its address.
 async function get_challenge() {
-  const res = await fetch(`${SITE_URL}/api/auth/challenge`);
-  const data = await res.json().catch(() => null) as { challenge?: string; expiresAt?: string; error?: string } | null;
-  if (!res.ok || !data?.challenge) throw new McpToolError(data?.error || `Challenge request failed (${res.status})`);
+  const { challenge, expiresAt } = await generateChallenge();
   return {
-    challenge: data.challenge,
-    expiresAt: data.expiresAt,
+    challenge,
+    expiresAt: expiresAt.toISOString(),
     sign: {
       message: `blake2b-256 of: "R" (ascii) + challenge (hex-decoded) + one length byte of "${RADIX_CONFIG.dAppDefinitionAddress}" + that address (utf-8) + "${SITE_URL}" (utf-8)`,
       curve: 'curve25519 (Ed25519); sign the 32-byte hash, hex-encode the signature',

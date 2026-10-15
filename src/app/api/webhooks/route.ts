@@ -3,7 +3,8 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { json, errors, handleRoute } from 'wiki-formant/http';
-import { requireAuth } from '@/lib/api';
+import { clientKey } from 'wiki-formant/rate-limit';
+import { IP_LIMITS, overBudget, requireAuth } from '@/lib/api';
 import { generateWebhookSecret, VALID_EVENTS, type WebhookEvent } from '@/lib/webhooks';
 
 export async function GET(request: NextRequest) {
@@ -39,6 +40,9 @@ export async function POST(request: NextRequest) {
 
     const count = await prisma.webhook.count({ where: { userId: auth.session.userId } });
     if (count >= 10) return errors.badRequest('Maximum 10 webhooks per user');
+    // Ten per user is no cap when a user is a wallet minted for free.
+    const limited = overBudget(clientKey('webhooks', request.headers), IP_LIMITS.settings);
+    if (limited) return limited;
 
     const webhook = await prisma.webhook.create({
       data: {
