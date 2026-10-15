@@ -2,7 +2,7 @@
 
 import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
-import { GatewayUnavailableError, num, postGateway, readMetadata, type GatewayEntity, type GatewayMetadata } from './gateway';
+import { chunks, GatewayUnavailableError, num, postGateway, readMetadata, type GatewayEntity, type GatewayMetadata } from './gateway';
 import { DASHBOARD_URL, OCISWAP_API } from './config';
 
 export interface TokenSummary {
@@ -252,10 +252,10 @@ async function _fetchTokenHolders(address: string): Promise<TokenHolders> {
   const items = page.items ?? [];
   // Validators are named from the validator directory; everything else names itself or stays an address.
   const others = items.map((h) => h.holder_address).filter((a) => !a.startsWith('validator_'));
-  const entities = others.length
-    ? await postGateway<{ items?: GatewayEntity[] }>('/state/entity/details', { addresses: others }, 'token-holder-names')
-    : null;
-  const names = new Map((entities?.items ?? []).flatMap((e) => {
+  // Names are best-effort: a batch the Gateway does not answer leaves its holders as addresses.
+  const pages = await Promise.all(chunks(others, 20).map((batch) =>
+    postGateway<{ items?: GatewayEntity[] }>('/state/entity/details', { addresses: batch }, 'token-holder-names')));
+  const names = new Map(pages.flatMap((page) => page?.items ?? []).flatMap((e) => {
     const name = readMetadata(e.metadata, 'name')?.trim();
     return e.address && name ? [[e.address, name] as const] : [];
   }));
@@ -270,7 +270,7 @@ async function _fetchTokenHolders(address: string): Promise<TokenHolders> {
 }
 
 export const getTokenHolders = cache(
-  unstable_cache(_fetchTokenHolders, ['radix-token-holders-v2'], { revalidate: 300, tags: ['charts'] }),
+  unstable_cache(_fetchTokenHolders, ['radix-token-holders-v3'], { revalidate: 300, tags: ['charts'] }),
 );
 
 interface DexStats {
