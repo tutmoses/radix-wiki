@@ -301,7 +301,7 @@ const META_VALUE_MAX = 500;
 /**
  * Metadata as a *listing* may carry it: declared keys only, each bounded.
  *
- * `metadata` is a free-form JSON column, and one page had the wiki-sweep
+ * `metadata` is a free-form JSON column, and one page had the sweep
  * routine writing 327 KB of run state into it. Passed straight through, that
  * single row made `list_pages`, `get_recent_changes` and `search_wiki` each
  * answer with roughly 350 KB — around 90k tokens, on the three calls an agent

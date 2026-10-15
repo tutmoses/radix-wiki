@@ -1,4 +1,4 @@
-// scripts/check-links.mjs — Dead-link checker for the wiki-sweep routine.
+// scripts/check-links.mjs — Dead-link checker for the sweep routine.
 //
 // Enumerates pages (optionally filtered to a tag prefix), extracts every
 // external link, every internal /path link and every embedded <iframe>/<img>,
