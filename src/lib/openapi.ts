@@ -253,6 +253,7 @@ export const SPEC = {
                   metadata: { type: 'object', additionalProperties: true },
                   bannerImage: { type: 'string', format: 'uri' },
                   revisionMessage: { type: 'string', description: 'What changed and why — always send one' },
+                  verified: { type: 'boolean', description: 'True when the page\'s facts were checked against its sources: stamps lastVerifiedAt, which retires the freshness banner. Send it alone to stamp without an edit.' },
                 },
               },
             },

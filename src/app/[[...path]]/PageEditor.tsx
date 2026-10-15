@@ -287,6 +287,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const [saveError, setSaveError] = useState<string | null>(null);
   const [missingKeys, setMissingKeys] = useState<string[]>([]);
   const [revisionMessage, setRevisionMessage] = useState('');
+  const [verified, setVerified] = useState(false);
   const [gate, setGate] = useState<{ allowed: boolean; balance?: number; required?: number; error?: string } | null>(null);
   const isAuthor = user && page?.authorId === user.id;
   const metadataKeys = getMetadataKeys(tagPath.split('/'));
@@ -340,7 +341,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
       const endpoint = exists ? apiPath : '/api/wiki';
       const newSlug = slugifyHeading(editSlug);
       const body = exists
-        ? { title, content, bannerImage, metadata, newSlug, editorIds, revisionMessage: revisionMessage.trim() || undefined }
+        ? { title, content, bannerImage, metadata, newSlug, editorIds, verified, revisionMessage: revisionMessage.trim() || undefined }
         : { title, content, bannerImage, metadata, tagPath, slug: newSlug || slug };
       const res = await sendJson(endpoint, method, body);
       const data = await res.json();
@@ -408,7 +409,10 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
           </>}
         </div>
         {!isCreating && (
-          <Input value={revisionMessage} onChange={e => setRevisionMessage(e.target.value)} placeholder="Edit summary — what changed and why (optional)" maxLength={200} />
+          <>
+            <Input value={revisionMessage} onChange={e => setRevisionMessage(e.target.value)} placeholder="Edit summary — what changed and why (optional)" maxLength={200} />
+            <label className="row"><input type="checkbox" checked={verified} onChange={e => setVerified(e.target.checked)} />I checked this page's facts against its sources</label>
+          </>
         )}
       </header>
       <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />

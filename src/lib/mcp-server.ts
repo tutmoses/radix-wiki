@@ -394,8 +394,8 @@ async function create_page(args: Record<string, unknown>, auth: string | null) {
 }
 
 async function edit_page(args: Record<string, unknown>, auth: string | null) {
-  const { tagPath, slug, content, title, revisionMessage, metadata } = args;
-  const result = await forwardWrite(`/api/wiki${pagePath(tagPath as string, (slug as string) ?? '')}`, 'PUT', { content, title, revisionMessage, metadata }, auth);
+  const { tagPath, slug, content, title, revisionMessage, metadata, verified } = args;
+  const result = await forwardWrite(`/api/wiki${pagePath(tagPath as string, (slug as string) ?? '')}`, 'PUT', { content, title, revisionMessage, metadata, verified }, auth);
   return {
     edited: true,
     url: pageUrl(result.tagPath as string, result.slug as string),

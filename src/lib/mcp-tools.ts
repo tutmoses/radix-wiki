@@ -265,6 +265,7 @@ export const TOOLS: McpToolSpec[] = [
         title: { type: 'string', description: 'New title' },
         revisionMessage: { type: 'string', description: 'What changed and why — shown in the page history. Always send one.' },
         metadata: { type: 'object', description: 'Replacement metadata object' },
+        verified: { type: 'boolean', description: 'True when you checked the page\'s facts against its sources: stamps lastVerifiedAt. Send it alone to stamp without an edit.' },
       },
       required: ['tagPath', 'slug'],
     },

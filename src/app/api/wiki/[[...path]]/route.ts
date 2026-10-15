@@ -359,8 +359,8 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     const auth = await requireAuth(request, { type: 'edit', tagPath: parsed.tagPath });
     if ('error' in auth) return auth.error;
 
-    const body: Partial<WikiPageInput> & { revisionMessage?: string; newSlug?: string; editorIds?: string[] } = await request.json();
-    const { title, content, bannerImage, metadata, revisionMessage, newSlug, editorIds } = body;
+    const body: Partial<WikiPageInput> & { revisionMessage?: string; newSlug?: string; editorIds?: string[]; verified?: boolean } = await request.json();
+    const { title, content, bannerImage, metadata, revisionMessage, newSlug, editorIds, verified } = body;
 
     if (content !== undefined && !validateBlocks(content)) {
       return errors.badRequest(`Invalid block structure: ${describeBlockIssues(blockIssues(content))}`);
@@ -429,6 +429,9 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
           bannerImage: bannerImage ?? undefined,
           metadata: metadata !== undefined ? (metadata as unknown as Prisma.InputJsonValue) : undefined,
           version: newVersion,
+          // The editor's word that the page's facts were checked against its
+          // sources: it retires the freshness banner without an edit.
+          ...(verified === true ? { lastVerifiedAt: new Date() } : {}),
           ...(editorIds !== undefined && existing.authorId === auth.session.userId ? { editorIds } : {}),
         },
         include: { author: AUTHOR_SELECT },
