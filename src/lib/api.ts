@@ -30,7 +30,6 @@ const WRITE_LIMIT: RateLimitOptions = { capacity: 30, refillPerSec: 0.2 };
  *  on a user id a fresh wallet per burst would renew. */
 export const IP_LIMITS = {
   challenge: { capacity: 10, refillPerSec: 1 / 30 },
-  upload: { capacity: 30, refillPerSec: 0.1 },
   settings: { capacity: 20, refillPerSec: 1 / 60 },
 } satisfies Record<string, RateLimitOptions>;
 
