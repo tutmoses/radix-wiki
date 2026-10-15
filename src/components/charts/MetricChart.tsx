@@ -8,7 +8,7 @@
 
 import { useCallback, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import Link from 'next/link';
-import { TimeChart, chartSteps, formatChartValue, type ChartMarker, type ChartRange, type ChartStep, type ChartView } from 'wiki-formant/chart';
+import { TimeChart, chartSteps, formatChartValue, stepDecimals, type ChartMarker, type ChartRange, type ChartStep, type ChartView } from 'wiki-formant/chart';
 import { cn } from '@/lib/utils';
 import type { NetworkEvent } from '@/lib/radix/events';
 
@@ -81,7 +81,10 @@ export function MetricChart<K extends string>({ points, metrics, param, period, 
     () => points.flatMap(p => (typeof p[metric] === 'number' && isFinite(p[metric]) ? [{ time: p.time, value: p[metric] }] : [])),
     [points, metric],
   );
-  const format = useCallback((n: number) => (current.percent ? `${n.toFixed(1)}%` : formatChartValue(n)), [current.percent]);
+  const format = useCallback(
+    (n: number, step?: number) => (current.percent ? `${n.toFixed(step ? stepDecimals(step) : 1)}%` : formatChartValue(n, step)),
+    [current.percent],
+  );
 
   const pick = (key: K) => {
     setPicked(key);

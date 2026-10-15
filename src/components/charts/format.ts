@@ -1,5 +1,7 @@
 // src/components/charts/format.ts — Numeric formatters shared by chart views
 
+import { stepDecimals } from 'wiki-formant/chart';
+
 export function formatCompact(n: number, opts: { prefix?: string; suffix?: string } = {}): string {
   if (!isFinite(n) || n === 0) return `${opts.prefix ?? ''}0${opts.suffix ?? ''}`;
   const abs = Math.abs(n);
@@ -36,7 +38,20 @@ export function formatUsd(n: number | undefined): string {
 }
 
 const SUBSCRIPT_DIGITS = '₀₁₂₃₄₅₆₇₈₉';
-export function formatPriceSubscript(p: number): string {
+const subscript = (n: number) => String(n).split('').map(d => SUBSCRIPT_DIGITS[+d]).join('');
+
+/**
+ * A price, its leading zeros counted in a subscript from two up. An axis tick
+ * passes its step, and every tick takes the places that step needs, so 0.95
+ * does not read 0.9500 under 1.00 and a stablecoin's ticks do not all read 1.00.
+ */
+export function formatPriceSubscript(p: number, step?: number): string {
+  if (p === 0) return '0';
+  if (step !== undefined) {
+    const fixed = Math.abs(p).toFixed(stepDecimals(step));
+    const zeros = fixed.match(/^0\.(0*)/)?.[1]!.length ?? 0;
+    return (p < 0 ? '-' : '') + (zeros < 2 ? fixed : `0.${subscript(zeros)}${fixed.slice(2 + zeros)}`);
+  }
   if (p >= 1) return p.toFixed(2);
   if (p >= 0.01) return p.toFixed(4);
   const s = p.toFixed(10);
@@ -44,6 +59,5 @@ export function formatPriceSubscript(p: number): string {
   const zeros = afterDot.match(/^0*/)?.[0].length ?? 0;
   if (zeros < 2) return p.toFixed(4);
   const sig = afterDot.slice(zeros, zeros + 3).replace(/0+$/, '') || '0';
-  const sub = zeros;
-  return `0.${String(sub).split('').map(d => SUBSCRIPT_DIGITS[+d]).join('')}${sig}`;
+  return `0.${subscript(zeros)}${sig}`;
 }
