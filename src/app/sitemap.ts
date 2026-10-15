@@ -8,14 +8,17 @@ import { pageUrl } from '@/lib/utils';
 import { SITE_URL } from '@/lib/site';
 import { NOT_HIDDEN, getAssetPages } from '@/lib/wiki';
 
-// `revalidate` alone, not `force-dynamic` beside it. The two contradict each
-// other and force-dynamic wins, so this route was rebuilt per request and
-// served uncached — which is why radix.wiki was the only origin of the three
-// whose sitemap carried no ETag, while caper's (identical config, minus the
-// force-dynamic) does. The validator itself comes from the edge caching a
-// prerendered response, so it appears on deploy rather than under `next start`.
-// Hourly is the right freshness for a document listing pages, not per-request.
-export const revalidate = 3600;
+// Rendered per request. `revalidate = 3600` (2026-09-05 to 2026-10-15) froze
+// the sitemap at each deploy: Next stamps a metadata route's prerender with
+// its own `cache-control: public, max-age=0, must-revalidate`, and Vercel
+// served that prerender as a HIT for the whole day after a build — never
+// stale, never regenerated, deaf to the `wiki` tag — while the ISR routes that
+// carry no Cache-Control of their own (pages, /api/charts/snapshot) went stale
+// on time. `next start` regenerated it correctly, so the fault is the platform's,
+// not the query's. Pages created between deploys were missing until the next
+// one. A sitemap is fetched a few dozen times a day; one query each is cheaper
+// than an ETag on a stale list.
+export const dynamic = 'force-dynamic';
 
 const HIGH_PRIORITY_PATHS = ['contents/tech/research', 'contents/tech/releases', 'contents/tech/core-protocols', 'contents/tech/core-concepts'];
 const MED_PRIORITY_PATHS = ['developers', 'ecosystem'];
@@ -39,8 +42,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     getAssetPages().catch(() => ({})),
   ]);
   // A token page earns a row when a wiki article documents the token: most other resources
-  // are pages with nothing to say. Not OciSwap's traded list either, whose minute-long cache
-  // would pull this route's hour down to a minute.
+  // are pages with nothing to say. Not OciSwap's traded list either, which would put a
+  // third-party API call behind every sitemap fetch.
   const tokenAddresses = Object.keys(assetPages).filter(a => a.startsWith('resource_'));
 
   // The root tag is the homepage, already the first row — as a category it
