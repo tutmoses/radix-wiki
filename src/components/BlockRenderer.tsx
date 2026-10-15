@@ -328,15 +328,15 @@ function TipJarBlockView({ block }: { block: TipJarBlock }) {
 
 // ========== EDITORIAL NOTICES ==========
 // `BannerView` looks the label up itself, in `BANNER_LABELS`, the same string
-// the editor and the text exports print. Only the message and the icon are this
-// wiki's.
-const BANNER_META: Record<BannerVariant, { message: string; icon: LucideIcon }> = {
-  stub: { message: 'This article is a stub. You can help RADIX Wiki by expanding it.', icon: FileText },
-  unsourced: { message: 'This article needs additional citations for verification. Please help improve it by adding references to reliable sources.', icon: AlertTriangle },
-  outdated: { message: 'Some information here may be out of date. Please help update it to reflect the current state of the Radix ecosystem.', icon: CalendarClock },
-  promotional: { message: 'This article may read like an advertisement. Please help rewrite it from a neutral point of view.', icon: Megaphone },
-  cleanup: { message: 'This article may require cleanup to meet RADIX Wiki quality standards.', icon: AlertTriangle },
-  coi: { message: 'A major contributor to this article may have a close connection with its subject. It may need additional review for a neutral point of view.', icon: AlertTriangle },
+// the editor and the text exports print. The message, the icon and the policy
+// the label links to are this wiki's.
+const BANNER_META: Record<BannerVariant, { message: string; icon: LucideIcon; policy: string }> = {
+  stub: { message: 'This article is a stub. You can help RADIX Wiki by expanding it.', icon: FileText, policy: '/policy/editorial-notices' },
+  unsourced: { message: 'This article needs additional citations for verification. Please help improve it by adding references to reliable sources.', icon: AlertTriangle, policy: '/policy/verifiability' },
+  outdated: { message: 'Some information here may be out of date. Please help update it to reflect the current state of the Radix ecosystem.', icon: CalendarClock, policy: '/policy/freshness' },
+  promotional: { message: 'This article may read like an advertisement. Please help rewrite it from a neutral point of view.', icon: Megaphone, policy: '/policy/neutral-point-of-view' },
+  cleanup: { message: 'This article may require cleanup to meet RADIX Wiki quality standards.', icon: AlertTriangle, policy: '/policy/editorial-notices' },
+  coi: { message: 'A major contributor to this article may have a close connection with its subject. It may need additional review for a neutral point of view.', icon: AlertTriangle, policy: '/policy/conflict-of-interest' },
 };
 
 /** One quotation, attributed. Quoting a person is the cheapest way a recap can
@@ -378,12 +378,13 @@ function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
         <ReferencesView items={block.items} title={block.title || 'References'} processHtml={processHtml} />
       );
     case 'banner': {
-      const { message, icon: Icon } = BANNER_META[bannerVariant(block.variant)];
+      const { message, icon: Icon, policy } = BANNER_META[bannerVariant(block.variant)];
       return (
         <BannerView
           variant={block.variant}
           text={block.text}
           message={message}
+          policy={policy}
           icon={<Icon size={18} className="editorial-banner-icon" />}
         />
       );
