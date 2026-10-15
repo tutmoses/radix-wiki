@@ -15,6 +15,8 @@ import { isStale, daysSince } from 'wiki-formant/freshness';
 import { getMetadataKeys } from '@/lib/tags';
 
 const HREF = /href=\\?"([^"\\?#]+)/g;
+/** A `references` block keeps each citation in a `url` field, not an href. */
+const REF_URL = /"url":"https?:/g;
 /** Page ids are cuids; block ids are dashed UUIDs, which this can't span. */
 const CUID = /c[a-z0-9]{20,}/g;
 
@@ -28,7 +30,7 @@ type Row = {
 
 const href = (p: Row) => pagePath(p.tagPath, p.slug);
 
-export const getMaintenanceQueues = cached('getMaintenanceQueues', async (): Promise<MaintenanceQueue[]> => {
+export const getMaintenanceQueues = cached('getMaintenanceQueuesWithRefs', async (): Promise<MaintenanceQueue[]> => {
   const pages = await prisma.page.findMany({
     where: { NOT: { tagPath: '' } },
     select: { id: true, title: true, slug: true, tagPath: true, content: true, metadata: true, updatedAt: true, lastVerifiedAt: true },
@@ -49,7 +51,7 @@ export const getMaintenanceQueues = cached('getMaintenanceQueues', async (): Pro
       if (target.startsWith('/')) linkedPaths.add(target.replace(/\/+$/, ''));
       else if (/^https?:/i.test(target)) outbound++;
     }
-    external.set(page.id, outbound);
+    external.set(page.id, outbound + (text.match(REF_URL)?.length ?? 0));
     // A `pageList` block references pages by id rather than by href.
     for (const [token] of text.matchAll(CUID)) if (token !== page.id && ids.has(token)) linkedIds.add(token);
   }

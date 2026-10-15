@@ -125,7 +125,7 @@ export const TAG_HIERARCHY: TagNode[] = [
     description: 'Projects building on Radix — DeFi protocols, NFT platforms, infrastructure, DAOs, and tooling, with status, team, and asset metadata.',
     metadataKeys: [
       { key: 'assets', label: 'Asset:', type: 'resource_address' },
-      { key: 'status', label: 'Status:', type: 'select', options: ['🟢 Active','🟡 Testnet','🟠 Dormant','🔴 Closed'], required: true },
+      { key: 'status', label: 'Status:', type: 'select', options: ['🟢 Active','🟡 Testnet','🟡 Pre-launch','🟠 In development','🟠 Dormant','🔴 Closed','🔴 Departed (pivoted off Radix)'], required: true },
       { key: 'category', label: 'Category:', type: 'select', options: ['DAO Platform', 'DeSci', 'Education', 'Finance', 'Gaming', 'Infrastructure', 'Launchpad', 'Media', 'NFT Platform', 'Oracle', 'Stablecoin', 'Staking', 'Studio', 'Token'], required: true },
       { key: 'founded', label: 'Founded:', type: 'date' },
       { key: 'website', label: 'Website:', type: 'url' },
@@ -155,7 +155,7 @@ export const TAG_HIERARCHY: TagNode[] = [
   {
     name: '⚖️ Policy',
     slug: 'policy',
-    description: 'RADIX Wiki editorial policy — the standards every article is held to: verifiability, neutral point of view, no original research, notability, and freshness.',
+    description: 'RADIX Wiki editorial policy: the seven standards every article is held to, namely verifiability, neutral point of view, no original research, notability, conflict of interest, freshness and editorial notices.',
   },
 ];
 

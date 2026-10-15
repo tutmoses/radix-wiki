@@ -129,7 +129,7 @@ function imageDrift({ kind, url, ok, bytes }) {
 
 await withClient(async (client) => {
   const { rows } = await client.query(
-    'SELECT slug, title, tag_path, content, updated_at FROM pages WHERE tag_path LIKE $1 ORDER BY updated_at ASC',
+    'SELECT slug, title, tag_path, content, metadata, updated_at FROM pages WHERE tag_path LIKE $1 ORDER BY updated_at ASC',
     [`${prefix}%`],
   );
 
@@ -154,6 +154,9 @@ await withClient(async (client) => {
     if (LINK_ROT_EXEMPT.has(path)) continue;
     const blocks = Array.isArray(row.content) ? row.content : [];
     const { external, internal, embeds } = collectBlockLinks(blocks);
+    // Infobox facts (website, X, GitHub) live in metadata and render as live
+    // links, so they rot like any citation; 98 URLs lived nowhere else (run 185).
+    for (const v of Object.values(row.metadata ?? {})) if (typeof v === 'string' && /^https?:\/\//i.test(v.trim())) external.push(v.trim());
     for (const u of new Set(external)) {
       if (!externalToPages.has(u)) externalToPages.set(u, []);
       externalToPages.get(u).push(path);
