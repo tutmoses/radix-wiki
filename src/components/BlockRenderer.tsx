@@ -288,8 +288,9 @@ const ContentBlockView = memo(function ContentBlockView({ html }: { html: string
     import('katex/dist/katex.min.css').then(() => import('katex/contrib/auto-render')).then(({ default: render }) => {
       render(el, {
         delimiters: [
+          // No single-$ delimiter: prose writes $XRD, and two cashtags in a
+          // block with any maths would render the text between them as a formula.
           { left: '$$', right: '$$', display: true },
-          { left: '$', right: '$', display: false },
           { left: '\\(', right: '\\)', display: false },
           { left: '\\[', right: '\\]', display: true },
         ],
