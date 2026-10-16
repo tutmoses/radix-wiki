@@ -70,6 +70,7 @@ export default withWikiDefaults({
       // DeSci lives on caper.network now, same slugs.
       { source: '/contents/tech/desci', destination: 'https://caper.network/wiki/desci', permanent: true },
       { source: '/contents/tech/desci/:slug(desci-and-radix|desci-funding|ip-nfts)', destination: 'https://caper.network/wiki/desci/:slug', permanent: true },
+      { source: '/contents/tech/core-concepts/decentralized-science-desci', destination: 'https://caper.network/wiki/desci/what-is-desci', permanent: true },
       { source: '/ecosystem/:slug(vitadao|psydao|athenadao|bio-xyz|genomesdao|gitcoin-desci|molecule|ultrarare-bio)', destination: 'https://caper.network/wiki/desci/ecosystem/:slug', permanent: true },
       // The legacy docs mirrored docs.radixdlt.com, whose pages still answer at
       // the same final slug (10 of 12 sampled). The two that do not 404 there
