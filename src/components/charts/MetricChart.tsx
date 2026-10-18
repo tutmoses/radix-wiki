@@ -8,11 +8,12 @@
 
 import { useCallback, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import Link from 'next/link';
-import { TimeChart, chartSteps, formatChartValue, stepDecimals, type ChartMarker, type ChartRange, type ChartStep, type ChartView } from 'wiki-formant/chart';
+import { TimeChart, chartSteps, formatChartValue, stepDecimals, type ChartAggregate, type ChartMarker, type ChartRange, type ChartStep, type ChartView } from 'wiki-formant/chart';
 import { cn } from '@/lib/utils';
 import type { NetworkEvent } from '@/lib/radix/events';
 
-export type Metric<K extends string> = { key: K; label: string; percent?: boolean };
+/** `aggregate` overrides the chart's for this metric: how its week or month is made from its points. */
+export type Metric<K extends string> = { key: K; label: string; percent?: boolean; aggregate?: ChartAggregate };
 type Point<K extends string> = { time: number } & Record<K, number | null>;
 
 const DAY = 86_400;
@@ -45,7 +46,7 @@ function writeQuery(patch: Record<string, string | null>) {
   if (url.href !== window.location.href) window.history.replaceState(window.history.state, '', url);
 }
 
-export function MetricChart<K extends string>({ points, metrics, param, period, compare, range: defaultRange = '1y', single, markers, events, caption }: {
+export function MetricChart<K extends string>({ points, metrics, param, period, compare, aggregate = 'sum', range: defaultRange = '1y', single, markers, events, caption }: {
   points: Point<K>[];
   metrics: Metric<K>[];
   /** The query key for the metric; the range and step take `<param>-range` and `<param>-step`. */
@@ -54,6 +55,8 @@ export function MetricChart<K extends string>({ points, metrics, param, period, 
   period: 'day' | 'week';
   /** The headline compares the latest point with the mean of this many before it. */
   compare: { points: number; label: string };
+  /** A week or month of counts is their total; of readings, the last. */
+  aggregate?: ChartAggregate;
   range?: ChartRange;
   /** Every point at once, no range buttons: a short series. */
   single?: boolean;
@@ -150,7 +153,7 @@ export function MetricChart<K extends string>({ points, metrics, param, period, 
         range={single ? 'all' : query?.range ?? defaultRange}
         step={query?.step}
         onView={onView}
-        aggregate="mean"
+        aggregate={current.aggregate ?? aggregate}
         fromZero={!current.percent}
         format={format}
         markers={markers}

@@ -166,8 +166,8 @@ function NetworkChartBlockView({ block }: { block: NetworkChartBlock }) {
   }, [block.metric]);
   return (
     <div className="stack-sm">
-      <span className="text-small text-text-muted">{label} on the Radix network, per day</span>
-      <TimeChart series={load} label={label} ranges={DAILY_RANGES} range={block.range ?? '1y'} aggregate="mean" fromZero markers={NETWORK_MARKERS} />
+      <span className="text-small text-text-muted">{label} on the Radix network, totalled by day, week or month</span>
+      <TimeChart series={load} label={label} ranges={DAILY_RANGES} range={block.range ?? '1y'} aggregate="sum" fromZero markers={NETWORK_MARKERS} />
       <Link href={`/charts?m=${block.metric}`} className="charts-section-link">All network charts →</Link>
     </div>
   );

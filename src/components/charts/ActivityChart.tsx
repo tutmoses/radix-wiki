@@ -25,7 +25,7 @@ export function ActivityChart({ days, dataUrl }: { days: LedgerDayPoint[]; dataU
       events={NETWORK_EVENTS}
       caption={first && last && (
         <>
-          Daily figures from {longDay(first.time)} to {longDay(last.time)}, in UTC days. A week or month point is the daily average across it, so the week in progress keeps its level. Counts cover the transactions
+          Daily figures from {longDay(first.time)} to {longDay(last.time)}, in UTC days. A week or month point is the total of its days, so the week in progress counts only the days so far, and an account active on three days of a week counts three times. Counts cover the transactions
           people submit, not the ones the network makes for itself each round. An active account is one whose balance
           changed. Burned $XRD is the half of each network fee that is destroyed, plus any $XRD burned on purpose.
           {' '}<a href={`${dataUrl}?format=csv`} download>Download CSV</a> · <a href={dataUrl}>JSON</a>

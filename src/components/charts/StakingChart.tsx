@@ -16,8 +16,8 @@ const METRICS: Metric<Key>[] = [
   { key: 'nakamoto', label: 'Validators holding a third' },
   { key: 'active', label: 'Active validators' },
   { key: 'dexTvlXrd', label: 'OciSwap TVL ($XRD)' },
-  { key: 'dexVolumeXrd', label: 'OciSwap 7-day volume ($XRD)' },
-  { key: 'swaps', label: 'OciSwap 7-day swaps' },
+  { key: 'dexVolumeXrd', label: 'OciSwap 7-day volume ($XRD)', aggregate: 'sum' },
+  { key: 'swaps', label: 'OciSwap 7-day swaps', aggregate: 'sum' },
 ];
 
 /** `recordHref` is the Network Weekly page, passed in so this client module never imports the server-side reader. */
@@ -29,6 +29,7 @@ export function StakingChart({ weeks, recordHref }: { weeks: WeeklyPoint[]; reco
       param="w"
       period="week"
       compare={{ points: 1, label: 'the week before' }}
+      aggregate="last"
       single
       markers={NETWORK_MARKERS}
       events={NETWORK_EVENTS}
