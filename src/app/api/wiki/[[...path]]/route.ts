@@ -1,6 +1,6 @@
 // src/app/api/wiki/[[...path]]/route.ts
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { pageUrl, pagePath } from '@/lib/utils';
@@ -299,6 +299,8 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
     if ('error' in auth) return auth.error;
 
     let slug = body.slug || slugifyHeading(title);
+    // The empty slug is the category's own hub article, which a create never takes.
+    if (!slug) return errors.badRequest('The title has no letters or digits to make a slug from: send a slug');
     // A reserved slug is taken the way an existing page's is: a title like
     // "History" would otherwise land on a URL that opens the category's history.
     if (isReservedSlug(tagPath, slug) || await store.get(tagPath, slug)) slug = `${slug}-${Date.now().toString(36)}`;
@@ -351,7 +353,8 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     if (!existing) return errors.notFound('Page not found');
     const current = toWikiPage(existing);
 
-    const slugUpdate = newSlug && newSlug !== existing.slug ? slugifyHeading(newSlug) : undefined;
+    // Only an article moves: the homepage and a hub article are their path's empty slug.
+    const slugUpdate = parsed.type === 'page' && newSlug && newSlug !== existing.slug ? slugifyHeading(newSlug) : undefined;
     // A rename has no suffix to fall back on, so a reserved slug is refused outright.
     if (slugUpdate && isReservedSlug(existing.tagPath, slugUpdate)) return errors.badRequest('That slug belongs to a view or a subcategory of this section');
 
@@ -384,7 +387,8 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     const page = await withAuthor(result.page);
 
     if (existing.authorId && !isAuthor) {
-      prisma.notification.create({ data: { userId: existing.authorId, actorId: auth.session.userId, type: 'page_edited', pageId: existing.id } }).catch(() => {});
+      const userId = existing.authorId;
+      after(() => prisma.notification.create({ data: { userId, actorId: auth.session.userId, type: 'page_edited', pageId: existing.id } }).catch(() => {}));
     }
     const totalRevisions = await prisma.wikiRevision.count({ where: { authorId: auth.session.userId } });
     revalidateTag('wiki', { expire: 0 });

@@ -5,6 +5,7 @@
 // same parameter list. One `Notification` is built per change and handed to each.
 
 import { createHash, createHmac, randomBytes } from 'crypto';
+import { after } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { pageUrl, shortenAddress } from '@/lib/utils';
 import { SITE_URL } from '@/lib/site';
@@ -42,9 +43,10 @@ export function generateWebhookSecret(): string {
 }
 
 /**
- * The one entry point for a notified change. Fire-and-forget on both channels —
- * errors are logged, never thrown to the caller, so a dead subscriber can never
- * fail a wiki write.
+ * The one entry point for a notified change. Both channels run after the
+ * response, through `after`, so a serverless function is kept alive until they
+ * finish instead of freezing mid-delivery. Errors are logged, never thrown to
+ * the caller, so a dead subscriber can never fail a wiki write.
  */
 export function deliverWebhooks(
   event: WebhookEvent,
@@ -54,8 +56,10 @@ export function deliverWebhooks(
   comment?: Notification['comment'],
 ): void {
   const notification: Notification = { event, page, revision, actor, comment };
-  deliverHttp(notification).catch((err) => console.error('Webhook delivery error:', err));
-  if (BOT_TOKEN) deliverTelegram(notification).catch((err) => console.error('Telegram delivery error:', err));
+  after(() => Promise.all([
+    deliverHttp(notification).catch((err) => console.error('Webhook delivery error:', err)),
+    BOT_TOKEN && deliverTelegram(notification).catch((err) => console.error('Telegram delivery error:', err)),
+  ]));
 }
 
 // ---- HTTP webhooks ----

@@ -1,6 +1,6 @@
 // src/app/api/comments/[[...path]]/route.ts
 
-import { NextRequest } from 'next/server';
+import { NextRequest, after } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { json, errors, handleRoute } from 'wiki-formant/http';
@@ -73,13 +73,11 @@ export async function POST(request: NextRequest) {
     // The ideas listing shows each page's reply count and last activity.
     revalidateTag('wiki', { expire: 0 });
 
-    // Fire-and-forget notifications
-    if (page.authorId && page.authorId !== auth.session.userId) {
-      prisma.notification.create({ data: { userId: page.authorId, actorId: auth.session.userId, type: 'comment_on_page', pageId, commentId: comment.id } }).catch(() => {});
-    }
-    if (parentComment && parentComment.authorId !== auth.session.userId) {
-      prisma.notification.create({ data: { userId: parentComment.authorId, actorId: auth.session.userId, type: 'comment_reply', pageId, commentId: comment.id } }).catch(() => {});
-    }
+    // Notifications are written after the response, never failing the comment.
+    const notify = (userId: string, type: string) => after(() =>
+      prisma.notification.create({ data: { userId, actorId: auth.session.userId, type, pageId, commentId: comment.id } }).catch(() => {}));
+    if (page.authorId && page.authorId !== auth.session.userId) notify(page.authorId, 'comment_on_page');
+    if (parentComment && parentComment.authorId !== auth.session.userId) notify(parentComment.authorId, 'comment_reply');
 
     deliverWebhooks('comment.created', page, null, { displayName: auth.session.displayName ?? null, radixAddress: auth.session.radixAddress }, { id: comment.id, content: comment.content, parentId: parentId || null });
     return json(comment, 201);
