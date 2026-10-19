@@ -6,10 +6,11 @@ import Link from 'next/link';
 import { Home, Trophy, BarChart3, ChevronRight, ChevronDown, ListTree, Wrench } from 'lucide-react';
 import { useMemo } from 'react';
 // The rail's shell — its landmark, its three collapse states and the scroll
-// container that closes it on a mobile tap — is `wiki-formant/react`, shared
-// with caper, which had the same aside under a different class prefix. The
-// third state is the one a reimplementation drops: without `--instant` a rail
-// the reader left closed renders open and slides shut on every load.
+// container that closes it when a link is followed on mobile — is
+// `wiki-formant/react`, and with the `wiki-sidebar` prefix its layout, column
+// and drawer, is `wiki-formant/base.css`, as on caper and acuiq2. The third
+// state is the one a reimplementation drops: without `--instant` a rail the
+// reader left closed renders open and slides shut on every load.
 import { RailShell, TableOfContents as SharedToc, isRailLinkActive } from 'wiki-formant/react';
 import { cn } from '@/lib/utils';
 import { useAuth, useWikiPathname } from '@/hooks';
@@ -99,7 +100,7 @@ export function Sidebar() {
   const visibleTags = useMemo(() => getVisibleTags(), []);
 
   return (
-    <RailShell prefix="sidebar" label="Wiki navigation">
+    <RailShell prefix="wiki-sidebar" label="Wiki navigation">
       <div className="stack-sm p-4">
         <nav className="stack-sm" aria-label="Site">
           <NavItem href="/" icon={<Home size={18} />} label="Home" pathname={pathname} />

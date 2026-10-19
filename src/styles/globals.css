@@ -387,7 +387,7 @@
   @media (min-width: 640px) { .show-mobile { display: none; } }
 
   /* ===== APP SHELL (layout.tsx) ===== */
-  .app-main { @apply min-h-[calc(100dvh-var(--header-height))] flex-1 min-w-0 transition-all duration-200; }
+  .app-main { @apply min-h-[calc(100dvh-var(--header-height))] transition-all duration-200; }
   .app-content { @apply py-6 sm:py-8 mx-auto w-full max-w-[var(--content-width)]; padding-inline: var(--page-pad); }
 
   /* ===== HEADER ===== */
@@ -430,47 +430,13 @@
   .search-page-result { @apply block p-3 bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5 hover:shadow; }
 
   /* ===== SIDEBAR ===== */
-  /* The four `sidebar--*` / `sidebar__*` names below are built at runtime, not
-     written: `RailShell prefix="sidebar"` concatenates them. A scan of literal
-     class names therefore reports all four as unreferenced — they are not, and
-     that is why `lint:classes` leaves `--unused` advisory. Do not delete them. */
-  .sidebar { @apply sticky top-[var(--header-height)] h-[calc(100dvh-var(--header-height))] bg-surface-0 border-r border-border-muted shrink-0 overflow-hidden transition-all duration-200; }
-  .sidebar--open { width: var(--sidebar-width); }
-  .sidebar--closed { width: 0; }
-  /* Before the remembered state is known, skip the animation: a rail the reader
-     left closed should already be closed on first paint, not slide shut. */
-  /* The attribute is written by wiki-formant's boot script before first paint
-     and kept in sync by the hook afterwards, so it is authoritative on both
-     sides of hydration — the React class alone cannot be, since the server
-     cannot read localStorage. */
-  html[data-sidebar='closed'] .sidebar { width: 0; }
-  html[data-sidebar='open'] .sidebar { width: var(--sidebar-width); }
-  .sidebar--instant { transition: none; }
-  .sidebar__scroll { @apply flex flex-col h-full overflow-y-auto w-[var(--sidebar-width)] pb-24; }
-  /* Below the rail's own breakpoint the rail OVERLAYS the article instead of
-     pushing it. `wiki-formant`'s RailShell already assumes this — it closes the
-     rail on a tap inside only when `isMobile`, which is what an overlay needs
-     and a column beside the text does not — but this stylesheet pushed at every
-     width. At 375px the 288px rail left the article 87px and the infobox set
-     one letter per line.
-
-     768 is not a guess and must not drift: it is the `breakpoint` passed to
-     both `SidebarProvider` and `sidebarBootScript` in layout.tsx, so the width
-     that makes the rail close on navigate is the same width that makes it
-     float. Above it the rail stays a sticky column, which is why this is a
-     max-width query and not a change to the base rule.
-
-     The header is `z-50` and starts at y=0; the rail begins below it, so the
-     toggle stays reachable while the rail is open — which is the only way back
-     out, there being no scrim. */
-  @media (max-width: 767px) {
-    /* The JS half of this number is SIDEBAR_BREAKPOINT in `src/lib/sidebar.ts`,
-       and it cannot be read from here. `--rail-floating` is how the hook checks
-       the two still agree — see wiki-formant's `railBreakpointMismatch`, which
-       says so in development the moment they stop. */
-    :root { --rail-floating: 1; }
-    .sidebar { position: fixed; left: 0; z-index: 40; box-shadow: var(--shadow); }
-  }
+  /* The rail's layout — a sticky column from wiki-formant's 1024px breakpoint,
+     a drawer stacked above the article below it — is wiki-formant/base.css,
+     the same on all three wikis; this is the surface. `--rail-top` is what the
+     sticky rail clears and `--rail-border` the rule beside it, which becomes
+     the drawer's foot. */
+  .wiki-sidebar { @apply bg-surface-0; --rail-top: var(--header-height); --rail-border: 1px solid var(--color-border-muted); }
+  .wiki-sidebar__scroll { @apply pb-24; }
   .sidebar-label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3; }
 
   /* Nav items */
