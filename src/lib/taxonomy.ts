@@ -5,10 +5,6 @@
 // related ranking, one href contract) lives in `wiki-formant`. What stays here
 // is the only part that is this wiki's: which metadata keys a tag path declares,
 // and what a category URL looks like.
-//
-// The rail's ROWS come from here too (`facetControls`/`alphaControls`), not just
-// the counts: the href arithmetic that carries the reader's letter and sort
-// through every chip.
 
 import { createTaxonomy, defaultHref } from 'wiki-formant/taxonomy';
 import { getMetadataKeys } from '@/lib/tags';
@@ -30,14 +26,8 @@ export const taxonomy = createTaxonomy({
 });
 
 export const {
-  facetFilters,
-  filterPages,
   rankRelated,
   metadataRows,
-  // The rail's rows, with every href already built through `categoryHref`.
-  facetControls,
-  alphaControls,
-  resolveLetter,
   // The sort toggle's threshold: the same unfiltered count the index reads.
   needsAlphaIndex,
 } = taxonomy;

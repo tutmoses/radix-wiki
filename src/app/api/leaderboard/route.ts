@@ -5,7 +5,6 @@ import { parsePagination, paginatedResponse } from 'wiki-formant/pagination';
 import { getEditorScores, publicScore } from '@/lib/scoring';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 300;
 
 export async function GET(request: Request) {
   return handleRoute(async () => {

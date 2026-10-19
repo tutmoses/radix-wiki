@@ -22,7 +22,6 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
   const rdtRef = useRef<RadixDappToolkitType | null>(null);
   const setSession = useStore(s => s.setSession);
   const setLoading = useStore(s => s.setLoading);
-  const setConnected = useStore(s => s.setConnected);
   const setWalletData = useStore(s => s.setWalletData);
   const setRdtReady = useStore(s => s.setRdtReady);
   const _setRdtCallbacks = useStore(s => s._setRdtCallbacks);
@@ -113,13 +112,7 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
 
         // walletData$ only tracks connection state — auth is handled above
         subscription = rdt.walletApi.walletData$.subscribe((walletData) => {
-          if (walletData.accounts.length > 0) {
-            setWalletData(toWalletData(walletData));
-            setConnected(true);
-          } else {
-            setWalletData(null);
-            setConnected(false);
-          }
+          setWalletData(walletData.accounts.length > 0 ? toWalletData(walletData) : null);
         });
 
         setRdtReady(true);
@@ -142,7 +135,7 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
       subscription?.unsubscribe();
       _setRdtCallbacks(null, null, null);
     };
-  }, [setWalletData, setConnected, setSession, setLoading, setRdtReady, createSession, _setRdtCallbacks]);
+  }, [setWalletData, setSession, setLoading, setRdtReady, createSession, _setRdtCallbacks]);
 
   return <>{children}</>;
 }

@@ -2,7 +2,7 @@
 
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { matchSnippet, openingText } from 'wiki-formant/text';
+import { openingText } from 'wiki-formant/text';
 import { describe } from 'wiki-formant/metadata';
 import { hashStr, seededRandom } from 'wiki-formant/seeded';
 import { SITE_URL } from '@/lib/site';
@@ -56,21 +56,6 @@ export const sendJson = (url: string, method: 'POST' | 'PUT' | 'PATCH', body: un
 export function pageDescription(page: { metadata?: unknown; content?: unknown } | null | undefined): string {
   const excerpt = (page?.metadata as Record<string, unknown> | null | undefined)?.excerpt;
   return describe((typeof excerpt === 'string' && excerpt) || openingText(page?.content));
-}
-
-/**
- * Snippet centred on the first occurrence of `query` anywhere in the page, so a search
- * result can show why it matched. Falls back to the page opening when the match is in
- * the title alone.
- *
- * The walk and the clamp are `wiki-formant/text`, shared with caper, which had
- * adopted it first. The shared copy also collapses `&nbsp;` before decoding, which
- * the version that lived here did not — a phrase broken by one read back with the
- * entity still in it. What stays is this wiki's opening, which is the first
- * `content` block rather than the whole page flattened.
- */
-export function getMatchSnippet(content: unknown, query: string, maxLen = 200): string {
-  return matchSnippet(content, query, () => describe(openingText(content), maxLen), maxLen);
 }
 
 // ========== GENERATIVE BANNER ==========

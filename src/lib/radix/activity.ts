@@ -42,7 +42,7 @@ interface StreamTx {
 
 interface StreamPage { items?: StreamTx[]; next_cursor?: string | null }
 
-export interface DayTotals {
+interface DayTotals {
   transactions: number;
   activeAccounts: number;
   newAccounts: number;

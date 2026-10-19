@@ -82,7 +82,6 @@ export function usePagePath() {
 interface AppStore {
   session: AuthSession | null;
   isLoading: boolean;
-  isConnected: boolean;
   isConnecting: boolean;
   rdtReady: boolean;
   walletData: RadixWalletData | null;
@@ -96,9 +95,7 @@ interface AppStore {
   setRdtReady: (ready: boolean) => void;
   setSession: (session: AuthSession | null) => void;
   setLoading: (isLoading: boolean) => void;
-  setConnected: (isConnected: boolean) => void;
   setWalletData: (walletData: RadixWalletData | null) => void;
-  clearConnecting: () => void;
   connect: () => void;
   logout: () => Promise<void>;
   toast: { message: string; type: 'success' | 'info' } | null;
@@ -115,7 +112,6 @@ interface AppStore {
 export const useStore = create<AppStore>()((set, get) => ({
   session: null,
   isLoading: true,
-  isConnected: false,
   isConnecting: false,
   rdtReady: false,
   walletData: null,
@@ -140,16 +136,10 @@ export const useStore = create<AppStore>()((set, get) => ({
   setRdtReady: (rdtReady) => set({ rdtReady }),
   setSession: (session) => set({ session, isLoading: false }),
   setLoading: (isLoading) => set({ isLoading }),
-  setConnected: (isConnected) => set({ isConnected }),
   setWalletData: (walletData) => {
     const { _connectTimeout } = get();
     if (_connectTimeout) clearTimeout(_connectTimeout);
-    set({ walletData, isConnected: !!walletData, isConnecting: false, _connectTimeout: null });
-  },
-  clearConnecting: () => {
-    const { _connectTimeout } = get();
-    if (_connectTimeout) clearTimeout(_connectTimeout);
-    set({ isConnecting: false, _connectTimeout: null });
+    set({ walletData, isConnecting: false, _connectTimeout: null });
   },
   connect: () => {
     const { _rdtConnect, rdtReady, _connectTimeout } = get();
@@ -173,7 +163,7 @@ export const useStore = create<AppStore>()((set, get) => ({
       console.error('Failed to clear server session:', error);
     }
     _rdtDisconnect?.();
-    set({ session: null, isConnected: false, walletData: null, isLoading: false, notifications: [], unreadCount: 0 });
+    set({ session: null, walletData: null, isLoading: false, notifications: [], unreadCount: 0 });
   },
   toast: null,
   showToast: (message, type = 'success') => {
@@ -216,7 +206,6 @@ export const useStore = create<AppStore>()((set, get) => ({
 export const useAuth = () => {
   const session = useStore(s => s.session);
   const walletData = useStore(s => s.walletData);
-  const isConnected = useStore(s => s.isConnected);
   const isAuthenticated = !!session && new Date(session.expiresAt) > new Date();
   const user = useMemo(() => session ? {
     id: session.userId,
@@ -224,5 +213,5 @@ export const useAuth = () => {
     personaAddress: session.personaAddress,
     displayName: session.displayName,
   } : null, [session]);
-  return useMemo(() => ({ user, isAuthenticated, isConnected, walletData }), [user, isAuthenticated, isConnected, walletData]);
+  return useMemo(() => ({ user, isAuthenticated, walletData }), [user, isAuthenticated, walletData]);
 };

@@ -74,7 +74,7 @@ function ExpandedChanges({ changes }: { changes: HistoryChange[] }) {
   );
 }
 
-export function HistoryView({ data, tagPath, slug, isHomepage }: { data: HistoryData; tagPath: string; slug: string; isHomepage?: boolean }) {
+export default function HistoryView({ data, tagPath, slug, isHomepage }: { data: HistoryData; tagPath: string; slug: string; isHomepage?: boolean }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -173,5 +173,3 @@ export function HistoryView({ data, tagPath, slug, isHomepage }: { data: History
     </div>
   );
 }
-
-export default HistoryView;
