@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { EmptyState } from '@/components/EmptyState';
-import { RewardsSection } from '@/components/RewardsSection';
 import type { MaintenanceQueue } from '@/lib/maintenance';
 
 function MaintenanceView({ queues }: { queues: MaintenanceQueue[] }) {
@@ -34,7 +33,6 @@ function MaintenanceView({ queues }: { queues: MaintenanceQueue[] }) {
           </section>
         ))
       )}
-      <RewardsSection />
     </div>
   );
 }

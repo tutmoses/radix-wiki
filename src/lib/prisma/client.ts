@@ -17,7 +17,7 @@ function buildClient() {
   }).$extends({
     // Public payloads carry a display-safe truncation of the wallet address, never
     // the full one — computed at the query layer so no select can leak it. The full
-    // address stays server-side (auth, rewards CSV) via the radixAddress column.
+    // address stays server-side (auth) via the radixAddress column.
     result: {
       user: {
         shortAddress: {

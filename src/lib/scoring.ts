@@ -115,8 +115,7 @@ export const getEditorScores = unstable_cache(
   { revalidate: 3600, tags: ['leaderboard'] },
 );
 
-/** The public leaderboard row. The wallet address leaves the server truncated
- *  only; the full one stays in getEditorScores for the admin rewards CSV. */
+/** The public leaderboard row. The wallet address leaves the server truncated only. */
 export function publicScore(e: EditorScore) {
   return {
     id: e.id,

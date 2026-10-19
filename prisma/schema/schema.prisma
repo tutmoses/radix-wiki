@@ -121,16 +121,6 @@ model TelegramLink {
   @@map("telegram_links")
 }
 
-model Airdrop {
-  id           String    @id @default(cuid())
-  totalXrd     Float     @map("total_xrd")
-  editorCount  Int       @map("editor_count")
-  txHash       String?   @map("tx_hash")
-  snapshotJson Json      @map("snapshot_json")
-  createdAt    DateTime  @default(now()) @map("created_at")
-
-  @@map("airdrops")
-}
 
 /// One UTC day of user transactions, summed from the Gateway's transaction stream by
 /// src/lib/radix/activity.ts. A row exists only once its whole day has been read, so a
