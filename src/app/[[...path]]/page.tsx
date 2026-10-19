@@ -7,8 +7,9 @@ import { parsePath } from '@/lib/path';
 import { getHomepage, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getPageByAsset } from '@/lib/wiki';
 import { getMaintenanceQueues } from '@/lib/maintenance';
 import { getSession } from '@/lib/auth';
-import { alphaControls, facetControls, facetFilters, filterPages, needsAlphaIndex, rankRelated, resolveLetter } from '@/lib/taxonomy';
-import { findTagByPath, getMainArticle, getSortOrder, tagLabel, tagPaths, type SortOrder } from '@/lib/tags';
+import { rankRelated, taxonomy } from '@/lib/taxonomy';
+import { categoryView } from 'wiki-formant/category';
+import { findTagByPath, getMainArticle, getSortOrder, tagLabel, tagPaths, TAG_TREE, type SortOrder } from '@/lib/tags';
 import { highlightBlocks } from '@/lib/highlight';
 import { processBlocks } from '@/lib/html';
 import { sanitizePage } from '@/lib/sanitize';
@@ -21,7 +22,7 @@ import { articleLd, citationsFromReferences, collectionLd, describe, documentTit
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { STATIC_PAGES } from '@/lib/static-pages';
 import { prisma } from '@/lib/prisma/client';
-import { PageView, HomepageView, CategoryView, PageSkeleton, HistoryView, type RelatedPages, type SubcategorySummary } from './PageContent';
+import { PageView, HomepageView, CategoryView, PageSkeleton, HistoryView, type RelatedPages } from './PageContent';
 import dynamic from 'next/dynamic';
 
 const IdeasView = dynamic(() => import('./IdeasView'), { loading: () => <PageSkeleton /> });
@@ -59,7 +60,6 @@ export async function generateStaticParams() {
 }
 
 /** How many article links a section card carries before it defers to its own page. */
-const SECTION_CARD_PAGES = 6;
 
 export const dynamicParams = true;
 // A day, not a minute: every API write that changes what a page renders busts the
@@ -418,49 +418,15 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
         </>
       );
     }
-    const defaultSort = getSortOrder(tagSegments);
-    const requested = (sortParam && VALID_SORTS.has(sortParam) ? sortParam : defaultSort) as SortOrder;
-    // Pages filed directly here, and only those. A container category used to
-    // flatten its whole subtree into one grid beneath the subcategory cards,
-    // because a card carrying nothing but a page count was a dead end; the cards
-    // now list the articles themselves, so the flat copy was the same 122 pages
-    // twice on one screen — the wall this section index exists to remove.
-    const fetched = await getCategoryPages(parsed.tagPath, requested);
-    // A set small enough to need no A–Z index offers no sort either: it is A–Z.
-    const sort: SortOrder = needsAlphaIndex(fetched.length) ? requested : 'title';
-    const all = sort === requested ? fetched : await getCategoryPages(parsed.tagPath, sort);
-
-    // The tree gives one axis; `select` metadata gives the cross-cutting one, and
-    // the alphabetical index only earns its space once the grid outgrows a screen.
-    const filters = facetFilters(parsed.tagPath, query);
-    // `resolveLetter` drops a `?letter=` no page starts with, and `alphaControls`
-    // owns the "has this outgrown a grid?" threshold — both were spelled out here
-    // and neither made it into the other two wikis.
-    const letter = resolveLetter(all, filters, str(query.letter));
-    const state = { sort, filters, letter };
-    const letters = alphaControls(parsed.tagPath, all, state);
-    const pages = filterPages(all, filters, letter);
-
-    // Subcategory cards carry what they hold, not just how many: a section index
-    // that lists articles is navigation, one that lists numbers is a wall. A card
-    // lists the articles filed directly in its subcategory, in that listing's own
-    // order, then its sections, so neither half of a mixed one (Resources) hides.
+    // Pages filed directly here, and only those: the section cards list what
+    // each subcategory holds, so a container no longer flattens its subtree into
+    // a second grid beneath them. Count, sort, facets, letter and cards are
+    // `wiki-formant/category`, the view miow's wikis draw too.
+    const { sort, total, pages, filters, letter, facets, letters, clearHref, sections: allSubcategories } = await categoryView(
+      { tree: TAG_TREE, taxonomy, pages: { list: (t, { sort, limit }) => getCategoryPages(t, sort, limit), subtree: getSubtreeRefs } },
+      parsed.tagPath, query,
+    );
     const visibleChildren = (tag?.children ?? []).filter(c => !c.hidden);
-    const refs = visibleChildren.length ? await getSubtreeRefs(parsed.tagPath) : [];
-    const allSubcategories: SubcategorySummary[] = await Promise.all(visibleChildren.map(async child => {
-      const childPath = `${parsed.tagPath}/${child.slug}`;
-      const direct = await getCategoryPages(childPath);
-      return {
-        name: child.name,
-        href: `/${childPath}`,
-        description: child.description,
-        total: refs.filter(r => r.tagPath === childPath || r.tagPath.startsWith(`${childPath}/`)).length,
-        links: [
-          ...direct.slice(0, SECTION_CARD_PAGES).map(p => ({ title: p.title, href: `/${childPath}/${p.slug}` })),
-          ...(child.children ?? []).filter(c => !c.hidden).map(g => ({ title: g.name, href: `/${childPath}/${g.slug}` })),
-        ],
-      };
-    }));
     // A hub article heads its own category, so the pointer to a main article
     // elsewhere is only for the categories that don't have one.
     const hub = await withProcessedContent(await getCategoryHub(parsed.tagPath));
@@ -480,9 +446,9 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
         {hub && <JsonLd data={pageLd(hub, categoryUrl)} />}
         <JsonLd data={categoryLd(categoryName, categoryUrl, pages.length ? pages : allSubcategories, tag?.description)} />
         <CategoryView
-          tagPath={tagSegments} pages={pages} sort={sort} total={all.length}
-          facetGroups={facetControls(parsed.tagPath, all, state)} filters={filters}
-          letters={letters} letter={letter} subcategories={subcategories} mainArticle={mainArticle}
+          tagPath={tagSegments} pages={pages} sort={sort} total={total}
+          facetGroups={facets} filters={filters}
+          letters={letters} letter={letter} clearHref={clearHref} subcategories={subcategories} mainArticle={mainArticle}
           hub={hub} nowMs={nowMs}
         />
       </>

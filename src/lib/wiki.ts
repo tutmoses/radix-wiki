@@ -2,10 +2,11 @@
 
 import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
-import { wikiStore, toListing, type WikiPageRow, type WikiPageListing } from 'wiki-formant/store';
+import { wikiStore, type ListSort, type WikiPageRow } from 'wiki-formant/store';
+import { searchWiki, type WikiRow } from 'wiki-formant/wiki-tools';
+import { extractText } from '@/lib/content';
 import { prisma } from '@/lib/prisma/client';
 import { pageUrl } from '@/lib/utils';
-import { isoDate } from 'wiki-formant/freshness';
 import { getSortOrder, getMetadataKeys, HIDDEN_TAG_PATHS } from '@/lib/tags';
 import type { WikiAuthor, WikiPage, IdeasPage } from '@/types';
 import type { Block, RecentPagesBlock, PageListBlock, RssFeedBlock } from '@/types/blocks';
@@ -140,7 +141,7 @@ export const getLatestRecap = cached('getLatestRecap',
 );
 
 export const getCategoryPages = cached('getCategoryPages',
-  async (tagPath: string, sort?: 'title' | 'recent', limit = 200): Promise<WikiPage[]> => {
+  async (tagPath: string, sort?: ListSort, limit = 200): Promise<WikiPage[]> => {
     const resolved = sort ?? getSortOrder(tagPath.split('/'));
     // Newest `date` first where the section declares one: a blog post or an event
     // is as recent as the day it is about.
@@ -239,8 +240,7 @@ const META_VALUE_MAX = 500;
  * Which keys a page shows is a schema question the tag hierarchy already
  * answers, so ask it. The cap is the backstop for a declared key that grows.
  */
-function listingMetadata(tagPath: string, meta: Record<string, unknown> | null) {
-  if (!meta) return null;
+function listingMetadata(tagPath: string, meta: Record<string, unknown>) {
   const declared = new Set(getMetadataKeys(tagPath.split('/')).map(k => k.key));
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(meta)) {
@@ -251,37 +251,27 @@ function listingMetadata(tagPath: string, meta: Record<string, unknown> | null) 
   return Object.keys(out).length ? out : null;
 }
 
-/** The columns a summary is built from, for a listing that queries Prisma itself. */
-export const SUMMARY_SELECT = { title: true, tagPath: true, slug: true, content: true, updatedAt: true, metadata: true, lastVerifiedAt: true } as const;
-
 /** A Prisma filter for article space: every tag path but the back office. */
 export const NOT_HIDDEN = { notIn: HIDDEN_TAG_PATHS } as const;
 
-type Summarizable = Pick<WikiPageListing, 'title' | 'tagPath' | 'slug' | 'updatedAt' | 'lastVerifiedAt'> & { metadata?: unknown } & ({ snippet: string } | { content: unknown });
-
-/** The row shape every agent-facing listing returns (MCP search_wiki /
- *  list_pages / get_recent_changes and the plain-GET /api/wiki?q= twin). */
-export function summarizePage(p: Summarizable) {
-  const meta = listingMetadata(p.tagPath, (p.metadata ?? null) as Record<string, unknown> | null);
-  return {
-    title: p.title,
-    url: pageUrl(p.tagPath, p.slug),
-    tagPath: p.tagPath,
-    slug: p.slug,
-    snippet: 'snippet' in p ? p.snippet : toListing(p).snippet,
-    updatedAt: isoDate(p.updatedAt),
-    ...(p.lastVerifiedAt ? { lastVerified: isoDate(p.lastVerifiedAt) } : {}),
-    ...(meta ? { metadata: meta } : {}),
-  };
-}
-
-export type PageSummary = ReturnType<typeof summarizePage>;
+/**
+ * How this wiki's pages read to an agent: where each lives, its text, and the
+ * declared metadata a row may carry. `wiki-formant/wiki-tools` builds every
+ * agent-facing row from it: the MCP read tools, `GET /api/wiki?q=` and the
+ * header search, so the three cannot drift.
+ */
+export const WIKI_READ = {
+  store,
+  url: pageUrl,
+  text: extractText,
+  metadata: listingMetadata,
+};
 
 /** A ranked page of search results: the rows `search_wiki` and `GET /api/wiki?q=` both return. */
-export async function searchPages(query: string, { tagPath, page, size }: { tagPath?: string | null; page: number; size: number }) {
-  const { items, total } = await store.search(query, { tagPath, skip: (page - 1) * size, take: size });
-  return { items: items.map(summarizePage), total };
-}
+export const searchPages = (query: string, { tagPath, page, size }: { tagPath?: string | null; page: number; size: number }) =>
+  searchWiki(WIKI_READ, query, { tagPath: tagPath ?? undefined, page, size });
+
+export type PageSummary = WikiRow;
 
 // ========== BLOCK DATA RESOLUTION ==========
 

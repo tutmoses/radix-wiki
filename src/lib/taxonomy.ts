@@ -24,7 +24,7 @@ export type {
 // categories at the root, which is exactly the shape `defaultHref` encodes.
 export const categoryHref = defaultHref;
 
-const taxonomy = createTaxonomy({
+export const taxonomy = createTaxonomy({
   getMetadataKeys: tagPath => getMetadataKeys(tagPath.split('/')),
   href: categoryHref,
 });

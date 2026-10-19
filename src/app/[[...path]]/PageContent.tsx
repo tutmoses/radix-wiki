@@ -246,9 +246,9 @@ function CategoryHero({ description, mainArticle }: { description?: string; main
  * two controls that change it. The sentence and its Clear link are
  * `wiki-formant/react-server`'s, shared with the other wikis.
  */
-function ResultsBar({ tag, tagPath, total, shown, sort, filters, letter, hasRail, filtersOpen, onToggleFilters }: {
+function ResultsBar({ tag, tagPath, total, shown, sort, filters, letter, clearHref, hasRail, filtersOpen, onToggleFilters }: {
   tag: TagNode | null; tagPath: string; total: number; shown: number; sort: SortOrder;
-  filters: FacetFilters; letter?: string; hasRail: boolean; filtersOpen: boolean; onToggleFilters: () => void;
+  filters: FacetFilters; letter?: string; clearHref?: string; hasRail: boolean; filtersOpen: boolean; onToggleFilters: () => void;
 }) {
   const categoryName = categoryLabel(tag?.name ?? '') || tagPath.split('/').at(-1) || 'this section';
   const narrowed = Object.keys(filters).length + (letter ? 1 : 0);
@@ -256,7 +256,7 @@ function ResultsBar({ tag, tagPath, total, shown, sort, filters, letter, hasRail
     <div className="results-bar">
       <FacetSummary
         shown={shown} total={total} name={categoryName} link={Link}
-        clearHref={narrowed > 0 ? categoryHref(tagPath, { sort }) : undefined}
+        clearHref={clearHref}
       />
       <div className="row">
         {hasRail && (
@@ -384,9 +384,9 @@ export function NewPageControl({ tagPath, noun = 'Page' }: { tagPath: string; no
 }
 
 /** The pages in a category: count bar, grid, filter rail. Stands alone, or runs under the category's hub article. */
-function CategoryListing({ tagPath, pages, sort, total, facetGroups, filters, letters, letter, heading }: {
+function CategoryListing({ tagPath, pages, sort, total, facetGroups, filters, letters, letter, clearHref, heading }: {
   tagPath: string[]; pages: WikiPage[]; sort: SortOrder; total: number;
-  facetGroups: FacetControlGroup[]; filters: FacetFilters; letters: Control[]; letter?: string; heading?: ReactNode;
+  facetGroups: FacetControlGroup[]; filters: FacetFilters; letters: Control[]; letter?: string; clearHref?: string; heading?: ReactNode;
 }) {
   const [showFilters, setShowFilters] = useState(false);
   const pathStr = tagPath.join('/');
@@ -403,7 +403,7 @@ function CategoryListing({ tagPath, pages, sort, total, facetGroups, filters, le
           below already says it on screen. */}
       <h2 className="sr-only">{categoryLabel(tag?.name ?? '') || tagPath.at(-1) || 'Pages'}</h2>
       <ResultsBar
-        tag={tag} tagPath={pathStr} total={total} shown={pages.length} sort={sort} filters={filters} letter={letter}
+        tag={tag} tagPath={pathStr} total={total} shown={pages.length} sort={sort} filters={filters} letter={letter} clearHref={clearHref}
         hasRail={hasRail} filtersOpen={showFilters} onToggleFilters={() => setShowFilters(v => !v)}
       />
       <div className={cn(hasRail && 'category-with-rail')}>
@@ -452,9 +452,11 @@ function CategoryListing({ tagPath, pages, sort, total, facetGroups, filters, le
 }
 
 // ========== CATEGORY VIEW ==========
-export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters, letters, letter, subcategories, mainArticle, hub, nowMs }: {
+export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters, letters, letter, clearHref, subcategories, mainArticle, hub, nowMs }: {
   tagPath: string[]; pages: WikiPage[]; sort: SortOrder; total: number;
   facetGroups: FacetControlGroup[]; filters: FacetFilters; letters: Control[]; letter?: string;
+  /** Back to the whole category, when the view is narrowed. */
+  clearHref?: string;
   subcategories: SubcategorySummary[]; mainArticle: PageRef | null; hub: WikiPage | null;
   /** Server clock, so a hub's freshness notice cannot differ between SSR and hydration. */
   nowMs: number;
@@ -470,7 +472,7 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
   const listing = total > 0 && (
     <CategoryListing
       tagPath={tagPath} pages={pages} sort={sort} total={total}
-      facetGroups={facetGroups} filters={filters} letters={letters} letter={letter}
+      facetGroups={facetGroups} filters={filters} letters={letters} letter={letter} clearHref={clearHref}
       heading={hub && hubControls}
     />
   );
@@ -511,7 +513,7 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
       {listing || (subcategories.length === 0 && (
         <CategoryListing
           tagPath={tagPath} pages={pages} sort={sort} total={total}
-          facetGroups={facetGroups} filters={filters} letters={letters} letter={letter}
+          facetGroups={facetGroups} filters={filters} letters={letters} letter={letter} clearHref={clearHref}
         />
       ))}
     </div>

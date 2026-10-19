@@ -59,7 +59,7 @@ const { rpc, call, payload, check } = t;
   console.log(`\n=== tools ===`);
   const list = await rpc('tools/list');
   const toolNames = (list.result?.tools ?? []).map(t => t.name);
-  const expected = ['search_wiki', 'get_page', 'list_pages', 'get_categories', 'get_recent_changes', 'get_full_corpus', 'get_ideas_board', 'get_network_activity', 'get_challenge', 'login', 'create_page', 'edit_page'];
+  const expected = ['search_wiki', 'get_page', 'get_pages', 'list_pages', 'get_categories', 'get_recent_changes', 'get_full_corpus', 'get_ideas_board', 'get_network_activity', 'get_challenge', 'login', 'create_page', 'edit_page'];
   check('tools/list', expected.every(n => toolNames.includes(n)), `${toolNames.length} tools: ${toolNames.join(', ')}`);
 
   const prompts = await rpc('prompts/list');

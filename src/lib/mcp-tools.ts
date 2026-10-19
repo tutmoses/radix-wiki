@@ -4,7 +4,9 @@
 // the MCP server (`api/mcp` → tools/list) and by the A2A agent card
 // (`.well-known/agent.json` → skills), so the two can never disagree.
 //
-// Read tools are public. Write tools require a ROLA bearer token, and the
+// Read tools are public, and are `wiki-formant/wiki-tools`: the same seven
+// caper and miow's wikis serve, carrying their own handlers, so this module
+// reads the store. Write tools require a ROLA bearer token, and the
 // challenge-sign-verify bootstrap is itself expressed as tools: get_challenge
 // → sign with your own key → login → Bearer token on the Authorization header.
 // /AGENTS.md stays the deep reference, but the chain completes in-protocol.
@@ -13,8 +15,13 @@
 // version that an external system reads, so it owns the number. `initialize`
 // and the server card follow it rather than keeping their own.
 import serverManifest from '../../server.json';
-import type { ToolAnnotations, ToolSchema } from 'wiki-formant/mcp';
+import type { McpTool, ToolAnnotations, ToolSchema } from 'wiki-formant/mcp';
+import { wikiReadTools } from 'wiki-formant/wiki-tools';
 import { SITE_URL } from '@/lib/site';
+import { WIKI_READ } from '@/lib/wiki';
+import { corpusSections } from '@/lib/llms';
+import { TAG_TREE } from '@/lib/tags';
+import { categoryLabel } from '@/lib/utils';
 
 /** Reported by `initialize`. `name` is the MCP server id, distinct from the
  *  registry's namespaced `serverManifest.name`. */
@@ -38,122 +45,32 @@ type McpToolSpec = {
   auth?: 'rola';
   /** Surfaced as an A2A skill on the agent card. */
   skill?: { id: string; tags: string[]; examples?: string[] };
+  /** The read tools come with theirs, from `wiki-formant/wiki-tools`; the rest are wired in mcp-server.ts. */
+  handler?: McpTool['handler'];
 };
 
 export const TOOLS: McpToolSpec[] = [
-  {
-    name: 'search_wiki',
-    title: 'Search the wiki',
-    description:
-      'Keyword search across Radix Wiki titles and page text — the first call when you know what you are looking for. '
-      + 'Returns a page of results, each with its title, URL, tagPath, slug, a matched snippet and the date it was last updated. '
-      + 'The tagPath and slug identify the page every read tool accepts. Narrow with tagPath when a term is common; page through with page/pageSize. '
-      + 'When you do not yet know what exists, call get_categories first.',
-    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-    inputSchema: {
-      type: 'object',
-      properties: {
-        query: { type: 'string', description: 'Search term (matched against page titles and body text)' },
-        tagPath: { type: 'string', description: 'Limit results to a tag path (e.g. "contents/tech/core-concepts")' },
-        page: { type: 'number', description: 'Page number (default 1)' },
-        pageSize: { type: 'number', description: 'Results per page (default 20, max 50)' },
+  ...wikiReadTools({
+    ...WIKI_READ,
+    tree: TAG_TREE,
+    noun: 'the Radix Wiki',
+    corpusTitle: 'Radix Wiki — Full Content',
+    label: node => categoryLabel(node.name),
+    // The sections /llms-full.txt is made of, so the tool and the file agree byte for byte.
+    corpus: corpusSections,
+    skills: {
+      search_wiki: {
+        id: 'search',
+        tags: ['search', 'radix', 'blockchain', 'wiki', 'scrypto', 'defi'],
+        examples: ['Search for Cerberus consensus', 'Find pages about Scrypto', 'What is Xi\'an sharding?'],
       },
-      required: ['query'],
-    },
-    skill: {
-      id: 'search',
-      tags: ['search', 'radix', 'blockchain', 'wiki', 'scrypto', 'defi'],
-      examples: ['Search for Cerberus consensus', 'Find pages about Scrypto', 'What is Xi\'an sharding?'],
-    },
-  },
-  {
-    name: 'get_page',
-    title: 'Read a page',
-    description:
-      'Read one page in full: its extracted text, current version number, update date and declared metadata. '
-      + 'Takes either the whole path as one string (the `url` a listing returns works as-is) or the tagPath/slug pair it splits into — not a title. '
-      + 'A wrong pair is answered with the tools that find a right one rather than an empty result. '
-      + 'For the whole article set at once use get_full_corpus, and for a page as markdown fetch its URL with `.md` appended.',
-    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-    inputSchema: {
-      type: 'object',
-      properties: {
-        path: { type: 'string', description: 'The whole path in one string, e.g. "contents/tech/core-concepts/utxo-model" — the form every listing returns as `url`. Use this or the tagPath/slug pair.' },
-        tagPath: { type: 'string', description: 'Tag path (e.g. "contents/tech/core-concepts"). Ignored when `path` is set.' },
-        slug: { type: 'string', description: 'Page slug (e.g. "utxo-model"). Ignored when `path` is set.' },
-      },
-      requireOneOf: ['path', 'slug'],
-    },
-    skill: {
-      id: 'read',
-      tags: ['read', 'content', 'article', 'documentation'],
-      examples: ['Read the Radix Engine overview', 'Get the Xi\'an roadmap page'],
-    },
-  },
-  {
-    name: 'list_pages',
-    title: 'List pages',
-    description:
-      'Browse the wiki by tag path rather than by keyword — every page under a branch, newest first by default. '
-      + 'Returns the same rows as search_wiki (title, URL, tagPath, slug, snippet, updatedAt) plus a pagination envelope carrying totalPages, hasMore and nextPage. '
-      + 'Omit tagPath to walk the whole wiki; pass one from get_categories to stay inside a branch. Sort by title for an A-Z pass.',
-    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-    inputSchema: {
-      type: 'object',
-      properties: {
-        tagPath: { type: 'string', description: 'Filter by tag path prefix (e.g. "developers")' },
-        sort: { type: 'string', enum: ['title', 'updatedAt'], description: 'Sort order (default "updatedAt")' },
-        page: { type: 'number', description: 'Page number (default 1)' },
-        pageSize: { type: 'number', description: 'Results per page (default 20, max 100)' },
+      get_page: {
+        id: 'read',
+        tags: ['read', 'content', 'article', 'documentation'],
+        examples: ['Read the Radix Engine overview', 'Get the Xi\'an roadmap page'],
       },
     },
-    skill: { id: 'list', tags: ['list', 'browse', 'categories'] },
-  },
-  {
-    name: 'get_categories',
-    title: 'List categories',
-    description:
-      'The wiki tag hierarchy as a tree, each node carrying its path, name, description and the page count of its whole branch. '
-      + 'The cheapest way to orient before searching, and the only way to find a valid tagPath before create_page. '
-      + 'Costs one call and a few kilobytes; prefer it to listing pages to find out what exists.',
-    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-    inputSchema: { type: 'object', properties: {} },
-  },
-  {
-    name: 'get_recent_changes',
-    title: 'Recent changes',
-    description:
-      'Pages edited within the last N days, newest first — what to poll when you are watching the wiki rather than reading it. '
-      + 'Same row shape as list_pages. Look back at most 30 days and take at most 50 rows; for anything older, list_pages sorted by updatedAt.',
-    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-    inputSchema: {
-      type: 'object',
-      properties: {
-        days: { type: 'number', description: 'Look back N days (default 7, max 30)' },
-        limit: { type: 'number', description: 'Max results (default 20, max 50)' },
-      },
-    },
-  },
-  {
-    name: 'get_full_corpus',
-    title: 'Whole corpus',
-    description:
-      'Every article as one plain-text document, for bulk ingestion rather than reading. '
-      + 'PREFLIGHT FIRST: call it with sizeOnly=true for the exact character count, a token estimate and the per-branch breakdown — the whole corpus is several times a context window. '
-      + 'Then pull it with `maxChars` (default 200000, max 1000000), or narrow it with `tagPath` to take one branch at a time. '
-      + 'Truncation is page-aligned and honest: `truncated`, `omittedPages` and `nextSkip` say exactly where to resume (pass skip=nextSkip). '
-      + 'Search or list first if you have a question; the same corpus is also served, cacheably and with an ETag, at /llms-full.txt.',
-    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-    inputSchema: {
-      type: 'object',
-      properties: {
-        sizeOnly: { type: 'boolean', description: 'Return sizes and breakdowns only, no document. Do this before the first real pull.' },
-        tagPath: { type: 'string', description: 'Restrict to one branch and its descendants, e.g. "contents/tech". Omit for everything.' },
-        maxChars: { type: 'number', description: 'Character budget for `document` (default 200000, max 1000000)' },
-        skip: { type: 'number', description: 'Resume from this page index — pass the `nextSkip` from the previous truncated call (default 0)' },
-      },
-    },
-  },
+  }),
   {
     name: 'get_ideas_board',
     title: 'Ideas pipeline',

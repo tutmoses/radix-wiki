@@ -1,10 +1,9 @@
 // src/lib/mcp-server.ts — the wiki's MCP server: instructions, resources, tool
 // handlers, and the config that wires them onto the manifest.
 //
-// Separate from @/lib/mcp-tools, which is the manifest alone. Three other
-// routes (.well-known/agent.json, the server card, the OpenAPI spec) read that
-// manifest and have no business pulling a Prisma client in behind it, which is
-// what a single combined module would cost them.
+// Separate from @/lib/mcp-tools, the manifest the agent card, the server card
+// and the OpenAPI spec read. Its read tools come with their handlers from
+// `wiki-formant/wiki-tools`; the ones only this wiki has are wired here.
 //
 // The protocol edges (CORS, GET→405, −32700, bare 202, batch cap, teaching arg
 // validation) are `wiki-formant/mcp`, shared with the other wikis.
@@ -13,20 +12,15 @@ import { prisma } from '@/lib/prisma/client';
 import { categoryLabel, pageUrl, pagePath } from '@/lib/utils';
 import { isoDate } from 'wiki-formant/freshness';
 import { SIBLING_WIKI, SITE_NAME, SITE_URL } from '@/lib/site';
-import { NOT_HIDDEN, searchPages, store, summarizePage, SUMMARY_SELECT } from '@/lib/wiki';
-import { listEnvelope } from 'wiki-formant/pagination';
 import { MCP_RATE_LIMIT, MCP_RATE_LIMIT_TEXT } from 'wiki-formant/rate-limit';
-import { extractText } from '@/lib/content';
-import { CORPUS_WHERE, buildLlmsTxt, corpusSections } from '@/lib/llms';
-import { TAG_HIERARCHY, getMetadataKeys, type TagNode } from '@/lib/tags';
+import { buildLlmsTxt } from '@/lib/llms';
+import { getMetadataKeys } from '@/lib/tags';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 import { RADIX_CONFIG } from '@/lib/radix/config';
 import { getLedgerDayRows } from '@/lib/radix/activity';
 import { trackMcpCall } from '@/lib/track';
 import { generateChallenge } from '@/lib/auth';
-import { McpToolError, readArgs, withAdjustments, type McpServerConfig, type McpPrompt, type McpResource } from 'wiki-formant/mcp';
-import { CORPUS_BUDGET, sliceCorpus } from 'wiki-formant/corpus';
-import type { Block } from '@/types/blocks';
+import { McpToolError, readArgs, type McpServerConfig, type McpPrompt, type McpResource, type ToolContext } from 'wiki-formant/mcp';
 
 const INSTRUCTIONS = [
   'Community-maintained knowledge base for Radix DLT, the layer-1 with linear scalability and asset-oriented smart contracts.',
@@ -55,7 +49,7 @@ const RESOURCES: McpResource[] = [
     name: 'Wiki Categories',
     description: 'Tag hierarchy with descriptions and page counts.',
     mimeType: 'application/json',
-    read: async () => JSON.stringify(await get_categories(), null, 2),
+    read: async () => JSON.stringify(await TOOLS.find(t => t.name === 'get_categories')!.handler!({}, {} as ToolContext), null, 2),
   },
 ];
 
@@ -112,145 +106,10 @@ function workingGroupFromTitle(title: string): string | null {
   return i === -1 ? null : title.slice(0, i).trim();
 }
 
-// ========== TAG HIERARCHY HELPERS ==========
-
-/** Pages in a node's whole branch. Counted per tag path alone, `contents` read
- *  0 beside the 130 pages filed beneath it, and so did every pure container. */
-const branchCount = (counts: Map<string, number>, path: string) =>
-  [...counts].reduce((n, [p, c]) => n + (p === path || p.startsWith(`${path}/`) ? c : 0), 0);
-
-function buildCategoryTree(nodes: TagNode[], counts: Map<string, number>, parent = ''): object[] {
-  return nodes.filter(n => !n.hidden && n.slug).map(n => {
-    const path = parent ? `${parent}/${n.slug}` : n.slug;
-    return {
-      path,
-      name: categoryLabel(n.name),
-      ...(n.description ? { description: n.description } : {}),
-      pageCount: branchCount(counts, path),
-      ...(n.children ? { children: buildCategoryTree(n.children, counts, path) } : {}),
-    };
-  });
-}
-
 // ========== READ HANDLERS ==========
-
-async function search_wiki(raw: Record<string, unknown>) {
-  const args = readArgs(raw);
-  const query = args.str('query');
-  const tagPath = args.str('tagPath') || undefined;
-  const page = args.num('page', 1, 1, 100_000);
-  const size = args.num('pageSize', 20, 1, 50);
-  if (!query) {
-    throw new McpToolError('`query` is empty. Pass a keyword to search for, or call list_pages to enumerate a branch instead.');
-  }
-  const { items, total } = await searchPages(query, { tagPath, page, size });
-  return withAdjustments(args, listEnvelope(
-    items,
-    total, page, size,
-    `Nothing matches "${query}"${tagPath ? ` under "${tagPath}"` : ''}. Search is keyword, not semantic: try one distinctive word rather than a phrase${tagPath ? ', or drop the tagPath filter' : ''}, or call get_categories to see what the wiki actually covers.`,
-  ));
-}
-
-/**
- * The pair, from either spelling. Every listing hands back a `url`, so an agent
- * that has just read one holds the whole path as a single string and had to
- * split it by hand to call this — the sibling wiki already took either form.
- * `path` wins when both are given, as it does on the sibling, and its origin is
- * dropped so a listing's `url` resolves as the schema says it does.
- */
-function pagePair(args: { path?: string; tagPath?: string; slug?: string }) {
-  if (!args.path) return { tagPath: args.tagPath ?? '', slug: args.slug ?? '' };
-  const parts = args.path.replace(/^https?:\/\/[^/]+/, '').split('/').filter(Boolean);
-  return { tagPath: parts.slice(0, -1).join('/'), slug: parts.at(-1) ?? '' };
-}
-
-async function get_page(raw: Record<string, unknown>) {
-  const args = readArgs(raw);
-  const { tagPath, slug } = pagePair({ path: args.str('path'), tagPath: args.str('tagPath'), slug: args.str('slug') });
-  const p = await store.get(tagPath, slug);
-  if (!p) {
-    throw new McpToolError(
-      `No page at tagPath "${tagPath}", slug "${slug}". Find valid paths with search_wiki, list_pages, or get_categories.`,
-    );
-  }
-  return {
-    ...summarizePage(p),
-    version: p.version,
-    content: extractText((p.content as unknown as Block[]) || []),
-  };
-}
-
-async function list_pages(raw: Record<string, unknown>) {
-  const args = readArgs(raw);
-  const tagPath = args.str('tagPath') || undefined;
-  const sort = args.str('sort', 'updatedAt');
-  const page = args.num('page', 1, 1, 100_000);
-  const size = args.num('pageSize', 20, 1, 100);
-  // Naming a path gets that branch, as the schema says, and a hidden path
-  // beneath it only when it is the one named. Naming none gets article space,
-  // not the wiki's own operations log sitting at the top of it, nor the
-  // homepage row, which no category holds and get_page cannot address.
-  const where = tagPath
-    ? { OR: [{ tagPath }, { tagPath: { startsWith: `${tagPath}/`, ...NOT_HIDDEN } }] }
-    : CORPUS_WHERE;
-  const orderBy = sort === 'title' ? { title: 'asc' as const } : { updatedAt: 'desc' as const };
-  const [results, total] = await Promise.all([
-    prisma.wikiPage.findMany({ where, select: SUMMARY_SELECT, orderBy, skip: (page - 1) * size, take: size }),
-    prisma.wikiPage.count({ where }),
-  ]);
-  return withAdjustments(args, listEnvelope(
-    results.map(page => summarizePage(page)), total, page, size,
-    `No pages at tagPath "${tagPath}". Call get_categories for the tag paths that exist.`,
-  ));
-}
-
-async function get_categories() {
-  // The tree drops hidden nodes and the homepage; the total has to drop their
-  // pages too, so it is the sum of the categories and `list_pages` reports the
-  // same size — otherwise an agent has no way to tell which one it is walking.
-  const counts = await prisma.wikiPage.groupBy({ by: ['tagPath'], _count: true, where: CORPUS_WHERE });
-  const countMap = new Map(counts.map(c => [c.tagPath, c._count]));
-  return { categories: buildCategoryTree(TAG_HIERARCHY, countMap), totalPages: counts.reduce((s, c) => s + c._count, 0) };
-}
-
-async function get_recent_changes(raw: Record<string, unknown>) {
-  const args = readArgs(raw);
-  const days = args.num('days', 7, 1, 30);
-  const limit = args.num('limit', 20, 1, 50);
-  // N × 24h back, not N calendar days in the server's zone: `setDate` moves the
-  // window by an hour either side of a DST change.
-  const since = new Date(Date.now() - days * 86_400_000);
-  const pages = await prisma.wikiPage.findMany({
-    where: { updatedAt: { gte: since }, tagPath: NOT_HIDDEN },
-    select: SUMMARY_SELECT,
-    orderBy: { updatedAt: 'desc' },
-    take: limit,
-  });
-  return withAdjustments(args, { days, count: pages.length, pages: pages.map(page => summarizePage(page)) });
-}
-
-/**
- * The same walk /llms-full.txt serves, sliced to something a caller can hold.
- *
- * This took no arguments and answered with the whole corpus: 3.3 MB, some
- * 827,000 tokens, in one tool result, on a server whose own payload budget is
- * 120 KB. A URL can afford that because a fetch streams to disk under an ETag;
- * a tool result lands in a context window. The preflight, the budget and the
- * page-aligned resume are `wiki-formant/corpus`, shared with caper, so an agent
- * that has ingested one wiki already knows how to ingest the other.
- */
-async function get_full_corpus(raw: Record<string, unknown>) {
-  const args = readArgs(raw);
-  const tagPath = args.str('tagPath') || undefined;
-  const slice = sliceCorpus(await corpusSections(tagPath), {
-    title: 'Radix Wiki — Full Content',
-    sizeOnly: args.bool('sizeOnly'),
-    maxChars: args.num('maxChars', CORPUS_BUDGET.default, CORPUS_BUDGET.min, CORPUS_BUDGET.max),
-    skip: args.num('skip', 0, 0, 1_000_000),
-    hint: 'Pull with maxChars, or one branch at a time with tagPath. get_page is cheaper for a handful of pages, and /llms-full.txt serves the same corpus cacheably.',
-  });
-  return withAdjustments(args, { scope: 'Radix Wiki', ...(tagPath ? { tagPath } : {}), ...slice });
-}
+//
+// The wiki's own reads are `wiki-formant/wiki-tools` (the manifest carries
+// their handlers); what is left here is what only this wiki serves.
 
 async function get_ideas_board(raw: Record<string, unknown>) {
   const args = readArgs(raw);
@@ -426,12 +285,6 @@ type Handler = (args: Record<string, unknown>) => Promise<unknown>;
 
 export function serverConfig(auth: string | null): McpServerConfig {
   const handlers: Record<string, Handler> = {
-    search_wiki,
-    get_page,
-    list_pages,
-    get_categories,
-    get_recent_changes,
-    get_full_corpus,
     get_ideas_board,
     get_network_activity,
     get_challenge,
@@ -442,8 +295,8 @@ export function serverConfig(auth: string | null): McpServerConfig {
   return {
     serverInfo: SERVER_INFO,
     instructions: INSTRUCTIONS,
-    tools: TOOLS.map(({ name, title, description, inputSchema, annotations }) => ({
-      name, title, description, inputSchema, annotations, handler: handlers[name]!,
+    tools: TOOLS.map(({ name, title, description, inputSchema, annotations, handler }) => ({
+      name, title, description, inputSchema, annotations, handler: handler ?? handlers[name]!,
     })),
     resources: RESOURCES,
     prompts: PROMPTS,
