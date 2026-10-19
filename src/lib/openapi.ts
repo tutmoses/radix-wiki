@@ -116,7 +116,7 @@ export const SPEC = {
       post: {
         summary: 'Verify a signed challenge and create a session',
         description:
-          'Message to sign: `ROLA{challenge}{dAppDefinitionAddress}{origin}` UTF-8, Ed25519 (curve25519). The public key must be an on-ledger `owner_keys` entry for the account.',
+          'Sign the blake2b-256 hash of `R` (ASCII) + the challenge (hex-decoded) + one byte holding the length of the dAppDefinitionAddress + that address (UTF-8) + the origin (UTF-8), with Ed25519 (curve25519), and hex-encode the signature. The public key must be an on-ledger `owner_keys` entry for the account.',
         requestBody: {
           required: true,
           content: {
@@ -298,19 +298,26 @@ export const SPEC = {
         },
       },
     },
-    '/api/comments/{pageId}': {
+    '/api/comments': {
       get: {
         summary: 'List comments on a page',
-        parameters: [{ name: 'pageId', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { '200': { description: 'Paginated comment threads' } },
+        parameters: [{ name: 'pageId', in: 'query', required: true, schema: { type: 'string' }, description: 'The page\'s `id`, as GET /api/wiki/{path} returns it' }],
+        responses: { '200': { description: 'Paginated comments, oldest first; a reply names its `parentId`' } },
       },
       post: {
         summary: 'Post a comment',
         security: rolaAuth,
-        parameters: [{ name: 'pageId', in: 'path', required: true, schema: { type: 'string' } }],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { type: 'object', required: ['content'], properties: { content: { type: 'string' } } } } },
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['pageId', 'content'],
+                properties: { pageId: { type: 'string' }, content: { type: 'string', maxLength: 5000 }, parentId: { type: 'string', description: 'The comment this replies to' } },
+              },
+            },
+          },
         },
         responses: { '201': { description: 'Comment created' }, '401': { description: 'Missing or invalid bearer token' } },
       },

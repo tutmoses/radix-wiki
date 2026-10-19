@@ -39,8 +39,8 @@ POST /api/auth                  → { token, userId, radixAddress, expiresAt }
 ```
 
 1. Request a challenge (32-byte hex, 5-min expiry, one-time use)
-2. Construct message: `ROLA` + challenge + dAppDefinitionAddress + origin
-3. Sign with Ed25519
+2. Construct message: blake2b-256 of `R` + challenge (hex-decoded) + dAppDefinitionAddress length (one byte) + dAppDefinitionAddress + origin
+3. Sign the 32-byte hash with Ed25519
 4. POST with accounts + signed proof → receive JWT (7-day expiry)
 5. Use `Authorization: Bearer {token}` on subsequent requests
 
@@ -51,7 +51,7 @@ POST /api/auth                  → { token, userId, radixAddress, expiresAt }
 | dAppDefinitionAddress | `account_rdx12xzx7as5hv9ahw9na8g0s7gtzvdcuvzrtdr96qhzyxcmn5dlmpmp23` |
 | origin | `https://radix.wiki` |
 | curve | `curve25519` (Ed25519) |
-| message | `ROLA{challenge}{dAppDefinitionAddress}{origin}` — UTF-8 encoded |
+| message | blake2b-256 of `R` (ASCII) + challenge (hex-decoded) + one length byte of dAppDefinitionAddress + dAppDefinitionAddress (UTF-8) + origin (UTF-8) |
 
 ### Auth POST body
 
@@ -170,11 +170,11 @@ block-level diff are computed server-side from what you send.
 ### Post comment
 
 ```
-POST /api/comments/{pageId}
+POST /api/comments
 Authorization: Bearer {token}
 Content-Type: application/json
 
-{ "content": "Comment text" }
+{ "pageId": "<the page's id>", "content": "Comment text" }
 ```
 
 ## Content Model

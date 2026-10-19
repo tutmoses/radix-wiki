@@ -107,16 +107,18 @@ function CommentThread({ comment, depth, onReply, onDelete, currentUserId }: {
   );
 }
 
-export function Discussion({ pageId }: { pageId: string; tagPath: string }) {
+export function Discussion({ pageId }: { pageId: string }) {
   const [comments, setComments] = useState<WikiComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   // Collapsed by default — talk shouldn't compete with the article (Wikipedia keeps it off-page entirely).
   const [expanded, setExpanded] = useState(false);
   const { isAuthenticated, user } = useAuth();
 
-  const fetchComments = useCallback(async () => {
+  // The list is edge-cached for a minute, so a refetch after the reader's own
+  // post or delete names a fresh URL: the cached copy would not show it yet.
+  const fetchComments = useCallback(async (fresh?: boolean) => {
     try {
-      const res = await fetch(`/api/comments?pageId=${pageId}`);
+      const res = await fetch(`/api/comments?pageId=${pageId}${fresh ? `&t=${Date.now()}` : ''}`);
       if (res.ok) {
         const data = await res.json();
         setComments(buildCommentTree(data.items));
@@ -129,13 +131,13 @@ export function Discussion({ pageId }: { pageId: string; tagPath: string }) {
 
   const handlePost = async (content: string, parentId?: string) => {
     const res = await sendJson('/api/comments', 'POST', { content, parentId, pageId });
-    if (res.ok) await fetchComments();
+    if (res.ok) await fetchComments(true);
     else throw new Error((await res.json()).error || 'Failed to post comment');
   };
 
   const handleDelete = async (id: string) => {
     const res = await fetch(`/api/comments/${id}`, { method: 'DELETE' });
-    if (res.ok) await fetchComments();
+    if (res.ok) await fetchComments(true);
     else throw new Error('Failed to delete comment');
   };
 

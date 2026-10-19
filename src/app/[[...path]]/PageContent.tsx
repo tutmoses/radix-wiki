@@ -557,7 +557,7 @@ function PageViewContent({ page, related, series, sections, listing, nowMs }: { 
       />
       {subjectUserId && <UserStats userId={subjectUserId} />}
       <PageMeta page={page} />
-      <Discussion pageId={page.id} tagPath={page.tagPath} />
+      <Discussion pageId={page.id} />
     </>
   );
 
