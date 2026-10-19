@@ -598,7 +598,9 @@
   .facet-option { @apply flex items-center justify-between gap-2 -mx-1.5 px-1.5 py-1 rounded text-small text-text-muted no-underline transition-colors hover:bg-surface-2 hover:text-text; }
   .facet-option-active { @apply bg-accent-muted text-text font-medium; }
   .facet-option-count { @apply text-xs tabular-nums opacity-70; }
+  /* The Index row: its label on a line of its own, the letters wrapping under it. */
   .alpha-index { @apply flex flex-wrap gap-x-2 gap-y-1 text-small; }
+  .alpha-index > .facet-group-label { @apply basis-full mb-0.5; }
   .alpha-letter { @apply text-text-muted no-underline transition-colors hover:text-accent; }
   .alpha-letter-active { @apply text-accent font-semibold; }
 

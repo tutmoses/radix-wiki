@@ -38,4 +38,6 @@ export const {
   facetControls,
   alphaControls,
   resolveLetter,
+  // The sort toggle's threshold: the same unfiltered count the index reads.
+  needsAlphaIndex,
 } = taxonomy;

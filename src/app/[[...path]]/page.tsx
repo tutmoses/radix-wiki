@@ -7,7 +7,7 @@ import { parsePath } from '@/lib/path';
 import { getHomepage, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getPageByAsset } from '@/lib/wiki';
 import { getMaintenanceQueues } from '@/lib/maintenance';
 import { getSession } from '@/lib/auth';
-import { alphaControls, facetControls, facetFilters, filterPages, rankRelated, resolveLetter } from '@/lib/taxonomy';
+import { alphaControls, facetControls, facetFilters, filterPages, needsAlphaIndex, rankRelated, resolveLetter } from '@/lib/taxonomy';
 import { findTagByPath, getMainArticle, getSortOrder, tagLabel, tagPaths, type SortOrder } from '@/lib/tags';
 import { highlightBlocks } from '@/lib/highlight';
 import { processBlocks } from '@/lib/html';
@@ -419,13 +419,16 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
       );
     }
     const defaultSort = getSortOrder(tagSegments);
-    const sort = (sortParam && VALID_SORTS.has(sortParam) ? sortParam : defaultSort) as SortOrder;
+    const requested = (sortParam && VALID_SORTS.has(sortParam) ? sortParam : defaultSort) as SortOrder;
     // Pages filed directly here, and only those. A container category used to
     // flatten its whole subtree into one grid beneath the subcategory cards,
     // because a card carrying nothing but a page count was a dead end; the cards
     // now list the articles themselves, so the flat copy was the same 122 pages
     // twice on one screen — the wall this section index exists to remove.
-    const all = await getCategoryPages(parsed.tagPath, sort);
+    const fetched = await getCategoryPages(parsed.tagPath, requested);
+    // A set small enough to need no A–Z index offers no sort either: it is A–Z.
+    const sort: SortOrder = needsAlphaIndex(fetched.length) ? requested : 'title';
+    const all = sort === requested ? fetched : await getCategoryPages(parsed.tagPath, sort);
 
     // The tree gives one axis; `select` metadata gives the cross-cutting one, and
     // the alphabetical index only earns its space once the grid outgrows a screen.

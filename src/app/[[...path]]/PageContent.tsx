@@ -22,10 +22,10 @@ import { slugifyHeading } from 'wiki-formant/headings';
 import { SITE_NAME } from '@/lib/site';
 import { AGO, useNow } from '@/lib/now';
 import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder, type TagNode } from '@/lib/tags';
-import { categoryHref, type Control, type FacetControlGroup, type FacetFilters, type SharedFacet } from '@/lib/taxonomy';
+import { categoryHref, needsAlphaIndex, type Control, type FacetControlGroup, type FacetFilters, type SharedFacet } from '@/lib/taxonomy';
 import { createBlock } from '@/lib/block-utils';
 import { formatDay, freshnessBanner, relativeTime } from 'wiki-formant/freshness';
-import { FacetSummary, RelatedPages as SeeAlso } from 'wiki-formant/react-server';
+import { FacetBar, FacetSummary, RelatedPages as SeeAlso } from 'wiki-formant/react-server';
 import type { WikiPage } from '@/types';
 import type { Block } from '@/types/blocks';
 
@@ -240,63 +240,6 @@ function CategoryHero({ description, mainArticle }: { description?: string; main
   );
 }
 
-// ========== CATEGORY RAIL (facets + A–Z index) ==========
-/**
- * The same links an article's infobox already carries — `Status:`, `Category:` —
- * shown for the whole set, in the same column of the page. As three wrapped rows
- * of pills above the grid they were ~50 tap targets and a screen of chrome before
- * the first card; as a rail they read as a vertical list of choices with counts
- * and the grid starts at the top. Below `md` the rail is collapsed behind one
- * button, so a phone gets the pages first.
- */
-function CategoryRail({ facetGroups, letters, open }: {
-  facetGroups: FacetControlGroup[]; letters: Control[]; open: boolean;
-}) {
-  return (
-    <nav className={cn('category-rail', open && 'category-rail-open')} aria-label="Filter this category">
-      {/* The index leads: it is two lines against the facets' twenty, and a rail
-          tall enough to scroll would otherwise bury the one control that is the
-          whole point of a 142-page category. The reset control leads the row
-          because the taxonomy puts it there, so it cannot be forgotten. */}
-      {letters.length > 0 && (
-        <div className="facet-group">
-          <span className="facet-group-label">Index</span>
-          <div className="alpha-index">
-            {letters.map(({ value, label, count, href, active, reset }) => (
-              <Link
-                key={value || 'all'}
-                href={href}
-                className={cn('alpha-letter', active && 'alpha-letter-active')}
-                aria-current={active ? 'true' : undefined}
-                title={reset ? `All ${count} pages` : `${count} page${count === 1 ? '' : 's'}`}
-              >
-                {label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-      {facetGroups.map(facet => (
-        <div key={facet.key} className="facet-group">
-          <span className="facet-group-label">{facet.label}</span>
-          {facet.options.map(({ value, count, href, active }) => (
-            <Link
-              key={value}
-              href={href}
-              className={cn('facet-option', active && 'facet-option-active')}
-              aria-current={active ? 'true' : undefined}
-              title={value}
-            >
-              <span className="truncate">{value}</span>
-              <span className="facet-option-count">{count}</span>
-            </Link>
-          ))}
-        </div>
-      ))}
-    </nav>
-  );
-}
-
 // ========== CATEGORY RESULTS BAR ==========
 /**
  * One line above the grid: how much of the category you are looking at, and the
@@ -321,7 +264,8 @@ function ResultsBar({ tag, tagPath, total, shown, sort, filters, letter, hasRail
             <SlidersHorizontal size={14} />Filters{narrowed > 0 && ` · ${narrowed}`}
           </button>
         )}
-        <SortToggle sort={sort} tagPath={tagPath} filters={filters} letter={letter} />
+        {/* A set small enough to need no index offers no sort either: it is A–Z. */}
+        {needsAlphaIndex(total) && <SortToggle sort={sort} tagPath={tagPath} filters={filters} letter={letter} />}
       </div>
     </div>
   );
@@ -485,9 +429,23 @@ function CategoryListing({ tagPath, pages, sort, total, facetGroups, filters, le
             </div>
           )}
         </div>
-        {hasRail && (
-          <CategoryRail facetGroups={facetGroups} letters={letters} open={showFilters} />
-        )}
+        {/* The same links an article's infobox already carries — `Status:`,
+            `Category:` — for the whole set, in the same column of the page. As
+            rows of pills above the grid they were ~50 tap targets before the
+            first card; as a rail the grid starts at the top. Below `md` it is
+            collapsed behind one button, so a phone gets the pages first. The
+            index leads: two lines against the facets' twenty, and the one
+            control a 142-page category is for. */}
+        <FacetBar
+          link={Link} facets={facetGroups} letters={letters}
+          alphaLabel="Index" alphaFirst letterCounts="title" label="Filter this category"
+          classNames={{
+            root: cn('category-rail', showFilters && 'category-rail-open'),
+            row: 'facet-group', label: 'facet-group-label', text: 'truncate', count: 'facet-option-count',
+            control: 'facet-option', controlActive: 'facet-option facet-option-active',
+            letterRow: 'alpha-index', letterControl: 'alpha-letter', letterControlActive: 'alpha-letter alpha-letter-active',
+          }}
+        />
       </div>
     </div>
   );
