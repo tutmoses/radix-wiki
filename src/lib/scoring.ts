@@ -71,19 +71,19 @@ export const getEditorScores = unstable_cache(
         u.created_at,
         sp.tag_path AS subject_tag_path,
         sp.slug AS subject_slug,
-        (SELECT COUNT(*) FROM pages p WHERE p.author_id = u.id) AS page_count,
+        (SELECT COUNT(*) FROM "WikiPage" p WHERE p."authorId" = u.id) AS page_count,
         COALESCE(r.edit_slots, 0) AS edit_slots,
         COALESCE(r.unique_pages, 0) AS unique_pages,
         COALESCE(c.comment_slots, 0) AS comment_slots
       FROM users u
       LEFT JOIN LATERAL (
-        SELECT tag_path, slug FROM pages WHERE metadata->>'subjectUserId' = u.id LIMIT 1
+        SELECT "tagPath" AS tag_path, slug FROM "WikiPage" WHERE metadata->>'subjectUserId' = u.id LIMIT 1
       ) sp ON true
       LEFT JOIN LATERAL (
         SELECT
-          COUNT(DISTINCT page_id || ':' || EXTRACT(EPOCH FROM date_trunc('hour', created_at))::BIGINT) AS edit_slots,
-          COUNT(DISTINCT page_id) AS unique_pages
-        FROM revisions WHERE author_id = u.id
+          COUNT(DISTINCT "pageId" || ':' || EXTRACT(EPOCH FROM date_trunc('hour', "createdAt"))::BIGINT) AS edit_slots,
+          COUNT(DISTINCT "pageId") AS unique_pages
+        FROM "WikiRevision" WHERE "authorId" = u.id
       ) r ON true
       LEFT JOIN LATERAL (
         SELECT COUNT(DISTINCT page_id || ':' || EXTRACT(EPOCH FROM date_trunc('hour', created_at))::BIGINT) AS comment_slots

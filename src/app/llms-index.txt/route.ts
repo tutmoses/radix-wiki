@@ -11,7 +11,7 @@ import { SITE_URL } from '@/lib/site';
 export const dynamic = 'force-dynamic';
 
 export const GET = corpusRoute('llms-index', async () => {
-  const pages = await prisma.page.findMany({
+  const pages = await prisma.wikiPage.findMany({
     select: { title: true, tagPath: true, slug: true, content: true, updatedAt: true },
     // The third copy of the corpus walk, and the one that kept listing the
     // maintenance log at the top of the index after the other two stopped.

@@ -17,7 +17,7 @@ export async function GET(_request: Request, context: RouteContext<PathParams>) 
   return handleRoute(async () => {
     const { id } = await context.params;
 
-    const [user, agg] = await Promise.all([
+    const [user, pageCount, agg] = await Promise.all([
       prisma.user.findUnique({
         where: { id },
         select: {
@@ -25,18 +25,18 @@ export async function GET(_request: Request, context: RouteContext<PathParams>) 
           displayName: true,
           avatarUrl: true,
           createdAt: true,
-          _count: { select: { pages: true } },
         },
       }),
+      prisma.wikiPage.count({ where: { authorId: id } }),
       prisma.$queryRaw<AggRow[]>`
         SELECT
           COALESCE((
-            SELECT COUNT(DISTINCT page_id || ':' || EXTRACT(EPOCH FROM date_trunc('hour', created_at))::BIGINT)
-            FROM revisions WHERE author_id = ${id}
+            SELECT COUNT(DISTINCT "pageId" || ':' || EXTRACT(EPOCH FROM date_trunc('hour', "createdAt"))::BIGINT)
+            FROM "WikiRevision" WHERE "authorId" = ${id}
           ), 0) AS edit_slots,
           COALESCE((
-            SELECT COUNT(DISTINCT page_id)
-            FROM revisions WHERE author_id = ${id}
+            SELECT COUNT(DISTINCT "pageId")
+            FROM "WikiRevision" WHERE "authorId" = ${id}
           ), 0) AS unique_pages,
           COALESCE((
             SELECT COUNT(DISTINCT page_id || ':' || EXTRACT(EPOCH FROM date_trunc('hour', created_at))::BIGINT)
@@ -51,7 +51,7 @@ export async function GET(_request: Request, context: RouteContext<PathParams>) 
     const accountAgeDays = Math.floor((Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24));
 
     const stats = {
-      pages: user._count.pages,
+      pages: pageCount,
       comments: Number(comment_slots),
       edits: Number(edit_slots),
       uniqueContributions: Number(unique_pages),

@@ -25,7 +25,7 @@
 
 import { config } from 'dotenv';
 import { bump } from 'wiki-formant/versioning';
-import { cuid, AUTHOR_ID, isLockedPage, withClient } from './seed-utils.mjs';
+import { isLockedPage, withClient, writeRevision } from './seed-utils.mjs';
 import { readFileSync } from 'node:fs';
 config();
 
@@ -248,13 +248,12 @@ await withClient(async (client) => {
   const hidden = [...readFileSync(new URL('../src/lib/tags.ts', import.meta.url), 'utf8')
     .matchAll(/slug: '([^']+)'[^}]*hidden: true/g)].map(m => m[1]);
   const { rows } = (await client.query(
-    `SELECT id, tag_path, slug, title, version, content FROM pages
-     WHERE tag_path = $1 OR tag_path LIKE $2 ORDER BY tag_path, slug`, [PREFIX, `${PREFIX}/%`]))
+    `SELECT id, "tagPath", "tagPath" AS tag_path, slug, title, version, content FROM "WikiPage"
+     WHERE "siteId" = '' AND ("tagPath" = $1 OR "tagPath" LIKE $2) ORDER BY "tagPath", slug`, [PREFIX, `${PREFIX}/%`]))
     .rows.filter(r => !hidden.some(h => r.tag_path === h || r.tag_path.endsWith(`/${h}`)))
     .reduce((acc, r) => (acc.rows.push(r), acc), { rows: [] });
 
   let touched = 0, totalLinks = 0, skippedLocked = 0;
-  const now = new Date().toISOString();
 
   for (const page of rows) {
     const path = `/${page.tag_path}${page.slug ? `/${page.slug}` : ''}`;
@@ -287,15 +286,9 @@ await withClient(async (client) => {
     if (CONTEXTS) for (const a of added) console.log(`        [${a.text}] …${a.context}…`);
 
     if (DRY) continue;
-    const json = JSON.stringify(blocks);
-    await client.query('BEGIN');
-    await client.query('UPDATE pages SET content=$1, version=$2, updated_at=$3 WHERE id=$4', [json, version, now, page.id]);
-    await client.query(
-      `INSERT INTO revisions (id, page_id, content, title, version, change_type, author_id, message, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-      [cuid(), page.id, json, page.title, version, 'patch', AUTHOR_ID,
-       `Wikilink first mentions of ${added.length} Radix terms (${added.map(a => a.text).join(', ')}).`, now]);
-    await client.query('COMMIT');
+    await writeRevision(client, page, blocks, {
+      change: 'patch', message: `Wikilink first mentions of ${added.length} Radix terms (${added.map(a => a.text).join(', ')}).`,
+    });
   }
 
   console.log(`\n  ${DRY ? '[dry] ' : ''}${totalLinks} links across ${touched}/${rows.length} pages${skippedLocked ? `, ${skippedLocked} locked` : ''}`);

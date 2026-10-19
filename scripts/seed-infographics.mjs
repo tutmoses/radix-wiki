@@ -7,7 +7,7 @@ import { config } from 'dotenv';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isLockedPage, withClient, embedFigure } from './seed-utils.mjs';
+import { isLockedPage, withClient, embedFigure, readPage } from './seed-utils.mjs';
 import { figureBlock } from '../brand-assets/kit.mjs';
 config();
 
@@ -53,10 +53,10 @@ function figureHtml(s) {
 await withClient(async (client) => {
   for (const s of SPECS) {
     if (isLockedPage(s.tagPath, s.slug)) { console.log(`LOCKED, skip ${s.tagPath}/${s.slug}`); continue; }
-    const { rows } = await client.query('SELECT id, title, content, version FROM pages WHERE tag_path = $1 AND slug = $2', [s.tagPath, s.slug]);
-    if (!rows[0]) { console.log(`SKIP ${s.tagPath}/${s.slug} – not found`); continue; }
+    const page = await readPage(client, s.tagPath, s.slug);
+    if (!page) { console.log(`SKIP ${s.tagPath}/${s.slug} – not found`); continue; }
 
-    const res = await embedFigure(client, rows[0], {
+    const res = await embedFigure(client, page, {
       marker: s.marker,
       html: figureHtml(s),
       message: `Add the "${s.heading}" infographic.`,

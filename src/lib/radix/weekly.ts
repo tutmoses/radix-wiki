@@ -38,7 +38,7 @@ const figure = (n: number | undefined | null) => (typeof n === 'number' && isFin
 
 export const getWeeklySnapshots = unstable_cache(
   async (): Promise<WeeklyPoint[]> => {
-    const page = await prisma.page.findUnique({ where: { tagPath_slug: WEEKLY_PAGE }, select: { metadata: true } });
+    const page = await prisma.wikiPage.findUnique({ where: { siteId_tagPath_slug: { siteId: '', ...WEEKLY_PAGE } }, select: { metadata: true } });
     const snapshots = ((page?.metadata as { state?: { snapshots?: Snapshot[] } } | null)?.state?.snapshots ?? [])
       .filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s.week))
       .sort((a, b) => a.week.localeCompare(b.week));

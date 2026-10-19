@@ -1,6 +1,7 @@
 // src/lib/tags.ts — the tag hierarchy and the walks over it.
 
 import type { MetadataKeyDefinition as FormantMetadataKey } from 'wiki-formant/taxonomy';
+import { createTree, type WikiNode } from 'wiki-formant/tree';
 import { categoryLabel } from '@/lib/utils';
 
 /** The shared definition plus this wiki's two extra key types and its `required` flag. */
@@ -12,18 +13,9 @@ export interface MetadataKeyDefinition extends FormantMetadataKey {
 /** A–Z, or most recently updated first (by the `date` field where the section declares one). */
 export type SortOrder = 'title' | 'recent';
 
-export interface TagNode {
-  name: string;
-  slug: string;
-  description?: string;
-  /**
-   * The article that *is* this category's topic, as a full `tagPath/slug`
-   * (Wikipedia's `{{Category main article}}`). It need not live in the category:
-   * the Scrypto tutorials are a category, but the Scrypto article is a protocol page.
-   */
-  mainArticle?: string;
+/** A `wiki-formant/tree` node with this wiki's XRD balance gates and its own key types. */
+export interface TagNode extends WikiNode {
   children?: TagNode[];
-  hidden?: boolean;
   sort?: SortOrder;
   xrd?: { create?: number; edit?: number; comment?: number };
   metadataKeys?: MetadataKeyDefinition[];
@@ -179,6 +171,8 @@ const isUnder = (paths: Set<string>, tagPath: string): boolean =>
 /** Pages here belong to the board, not to their author — any editor can delete them. */
 export const isSharedPath = (tagPath: string): boolean => isUnder(SHARED_PATHS, tagPath);
 
+export const TAG_TREE = createTree<TagNode>(TAG_HIERARCHY, { globalKeys: GLOBAL_METADATA_KEYS });
+
 interface TagPathContext {
   node: TagNode | null;
   isValid: boolean;
@@ -190,29 +184,19 @@ interface TagPathContext {
   metadataKeys: MetadataKeyDefinition[];
 }
 
-function resolveTagPath(pathSegments: string[], hierarchy: TagNode[] = TAG_HIERARCHY): TagPathContext {
-  const requirements: NonNullable<TagNode['xrd']> = {};
-  const metadataKeys: MetadataKeyDefinition[] = [];
-  let current: TagNode[] = hierarchy;
-  let node: TagNode | null = null;
-  let sort: SortOrder = 'title';
-  let mainArticle: string | undefined;
-
-  for (const segment of pathSegments) {
-    node = current.find(n => n.slug === segment) ?? null;
-    if (!node) return { node: null, isValid: false, isAuthorOnly: false, sort: 'title', xrdRequirements: {}, metadataKeys: [] };
-    if (node.xrd) Object.assign(requirements, node.xrd);
-    if (node.metadataKeys) metadataKeys.push(...node.metadataKeys);
-    if (node.sort) sort = node.sort;
-    // Nearest declaration down the trail wins, so a topic declared once at the
-    // top covers every page beneath it without restating it per node.
-    if (node.mainArticle) mainArticle = node.mainArticle;
-    current = node.children || [];
-  }
-
-  const isAuthorOnly = isUnder(AUTHOR_ONLY_PATHS, pathSegments.join('/'));
-  metadataKeys.push(...GLOBAL_METADATA_KEYS);
-  return { node, isValid: pathSegments.length > 0, isAuthorOnly, sort, mainArticle, xrdRequirements: requirements, metadataKeys };
+/** The shared walk (`wiki-formant/tree`), plus the two things only this wiki reads: XRD gates and author-only paths. */
+function resolveTagPath(pathSegments: string[]): TagPathContext {
+  const r = TAG_TREE.resolve(pathSegments);
+  return {
+    node: r.node,
+    isValid: r.valid,
+    isAuthorOnly: r.valid && isUnder(AUTHOR_ONLY_PATHS, pathSegments.join('/')),
+    sort: r.sort === 'recent' ? 'recent' : 'title',
+    mainArticle: r.mainArticle,
+    // The homepage is no category, so its gate is the root node's, read directly.
+    xrdRequirements: Object.assign({}, ...(pathSegments.join('/') ? r.trail : TAG_HIERARCHY.filter(n => !n.slug)).map(n => n.xrd ?? {})),
+    metadataKeys: r.metadataKeys as MetadataKeyDefinition[],
+  };
 }
 
 // Convenience wrappers
@@ -222,7 +206,7 @@ export const isValidTagPath = (pathSegments: string[]): boolean => resolveTagPat
 export const tagLabel = (pathSegments: string[]): string =>
   categoryLabel(findTagByPath(pathSegments)?.name) || (pathSegments.at(-1) ?? '').replace(/-/g, ' ');
 export const isAuthorOnlyPath = (tagPath: string): boolean => resolveTagPath(tagPath.split('/')).isAuthorOnly;
-export const canEditAuthorOnlyPage = (page: { authorId: string; editorIds?: string[] }, userId: string): boolean =>
+export const canEditAuthorOnlyPage = (page: { authorId: string | null; editorIds?: string[] }, userId: string): boolean =>
   page.authorId === userId || (page.editorIds ?? []).includes(userId);
 const XRD_DEFAULTS = { create: 10_000, edit: 20_000, comment: 10_000 } as const;
 
@@ -242,25 +226,8 @@ export const getMainArticle = (tagPath: string): string | undefined => resolveTa
 export const getSortOrder = (pathSegments: string[]): SortOrder => resolveTagPath(pathSegments).sort;
 export const getVisibleTags = (hierarchy: TagNode[] = TAG_HIERARCHY): TagNode[] => hierarchy.filter(n => !n.hidden);
 
-interface TagPathEntry {
-  path: string;
-  node: TagNode;
-  /** Inherited: a node beneath a hidden one is hidden too. */
-  hidden: boolean;
-}
-
-/**
- * Every tag path in the tree, depth-first, parents before children. The callers
- * differ only in what they keep: the prebuild takes the lot, the sitemap and
- * llms.txt drop the hidden ones, HIDDEN_TAG_PATHS keeps nothing else.
- */
-export function tagPaths(nodes: TagNode[] = TAG_HIERARCHY, parent = '', inherited = false): TagPathEntry[] {
-  return nodes.flatMap(node => {
-    const path = parent ? `${parent}/${node.slug}` : node.slug;
-    const hidden = inherited || !!node.hidden;
-    return [{ path, node, hidden }, ...tagPaths(node.children ?? [], path, hidden)];
-  });
-}
+/** Every tag path in the tree, depth-first, parents before children, with `hidden` inherited. */
+export const tagPaths = () => TAG_TREE.paths();
 
 /** Tag paths declared hidden — wiki-internal surfaces (operations logs), not article space. */
-export const HIDDEN_TAG_PATHS: string[] = tagPaths().filter(t => t.hidden && t.node.slug).map(t => t.path);
+export const HIDDEN_TAG_PATHS: string[] = TAG_TREE.hiddenPaths;

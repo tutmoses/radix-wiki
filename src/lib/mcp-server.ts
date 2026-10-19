@@ -13,7 +13,7 @@ import { prisma } from '@/lib/prisma/client';
 import { categoryLabel, pageUrl, pagePath } from '@/lib/utils';
 import { isoDate } from 'wiki-formant/freshness';
 import { SIBLING_WIKI, SITE_NAME, SITE_URL } from '@/lib/site';
-import { NOT_HIDDEN, searchPages, summarizePage, SUMMARY_SELECT } from '@/lib/wiki';
+import { NOT_HIDDEN, searchPages, store, summarizePage, SUMMARY_SELECT } from '@/lib/wiki';
 import { listEnvelope } from 'wiki-formant/pagination';
 import { MCP_RATE_LIMIT, MCP_RATE_LIMIT_TEXT } from 'wiki-formant/rate-limit';
 import { extractText } from '@/lib/content';
@@ -96,7 +96,6 @@ const PROMPTS: McpPrompt[] = [
 
 // ========== DB SELECT SHAPES ==========
 
-const FULL_SELECT = { ...SUMMARY_SELECT, version: true } as const;
 const IDEAS_SELECT = { title: true, tagPath: true, slug: true, metadata: true, updatedAt: true } as const;
 
 // ========== IDEAS BOARD HELPERS ==========
@@ -168,10 +167,7 @@ function pagePair(args: { path?: string; tagPath?: string; slug?: string }) {
 async function get_page(raw: Record<string, unknown>) {
   const args = readArgs(raw);
   const { tagPath, slug } = pagePair({ path: args.str('path'), tagPath: args.str('tagPath'), slug: args.str('slug') });
-  const p = await prisma.page.findUnique({
-    where: { tagPath_slug: { tagPath, slug } },
-    select: FULL_SELECT,
-  });
+  const p = await store.get(tagPath, slug);
   if (!p) {
     throw new McpToolError(
       `No page at tagPath "${tagPath}", slug "${slug}". Find valid paths with search_wiki, list_pages, or get_categories.`,
@@ -199,8 +195,8 @@ async function list_pages(raw: Record<string, unknown>) {
     : CORPUS_WHERE;
   const orderBy = sort === 'title' ? { title: 'asc' as const } : { updatedAt: 'desc' as const };
   const [results, total] = await Promise.all([
-    prisma.page.findMany({ where, select: SUMMARY_SELECT, orderBy, skip: (page - 1) * size, take: size }),
-    prisma.page.count({ where }),
+    prisma.wikiPage.findMany({ where, select: SUMMARY_SELECT, orderBy, skip: (page - 1) * size, take: size }),
+    prisma.wikiPage.count({ where }),
   ]);
   return withAdjustments(args, listEnvelope(
     results.map(page => summarizePage(page)), total, page, size,
@@ -212,7 +208,7 @@ async function get_categories() {
   // The tree drops hidden nodes and the homepage; the total has to drop their
   // pages too, so it is the sum of the categories and `list_pages` reports the
   // same size — otherwise an agent has no way to tell which one it is walking.
-  const counts = await prisma.page.groupBy({ by: ['tagPath'], _count: true, where: CORPUS_WHERE });
+  const counts = await prisma.wikiPage.groupBy({ by: ['tagPath'], _count: true, where: CORPUS_WHERE });
   const countMap = new Map(counts.map(c => [c.tagPath, c._count]));
   return { categories: buildCategoryTree(TAG_HIERARCHY, countMap), totalPages: counts.reduce((s, c) => s + c._count, 0) };
 }
@@ -224,7 +220,7 @@ async function get_recent_changes(raw: Record<string, unknown>) {
   // N × 24h back, not N calendar days in the server's zone: `setDate` moves the
   // window by an hour either side of a DST change.
   const since = new Date(Date.now() - days * 86_400_000);
-  const pages = await prisma.page.findMany({
+  const pages = await prisma.wikiPage.findMany({
     where: { updatedAt: { gte: since }, tagPath: NOT_HIDDEN },
     select: SUMMARY_SELECT,
     orderBy: { updatedAt: 'desc' },
@@ -260,7 +256,7 @@ async function get_ideas_board(raw: Record<string, unknown>) {
   const args = readArgs(raw);
   const category = args.str('category');
   const workingGroup = args.str('workingGroup');
-  const pages = await prisma.page.findMany({
+  const pages = await prisma.wikiPage.findMany({
     where: { tagPath: { startsWith: 'ideas' } },
     select: IDEAS_SELECT,
     orderBy: { updatedAt: 'desc' },

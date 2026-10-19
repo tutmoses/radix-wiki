@@ -18,7 +18,7 @@
 
 import { config } from 'dotenv';
 import { bump } from 'wiki-formant/versioning';
-import { uid, cuid, AUTHOR_ID, isLockedPage, esc, meta, withClient } from './seed-utils.mjs';
+import { uid, AUTHOR_ID, isLockedPage, esc, meta, withClient, readPage, storeFor, writeRevision } from './seed-utils.mjs';
 import { RECAP_PREFIX, SERIES_SLUG, issueLabel, scoreline } from '../src/lib/week-in-review.ts';
 
 config({ path: new URL('../.env', import.meta.url) });
@@ -97,8 +97,8 @@ function navHtml(prev, next, issue) {
 
 async function loadRecaps(client) {
   const { rows } = await client.query(
-    `SELECT id, slug, title, version, content, metadata FROM pages
-      WHERE tag_path = $1 AND slug LIKE $2 ORDER BY slug`,
+    `SELECT id, "tagPath", slug, title, version, content, metadata FROM "WikiPage"
+      WHERE "siteId" = '' AND "tagPath" = $1 AND slug LIKE $2 ORDER BY slug`,
     [TAG, `${RECAP_PREFIX}%`],
   );
   const recaps = [];
@@ -220,13 +220,7 @@ function renderIndex(state, recaps) {
 
 // ---------------------------------------------------------------- operations
 
-async function readIndex(client) {
-  const { rows } = await client.query(
-    'SELECT id, title, version, content, metadata FROM pages WHERE tag_path = $1 AND slug = $2',
-    [TAG, SERIES_SLUG],
-  );
-  return rows[0] || null;
-}
+const readIndex = (client) => readPage(client, TAG, SERIES_SLUG);
 
 /** Reuse block ids positionally so the app's block diff reads as modified, not replaced. */
 function keepIds(next, prev) {
@@ -310,17 +304,7 @@ async function sync(client, stateOverride) {
       console.log(`        now: ${plain(html)}`);
     }
     if (!DRY) {
-      const now = new Date().toISOString();
-      const json = JSON.stringify(blocks);
-      await client.query('BEGIN');
-      await client.query('UPDATE pages SET content = $1, version = $2, updated_at = $3 WHERE id = $4',
-        [json, version, now, r.id]);
-      await client.query(
-        `INSERT INTO revisions (id, page_id, content, title, version, change_type, author_id, message, created_at)
-         VALUES ($1,$2,$3,$4,$5,'patch',$6,$7,$8)`,
-        [cuid(), r.id, json, r.title, version, AUTHOR_ID,
-         'Rebuild the series navigation from the published recaps', now]);
-      await client.query('COMMIT');
+      await writeRevision(client, r, blocks, { change: 'patch', message: 'Rebuild the series navigation from the published recaps' });
     }
     wrote++;
   }
@@ -333,23 +317,11 @@ async function sync(client, stateOverride) {
   if (!existing) {
     console.log(`  ${DRY ? '[dry] ' : ''}${SERIES_SLUG}  page created (v1.0.0)`);
     if (!DRY) {
-      const now = new Date().toISOString();
-      const id = cuid();
-      const json = JSON.stringify(content);
-      const metadata = JSON.stringify({
-        excerpt: 'Every Radix Week in Review, and a scored record of what the ecosystem predicted.',
-        state,
+      await storeFor(client).save({
+        tagPath: TAG, slug: SERIES_SLUG, title: INDEX_TITLE, content, authorId: AUTHOR_ID,
+        message: 'Create the Week in Review series index and prediction ledger',
+        metadata: { excerpt: 'Every Radix Week in Review, and a scored record of what the ecosystem predicted.', state },
       });
-      await client.query('BEGIN');
-      await client.query(
-        `INSERT INTO pages (id, slug, title, content, tag_path, metadata, version, author_id, created_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,'1.0.0',$7,$8,$8)`,
-        [id, SERIES_SLUG, INDEX_TITLE, json, TAG, metadata, AUTHOR_ID, now]);
-      await client.query(
-        `INSERT INTO revisions (id, page_id, content, title, version, change_type, author_id, message, created_at)
-         VALUES ($1,$2,$3,$4,'1.0.0','major',$5,$6,$7)`,
-        [cuid(), id, json, INDEX_TITLE, AUTHOR_ID, 'Create the Week in Review series index and prediction ledger', now]);
-      await client.query('COMMIT');
     }
     wrote++;
   } else {
@@ -362,18 +334,9 @@ async function sync(client, stateOverride) {
       const version = bump(existing.version, 'minor');
       console.log(`  ${DRY ? '[dry] ' : ''}${SERIES_SLUG}  v${existing.version} -> v${version}  index rebuilt`);
       if (!DRY) {
-        const now = new Date().toISOString();
-        const json = JSON.stringify(keepIds(content, existing.content));
-        const metadata = JSON.stringify({ ...meta(existing), state });
-        await client.query('BEGIN');
-        await client.query('UPDATE pages SET content = $1, metadata = $2, version = $3, updated_at = $4 WHERE id = $5',
-          [json, metadata, version, now, existing.id]);
-        await client.query(
-          `INSERT INTO revisions (id, page_id, content, title, version, change_type, author_id, message, created_at)
-           VALUES ($1,$2,$3,$4,$5,'minor',$6,$7,$8)`,
-          [cuid(), existing.id, json, existing.title, version, AUTHOR_ID,
-           'Update the series index and prediction ledger', now]);
-        await client.query('COMMIT');
+        await writeRevision(client, existing, keepIds(content, existing.content), {
+          change: 'minor', message: 'Update the series index and prediction ledger', metadata: { ...meta(existing), state },
+        });
       }
       wrote++;
     }
@@ -389,13 +352,13 @@ async function resolve(client, names) {
   for (const name of names) {
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const { rows } = await client.query(
-      `SELECT tag_path, slug, title,
+      `SELECT "tagPath" AS tag_path, slug, title,
               CASE WHEN slug = $1 THEN 'slug'
                    WHEN lower(title) = lower($2) THEN 'title'
                    WHEN title ILIKE $4 THEN 'prefix'
                    ELSE 'contains' END AS kind
-         FROM pages
-        WHERE slug = $1 OR lower(title) = lower($2) OR title ILIKE $3
+         FROM "WikiPage"
+        WHERE "siteId" = '' AND (slug = $1 OR lower(title) = lower($2) OR title ILIKE $3)
         ORDER BY 4, length(title) LIMIT 3`,
       [slug, name, `%${name}%`, `${name}%`],
     );

@@ -1,6 +1,7 @@
 // src/app/api/ledger/[action]/route.ts — On-chain wiki backup: prepare, confirm, status, recover
 
 import { prisma } from '@/lib/prisma/client';
+import { store, toWikiPage, authorsOf } from '@/lib/wiki';
 import { handleRoute, json, errors } from 'wiki-formant/http';
 import { requireAuth, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { buildPageBackupManifest, readAnchorFromLedger, readLedgerBackup } from '@/lib/radix/ledger';
@@ -14,15 +15,9 @@ type Body = { tagPath?: string; slug?: string; txHash?: string };
 async function prepare(radixAddress: string, { tagPath, slug }: Body) {
   if (!tagPath || !slug) return errors.badRequest('tagPath and slug are required');
 
-  const page = await prisma.page.findFirst({
-    where: { tagPath, slug },
-    select: {
-      slug: true, tagPath: true, title: true, content: true, version: true,
-      updatedAt: true, createdAt: true, bannerImage: true,
-      author: { select: { displayName: true, shortAddress: true } },
-    },
-  });
-  if (!page) return errors.notFound('Page not found');
+  const row = await store.get(tagPath, slug);
+  if (!row) return errors.notFound('Page not found');
+  const page = toWikiPage(row, await authorsOf([row.authorId]));
 
   const mdx = blocksToMdx(page);
   return json({
@@ -50,8 +45,8 @@ async function confirm(radixAddress: string, { tagPath, slug, txHash }: Body) {
     return errors.badRequest('txHash is not a committed transaction on your account');
   }
 
-  // Raw, so a backup leaves updated_at alone: it is not an edit to the page.
-  const updated = await prisma.$executeRaw`UPDATE pages SET backup_tx_hash = ${txHash} WHERE tag_path = ${tagPath} AND slug = ${slug}`;
+  // Raw, so a backup leaves updatedAt alone and writes no revision: it is not an edit to the page.
+  const updated = await prisma.$executeRaw`UPDATE "WikiPage" SET metadata = metadata || jsonb_build_object('backupTx', ${txHash}::text) WHERE "siteId" = '' AND "tagPath" = ${tagPath} AND slug = ${slug}`;
   if (!updated) return errors.notFound('Page not found');
 
   return json({ ok: true });
@@ -65,17 +60,14 @@ async function status(address: string, params: URLSearchParams) {
   const tagPath = params.get('tagPath');
   const slug = params.get('slug');
   const page = tagPath && slug
-    ? await prisma.page.findUnique({
-        where: { tagPath_slug: { tagPath, slug } },
-        select: { version: true, backupTxHash: true },
-      })
+    ? await store.get(tagPath, slug)
     : null;
 
   return cachedJson({
     anchor,
     hoursSinceAnchor: hours ? Math.round(hours * 10) / 10 : null,
     currentPageVersion: page?.version ?? null,
-    backupTxHash: page?.backupTxHash ?? null,
+    backupTxHash: (page?.metadata.backupTx as string | undefined) ?? null,
   }, CACHE.short);
 }
 

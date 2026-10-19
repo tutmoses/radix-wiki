@@ -8,8 +8,8 @@
 // every upload. The values are mirrored here because a .mjs script can't import
 // TS; change them there first, then here.
 //
-// Blob URLs are referenced from four places — all four are rewritten:
-//   pages.content, pages.banner_image, revisions.content, revisions.changes
+// Blob URLs are referenced from three places — all three are rewritten:
+//   "WikiPage".content, "WikiPage".metadata (the banner), "WikiRevision".content
 // Rewriting revision history is what makes deletion safe: once no row anywhere
 // points at an old blob, nothing can render it, so it can go.
 //
@@ -58,10 +58,9 @@ const IMG_SRC_RE = /<img\b[^>]*?src="(https?:[^"]+)"/gi;
 async function referencedUrls(client) {
   const found = new Set();
   for (const q of [
-    'SELECT content::text AS t FROM pages',
-    'SELECT banner_image AS t FROM pages',
-    'SELECT content::text AS t FROM revisions',
-    'SELECT changes::text AS t FROM revisions',
+    'SELECT content::text AS t FROM "WikiPage"',
+    'SELECT metadata::text AS t FROM "WikiPage"',
+    'SELECT content::text AS t FROM "WikiRevision"',
   ]) {
     const { rows } = await client.query(q);
     for (const r of rows) if (r.t) for (const m of String(r.t).matchAll(BLOB_RE)) found.add(m[0]);
@@ -118,7 +117,7 @@ await withClient(async (client) => {
   // nothing and every external image looks like it doesn't exist.
   const external = new Set();
   {
-    const { rows } = await client.query('SELECT content, banner_image FROM pages');
+    const { rows } = await client.query(`SELECT content, metadata->>'banner' AS banner_image FROM "WikiPage"`);
     const walk = (blocks) => {
       for (const b of blocks || []) {
         if (typeof b?.text === 'string') {
@@ -197,21 +196,20 @@ await withClient(async (client) => {
     let pagesUpdated = 0;
     let revisionsUpdated = 0;
 
-    const { rows: pages } = await client.query('SELECT id, content::text AS content, banner_image FROM pages');
+    const { rows: pages } = await client.query('SELECT id, content::text AS content, metadata::text AS metadata FROM "WikiPage"');
     for (const p of pages) {
       const content = swap(p.content);
-      const banner = p.banner_image ? swap(p.banner_image) : p.banner_image;
-      if (content === p.content && banner === p.banner_image) continue;
-      await client.query('UPDATE pages SET content = $1::jsonb, banner_image = $2 WHERE id = $3', [content, banner, p.id]);
+      const metadata = swap(p.metadata);
+      if (content === p.content && metadata === p.metadata) continue;
+      await client.query('UPDATE "WikiPage" SET content = $1::jsonb, metadata = $2::jsonb WHERE id = $3', [content, metadata, p.id]);
       pagesUpdated++;
     }
 
-    const { rows: revs } = await client.query('SELECT id, content::text AS content, changes::text AS changes FROM revisions');
+    const { rows: revs } = await client.query('SELECT id, content::text AS content FROM "WikiRevision"');
     for (const r of revs) {
       const content = swap(r.content);
-      const changes = r.changes ? swap(r.changes) : r.changes;
-      if (content === r.content && changes === r.changes) continue;
-      await client.query('UPDATE revisions SET content = $1::jsonb, changes = $2::jsonb WHERE id = $3', [content, changes, r.id]);
+      if (content === r.content) continue;
+      await client.query('UPDATE "WikiRevision" SET content = $1::jsonb WHERE id = $2', [content, r.id]);
       revisionsUpdated++;
     }
     console.log(`  ${pagesUpdated} pages, ${revisionsUpdated} revisions rewritten`);

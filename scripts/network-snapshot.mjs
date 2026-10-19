@@ -26,7 +26,7 @@ import { promisify } from 'node:util';
 import { config } from 'dotenv';
 import { bump } from 'wiki-formant/versioning';
 import {
-  uid, cuid, AUTHOR_ID, isLockedPage, esc, meta, argOf, weekKey, fmt, compact, delta, withClient,
+  uid, AUTHOR_ID, isLockedPage, esc, meta, argOf, weekKey, fmt, compact, delta, withClient, readPage, storeFor, writeRevision,
 } from './seed-utils.mjs';
 
 config({ path: new URL('../.env', import.meta.url) });
@@ -105,49 +105,24 @@ const cap = (state) => ({
   announcements: (state.announcements || []).slice(-ANNOUNCE_MAX),
 });
 
-async function load(client) {
-  const { rows } = await client.query(
-    'SELECT id, title, version, content, metadata FROM pages WHERE tag_path = $1 AND slug = $2',
-    [TAG, SLUG],
-  );
-  return rows[0] || null;
-}
+const load = (client) => readPage(client, TAG, SLUG);
 
 async function persist(client, page, state, message) {
   const content = render(state);
-  const now = new Date().toISOString();
-  const json = JSON.stringify(content);
 
   if (!page) {
     console.log(`  ${DRY ? '[dry] ' : ''}${SLUG}  page created (v1.0.0)`);
     if (DRY) return;
-    const id = cuid();
-    await client.query('BEGIN');
-    await client.query(
-      `INSERT INTO pages (id, slug, title, content, tag_path, metadata, version, author_id, created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,'1.0.0',$7,$8,$8)`,
-      [id, SLUG, TITLE, json, TAG,
-       JSON.stringify({ excerpt: 'A weekly reading of the Radix ledger, kept so each week can be compared with the last.', state }),
-       AUTHOR_ID, now]);
-    await client.query(
-      `INSERT INTO revisions (id, page_id, content, title, version, change_type, author_id, message, created_at)
-       VALUES ($1,$2,$3,$4,'1.0.0','major',$5,$6,$7)`,
-      [cuid(), id, json, TITLE, AUTHOR_ID, message, now]);
-    await client.query('COMMIT');
+    await storeFor(client).save({
+      tagPath: TAG, slug: SLUG, title: TITLE, content, authorId: AUTHOR_ID, message,
+      metadata: { excerpt: 'A weekly reading of the Radix ledger, kept so each week can be compared with the last.', state },
+    });
     return;
   }
 
-  const version = bump(page.version, 'minor');
-  console.log(`  ${DRY ? '[dry] ' : ''}${SLUG}  v${page.version} -> v${version}`);
+  console.log(`  ${DRY ? '[dry] ' : ''}${SLUG}  v${page.version} -> v${bump(page.version, 'minor')}`);
   if (DRY) return;
-  await client.query('BEGIN');
-  await client.query('UPDATE pages SET content = $1, metadata = $2, version = $3, updated_at = $4 WHERE id = $5',
-    [json, JSON.stringify({ ...meta(page), state }), version, now, page.id]);
-  await client.query(
-    `INSERT INTO revisions (id, page_id, content, title, version, change_type, author_id, message, created_at)
-     VALUES ($1,$2,$3,$4,$5,'minor',$6,$7,$8)`,
-    [cuid(), page.id, json, page.title, version, AUTHOR_ID, message, now]);
-  await client.query('COMMIT');
+  await writeRevision(client, page, content, { change: 'minor', message, metadata: { ...meta(page), state } });
 }
 
 // ---------------------------------------------------------------- repositories
@@ -277,16 +252,9 @@ async function captureDev(client, page) {
     `${entry.contributors} contributor(s) across ${ok.length}/${REPOS.length} repos`);
 
   if (DRY) { console.log('[dry] no write'); return; }
-  const now = new Date().toISOString();
-  const version = bump(page.version, 'patch');
-  await client.query('BEGIN');
-  await client.query('UPDATE pages SET metadata = $1, version = $2, updated_at = $3 WHERE id = $4',
-    [JSON.stringify({ ...meta(page), state: next }), version, now, page.id]);
-  await client.query(
-    `INSERT INTO revisions (id, page_id, content, title, version, change_type, author_id, message, created_at)
-     SELECT $1, id, content, $2, $3, 'patch', $4, $5, $6 FROM pages WHERE id = $7`,
-    [cuid(), page.title, version, AUTHOR_ID, `Record repository activity for the week of ${week}`, now, page.id]);
-  await client.query('COMMIT');
+  const version = await writeRevision(client, page, page.content, {
+    change: 'patch', message: `Record repository activity for the week of ${week}`, metadata: { ...meta(page), state: next },
+  });
   console.log(`  written  v${page.version} -> v${version}`);
 }
 

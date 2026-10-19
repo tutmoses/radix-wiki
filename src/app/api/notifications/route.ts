@@ -19,10 +19,7 @@ export async function GET(request: NextRequest) {
     const [notifications, total, unreadCount] = await Promise.all([
       prisma.notification.findMany({
         where,
-        include: {
-          actor: AUTHOR_SELECT,
-          page: { select: { id: true, title: true, tagPath: true, slug: true } },
-        },
+        include: { actor: AUTHOR_SELECT },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -31,7 +28,14 @@ export async function GET(request: NextRequest) {
       prisma.notification.count({ where: { userId: auth.session.userId, read: false } }),
     ]);
 
-    return json({ ...paginatedResponse(notifications, total, page, pageSize), unreadCount });
+    // Notification.pageId names a WikiPage row without a relation, so the pages are joined here.
+    const pages = await prisma.wikiPage.findMany({
+      where: { id: { in: [...new Set(notifications.map(n => n.pageId))] } },
+      select: { id: true, title: true, tagPath: true, slug: true },
+    });
+    const byId = new Map(pages.map(p => [p.id, p]));
+    const items = notifications.flatMap(n => (byId.has(n.pageId) ? [{ ...n, page: byId.get(n.pageId)! }] : []));
+    return json({ ...paginatedResponse(items, total, page, pageSize), unreadCount });
   }, 'Failed to fetch notifications');
 }
 

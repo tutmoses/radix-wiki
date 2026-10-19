@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { config } from 'dotenv';
 import {
-  isLockedPage, argOf, fmt as fmtOr, compact as compactOr, delta, withClient, embedFigure,
+  isLockedPage, argOf, fmt as fmtOr, compact as compactOr, delta, withClient, embedFigure, readPage,
 } from './seed-utils.mjs';
 import { C, MONO, t, wrap, paras, card, sectionLabel, frame, figureBlock, renderPngs } from '../brand-assets/kit.mjs';
 
@@ -239,9 +239,7 @@ function wirFigure(snap, prior, series, dev, devPrior) {
 async function loadState(client) {
   // WIR_STATE_FILE overrides the DB read for layout testing (same idea as SNAPSHOT_ORIGIN).
   if (process.env.WIR_STATE_FILE) return JSON.parse(fs.readFileSync(process.env.WIR_STATE_FILE, 'utf8'));
-  const { rows } = await client.query(
-    'SELECT metadata FROM pages WHERE tag_path = $1 AND slug = $2', [SNAP_TAG, SNAP_SLUG]);
-  return rows[0]?.metadata?.state ?? null;
+  return (await readPage(client, SNAP_TAG, SNAP_SLUG))?.metadata?.state ?? null;
 }
 
 async function render(client) {
@@ -284,11 +282,8 @@ async function embed(client) {
   if (!slug) throw new Error('embed requires the recap slug, e.g. week-in-review-2026-08-16');
   if (isLockedPage('blog', slug)) throw new Error(`blog/${slug} is locked`);
 
-  const { rows } = await client.query(
-    'SELECT id, title, version, content, metadata FROM pages WHERE tag_path = $1 AND slug = $2',
-    ['blog', slug]);
-  if (!rows.length) throw new Error(`blog/${slug} not found`);
-  const page = rows[0];
+  const page = await readPage(client, 'blog', slug);
+  if (!page) throw new Error(`blog/${slug} not found`);
   const week = page.metadata?.date;
   if (!week) throw new Error(`${slug} has no metadata.date to key the figure on`);
 

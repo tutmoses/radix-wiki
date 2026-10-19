@@ -264,7 +264,7 @@ function initialFields(page: WikiPage | undefined, slug: string) {
         bannerImage: page.bannerImage || null,
         metadata: (page.metadata as PageMetadata) || {},
         editSlug: page.slug,
-        editorIds: (page as WikiPage & { editorIds?: string[] }).editorIds ?? [],
+        editorIds: page.editorIds,
       }
     : { title: '', content: [createBlock('content')], bannerImage: null, metadata: {} as PageMetadata, editSlug: slug, editorIds: [] as string[] };
 }
@@ -345,9 +345,11 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
     setIsSaving(true);
     try {
       // A new page always POSTs: the route gives a slug that is already taken a
-      // suffix, where a PUT would have overwritten the page holding it.
+      // suffix, where a PUT would have overwritten the page holding it. An edit
+      // names the version it opened, so a save made meanwhile is a 409 to reload
+      // from rather than an edit silently written over.
       const res = page
-        ? await sendJson(`/api/wiki${pagePath(tagPath, slug)}`, 'PUT', { title, content, bannerImage, metadata, newSlug, editorIds, verified, revisionMessage: revisionMessage.trim() || undefined })
+        ? await sendJson(`/api/wiki${pagePath(tagPath, slug)}`, 'PUT', { title, content, bannerImage, metadata, newSlug, editorIds, verified, baseVersion: page.version, revisionMessage: revisionMessage.trim() || undefined })
         : await sendJson('/api/wiki', 'POST', { title, content, bannerImage, metadata, tagPath, slug: newSlug || slug || undefined });
       const data = await res.json();
       if (res.ok) {

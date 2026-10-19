@@ -27,7 +27,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // not article space, and at several rewrites a day it also dated every
   // category above it as changed today.
   const [pages, assetPages] = await Promise.all([
-    prisma.page.findMany({
+    prisma.wikiPage.findMany({
       where: { tagPath: NOT_HIDDEN },
       select: { tagPath: true, slug: true, updatedAt: true },
       orderBy: { updatedAt: 'desc' },

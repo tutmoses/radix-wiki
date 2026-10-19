@@ -14,7 +14,7 @@
 
 import fs from 'node:fs';
 import { config } from 'dotenv';
-import { uid, argOf, weekKey, fmt, compact, withClient } from './seed-utils.mjs';
+import { uid, argOf, weekKey, fmt, compact, withClient, readPage } from './seed-utils.mjs';
 
 config({ path: new URL('../.env', import.meta.url) });
 
@@ -36,9 +36,7 @@ await withClient(async (client) => {
   const week = weekKey(argOf('--week'));
   const since = new Date(new Date(`${week}T00:00:00Z`).getTime() - 6 * 86400000).toISOString().slice(0, 10);
 
-  const { rows: snapRows } = await client.query(
-    'SELECT metadata FROM pages WHERE tag_path = $1 AND slug = $2', [SNAP_TAG, SNAP_SLUG]);
-  const state = snapRows[0]?.metadata?.state ?? {};
+  const state = (await readPage(client, SNAP_TAG, SNAP_SLUG))?.metadata?.state ?? {};
   const snaps = state.snapshots || [];
   const i = snaps.findIndex((s) => s.week === week);
   const snap = i >= 0 ? snaps[i] : null;
@@ -49,10 +47,10 @@ await withClient(async (client) => {
   // Pages that actually changed in the window. These are the internal links the
   // recap was failing to carry, and they are already sitting in the database.
   const { rows: touched } = await client.query(
-    `SELECT id, title, tag_path, slug, updated_at, created_at
-       FROM pages
-      WHERE tag_path <> '' AND tag_path <> 'blog' AND updated_at >= $1
-      ORDER BY updated_at DESC LIMIT 12`,
+    `SELECT id, title, "tagPath" AS tag_path, slug, "updatedAt" AS updated_at, "createdAt" AS created_at
+       FROM "WikiPage"
+      WHERE "siteId" = '' AND "tagPath" <> '' AND "tagPath" <> 'blog' AND "updatedAt" >= $1
+      ORDER BY "updatedAt" DESC LIMIT 12`,
     [`${since}T00:00:00Z`],
   );
   const pagePath = (p) => `/${[p.tag_path, p.slug].filter(Boolean).join('/')}`;

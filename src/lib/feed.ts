@@ -80,7 +80,7 @@ function blocksToFeedHtml(content: unknown): string {
  *  endpoint so no post travels imageless. `over` is the series feed's relabelling
  *  of the title it numbers — the card keeps the page's own. */
 export function feedItem(
-  p: { slug: string; title: string; content: unknown; metadata: unknown; bannerImage: string | null; date: Date },
+  p: { slug: string; title: string; content: unknown; metadata: unknown; date: Date },
   over?: { title?: string; categories?: string[] },
 ): FeedItem {
   const description = clampWords((p.metadata as Record<string, string> | null)?.excerpt || describe(openingText(p.content)));
@@ -89,7 +89,7 @@ export function feedItem(
     url: pageUrl('blog', p.slug),
     description,
     date: p.date,
-    image: ogImageUrl({ title: p.title, description, tagPath: 'blog', banner: p.bannerImage }),
+    image: ogImageUrl({ title: p.title, description, tagPath: 'blog', banner: (p.metadata as { banner?: string } | null)?.banner }),
     html: blocksToFeedHtml(p.content),
     ...over,
   };
@@ -101,11 +101,11 @@ export function feedItem(
  *  /api/announce both read the series through this. */
 export async function getRecaps() {
   const [recaps, index] = await Promise.all([
-    prisma.page.findMany({
+    prisma.wikiPage.findMany({
       where: { tagPath: 'blog', slug: { startsWith: RECAP_PREFIX } },
-      select: { slug: true, title: true, content: true, metadata: true, bannerImage: true, createdAt: true },
+      select: { slug: true, title: true, content: true, metadata: true, createdAt: true },
     }),
-    prisma.page.findFirst({ where: { tagPath: 'blog', slug: SERIES_SLUG }, select: { metadata: true } }),
+    prisma.wikiPage.findFirst({ where: { tagPath: 'blog', slug: SERIES_SLUG }, select: { metadata: true } }),
   ]);
   return {
     recaps: recaps

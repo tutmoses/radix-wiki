@@ -1,6 +1,6 @@
 // src/types/index.ts
 
-import type { User, Page, Comment, Notification, Prisma } from '@prisma/client';
+import type { User, WikiPage as WikiPageRow, Comment, Notification, Prisma } from '@prisma/client';
 
 // Auth types. The session and the wallet proof are shaped by the stack that
 // produces them, @/lib/auth; re-exported here so the rest of the app keeps
@@ -25,15 +25,18 @@ export interface RadixWalletData {
 
 // Wiki types - derive from Prisma. `shortAddress` is the computed display-safe
 // truncation from the Prisma client extension; full addresses never reach clients.
-type WikiAuthor = Pick<User, 'id' | 'displayName' | 'avatarUrl'> & { shortAddress: string };
+export type WikiAuthor = Pick<User, 'id' | 'displayName' | 'avatarUrl'> & { shortAddress: string };
 
 export type PageMetadata = Record<string, string>;
 
-export type WikiPage = Omit<Page, 'content' | 'metadata'> & {
+/** A stored page as the views read it: the banner and co-editors are metadata keys, lifted out. */
+export type WikiPage = Omit<WikiPageRow, 'content' | 'metadata' | 'siteId'> & {
   content: Prisma.JsonValue;
   metadata?: PageMetadata | null;
+  bannerImage: string | null;
+  editorIds: string[];
   author?: WikiAuthor;
-  _count?: { revisions: number };
+  revisionCount?: number;
   /** Set on list rows, where it stands in for `content` (which they null out). */
   snippet?: string | null;
 };
@@ -65,5 +68,5 @@ export type IdeasPage = WikiPage & {
 
 export type WikiNotification = Notification & {
   actor: WikiAuthor;
-  page: Pick<Page, 'id' | 'title' | 'tagPath' | 'slug'>;
+  page: Pick<WikiPageRow, 'id' | 'title' | 'tagPath' | 'slug'>;
 };

@@ -129,7 +129,7 @@ function imageDrift({ kind, url, ok, bytes }) {
 
 await withClient(async (client) => {
   const { rows } = await client.query(
-    'SELECT slug, title, tag_path, content, metadata, updated_at FROM pages WHERE tag_path LIKE $1 ORDER BY updated_at ASC',
+    `SELECT slug, title, "tagPath" AS tag_path, content, metadata, "updatedAt" AS updated_at FROM "WikiPage" WHERE "siteId" = '' AND "tagPath" LIKE $1 ORDER BY "updatedAt" ASC`,
     [`${prefix}%`],
   );
 
@@ -138,7 +138,7 @@ await withClient(async (client) => {
   // nested TS literal this .mjs cannot import), and the static routes parsePath
   // resolves outside the tag tree.
   const livePaths = new Set([...STATIC_PATHS, ...appRoutePaths(), ...publicAssetPaths()]);
-  const { rows: allRows } = await client.query('SELECT slug, tag_path FROM pages');
+  const { rows: allRows } = await client.query(`SELECT slug, "tagPath" AS tag_path FROM "WikiPage" WHERE "siteId" = ''`);
   for (const r of allRows) {
     livePaths.add(`/${r.tag_path}/${r.slug}`);
     const segments = r.tag_path.split('/').filter(Boolean);

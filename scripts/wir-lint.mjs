@@ -227,8 +227,8 @@ await withClient(async (client) => {
     process.exit(1);
   }
   const { rows } = all
-    ? await client.query(`SELECT slug, content FROM pages WHERE tag_path = $1 AND slug LIKE $2 ORDER BY slug DESC`, [TAG, RECAP_LIKE])
-    : await client.query(`SELECT slug, content FROM pages WHERE tag_path = $1 AND slug = $2`, [TAG, slug]);
+    ? await client.query(`SELECT slug, content FROM "WikiPage" WHERE "siteId" = '' AND "tagPath" = $1 AND slug LIKE $2 ORDER BY slug DESC`, [TAG, RECAP_LIKE])
+    : await client.query(`SELECT slug, content FROM "WikiPage" WHERE "siteId" = '' AND "tagPath" = $1 AND slug = $2`, [TAG, slug]);
   if (!rows.length) { console.error(`No recap found${slug ? ` for ${slug}` : ''}.`); process.exit(2); }
   let failures = 0;
   for (const r of rows) failures += report(lint(r.slug, r.content)) ? 1 : 0;

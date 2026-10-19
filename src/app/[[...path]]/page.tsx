@@ -47,7 +47,7 @@ import { BLOCK_SHAPE, leafBlocks } from '@/lib/block-shape';
 import { someBlock } from 'wiki-formant/blocks';
 
 export async function generateStaticParams() {
-  const pages = await prisma.page.findMany({ select: { tagPath: true, slug: true } });
+  const pages = await prisma.wikiPage.findMany({ select: { tagPath: true, slug: true } });
   // Hidden paths included: they are prebuilt like any other, just unlisted.
   const categories = tagPaths().map(t => t.path).filter(Boolean);
 

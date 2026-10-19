@@ -1,7 +1,8 @@
 // src/lib/path.ts — what a URL path means, with no data access, so the
 // client hooks and the server route read it through the same parser.
 
-import { isValidTagPath } from '@/lib/tags';
+import { parseWikiPath, isReservedSlug as reservedIn } from 'wiki-formant/tree';
+import { TAG_TREE as TREE } from '@/lib/tags';
 import { STATIC_PATH_TYPES } from '@/lib/static-pages';
 
 const SUFFIXES = ['edit', 'history', 'mdx'] as const;
@@ -12,9 +13,7 @@ type Suffix = typeof SUFFIXES[number];
  * something else: a mode suffix (`/blog/history` is the blog's history) or a
  * child category. Page creation treats it as taken.
  */
-export function isReservedSlug(tagPath: string, slug: string): boolean {
-  return SUFFIXES.includes(slug as Suffix) || isValidTagPath([...tagPath.split('/'), slug]);
-}
+export const isReservedSlug = (tagPath: string, slug: string): boolean => reservedIn(TREE, tagPath, slug, SUFFIXES);
 
 interface ParsedPath {
   type: 'homepage' | 'category' | 'page' | 'history' | 'edit' | 'mdx' | 'leaderboard' | 'search' | 'maintenance' | 'stats' | 'settings' | 'charts' | 'charts-validators' | 'charts-tokens' | 'token-detail' | 'invalid';
@@ -24,6 +23,11 @@ interface ParsedPath {
   tokenAddress?: string;
 }
 
+/**
+ * The wiki half is `wiki-formant/tree`'s `parseWikiPath`; what stays here is
+ * this wiki's static pages, its /charts tree, and the API's refusal of /edit.
+ * A category's `/history` and `/mdx` address its hub article, the empty slug.
+ */
 export function parsePath(segments: string[] = [], mode: 'client' | 'api' = 'client'): ParsedPath {
   const base: ParsedPath = { type: 'homepage', tagPath: '', slug: '', suffix: null };
   if (segments.length === 0) return base;
@@ -41,40 +45,12 @@ export function parsePath(segments: string[] = [], mode: 'client' | 'api' = 'cli
     return { ...base, type: 'invalid' };
   }
 
-  // Single-segment suffix (e.g., /edit, /history, /mdx)
-  if (segments.length === 1 && SUFFIXES.includes(segments[0] as Suffix)) {
-    const suffix = segments[0] as Suffix;
-    if (mode === 'api' && suffix === 'edit') return { ...base, type: 'invalid' };
-    return { ...base, type: suffix, suffix };
-  }
-
-  // Check full path as tag (handles tags like 'history' that collide with suffixes).
-  // The empty slug is the category's own hub article, the way `''/''` is the
-  // homepage — so the API resolves it here too, and PUT lands on the hub row.
-  if (isValidTagPath(segments)) {
-    return { ...base, type: 'category', tagPath: segments.join('/') };
-  }
-
-  const lastSegment = segments[segments.length - 1];
-  const suffix = SUFFIXES.includes(lastSegment as Suffix) ? lastSegment as Suffix : null;
-  const pathSegments = suffix ? segments.slice(0, -1) : segments;
-
-  // Client: check if stripped path is a category
-  if (mode === 'client' && suffix && isValidTagPath(pathSegments)) {
-    return { ...base, type: suffix === 'edit' ? 'category' : suffix, tagPath: pathSegments.join('/'), suffix };
-  }
-
-  if (pathSegments.length < 2) return { ...base, type: 'invalid' };
-
-  const slug = pathSegments[pathSegments.length - 1]!;
-  const tagPathSegments = pathSegments.slice(0, -1);
-
-  if (!isValidTagPath(tagPathSegments)) {
-    return { ...base, type: 'invalid' };
-  }
-
-  const tagPath = tagPathSegments.join('/');
-  const type = suffix ?? 'page';
-  if (mode === 'api' && suffix === 'edit') return { ...base, type: 'invalid' };
-  return { type, tagPath, slug, suffix };
+  const parsed = parseWikiPath(TREE, segments, { modes: SUFFIXES });
+  const suffix = parsed.mode;
+  if (parsed.type === 'invalid' || (mode === 'api' && suffix === 'edit')) return { ...base, type: 'invalid' };
+  const { tagPath, slug } = parsed;
+  if (parsed.type === 'home') return { ...base, type: suffix ?? 'homepage', suffix };
+  // The client opens a category's editor on the category page itself.
+  if (parsed.type === 'category') return { type: !suffix || suffix === 'edit' ? 'category' : suffix, tagPath, slug: '', suffix };
+  return { type: suffix ?? 'page', tagPath, slug, suffix };
 }

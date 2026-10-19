@@ -31,7 +31,7 @@ type Row = {
 const href = (p: Row) => pagePath(p.tagPath, p.slug);
 
 export const getMaintenanceQueues = cached('getMaintenanceQueuesWithRefs', async (): Promise<MaintenanceQueue[]> => {
-  const pages = await prisma.page.findMany({
+  const pages = await prisma.wikiPage.findMany({
     where: { NOT: { tagPath: '' } },
     select: { id: true, title: true, slug: true, tagPath: true, content: true, metadata: true, updatedAt: true, lastVerifiedAt: true },
     orderBy: { title: 'asc' },

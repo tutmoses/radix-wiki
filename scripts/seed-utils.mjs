@@ -1,23 +1,23 @@
 // scripts/seed-utils.mjs — shared plumbing for the wiki's database scripts.
 
 import pg from 'pg';
-import { randomUUID, randomBytes } from 'crypto';
+import { randomUUID } from 'crypto';
 import { execFileSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 import { config } from 'dotenv';
 import { bump } from 'wiki-formant/versioning';
+import { wikiStore } from 'wiki-formant/store';
 import { validateLinkGroups, validateReferenceItems } from 'wiki-formant/validation';
 config();
 
 export const uid = () => randomUUID();
-export const cuid = () => 'c' + randomBytes(12).toString('hex').slice(0, 24);
 export const AUTHOR_ID = 'cmk5t48vx0000005zc5se4dqz';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 export const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-/** pages.metadata is jsonb and can be null; every caller wants an object. */
+/** "WikiPage".metadata is jsonb; every caller wants an object. */
 export const meta = (row) => (row?.metadata && typeof row.metadata === 'object' ? row.metadata : {});
 export const argOf = (flag) => { const i = process.argv.indexOf(flag); return i >= 0 ? process.argv[i + 1] : null; };
 
@@ -132,7 +132,8 @@ export async function withClient(fn) {
   let wrote = false;
   const query = client.query.bind(client);
   client.query = (sql, ...rest) => {
-    if (/^\s*(insert|update|delete)\b/i.test(typeof sql === 'string' ? sql : sql?.text ?? '')) wrote = true;
+    // Anywhere in the text: the store's writes are data-modifying CTEs, `WITH up AS (UPDATE …`.
+    if (/\b(insert\s+into|update\s+\S+\s+set|delete\s+from)\b/i.test(typeof sql === 'string' ? sql : sql?.text ?? '')) wrote = true;
     return query(sql, ...rest);
   };
   try {
@@ -186,29 +187,28 @@ export async function embedFigure(client, page, { marker, html, place, message, 
   return { action, version, blocks };
 }
 
+/** The app's own store (`wiki-formant/store`) over a script's client, so a script writes exactly what the editor writes. */
+export const storeFor = (client) => wikiStore({ sql: async (q, ...v) => (await client.query(q, v)).rows });
+
+/** A page row by path, every column: what `writeRevision` and `embedFigure` take. Null when there is none. */
+export const readPage = (client, tagPath, slug) => storeFor(client).get(tagPath, slug);
+
 /**
- * Write edited blocks back to a loaded page row (`id`, `title`, `version`) as one
- * revision: the page and its `revisions` row in one transaction, the version
- * bumped from the stored one by `change`, which is also the revision's
- * change_type. `verified` stamps `last_verified_at` too, for an edit that
+ * Write edited blocks back to a page row from `readPage` as one revision, through
+ * the store: the page and its revision in one statement, the version bumped from
+ * the stored one by `change`, which is also the revision's change type. The save
+ * names the version it read, so an edit landing in between is refused (409)
+ * instead of overwritten. `verified` stamps `lastVerifiedAt` too, for an edit that
  * re-checked the page's facts. `dry` writes nothing. Returns the new version.
  */
-export async function writeRevision(client, page, blocks, { change = 'minor', message, verified = false, dry = false }) {
-  const version = bump(page.version, change);
-  if (dry) return version;
+export async function writeRevision(client, page, blocks, { change = 'minor', message, verified = false, dry = false, metadata }) {
+  if (dry) return bump(page.version, change);
   assertLinkShapes(blocks, page.title);
-  const now = new Date().toISOString();
-  const json = JSON.stringify(blocks);
-  await client.query('BEGIN');
-  await client.query(
-    `UPDATE pages SET content = $1, version = $2, updated_at = $3${verified ? ', last_verified_at = $3' : ''} WHERE id = $4`,
-    [json, version, now, page.id]);
-  await client.query(
-    `INSERT INTO revisions (id, page_id, content, title, version, change_type, author_id, message, created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-    [cuid(), page.id, json, page.title, version, change, AUTHOR_ID, message, now]);
-  await client.query('COMMIT');
-  return version;
+  const { page: saved } = await storeFor(client).save({
+    tagPath: page.tagPath, slug: page.slug, content: blocks, metadata,
+    change, message, verified, authorId: AUTHOR_ID, baseVersion: page.version,
+  });
+  return saved.version;
 }
 
 /**
@@ -219,6 +219,7 @@ export async function writeRevision(client, page, blocks, { change = 'minor', me
  */
 export async function insertPages(pages, defaultTagPath, revisionMessage = 'Initial page') {
   await withClient(async (client) => {
+    const store = storeFor(client);
     let inserted = 0, skipped = 0;
     for (const page of pages) {
       const tagPath = page.tagPath || defaultTagPath;
@@ -227,31 +228,12 @@ export async function insertPages(pages, defaultTagPath, revisionMessage = 'Init
         skipped++;
         continue;
       }
-      const existing = await client.query(
-        'SELECT id FROM pages WHERE tag_path = $1 AND slug = $2',
-        [tagPath, page.slug],
-      );
-      if (existing.rows.length > 0) { skipped++; continue; }
+      if (await store.get(tagPath, page.slug)) { skipped++; continue; }
       assertLinkShapes(page.content, `${tagPath}/${page.slug}`);
-
-      const id = cuid();
-      const now = new Date().toISOString();
-
-      await client.query('BEGIN');
-
-      await client.query(
-        `INSERT INTO pages (id, slug, title, content, tag_path, metadata, version, author_id, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)`,
-        [id, page.slug, page.title, JSON.stringify(page.content), tagPath, JSON.stringify(page.metadata || {}), '1.0.0', AUTHOR_ID, now],
-      );
-
-      await client.query(
-        `INSERT INTO revisions (id, page_id, content, title, version, change_type, author_id, message, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [cuid(), id, JSON.stringify(page.content), page.title, '1.0.0', 'major', AUTHOR_ID, revisionMessage, now],
-      );
-
-      await client.query('COMMIT');
+      await store.save({
+        tagPath, slug: page.slug, title: page.title, content: page.content,
+        metadata: page.metadata || {}, authorId: AUTHOR_ID, message: revisionMessage,
+      });
       inserted++;
     }
     console.log(`Done. Inserted: ${inserted}, Skipped: ${skipped}`);

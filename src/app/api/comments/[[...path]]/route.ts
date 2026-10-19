@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     if (!content?.trim()) return errors.badRequest('Content is required');
     if (content.length > 5000) return errors.badRequest('Comment too long (max 5000 chars)');
 
-    const page = await prisma.page.findUnique({ where: { id: pageId }, select: { id: true, slug: true, title: true, tagPath: true, version: true, authorId: true } });
+    const page = await prisma.wikiPage.findUnique({ where: { id: pageId }, select: { id: true, slug: true, title: true, tagPath: true, version: true, authorId: true } });
     if (!page) return errors.notFound('Page not found');
 
     const auth = await requireAuth(request, { type: 'comment', tagPath: page.tagPath });
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     revalidateTag('wiki', { expire: 0 });
 
     // Fire-and-forget notifications
-    if (page.authorId !== auth.session.userId) {
+    if (page.authorId && page.authorId !== auth.session.userId) {
       prisma.notification.create({ data: { userId: page.authorId, actorId: auth.session.userId, type: 'comment_on_page', pageId, commentId: comment.id } }).catch(() => {});
     }
     if (parentComment && parentComment.authorId !== auth.session.userId) {

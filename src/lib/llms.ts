@@ -56,7 +56,7 @@ export const CORPUS_WHERE = { tagPath: { not: '', ...NOT_HIDDEN } };
  * boundaries and their sizes are.
  */
 export async function corpusSections(tagPath?: string): Promise<CorpusSection[]> {
-  const pages = await prisma.page.findMany({
+  const pages = await prisma.wikiPage.findMany({
     select: { title: true, tagPath: true, slug: true, content: true, updatedAt: true },
     where: {
       tagPath: tagPath ? { ...CORPUS_WHERE.tagPath, startsWith: tagPath } : CORPUS_WHERE.tagPath,
@@ -100,7 +100,7 @@ export function pageLine(p: { title: string; tagPath: string | null; slug: strin
  * changed a byte.
  */
 async function corpusValidators(depth = '') {
-  const agg = await prisma.page.aggregate({ _count: true, _max: { updatedAt: true }, where: CORPUS_WHERE });
+  const agg = await prisma.wikiPage.aggregate({ _count: true, _max: { updatedAt: true }, where: CORPUS_WHERE });
   return corpusValidatorsFrom([depth, agg._count], [agg._max.updatedAt]);
 }
 
@@ -230,13 +230,13 @@ content programmatically. No browser or wallet extension required.
  */
 export async function buildLlmsTxt(): Promise<string> {
   const [recent, counts] = await Promise.all([
-    prisma.page.findMany({
+    prisma.wikiPage.findMany({
       select: { title: true, tagPath: true, slug: true, content: true, updatedAt: true },
       where: CORPUS_WHERE,
       orderBy: { updatedAt: 'desc' },
       take: RECENT_LIMIT,
     }),
-    prisma.page.groupBy({ by: ['tagPath'], _count: true, where: CORPUS_WHERE }),
+    prisma.wikiPage.groupBy({ by: ['tagPath'], _count: true, where: CORPUS_WHERE }),
   ]);
 
   // Roll tag-path counts up to top-level sections

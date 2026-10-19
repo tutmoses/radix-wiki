@@ -3,7 +3,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
-import { Prisma } from '@prisma/client';
 import { pageUrl, pagePath } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
@@ -11,16 +10,15 @@ import { findTagByPath, tagLabel, isValidTagPath, isAuthorOnlyPath, isLockedPage
 import { requireBalance } from '@/lib/radix/balance';
 import { parsePagination, paginatedResponse } from 'wiki-formant/pagination';
 import { requireAuth, cachedJson, CACHE, type RouteContext } from '@/lib/api';
-import { formatVersion, parseVersion, incrementVersion } from 'wiki-formant/versioning';
-import { computeRevisionDiff, type BlockChange } from '@/lib/versioning';
+import { toListing } from 'wiki-formant/store';
 import { isReservedSlug, parsePath } from '@/lib/path';
-import { orderByIds, searchPages, resolveBlockData, loadPageHistory, getCategoryPages, AUTHOR_SELECT, NOT_HIDDEN, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
+import { store, toWikiPage, authorsOf, deletePage, searchPages, resolveBlockData, loadPageHistory, getCategoryPages } from '@/lib/wiki';
 import { blockIssues, validateBlocks } from '@/lib/block-utils';
 import { describeBlockIssues } from 'wiki-formant/validation';
 import { blocksToMdx } from '@/lib/mdx';
 import { pageToMarkdown } from '@/lib/markdown';
 import { markdownDocument } from 'wiki-formant/markdown';
-import type { WikiPageInput, PageMetadata } from '@/types';
+import type { WikiPage, WikiPageInput, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
 import { deliverWebhooks } from '@/lib/webhooks';
 import { trackSearch } from '@/lib/track';
@@ -28,32 +26,30 @@ import { VARY_ACCEPT, corpusEtag, markdownHeaders, notModified, teachingNotFound
 
 type PathParams = { path?: string[] };
 
-const INITIAL_VERSION = '1.0.0';
+/** A stored page with its author, as every write answers. */
+async function withAuthor(row: Parameters<typeof toWikiPage>[0]): Promise<WikiPage> {
+  return toWikiPage(row, await authorsOf([row.authorId]));
+}
 
-/** A page's unique key, for every lookup by path. */
-const pageKey = ({ tagPath, slug }: { tagPath: string; slug: string }) => ({ tagPath_slug: { tagPath, slug } });
-
-/** A page and its first revision, in one transaction — POST for an article, PUT
- *  for the homepage row when it does not exist yet. */
-type NewPage = Pick<Prisma.PageUncheckedCreateInput, 'tagPath' | 'slug' | 'bannerImage' | 'metadata'>
-  & { title: string; content: Prisma.InputJsonValue };
-
-function createPage(data: NewPage, authorId: string) {
-  return prisma.$transaction(async (tx) => {
-    const page = await tx.page.create({
-      data: { ...data, version: INITIAL_VERSION, authorId },
-      include: { author: AUTHOR_SELECT },
-    });
-    await tx.revision.create({
-      data: {
-        pageId: page.id, title: data.title, content: data.content,
-        version: INITIAL_VERSION, changeType: 'major',
-        changes: [] as unknown as Prisma.InputJsonValue,
-        authorId, message: 'Initial version',
-      },
-    });
-    return page;
-  });
+/**
+ * Metadata as a write stores it. The banner travels as its own field and the
+ * co-editor list is the author's alone to set, so neither can be written
+ * through the free-form metadata a client sends.
+ */
+function storedMetadata(
+  sent: PageMetadata | undefined,
+  stored: Record<string, unknown>,
+  { banner, editors }: { banner?: string | null; editors?: string[] },
+): Record<string, unknown> | undefined {
+  if (sent === undefined && banner === undefined && editors === undefined) return undefined;
+  const { banner: _b, editors: _e, ...rest } = (sent ?? stored) as Record<string, unknown>;
+  const next: Record<string, unknown> = { ...rest };
+  const bannerValue = banner === undefined ? stored.banner : banner;
+  const editorsValue = editors === undefined ? stored.editors : editors;
+  if (typeof bannerValue === 'string' && bannerValue) next.banner = bannerValue;
+  if (Array.isArray(editorsValue) && editorsValue.length) next.editors = editorsValue;
+  if (typeof stored.backupTx === 'string') next.backupTx = stored.backupTx;
+  return next;
 }
 
 /** The required-metadata gate, identical on create and on update. */
@@ -81,11 +77,9 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
 
     // MDX export
     if (parsed.type === 'mdx') {
-      const page = await prisma.page.findUnique({
-        where: pageKey(parsed),
-        include: { author: AUTHOR_SELECT },
-      });
-      if (!page) return errors.notFound('Page not found');
+      const row = await store.get(parsed.tagPath, parsed.slug);
+      if (!row) return errors.notFound('Page not found');
+      const page = await withAuthor(row);
 
       return new NextResponse(blocksToMdx(page), {
         headers: {
@@ -105,11 +99,12 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       if (idsParam !== null) {
         const ids = idsParam.split(',').filter(Boolean).slice(0, 50);
         if (!ids.length) return json([]);
-        const rows = await prisma.page.findMany({ where: { id: { in: ids } }, select: PAGE_LIST_SELECT });
         // The author's chosen order, not the database's: getPagesByIds already
         // orders its server-resolved twin this way, and a pageList block that
         // hydrates on the client must not reshuffle itself.
-        return json(orderByIds(rows, ids));
+        const rows = await store.byIds(ids);
+        const authors = await authorsOf(rows.map(r => r.authorId));
+        return json(rows.map(r => toWikiPage(r, authors)));
       }
 
       const { page, pageSize } = parsePagination(searchParams);
@@ -122,7 +117,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       // changed on the wiki, and the answer to that is article space. Without
       // it the recentPages widget re-fetched here on hydration and put the
       // maintenance log back on top of the server-rendered list.
-      const where: Prisma.PageWhereInput = { tagPath: tagPath ?? NOT_HIDDEN };
+      const where = { siteId: '', tagPath: tagPath ?? { notIn: store.hidden } };
 
       if (q) {
         // The GET-only twin of MCP search_wiki: identical ranking (titles ahead
@@ -138,16 +133,12 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
 
       const orderBy = sort === 'title' ? { title: 'asc' as const } : { updatedAt: 'desc' as const };
 
-      const [pages, total] = await Promise.all([
-        prisma.page.findMany({
-          where,
-          select: PAGE_LIST_SELECT,
-          orderBy,
-          skip: (page - 1) * pageSize,
-          take: pageSize,
-        }),
-        prisma.page.count({ where }),
+      const [rows, total] = await Promise.all([
+        prisma.wikiPage.findMany({ where, orderBy, skip: (page - 1) * pageSize, take: pageSize }),
+        prisma.wikiPage.count({ where }),
       ]);
+      const authors = await authorsOf(rows.map(r => r.authorId));
+      const pages = rows.map(r => toWikiPage({ ...toListing(r), metadata: (r.metadata ?? {}) as Record<string, unknown> }, authors));
 
       return cachedJson(paginatedResponse(pages, total, page, pageSize));
     }
@@ -184,10 +175,8 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     }
 
     // Homepage or specific page
-    const page = await prisma.page.findUnique({
-      where: pageKey(parsed),
-      include: PAGE_INCLUDE,
-    });
+    const row = await store.get(parsed.tagPath, parsed.slug);
+    const page = row && await withAuthor(row);
 
     if (!page && parsed.type === 'homepage') return cachedJson(null);
 
@@ -274,13 +263,10 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
       const auth = await requireAuth(request, { type: 'edit', tagPath: parsed.tagPath });
       if ('error' in auth) return auth.error;
 
-      const page = await prisma.page.findUnique({
-        where: pageKey(parsed),
-        select: { id: true, title: true, content: true, bannerImage: true, version: true, authorId: true, editorIds: true, tagPath: true },
-      });
+      const page = await store.get(parsed.tagPath, parsed.slug);
       if (!page) return errors.notFound('Page not found');
 
-      if (isAuthorOnlyPath(page.tagPath) && !canEditAuthorOnlyPage(page, auth.session.userId)) {
+      if (isAuthorOnlyPath(page.tagPath) && !canEditAuthorOnlyPage(toWikiPage(page), auth.session.userId)) {
         return errors.forbidden('You can only restore your own pages in this category');
       }
 
@@ -291,29 +277,9 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
       const { revisionId } = await request.json();
       if (!revisionId) return errors.badRequest('Revision ID required');
 
-      const revision = await prisma.revision.findFirst({ where: { id: revisionId, pageId: page.id } });
-      if (!revision) return errors.notFound('Revision not found');
-
-      const newVersion = incrementVersion(parseVersion(page.version), 'major');
-      const content = revision.content as Prisma.InputJsonValue;
-
-      await prisma.$transaction([
-        prisma.page.update({
-          where: { id: page.id },
-          data: { title: revision.title, content, version: formatVersion(newVersion) },
-        }),
-        prisma.revision.create({
-          data: {
-            pageId: page.id, title: revision.title, content,
-            version: formatVersion(newVersion), changeType: 'major',
-            changes: [] as unknown as Prisma.InputJsonValue,
-            authorId: auth.session.userId, message: `Restored to v${revision.version}`,
-          },
-        }),
-      ]);
-
+      const restored = await store.restore(page.tagPath, page.slug, revisionId, { authorId: auth.session.userId });
       revalidateTag('wiki', { expire: 0 });
-      return json({ success: true, version: formatVersion(newVersion) });
+      return json({ success: true, version: restored.page.version });
     }
 
     // Create new page
@@ -335,18 +301,18 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
     let slug = body.slug || slugifyHeading(title);
     // A reserved slug is taken the way an existing page's is: a title like
     // "History" would otherwise land on a URL that opens the category's history.
-    const existing = isReservedSlug(tagPath, slug) || await prisma.page.findUnique({ where: pageKey({ tagPath, slug }) });
-    if (existing) slug = `${slug}-${Date.now().toString(36)}`;
+    if (isReservedSlug(tagPath, slug) || await store.get(tagPath, slug)) slug = `${slug}-${Date.now().toString(36)}`;
 
-    const page = await createPage({
-      tagPath, slug, title, bannerImage,
-      content: content as unknown as Prisma.InputJsonValue,
-      metadata: metadata as unknown as Prisma.InputJsonValue,
-    }, auth.session.userId);
+    const { page: row } = await store.save({
+      tagPath, slug, title, content: content as unknown as Block[],
+      metadata: storedMetadata(metadata, {}, { banner: bannerImage ?? null }) ?? {},
+      authorId: auth.session.userId,
+    });
+    const page = await withAuthor(row);
 
-    const priorRevisions = await prisma.revision.count({ where: { authorId: auth.session.userId } });
+    const priorRevisions = await prisma.wikiRevision.count({ where: { authorId: auth.session.userId } });
     revalidateTag('wiki', { expire: 0 });
-    deliverWebhooks('page.created', page, { changeType: 'major', message: 'Initial version', version: INITIAL_VERSION }, { displayName: page.author?.displayName ?? null, radixAddress: auth.session.radixAddress });
+    deliverWebhooks('page.created', page, { changeType: 'major', message: 'Initial version', version: page.version }, { displayName: page.author?.displayName ?? null, radixAddress: auth.session.radixAddress });
     return json({ ...page, isFirstContribution: priorRevisions === 1 }, 201);
   }, 'Failed to create');
 }
@@ -361,38 +327,35 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     const auth = await requireAuth(request, { type: 'edit', tagPath: parsed.tagPath });
     if ('error' in auth) return auth.error;
 
-    const body: Partial<WikiPageInput> & { revisionMessage?: string; newSlug?: string; editorIds?: string[]; verified?: boolean } = await request.json();
-    const { title, content, bannerImage, metadata, revisionMessage, newSlug, editorIds, verified } = body;
+    const body: Partial<WikiPageInput> & { revisionMessage?: string; newSlug?: string; editorIds?: string[]; verified?: boolean; baseVersion?: string } = await request.json();
+    const { title, content, bannerImage, metadata, revisionMessage, newSlug, editorIds, verified, baseVersion } = body;
 
     if (content !== undefined && !validateBlocks(content)) {
       return errors.badRequest(`Invalid block structure: ${describeBlockIssues(blockIssues(content))}`);
     }
 
-    const existing = await prisma.page.findUnique({ where: pageKey(parsed) });
+    const existing = await store.get(parsed.tagPath, parsed.slug);
 
     // Homepage creation if it doesn't exist
     if (!existing && parsed.type === 'homepage') {
-      const page = await createPage({
-        tagPath: '', slug: '', bannerImage,
-        title: title || 'Homepage',
-        content: (content as unknown as Prisma.InputJsonValue) || {},
-      }, auth.session.userId);
-
+      const { page } = await store.save({
+        tagPath: '', slug: '', title: title || 'Homepage',
+        content: (content as unknown as Block[]) || [],
+        metadata: storedMetadata(undefined, {}, { banner: bannerImage ?? null }) ?? {},
+        authorId: auth.session.userId,
+      });
       revalidateTag('wiki', { expire: 0 });
-      return json(page, 201);
+      return json(await withAuthor(page), 201);
     }
 
     if (!existing) return errors.notFound('Page not found');
+    const current = toWikiPage(existing);
 
     const slugUpdate = newSlug && newSlug !== existing.slug ? slugifyHeading(newSlug) : undefined;
-    if (slugUpdate) {
-      // A rename has no suffix to fall back on, so a reserved slug is refused outright.
-      if (isReservedSlug(existing.tagPath, slugUpdate)) return errors.badRequest('That slug belongs to a view or a subcategory of this section');
-      const conflict = await prisma.page.findUnique({ where: pageKey({ tagPath: existing.tagPath, slug: slugUpdate }) });
-      if (conflict) return errors.badRequest('A page with that slug already exists in this category');
-    }
+    // A rename has no suffix to fall back on, so a reserved slug is refused outright.
+    if (slugUpdate && isReservedSlug(existing.tagPath, slugUpdate)) return errors.badRequest('That slug belongs to a view or a subcategory of this section');
 
-    if (parsed.type !== 'homepage' && isAuthorOnlyPath(existing.tagPath) && !canEditAuthorOnlyPage(existing, auth.session.userId)) {
+    if (parsed.type !== 'homepage' && isAuthorOnlyPath(existing.tagPath) && !canEditAuthorOnlyPage(current, auth.session.userId)) {
       return errors.forbidden('You can only edit your own pages in this category');
     }
 
@@ -400,69 +363,33 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
       return errors.forbidden('This page is locked and cannot be edited');
     }
 
-    let newVersion = existing.version;
-    let changeType: string = 'patch';
-    let changes: BlockChange[] = [];
-
-    if (content || title) {
-      const oldContent = (existing.content as unknown as Block[]) || [];
-      const newContent = (content as unknown as Block[]) || oldContent;
-
-      const diff = computeRevisionDiff(
-        existing.version, oldContent, newContent,
-        existing.title, title || existing.title,
-        existing.bannerImage, bannerImage ?? existing.bannerImage
-      );
-
-      newVersion = formatVersion(diff.version);
-      changeType = diff.changeType;
-      changes = diff.changes;
-    }
-
     if (metadata !== undefined) {
       const metaError = metadataError(existing.tagPath, metadata);
       if (metaError) return metaError;
     }
 
-    const page = await prisma.$transaction(async (tx) => {
-      const p = await tx.page.update({
-        where: { id: existing.id },
-        data: {
-          title: title ?? undefined, slug: slugUpdate ?? undefined,
-          content: content !== undefined ? (content as unknown as Prisma.InputJsonValue) : undefined,
-          bannerImage: bannerImage ?? undefined,
-          metadata: metadata !== undefined ? (metadata as unknown as Prisma.InputJsonValue) : undefined,
-          version: newVersion,
-          // The editor's word that the page's facts were checked against its
-          // sources: it retires the freshness banner without an edit.
-          ...(verified === true ? { lastVerifiedAt: new Date() } : {}),
-          ...(editorIds !== undefined && existing.authorId === auth.session.userId ? { editorIds } : {}),
-        },
-        include: { author: AUTHOR_SELECT },
-      });
-
-      if (content || title) {
-        await tx.revision.create({
-          data: {
-            pageId: p.id, title: title || existing.title,
-            content: content ? (content as unknown as Prisma.InputJsonValue) : (existing.content as Prisma.InputJsonValue),
-            version: newVersion, changeType,
-            changes: changes as unknown as Prisma.InputJsonValue,
-            authorId: auth.session.userId, message: revisionMessage,
-          },
-        });
-      }
-
-      return p;
+    const isAuthor = existing.authorId === auth.session.userId;
+    const result = await store.save({
+      tagPath: existing.tagPath, slug: existing.slug, newSlug: slugUpdate,
+      title, content: content as unknown as Block[] | undefined,
+      metadata: storedMetadata(metadata, existing.metadata, {
+        banner: bannerImage,
+        editors: isAuthor ? editorIds : undefined,
+      }),
+      authorId: auth.session.userId, message: revisionMessage,
+      // The editor's word that the page's facts were checked against its
+      // sources: it retires the freshness banner without an edit.
+      verified, baseVersion,
     });
+    const page = await withAuthor(result.page);
 
-    if (existing.authorId !== auth.session.userId) {
+    if (existing.authorId && !isAuthor) {
       prisma.notification.create({ data: { userId: existing.authorId, actorId: auth.session.userId, type: 'page_edited', pageId: existing.id } }).catch(() => {});
     }
-    const totalRevisions = await prisma.revision.count({ where: { authorId: auth.session.userId } });
+    const totalRevisions = await prisma.wikiRevision.count({ where: { authorId: auth.session.userId } });
     revalidateTag('wiki', { expire: 0 });
-    if (content || title) {
-      deliverWebhooks('page.updated', page, { changeType, message: revisionMessage ?? null, version: newVersion }, { displayName: page.author?.displayName ?? null, radixAddress: auth.session.radixAddress });
+    if (result.changeType !== 'none') {
+      deliverWebhooks('page.updated', page, { changeType: result.changeType, message: revisionMessage ?? null, version: page.version }, { displayName: page.author?.displayName ?? null, radixAddress: auth.session.radixAddress });
     }
     return json({ ...page, isFirstContribution: totalRevisions === 1 });
   }, 'Failed to update');
@@ -478,7 +405,7 @@ export async function DELETE(request: NextRequest, context: RouteContext<PathPar
     const auth = await requireAuth(request);
     if ('error' in auth) return auth.error;
 
-    const existing = await prisma.page.findUnique({ where: pageKey(parsed) });
+    const existing = await store.get(parsed.tagPath, parsed.slug);
     if (!existing) return errors.notFound('Page not found');
     if (isLockedPage(existing.tagPath, existing.slug)) return errors.forbidden('This page is locked and cannot be deleted');
 
@@ -490,9 +417,9 @@ export async function DELETE(request: NextRequest, context: RouteContext<PathPar
       if (!check.ok) return check.response;
     }
 
-    await prisma.page.delete({ where: { id: existing.id } });
+    await deletePage(existing);
     revalidateTag('wiki', { expire: 0 });
-    deliverWebhooks('page.deleted', existing, null, { displayName: null, radixAddress: auth.session.radixAddress });
+    deliverWebhooks('page.deleted', toWikiPage(existing), null, { displayName: null, radixAddress: auth.session.radixAddress });
     return json({ success: true });
   }, 'Failed to delete');
 }

@@ -9,9 +9,9 @@ export const dynamic = 'force-dynamic';
 const FEED_LIMIT = 20;
 
 export async function GET(request: Request) {
-  const posts = await prisma.page.findMany({
+  const posts = await prisma.wikiPage.findMany({
     where: { tagPath: 'blog' },
-    select: { slug: true, title: true, content: true, metadata: true, bannerImage: true, createdAt: true },
+    select: { slug: true, title: true, content: true, metadata: true, createdAt: true },
   });
 
   const items = posts

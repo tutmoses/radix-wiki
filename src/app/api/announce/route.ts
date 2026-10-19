@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       { tagPath?: string; slug?: string; channels?: boolean };
     if (!tagPath || !slug) return errors.badRequest('tagPath and slug are required');
 
-    const page = await prisma.page.findFirst({
+    const page = await prisma.wikiPage.findFirst({
       where: { tagPath, slug },
       select: { title: true, slug: true, tagPath: true, version: true, content: true, metadata: true },
     });

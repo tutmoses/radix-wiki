@@ -17,8 +17,6 @@ model User {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
   
-  pages           Page[]
-  revisions       Revision[]
   comments        Comment[]
   webhooks        Webhook[]
   telegramLinks   TelegramLink[]
@@ -28,67 +26,7 @@ model User {
   @@map("users")
 }
 
-model Page {
-  id          String    @id @default(cuid())
-  slug        String
-  title       String
-  content     Json      @default("{}")
-  bannerImage String?   @map("banner_image")
-  tagPath     String    @map("tag_path")
-  metadata    Json?     @default("{}")
-  version     String    @default("1.0.0")
-  lastVerifiedAt DateTime? @map("last_verified_at") // Freshness: when the page's facts were last checked against sources/ledger
-  backupTxHash String?  @map("backup_tx_hash")
-  authorId    String    @map("author_id")
-  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  editorIds   String[]  @default([]) @map("editor_ids")
-  revisions     Revision[]
-  comments      Comment[]
-  notifications Notification[]
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  /// Full-text index over title (weight A) + block prose (weight B), maintained by
-  /// Postgres as GENERATED ALWAYS ... STORED. Declared here ONLY so `prisma db push`
-  /// leaves it alone — `migrate diff` emits `DROP COLUMN search_tsv` the moment it is
-  /// undeclared. Never let push CREATE it either: Prisma writes a plain `tsvector`
-  /// column with no generation expression, which stays empty forever and fails silently.
-  /// The column is created by hand with `npx fts-ddl pages`. Read only via $queryRaw.
-  searchTsv   Unsupported("tsvector")? @map("search_tsv")
 
-  @@unique([tagPath, slug])
-  @@index([slug])
-  @@index([authorId])
-  @@index([authorId, createdAt])
-  @@index([tagPath])
-  @@index([tagPath, createdAt])
-  @@index([tagPath, updatedAt])
-  /// Declared so `db push` does not drop it. Without this line `migrate diff` emits
-  /// `DROP INDEX pages_search_tsv_idx`, which push would happily execute.
-  @@index([searchTsv], type: Gin, map: "pages_search_tsv_idx")
-  @@map("pages")
-}
-
-model Revision {
-  id         String   @id @default(cuid())
-  pageId     String   @map("page_id")
-  page       Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  content    Json
-  title      String
-  version    String   @default("1.0.0")
-  changeType String   @default("patch") @map("change_type") // major | minor | patch
-  changes    Json?    // BlockChange[] - structured diff
-  authorId   String   @map("author_id")
-  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  message    String?
-  createdAt  DateTime @default(now()) @map("created_at")
-  
-  @@index([pageId])
-  @@index([pageId, createdAt])
-  @@index([createdAt])
-  @@index([authorId])
-  @@index([authorId, createdAt])
-  @@map("revisions")
-}
 
 model Session {
   id           String   @id @default(cuid())
@@ -114,8 +52,9 @@ model Challenge {
 
 model Comment {
   id        String    @id @default(cuid())
+  /// A "WikiPage" id. No relation: the shipped model cannot carry the back-relation,
+  /// so deleting a page deletes its comments in the app (`deletePage`).
   pageId    String    @map("page_id")
-  page      Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
   parentId  String?   @map("parent_id")
   parent    Comment?  @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
   replies   Comment[] @relation("Replies")
@@ -136,6 +75,7 @@ model Notification {
   userId    String   @map("user_id")
   type      String   // 'comment_on_page' | 'comment_reply' | 'page_edited'
   actorId   String   @map("actor_id")
+  /// A "WikiPage" id, without a relation for the reason Comment.pageId gives.
   pageId    String   @map("page_id")
   commentId String?  @map("comment_id")
   read      Boolean  @default(false)
@@ -143,7 +83,6 @@ model Notification {
 
   user  User @relation("notifications", fields: [userId], references: [id], onDelete: Cascade)
   actor User @relation("actedNotifications", fields: [actorId], references: [id], onDelete: Cascade)
-  page  Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
 
   @@index([userId, read, createdAt])
   @@map("notifications")

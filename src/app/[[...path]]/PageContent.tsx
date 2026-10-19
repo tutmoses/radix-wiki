@@ -62,7 +62,7 @@ export function PageSkeleton() {
 // The single home for page provenance — Wikipedia's "This page was last edited …" line.
 // The revision count is text: the History link beside the breadcrumb is the way in.
 function PageMeta({ page }: { page: WikiPage }) {
-  const revisions = page._count?.revisions ?? 0;
+  const revisions = page.revisionCount ?? 0;
   const now = useNow();
   return (
     <div className="page-meta">
