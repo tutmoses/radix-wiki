@@ -184,7 +184,7 @@ export const SPEC = {
           { name: 'pageSize', in: 'query', schema: { type: 'integer', default: 20 } },
         ],
         responses: {
-          '200': { description: 'Paginated results: full page rows for listings; with `q`, summary rows (title, url, tagPath, slug, snippet, updatedAt) identical to MCP search_wiki', content: { 'application/json': { schema: { $ref: '#/components/schemas/PaginatedPages' } } } },
+          '200': { description: 'Paginated results: page rows for listings, each with a one-line `snippet` in place of its blocks (read a page whole at /api/wiki/{path}); with `q`, summary rows (title, url, tagPath, slug, snippet, updatedAt) identical to MCP search_wiki', content: { 'application/json': { schema: { $ref: '#/components/schemas/PaginatedPages' } } } },
         },
       },
       post: {
