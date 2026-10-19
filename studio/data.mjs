@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //  RADIX.WIKI STUDIO — data helpers
-//  Thin read-only `pg` queries over the wiki's pages table so a video can pick a
+//  Thin read-only `pg` queries over the wiki's "WikiPage" table so a video can pick a
 //  real, currently-live page/category to film (no on-chain state — the wiki signs
 //  nothing). Same Pool pattern as scripts/seed-utils.mjs. Runs under plain `node`,
 //  so it loads DATABASE_URL itself (Next auto-loads .env for the dev server; this
@@ -34,7 +34,7 @@ export const disconnect = () => _pool?.end() ?? Promise.resolve();
 export async function pickCategory() {
   try {
     const [r] = await q(
-      `SELECT tag_path FROM pages WHERE tag_path <> '' GROUP BY tag_path ORDER BY COUNT(*) DESC, MAX(updated_at) DESC LIMIT 1`,
+      `SELECT "tagPath" AS tag_path FROM "WikiPage" WHERE "siteId" = '' AND "tagPath" <> '' GROUP BY "tagPath" ORDER BY COUNT(*) DESC, MAX("updatedAt") DESC LIMIT 1`,
     );
     return r?.tag_path ?? "ecosystem";
   } catch { return "ecosystem"; }
@@ -48,12 +48,12 @@ export async function pickPage() {
   const want = process.env.TOUR_PAGE?.replace(/^\/|\/$/g, "");
   try {
     const [r] = want
-      ? await q(`SELECT tag_path, slug, title FROM pages WHERE tag_path || '/' || slug = $1`, [want])
+      ? await q(`SELECT "tagPath" AS tag_path, slug, title FROM "WikiPage" WHERE "siteId" = '' AND "tagPath" || '/' || slug = $1`, [want])
       : await q(
-          `SELECT tag_path, slug, title FROM pages
-             WHERE (tag_path LIKE 'contents/%' OR tag_path LIKE 'ecosystem%')
+          `SELECT "tagPath" AS tag_path, slug, title FROM "WikiPage"
+             WHERE "siteId" = '' AND ("tagPath" LIKE 'contents/%' OR "tagPath" LIKE 'ecosystem%')
                AND slug <> 'wiki-maintenance-log'
-             ORDER BY updated_at DESC LIMIT 1`,
+             ORDER BY "updatedAt" DESC LIMIT 1`,
         );
     return r ?? null;
   } catch { return null; }
