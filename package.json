@@ -40,7 +40,7 @@
     "sharp": "^0.35.3",
     "tailwind-merge": "^3.5.0",
     "unified": "^11.0.5",
-    "wiki-formant": "^0.63.1",
+    "wiki-formant": "^0.64.0",
     "zustand": "^5.0.7"
   },
   "devDependencies": {
