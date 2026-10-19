@@ -1,6 +1,6 @@
 // src/components/charts/LedgerUnavailable.tsx — shown when the Gateway will not answer a state read
 
-import { AlertTriangle } from 'lucide-react';
+import { EmptyState } from '@/components/EmptyState';
 import { getLedgerStatus } from '@/lib/radix/network';
 
 /**
@@ -17,26 +17,25 @@ export default async function LedgerUnavailable({ what }: { what: string }) {
     : null;
 
   return (
-    <div className="ledger-unavailable">
-      <AlertTriangle size={18} className="text-accent" />
-      <div className="stack-xs">
-        <strong>{what} is unavailable.</strong>
-        <p className="text-small text-text-muted">
+    <EmptyState
+      title={`${what} is unavailable.`}
+      description={<>
+        <p>
           The Radix Gateway is not answering state reads, so there are no live numbers to show.
           No figure is displayed rather than a zero, because a zero here would be a measurement
           that was never taken.
         </p>
         {status && (
-          <p className="text-small text-text-muted">
+          <p>
             Last ledger state seen: epoch {status.epoch.toLocaleString()}, state version{' '}
             {status.stateVersion.toLocaleString()}
             {status.lastRoundAt && (
-              <> — the last round agreed at {status.lastRoundAt.replace('T', ' ').slice(0, 19)} UTC
+              <> – the last round agreed at {status.lastRoundAt.replace('T', ' ').slice(0, 19)} UTC
               {stoppedFor !== null && stoppedFor >= 1 && <>, {stoppedFor.toLocaleString()} hours ago</>}.</>
             )}
           </p>
         )}
-      </div>
-    </div>
+      </>}
+    />
   );
 }

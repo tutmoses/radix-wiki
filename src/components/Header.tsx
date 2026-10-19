@@ -5,7 +5,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Search, Menu, X, Loader2, LogOut, ChevronDown, Edit, History, User, FileCode, Bell, Webhook, Database, MoreVertical, Quote, Link2, Check, Eye, EyeOff } from 'lucide-react';
+import { Search, Menu, X, Loader2, LogOut, User, FileCode, Bell, Database, MoreVertical, Quote, Check, Eye, EyeOff, Settings } from 'lucide-react';
 import { useCopy, useSidebar, useTypeahead, useClickOutside } from 'wiki-formant/react';
 import type { ComboboxOptionProps } from 'wiki-formant/combobox';
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -20,21 +20,23 @@ import { Button, Dropdown } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiNotification } from '@/types';
 import type { LedgerAnchor } from '@/lib/radix/ledger';
-import { WebhookSettings, useTelegram } from '@/components/WebhookSettings';
+import { useTelegram } from '@/components/WebhookSettings';
+import { EmptyState } from '@/components/EmptyState';
 import { LedgerDropdown } from '@/components/LedgerBackupView';
 
+// Edit and History are not here: they sit beside the breadcrumb (`PageActions`).
 function usePageContext() {
-  const { isHomepage, isPage, isEdit, isHistory, viewPath, tagPath, slug } = usePagePath();
+  const { isHomepage, isPage, sectionPath, isEdit, isHistory, tagPath, slug } = usePagePath();
   const { isAuthenticated } = useAuth();
   const mdxPath = (isHomepage || isPage) ? (isHomepage ? '/api/wiki/mdx' : `/api/wiki/${tagPath}/${slug}/mdx`) : null;
 
   return {
-    canEdit: isAuthenticated && (isHomepage || isPage) && !isEdit && !isHistory,
-    canShowHistory: (isHomepage || isPage) && !isHistory,
+    // On a category the menu holds one item, Watch, so it is there for signed-in readers only.
+    hasTools: ((isHomepage || isPage) && !isHistory) || (!!sectionPath && isAuthenticated),
+    hasLedger: isHomepage || isPage,
+    sectionPath,
     canExportMdx: (isHomepage || isPage) && !isEdit && !isHistory,
     isPage,
-    editPath: isHomepage ? '/edit' : `${viewPath}/edit`,
-    historyPath: (isHomepage || isPage) ? (isHomepage ? '/history' : `${viewPath}/history`) : null,
     mdxPath,
     tagPath,
     slug,
@@ -48,62 +50,50 @@ function notificationText(n: WikiNotification): string {
   return `${actor} edited "${n.page.title}"`;
 }
 
-function NotificationDropdown({ onClose, initialTab }: { onClose: () => void; initialTab?: 'notifications' | 'webhooks' }) {
+// The bell carries notifications and nothing else; their settings are /settings.
+function NotificationDropdown({ onClose }: { onClose: () => void }) {
   const now = useNow();
   const router = useRouter();
   const notifications = useStore(s => s.notifications);
   const markNotificationsRead = useStore(s => s.markNotificationsRead);
   const unreadCount = useStore(s => s.unreadCount);
-  const [tab, setTab] = useState<'notifications' | 'webhooks'>(initialTab ?? 'notifications');
 
   return (
     <Dropdown onClose={onClose} className="notification-dropdown">
-      <div className="notification-tabs">
-        <button onClick={() => setTab('notifications')} className={cn('notification-tab', tab === 'notifications' && 'notification-tab-active')}>
-          <Bell size={14} />Notifications
-          {unreadCount > 0 && <span className="notification-badge-inline">{unreadCount}</span>}
-        </button>
-        <button onClick={() => setTab('webhooks')} className={cn('notification-tab', tab === 'webhooks' && 'notification-tab-active')}>
-          <Webhook size={14} />Webhooks
-        </button>
-      </div>
-
-      {tab === 'notifications' ? (
-        <>
-          {unreadCount > 0 && (
-            <div className="notification-header">
-              <span />
-              <button onClick={() => markNotificationsRead()} className="notification-mark-read">Mark all read</button>
-            </div>
-          )}
-          {notifications.length === 0 ? (
-            <div className="notification-empty">No notifications yet</div>
-          ) : (
-            <div className="notification-list">
-              {notifications.map(n => (
-                <button key={n.id} className={cn('notification-item', !n.read && 'notification-unread')}
-                  onClick={() => { markNotificationsRead([n.id]); router.push(pagePath(n.page.tagPath, n.page.slug)); onClose(); }}>
-                  <UserAvatar seed={n.actor.id} avatarUrl={n.actor.avatarUrl} size="sm" />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-small truncate">{notificationText(n)}</div>
-                    <div className="text-xs text-text-muted">{relativeTime(n.createdAt, now, AGO)}</div>
-                  </div>
-                  {!n.read && <span className="notification-dot" />}
-                </button>
-              ))}
-            </div>
-          )}
-        </>
+      {unreadCount > 0 && (
+        <div className="notification-header">
+          <span />
+          <button onClick={() => markNotificationsRead()} className="notification-mark-read">Mark all read</button>
+        </div>
+      )}
+      {notifications.length === 0 ? (
+        <EmptyState title="No notifications yet." />
       ) : (
-        <WebhookSettings />
+        <div className="notification-list">
+          {notifications.map(n => (
+            <button key={n.id} className={cn('notification-item', !n.read && 'notification-unread')}
+              onClick={() => { markNotificationsRead([n.id]); router.push(pagePath(n.page.tagPath, n.page.slug)); onClose(); }}>
+              <UserAvatar seed={n.actor.id} avatarUrl={n.actor.avatarUrl} size="sm" />
+              <div className="min-w-0 flex-1">
+                <div className="text-small truncate">{notificationText(n)}</div>
+                <div className="text-xs text-text-muted">{relativeTime(n.createdAt, now, AGO)}</div>
+              </div>
+              {!n.read && <span className="notification-dot" />}
+            </button>
+          ))}
+        </div>
       )}
     </Dropdown>
   );
 }
 
-function UserMenuDropdown({ onClose, onLogout }: { onClose: () => void; onLogout: () => void }) {
+/** One menu for the account: who is connected, their profile, their notification settings, the way out. */
+function AccountMenu({ name, profilePath, onClose, onLogout }: { name: string; profilePath: string | null; onClose: () => void; onLogout: () => void }) {
   return (
     <Dropdown onClose={onClose}>
+      <div className="dropdown-header">{name}</div>
+      {profilePath && <Link href={profilePath} className="dropdown-item" onClick={onClose}><User size={16} />Profile</Link>}
+      <Link href="/settings" className="dropdown-item" onClick={onClose}><Settings size={16} />Notification settings</Link>
       <button onClick={() => { onClose(); onLogout(); }} className="dropdown-item text-error hover:text-error/80">
         <LogOut size={16} />Disconnect
       </button>
@@ -138,37 +128,45 @@ async function searchPages(q: string, signal: AbortSignal): Promise<PageSummary[
 }
 
 // ===== Page tools =====
-// One home for page-scoped actions (Wikipedia's Tools menu): history, export,
-// cite/permalink, watch, ledger backup — instead of a row of header icons.
-function PageToolsDropdown({ onClose, historyPath, mdxPath, tagPath, slug, isPage, ledgerColor, onOpenLedger, onConnectTelegram }: {
-  onClose: () => void; historyPath: string | null; mdxPath: string | null;
+// One home for page-scoped actions (Wikipedia's Tools menu): watch, export,
+// cite, ledger backup – instead of a row of header icons. History and Edit sit
+// beside the breadcrumb.
+function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPath, ledgerColor, onOpenLedger }: {
+  onClose: () => void; mdxPath: string | null;
   tagPath?: string; slug?: string; isPage: boolean;
-  ledgerColor: string | null; onOpenLedger: (() => void) | null; onConnectTelegram: () => void;
+  /** Set on a category page: Watch then watches the whole section. */
+  sectionPath: string | null;
+  ledgerColor: string | null; onOpenLedger: (() => void) | null;
 }) {
+  const router = useRouter();
   const { isAuthenticated } = useAuth();
   const showToast = useStore(s => s.showToast);
   const pageTitle = useStore(s => s.pageTitle);
-  // `useCopy` from `wiki-formant/react`, keyed: two copyable things, one indicator.
-  const { copied, copy: copyText } = useCopy<'cite' | 'link'>(1500);
-  // The same `/api/telegram` client the settings panel uses, asked only when
-  // there is a page to watch and someone to watch it with.
-  const { state: telegram, subscribe, unsubscribe } = useTelegram(isAuthenticated && isPage);
+  // `useCopy` from `wiki-formant/react`.
+  const { copied, copy } = useCopy(1500);
+  // What Watch watches: this page, or on a category page the whole section,
+  // which also wants `page.created` – without it a blog subscription never
+  // delivered an issue.
+  const target = isPage && tagPath && slug
+    ? { tagPath, slug, noun: 'page', events: ['page.updated', 'comment.created'] }
+    : sectionPath ? { tagPath: sectionPath, slug: '', noun: 'section', events: ['page.created', 'page.updated', 'comment.created'] } : null;
+  // The same `/api/telegram` client /settings uses, asked only when there is
+  // something to watch and someone to watch it with.
+  const { state: telegram, subscribe, unsubscribe } = useTelegram(isAuthenticated && !!target);
   const [watchBusy, setWatchBusy] = useState(false);
 
-  const watching = telegram?.subscriptions.find(s => s.tagPath === tagPath && s.pageSlug === slug) ?? null;
+  const watching = (target && telegram?.subscriptions.find(s => s.tagPath === target.tagPath && s.pageSlug === target.slug)) ?? null;
 
   const pageUrl = () => `${window.location.origin}/${tagPath}/${slug}`;
-  const copy = async (kind: 'cite' | 'link', text: string) => {
-    await copyText(text, kind);
-  };
 
   const toggleWatch = async () => {
-    if (!telegram || watchBusy) return;
-    if (!telegram.connected) { onClose(); onConnectTelegram(); return; }
+    if (!target || !telegram || watchBusy) return;
+    // Telegram is connected on /settings, which then offers this page or section.
+    if (!telegram.connected) { onClose(); router.push(`/settings?watch=${encodeURIComponent(pagePath(target.tagPath, target.slug).slice(1))}`); return; }
     setWatchBusy(true);
     try {
-      if (watching) { if (await unsubscribe(watching.id)) showToast('No longer watching this page'); }
-      else if (tagPath && await subscribe(tagPath, slug ?? null, ['page.updated', 'comment.created'])) showToast('Watching this page');
+      if (watching) { if (await unsubscribe(watching.id)) showToast(`No longer watching this ${target.noun}`); }
+      else if (await subscribe(target.tagPath, target.slug || null, target.events)) showToast(`Watching this ${target.noun}`);
     } finally { setWatchBusy(false); }
   };
 
@@ -176,23 +174,18 @@ function PageToolsDropdown({ onClose, historyPath, mdxPath, tagPath, slug, isPag
 
   return (
     <Dropdown onClose={onClose}>
-      {isAuthenticated && isPage && (
+      {isAuthenticated && target && (
         <button className="dropdown-item" onClick={toggleWatch} disabled={watchBusy}>
           {watching ? <EyeOff size={16} /> : <Eye size={16} />}
-          {watching ? 'Unwatch this page' : 'Watch this page'}
+          {watching ? `Unwatch this ${target.noun}` : `Watch this ${target.noun}`}
         </button>
       )}
-      {historyPath && <Link href={historyPath} prefetch={false} className="dropdown-item" onClick={onClose}><History size={16} />Page history</Link>}
       {mdxPath && <a href={mdxPath} className="dropdown-item" download onClick={onClose}><FileCode size={16} />Download MDX</a>}
+      {/* The citation ends in the page's URL, so it is the copy-link item too. */}
       {isPage && (
-        <>
-          <button className="dropdown-item" onClick={() => copy('cite', `"${title}." RADIX Wiki. Retrieved ${isoDate(new Date())}. ${pageUrl()}`)}>
-            {copied === 'cite' ? <Check size={16} /> : <Quote size={16} />}Cite this page
-          </button>
-          <button className="dropdown-item" onClick={() => copy('link', pageUrl())}>
-            {copied === 'link' ? <Check size={16} /> : <Link2 size={16} />}Permalink
-          </button>
-        </>
+        <button className="dropdown-item" onClick={() => copy(`"${title}." RADIX Wiki. Retrieved ${isoDate(new Date())}. ${pageUrl()}`)}>
+          {copied ? <Check size={16} /> : <Quote size={16} />}Cite this page
+        </button>
       )}
       {onOpenLedger && (
         <button className="dropdown-item" onClick={() => { onClose(); onOpenLedger(); }}>
@@ -214,11 +207,10 @@ export function Header() {
   const isConnecting = useStore(s => s.isConnecting);
   const fetchNotifications = useStore(s => s.fetchNotifications);
   const unreadCount = useStore(s => s.unreadCount);
-  const { canEdit, canShowHistory, canExportMdx, isPage, editPath, historyPath, mdxPath, tagPath, slug } = usePageContext();
+  const { hasTools, hasLedger, sectionPath, canExportMdx, isPage, mdxPath, tagPath, slug } = usePageContext();
   const [showSearch, setShowSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notificationsTab, setNotificationsTab] = useState<'notifications' | 'webhooks'>('notifications');
   const [showLedger, setShowLedger] = useState(false);
   const [showTools, setShowTools] = useState(false);
 
@@ -369,9 +361,7 @@ export function Header() {
           <div className="header-actions">
             <button onClick={() => setShowSearch(!showSearch)} className="icon-btn sm:hidden" title="Search" aria-label="Search" aria-expanded={showSearch}><Search size={20} /></button>
 
-            {canEdit && <Link href={editPath} prefetch={false} className="icon-btn" title="Edit page" aria-label="Edit page"><Edit size={20} /></Link>}
-
-            {(canShowHistory || canExportMdx) && (
+            {hasTools && (
               <div className="relative">
                 <button onClick={() => setShowTools(!showTools)} className="icon-btn" title="Page tools" aria-label="Page tools" aria-expanded={showTools}>
                   <MoreVertical size={20} />
@@ -379,27 +369,23 @@ export function Header() {
                 {showTools && (
                   <PageToolsDropdown
                     onClose={() => setShowTools(false)}
-                    historyPath={canShowHistory ? historyPath : null}
                     mdxPath={canExportMdx ? mdxPath : null}
-                    tagPath={tagPath ?? undefined} slug={slug ?? undefined} isPage={isPage}
+                    tagPath={tagPath ?? undefined} slug={slug ?? undefined} isPage={isPage} sectionPath={sectionPath}
                     ledgerColor={isAuthenticated ? ledgerIconColor : null}
-                    onOpenLedger={isAuthenticated ? () => setShowLedger(true) : null}
-                    onConnectTelegram={() => { setNotificationsTab('webhooks'); setShowNotifications(true); }}
+                    onOpenLedger={isAuthenticated && hasLedger ? () => setShowLedger(true) : null}
                   />
                 )}
                 {showLedger && <LedgerDropdown onClose={() => setShowLedger(false)} tagPath={tagPath ?? null} slug={slug ?? null} />}
               </div>
             )}
 
-            {isAuthenticated && userProfilePath && <Link href={userProfilePath} className="icon-btn" title="Your profile" aria-label="Your profile"><User size={20} /></Link>}
-
             {isAuthenticated && (
               <div className="relative">
-                <button onClick={() => { setNotificationsTab('notifications'); setShowNotifications(!showNotifications); }} className="icon-btn" title="Notifications" aria-label="Notifications" aria-expanded={showNotifications}>
+                <button onClick={() => setShowNotifications(!showNotifications)} className="icon-btn" title="Notifications" aria-label="Notifications" aria-expanded={showNotifications}>
                   <Bell size={20} />
                   {unreadCount > 0 && <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                 </button>
-                {showNotifications && <NotificationDropdown onClose={() => setShowNotifications(false)} initialTab={notificationsTab} />}
+                {showNotifications && <NotificationDropdown onClose={() => setShowNotifications(false)} />}
               </div>
             )}
 
@@ -408,12 +394,10 @@ export function Header() {
                 <div className="user-pill"><Loader2 size={14} className="animate-spin" /><span className="hidden sm:inline">Connecting...</span></div>
               ) : showAsConnected ? (
                 <>
-                  <button onClick={() => setShowUserMenu(!showUserMenu)} className="user-pill" aria-expanded={showUserMenu} aria-label="User menu">
-                    <UserAvatar seed={user?.id || walletData?.accounts?.[0]?.address || ''} size="sm" />
-                    <span className="font-medium hidden sm:inline">{displayName}</span>
-                    <ChevronDown size={14} className={cn('transition-transform', showUserMenu && 'rotate-180')} />
+                  <button onClick={() => setShowUserMenu(!showUserMenu)} className="icon-btn" title={displayName} aria-expanded={showUserMenu} aria-label="Account menu">
+                    <UserAvatar seed={user?.id || walletData?.accounts?.[0]?.address || ''} size="md" />
                   </button>
-                  {showUserMenu && <UserMenuDropdown onClose={() => setShowUserMenu(false)} onLogout={handleLogout} />}
+                  {showUserMenu && <AccountMenu name={displayName} profilePath={userProfilePath} onClose={() => setShowUserMenu(false)} onLogout={handleLogout} />}
                 </>
               ) : (
                 <Button variant="primary" size="sm" onClick={connect}>

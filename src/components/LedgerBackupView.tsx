@@ -103,11 +103,11 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
 
   return (
     <Dropdown onClose={onClose} className="ledger-dropdown">
-      <div className="notification-tabs">
-        <button onClick={() => setTab('backup')} className={`notification-tab ${tab === 'backup' ? 'notification-tab-active' : ''}`}>
+      <div className="dropdown-tabs">
+        <button onClick={() => setTab('backup')} className={`dropdown-tab ${tab === 'backup' ? 'dropdown-tab-active' : ''}`}>
           <Upload size={14} />Backup
         </button>
-        <button onClick={() => setTab('recover')} className={`notification-tab ${tab === 'recover' ? 'notification-tab-active' : ''}`}>
+        <button onClick={() => setTab('recover')} className={`dropdown-tab ${tab === 'recover' ? 'dropdown-tab-active' : ''}`}>
           <Download size={14} />Recover
         </button>
       </div>

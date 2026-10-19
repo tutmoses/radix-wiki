@@ -6,10 +6,12 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save, Trash2, Link2, X } from 'lucide-react';
-import { Breadcrumbs } from '@/components/Breadcrumbs';
-import { Button, Input, StatusCard } from '@/components/ui';
+import { Breadcrumbs, PageActions } from '@/components/Breadcrumbs';
+import { EmptyState } from '@/components/EmptyState';
+import { Button, Input } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
 import { cn, pagePath, sendJson } from '@/lib/utils';
+import { isReservedSlug } from '@/lib/path';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { findInfobox } from '@/components/BlockRenderer';
 import { isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, XRD_NOT_A_FEE, type MetadataKeyDefinition } from '@/lib/tags';
@@ -280,6 +282,8 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const [bannerImage, setBannerImage] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<PageMetadata>({});
   const [editSlug, setEditSlug] = useState(slug);
+  // New Page opens with no slug, and the slug follows the title until it is edited.
+  const [slugEdited, setSlugEdited] = useState(false);
   const [editorIds, setEditorIds] = useState<string[]>([]);
   const [editors, setEditors] = useState<UserOption[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -318,6 +322,8 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
     }
   }, [initial]);
 
+  const shownSlug = isCreating && !slug && !slugEdited ? slugifyHeading(title) : editSlug;
+
   const initialJson = useMemo(() => JSON.stringify(initial), [initial]);
   const dirty = JSON.stringify({ title, content, bannerImage, metadata, editSlug, editorIds }) !== initialJson;
   // A save leaves by a full page load, which would trip the guard it just passed.
@@ -325,6 +331,9 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
 
   const save = async () => {
     if (!title.trim()) { setSaveError('Title is required.'); return; }
+    // The empty slug is the category's own hub article, so a new page never takes it.
+    const newSlug = slugifyHeading(shownSlug);
+    if (isCreating && !newSlug && !slug) { setSaveError('Add a slug: the title has no letters or digits to make one from.'); return; }
     const missing = metadataKeys.filter(k => k.required && !metadata[k.key]?.trim());
     if (missing.length > 0) {
       setMissingKeys(missing.map(k => k.key));
@@ -335,15 +344,11 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
     setSaveError(null);
     setIsSaving(true);
     try {
-      const apiPath = `/api/wiki${pagePath(tagPath, slug)}`;
-      const exists = page || (await fetch(apiPath).then(r => r.ok));
-      const method = exists ? 'PUT' : 'POST';
-      const endpoint = exists ? apiPath : '/api/wiki';
-      const newSlug = slugifyHeading(editSlug);
-      const body = exists
-        ? { title, content, bannerImage, metadata, newSlug, editorIds, verified, revisionMessage: revisionMessage.trim() || undefined }
-        : { title, content, bannerImage, metadata, tagPath, slug: newSlug || slug };
-      const res = await sendJson(endpoint, method, body);
+      // A new page always POSTs: the route gives a slug that is already taken a
+      // suffix, where a PUT would have overwritten the page holding it.
+      const res = page
+        ? await sendJson(`/api/wiki${pagePath(tagPath, slug)}`, 'PUT', { title, content, bannerImage, metadata, newSlug, editorIds, verified, revisionMessage: revisionMessage.trim() || undefined })
+        : await sendJson('/api/wiki', 'POST', { title, content, bannerImage, metadata, tagPath, slug: newSlug || slug || undefined });
       const data = await res.json();
       if (res.ok) {
         if (data.isFirstContribution) useStore.getState().showToast('Your first contribution! Welcome to the wiki.');
@@ -366,12 +371,13 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const canSave = (isCreating ? !!title.trim() : true) && (gate ? gate.allowed : true);
   useSaveShortcut(() => { if (canSave && !isSaving) save(); });
 
+  const back = <Link href={viewPath}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link>;
   if (page && user && isAuthorOnlyPath(page.tagPath) && !canEditAuthorOnlyPage(page, user.id)) {
-    return <StatusCard status="notAuthorized" backHref={viewPath} />;
+    return <EmptyState as="h1" title="Not your page" description="In this category you can edit only the pages you wrote." action={back} />;
   }
 
   if (page && isLockedPage(page.tagPath, page.slug)) {
-    return <StatusCard status="locked" backHref={viewPath} />;
+    return <EmptyState as="h1" title="Page locked" description="This page is locked and cannot be edited." action={back} />;
   }
 
   // On a shared board the card is the board's, not its filer's: whoever passes
@@ -387,7 +393,10 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
 
   return (
     <article className="stack page-editor">
-      <Breadcrumbs path={[...tagPath.split('/'), slug].filter(Boolean)} suffix={isCreating ? 'Create' : 'Edit'} />
+      <Breadcrumbs
+        path={[...tagPath.split('/'), slug].filter(Boolean)} suffix={isCreating ? 'Create' : 'Edit'}
+        actions={!isCreating && <PageActions historyHref={`${viewPath}/history`} />}
+      />
       {/* A child of the article, not the header, so it stays stuck for the whole edit. */}
       <div className="editor-bar">
         <Link href={backHref} onClick={e => { if (!confirmLeave()) e.preventDefault(); }} className="row link-muted"><ArrowLeft size={16} /><span>{isCreating ? 'Back to Category' : 'Back to Page'}</span></Link>
@@ -397,7 +406,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
         {gate && !gate.allowed ? (
           <div data-callout="warning"><p>{gate.error}</p></div>
         ) : gate === null ? (
-          <div data-callout="info"><p>{isCreating ? 'Creating a new page at' : 'Editing the page at'} <code>{viewPath}</code> requires holding <strong>{getXrdRequired(isCreating ? 'create' : 'edit', tagPath).toLocaleString('en-US')} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
+          <div data-callout="info"><p>{isCreating ? 'Creating a page in' : 'Editing the page at'} <code>{isCreating ? `/${tagPath}` : viewPath}</code> requires holding <strong>{getXrdRequired(isCreating ? 'create' : 'edit', tagPath).toLocaleString('en-US')} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
         ) : null}
         {saveError && <div data-callout="error"><p>{saveError}</p></div>}
         <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
@@ -405,9 +414,15 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
           <Link2 size={14} />
           {isHub ? <span>/{tagPath}</span> : <>
             <span>/{tagPath}/</span>
-            <input type="text" value={editSlug} onChange={e => setEditSlug(e.target.value.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-'))} onBlur={() => setEditSlug(slugifyHeading(editSlug))} placeholder="page-slug" />
+            <input type="text" value={shownSlug} onChange={e => { setSlugEdited(true); setEditSlug(e.target.value.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-')); }} onBlur={() => setEditSlug(slugifyHeading(shownSlug))} placeholder="page-slug" />
           </>}
         </div>
+        {/* A reserved slug gets a suffix on create and is refused on rename; say so before the save. */}
+        {!isHub && isReservedSlug(tagPath, slugifyHeading(shownSlug)) && (
+          <p className="text-small text-text-muted">
+            That address belongs to a view or a subcategory of this section, so {isCreating ? 'the page gets a suffix after it' : 'the page cannot move there'}.
+          </p>
+        )}
         {!isCreating && (
           <>
             <Input value={revisionMessage} onChange={e => setRevisionMessage(e.target.value)} placeholder="Edit summary — what changed and why (optional)" maxLength={200} />

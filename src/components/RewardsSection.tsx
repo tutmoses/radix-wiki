@@ -1,9 +1,12 @@
-// src/components/RewardsView.tsx
+// src/components/RewardsSection.tsx – the airdrop admin, as the last section of /maintenance.
+//
+// It was /rewards, a page nothing linked to. `/api/admin/rewards` answers only the
+// ADMIN_ADDRESS session, so for everyone else this renders nothing.
 
 'use client';
 
 import { useState } from 'react';
-import { Gift, Download, CheckCircle, ExternalLink } from 'lucide-react';
+import { Download, CheckCircle, ExternalLink } from 'lucide-react';
 import { useFetch, useAuth } from '@/hooks';
 import { Button } from '@/components/ui';
 import { DataTable, type Column } from '@/components/charts/DataTable';
@@ -55,30 +58,15 @@ const AIRDROP_COLUMNS: Column<AirdropRecord>[] = [
   },
 ];
 
-export default function RewardsView() {
+export function RewardsSection() {
   const { isAuthenticated } = useAuth();
-  const { data, isLoading, error } = useFetch<RewardsData>(isAuthenticated ? '/api/admin/rewards' : null);
+  const { data } = useFetch<RewardsData>(isAuthenticated ? '/api/admin/rewards' : null);
   const [txHash, setTxHash] = useState('');
   const [recording, setRecording] = useState(false);
   const [recorded, setRecorded] = useState(false);
 
-  if (!isAuthenticated) {
-    return (
-      <div className="stack">
-        <h1 id="rewards-admin">Rewards Admin</h1>
-        <p className="text-text-muted">Connect your wallet to access the rewards dashboard.</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="stack">
-        <h1 id="rewards-admin">Rewards Admin</h1>
-        <p className="text-error">Access denied or failed to load rewards data.</p>
-      </div>
-    );
-  }
+  // A 403 for everyone but the admin, so no data means no section.
+  if (!data) return null;
 
   async function handleDownloadCsv() {
     const res = await fetch('/api/admin/rewards?format=csv');
@@ -111,44 +99,33 @@ export default function RewardsView() {
   }
 
   return (
-    <div className="stack">
+    <section className="stack" aria-labelledby="rewards">
       <div className="stack-sm">
-        <div className="row">
-          <Gift size={24} className="text-accent" />
-          <h1 id="rewards-admin">Rewards Admin</h1>
-        </div>
-        <p className="text-text-muted">Manage wiki editor airdrop distributions from the treasury.</p>
+        <h2 id="rewards">Rewards</h2>
+        <p className="text-text-muted">Editor airdrops from the treasury. Only the admin account sees this section.</p>
       </div>
 
       {/* Treasury */}
       <div className="surface p-4 stack-sm">
-        <h2 id="treasury" className="text-small text-text-muted uppercase tracking-wide">Treasury</h2>
-        {isLoading ? (
-          <div className="h-10 skeleton rounded" />
-        ) : data && (
-          <>
-            <p className="text-2xl font-bold text-accent">{Math.floor(data.treasury.balance).toLocaleString('en-US')} $XRD</p>
-            <p className="text-small text-text-muted font-mono truncate">{data.treasury.address}</p>
-          </>
-        )}
+        <h3 id="treasury" className="text-small text-text-muted uppercase tracking-wide">Treasury</h3>
+        <p className="text-2xl font-bold text-accent">{Math.floor(data.treasury.balance).toLocaleString('en-US')} $XRD</p>
+        <p className="text-small text-text-muted font-mono truncate">{data.treasury.address}</p>
       </div>
 
       {/* Editor shares */}
       <div className="stack-sm">
         <div className="spread">
-          <h2 id="editor-shares">Editor Shares</h2>
-          <Button onClick={handleDownloadCsv} variant="secondary" size="sm" className="gap-1" disabled={isLoading}>
+          <h3 id="editor-shares">Editor Shares</h3>
+          <Button onClick={handleDownloadCsv} variant="secondary" size="sm" className="gap-1">
             <Download size={14} /> CSV
           </Button>
         </div>
-        {isLoading
-          ? <div className="skeleton h-48" />
-          : <DataTable rows={data?.editors ?? []} columns={EDITOR_COLUMNS} defaultKey="points" rowKey={e => e.id} empty="No editors with points yet." />}
+        <DataTable rows={data.editors} columns={EDITOR_COLUMNS} defaultKey="points" rowKey={e => e.id} empty="No editors with points yet." />
       </div>
 
       {/* Record airdrop */}
       <div className="surface p-4 stack-sm">
-        <h2 id="record-airdrop">Record Airdrop</h2>
+        <h3 id="record-airdrop">Record Airdrop</h3>
         <p className="text-small text-text-muted">After distributing via Radix Desktop Tool, paste the transaction hash to record it.</p>
         <div className="row gap-2">
           <input
@@ -168,12 +145,10 @@ export default function RewardsView() {
       </div>
 
       {/* History */}
-      {data && data.airdrops.length > 0 && (
-        <div className="stack-sm">
-          <h2 id="airdrop-history">Airdrop History</h2>
-          <DataTable rows={data.airdrops} columns={AIRDROP_COLUMNS} defaultKey="date" rowKey={a => a.id} empty="No airdrops yet." />
-        </div>
-      )}
-    </div>
+      <div className="stack-sm">
+        <h3 id="airdrop-history">Airdrop History</h3>
+        <DataTable rows={data.airdrops} columns={AIRDROP_COLUMNS} defaultKey="date" rowKey={a => a.id} empty="No airdrops yet." />
+      </div>
+    </section>
   );
 }

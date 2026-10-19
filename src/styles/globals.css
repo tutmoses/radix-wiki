@@ -341,6 +341,15 @@
   /* ===== DROPDOWN ===== */
   .dropdown { @apply absolute right-0 top-full mt-2 min-w-48 bg-surface-1 border border-border rounded shadow py-1 z-50; }
   .dropdown-item { @apply w-full flex items-center gap-2 py-2 px-4 text-left transition-colors hover:bg-surface-2; }
+  /* Tabs across the top of a dropdown (the ledger backup's Backup / Recover). */
+  .dropdown-tabs { @apply flex border-b border-border-muted; }
+  .dropdown-tab {
+    @apply flex-1 flex items-center justify-center gap-1.5 py-2.5 text-small text-text-muted cursor-pointer transition-colors;
+    @apply hover:text-text hover:bg-surface-2;
+  }
+  .dropdown-tab-active { @apply text-accent border-b-2 border-accent font-medium; }
+  /* The account menu's first line: which account is connected. Not a control. */
+  .dropdown-header { @apply px-4 py-2 border-b border-border-muted text-small font-medium truncate; }
 
   /* ===== BADGES ===== */
   .badge { @apply py-0.5 px-2 text-small font-medium bg-surface-2 text-text-muted; }
@@ -363,6 +372,9 @@
   .breadcrumbs .separator { @apply text-text-muted; }
   .breadcrumb-link { @apply capitalize text-text-muted no-underline hover:text-accent; }
   .breadcrumb-current { @apply capitalize text-text; }
+  /* Edit and History, right of the trail: the one home for both. A <nav>, so a
+     banner's overlay draws it the way it draws the trail beside it. */
+  .page-actions { @apply flex items-center gap-3 text-small; }
 
   /* ===== LINKS ===== */
   /* Matches the base `a` rule so a <button> can be styled as an inline link. */
@@ -515,24 +527,18 @@
   .page-card-compact { @apply flex items-center gap-2 p-3 min-w-0 max-w-full bg-surface-1 border border-border-muted rounded-lg hover:bg-surface-2 transition-colors; > span { @apply min-w-0; } }
   .page-card-icon { @apply size-8 rounded object-cover shrink-0; }
 
-  /* ===== STATUS CARD ===== */
-  .status-icon { @apply flex items-center justify-center w-16 h-16 rounded-2xl bg-surface-2 text-text-muted; }
+  /* ===== EMPTY STATE ===== */
+  /* `EmptyState`. The padding and centring are wiki-formant/base.css's
+     `.empty-state` (STRUCTURE.md D8); the column, the type and the colour are here. */
+  .empty-state { @apply flex flex-col items-center gap-2 text-text-muted; }
+  .empty-state-title { @apply m-0 font-medium text-text; }
+  .empty-state-desc { @apply flex flex-col gap-2 text-small; }
+  .empty-state-action { @apply mt-2; }
 
   /* ===== SECTION DIVIDER ===== */
   .section-divider { @apply pt-6 border-t border-border; }
 
   /* ===== PAGE META (foot line) ===== */
-  /* The sequential read at the foot of an article, rendered by `PageNav` from
-     wiki-formant/react-server. The `--end` modifiers are the shared convention
-     both wikis' stylesheets implement; the alignment used to be two inline
-     utilities here, which is the composition `check-classes` exists to name. */
-  .page-nav { @apply pt-8 border-t border-border grid grid-cols-2 gap-4; }
-  .page-nav-link { @apply flex flex-col gap-2 p-4 rounded-lg bg-surface-1 hover:bg-surface-2 transition-colors; }
-  .page-nav-link--end { @apply text-right; }
-  .page-nav-label { @apply flex items-center gap-2 text-text-muted text-small; }
-  .page-nav-label--end { @apply justify-end; }
-  .page-nav-title { @apply font-medium transition-colors line-clamp-1; }
-
   .page-meta { @apply flex items-center flex-wrap gap-x-4 gap-y-2 pt-6 border-t border-border-muted text-small text-text-muted; }
 
   /* ===== CATEGORY HERO ===== */
@@ -849,7 +855,6 @@
   .column-view { @apply gap-4; }
 
   /* ===== CHARTS / DATA TABLES ===== */
-  .ledger-unavailable { @apply flex items-start gap-3 bg-surface-1 border border-border-muted rounded-lg p-4; }
   /* Fits however many cards a row has: five on /charts, six on the validators page, four for OciSwap. */
   .charts-stat-grid { @apply grid grid-cols-2 gap-3; @media (min-width: 640px) { grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); } }
   .charts-section-title { @apply text-h4 font-semibold; }
@@ -976,23 +981,6 @@
   }
   .toast-close { @apply p-1 rounded hover:text-text-muted transition-colors; }
 
-  /* ===== WELCOME PAGE ===== */
-  .welcome-page { @apply max-w-2xl mx-auto py-12 flex flex-col gap-8; }
-  .welcome-hero { @apply text-center flex flex-col gap-2; }
-  .welcome-grid { @apply grid grid-cols-1 sm:grid-cols-3 gap-4; }
-  /* The three cards are the page's only sections, so they are h2 under the
-     hero's h1 rather than the h3 that skipped a level. Drawn as before. */
-  .welcome-card-title { @apply m-0 mt-0 text-h3 font-normal border-b-0; }
-  .welcome-card {
-    @apply bg-surface-1 border border-border-muted rounded-lg p-5 flex flex-col gap-2;
-    animation: slide-up 0.3s ease-out both;
-    &:nth-child(2) { animation-delay: 0.05s; }
-    &:nth-child(3) { animation-delay: 0.1s; }
-  }
-
-  /* ===== EDIT CTA ===== */
-  .edit-cta { @apply flex items-center justify-center gap-1 text-text-muted text-small py-4 hover:text-accent transition-colors; }
-
   /* ===== NOTIFICATIONS ===== */
   .notification-dropdown { @apply w-80 max-h-96 flex flex-col p-0! overflow-hidden; }
   .notification-header { @apply flex items-center justify-between px-3 py-2 border-b border-border-muted; }
@@ -1000,24 +988,15 @@
   .notification-list { @apply overflow-y-auto flex-1; }
   .notification-item { @apply w-full flex items-start gap-2 px-3 py-2.5 text-left hover:bg-surface-2 transition-colors; }
   .notification-unread { @apply bg-accent-muted; }
-  .notification-empty { @apply px-3 py-8 text-center text-text-muted text-small; }
   .notification-dot { @apply size-2 rounded-full bg-accent shrink-0 mt-1.5; }
   .notification-badge {
     @apply absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-accent text-text-inverted text-[11px] font-bold;
     @apply flex items-center justify-center px-1;
   }
-  .notification-badge-inline {
-    @apply min-w-[18px] h-[18px] rounded-full bg-accent text-text-inverted text-[11px] font-bold;
-    @apply flex items-center justify-center px-1;
-  }
-  .notification-tabs { @apply flex border-b border-border-muted; }
-  .notification-tab {
-    @apply flex-1 flex items-center justify-center gap-1.5 py-2.5 text-small text-text-muted cursor-pointer transition-colors;
-    @apply hover:text-text hover:bg-surface-2;
-  }
-  .notification-tab-active { @apply text-accent border-b-2 border-accent font-medium; }
 
   /* ===== WEBHOOKS ===== */
+  /* /settings holds the panel the bell's dropdown used to: one bordered column. */
+  .settings-panel { @apply max-w-xl bg-surface-1 border border-border-muted rounded-lg overflow-hidden; }
   .webhook-content { @apply flex flex-col flex-1 overflow-y-auto; }
   .webhook-empty { @apply flex flex-col items-center justify-center gap-2 py-8 text-text-muted text-small; }
   .webhook-list { @apply flex flex-col; }
@@ -1053,7 +1032,6 @@
   .telegram-subscribed { @apply flex items-center gap-1.5 px-3 py-2 text-small; }
   .telegram-sub-list { @apply flex flex-col gap-1 mt-1; }
   .telegram-sub-item { @apply flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface-1/50; }
-  .telegram-empty { @apply px-3 py-4 text-center; }
 
   /* ===== LEDGER BACKUP ===== */
   .ledger-dropdown { @apply w-80; }

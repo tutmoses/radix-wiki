@@ -9,6 +9,7 @@ import { Search, Loader2 } from 'lucide-react';
 import { pagePath } from '@/lib/utils';
 import Highlight from '@/components/Highlight';
 import type { PageSummary } from '@/lib/wiki';
+import { EmptyState } from '@/components/EmptyState';
 
 const PAGE_SIZE = 25;
 
@@ -78,13 +79,9 @@ export default function SearchView({ query: initialQuery }: { query: string }) {
         {isSearching && <Loader2 className="search-icon-right" size={18} />}
       </form>
 
-      {searched && !isSearching && (
-        <p className="text-text-muted text-small">
-          {total === 0
-            ? <>No pages found for &ldquo;{searched}&rdquo;.</>
-            : <>{total} result{total === 1 ? '' : 's'} for &ldquo;{searched}&rdquo;.</>}
-        </p>
-      )}
+      {searched && !isSearching && (total === 0
+        ? <EmptyState title={`No pages found for “${searched}”.`} />
+        : <p className="text-text-muted text-small">{total} result{total === 1 ? '' : 's'} for &ldquo;{searched}&rdquo;.</p>)}
 
       {results.length > 0 && (
         <ul className="stack-sm list-none pl-0">

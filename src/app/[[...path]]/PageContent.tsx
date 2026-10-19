@@ -7,12 +7,13 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, ArrowRight, Save, Plus, Upload, X, Image as ImageIcon, ArrowDownAZ, CalendarPlus, RefreshCw, Rss, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Save, Plus, Upload, X, Image as ImageIcon, ArrowDownAZ, RefreshCw, Rss, SlidersHorizontal } from 'lucide-react';
 import { BlockRenderer, findInfobox, infoboxHasContent, InfoboxSidebar, PageThumb } from '@/components/BlockRenderer';
 import { UserAvatar } from '@/components/UserAvatar';
-import { Breadcrumbs } from '@/components/Breadcrumbs';
+import { Breadcrumbs, PageActions } from '@/components/Breadcrumbs';
+import { EmptyState } from '@/components/EmptyState';
 import { LinkPreview } from '@/components/LinkPreview';
-import { Button, Card, Input, StatusCard } from '@/components/ui';
+import { Button, Card } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
 import { categoryLabel, cn, generateBannerSvg, pagePath, sendJson } from '@/lib/utils';
 import { describe } from 'wiki-formant/metadata';
@@ -59,6 +60,7 @@ export function PageSkeleton() {
 
 // ========== PAGE META (foot line) ==========
 // The single home for page provenance — Wikipedia's "This page was last edited …" line.
+// The revision count is text: the History link beside the breadcrumb is the way in.
 function PageMeta({ page }: { page: WikiPage }) {
   const revisions = page._count?.revisions ?? 0;
   const now = useNow();
@@ -72,9 +74,7 @@ function PageMeta({ page }: { page: WikiPage }) {
       )}
       <span>Last updated {relativeTime(page.updatedAt, now, AGO)}</span>
       <span className="font-mono">v{page.version}</span>
-      <Link href={`${pagePath(page.tagPath, page.slug)}/history`} prefetch={false} className="link">
-        {revisions} revision{revisions === 1 ? '' : 's'}
-      </Link>
+      <span>{revisions} revision{revisions === 1 ? '' : 's'}</span>
       {page.lastVerifiedAt && <span>Verified {formatDay(page.lastVerifiedAt)}</span>}
     </div>
   );
@@ -143,8 +143,7 @@ export function Banner({ src, title, tagPath, editable, onUpload, onRemove, chil
 // ========== SORT TOGGLE ==========
 const SORT_OPTIONS: { value: SortOrder; label: string; icon: typeof ArrowDownAZ }[] = [
   { value: 'title', label: 'A–Z', icon: ArrowDownAZ },
-  { value: 'newest', label: 'Newest', icon: CalendarPlus },
-  { value: 'recent', label: 'Updated', icon: RefreshCw },
+  { value: 'recent', label: 'Recent', icon: RefreshCw },
 ];
 
 export function SortToggle({ sort, tagPath, filters = {}, letter }: { sort: SortOrder; tagPath: string; filters?: FacetFilters; letter?: string }) {
@@ -328,6 +327,18 @@ function ResultsBar({ tag, tagPath, total, shown, sort, filters, letter, hasRail
   );
 }
 
+/** An edit URL opened without a session. */
+function AuthRequired({ backHref }: { backHref: string }) {
+  const connect = useStore(s => s.connect);
+  return (
+    <EmptyState
+      as="h1" title="Connect your wallet to edit"
+      description="Editing needs a connected Radix wallet holding the $XRD minimum for this page."
+      action={<div className="row justify-center"><Button onClick={connect}>Connect Wallet</Button><Link href={backHref}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link></div>}
+    />
+  );
+}
+
 // ========== HOMEPAGE VIEW ==========
 export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEditing: boolean }) {
   const router = useRouter();
@@ -342,7 +353,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
     if (page) { setContent((page.content as unknown as Block[]) || []); setBannerImage(page.bannerImage || null); }
   }, [page]);
 
-  if (isEditing && !isAuthenticated) return <StatusCard status="authRequired" backHref="/" />;
+  if (isEditing && !isAuthenticated) return <AuthRequired backHref="/" />;
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -401,6 +412,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   return (
     <div className="stack">
       <Banner src={bannerImage} title="Homepage">
+        <PageActions className="justify-end" historyHref="/history" editHref={isAuthenticated ? '/edit' : undefined} />
         <h1 className="sr-only">Radix ($XRD) – The Radix DLT Crypto Wiki</h1>
       </Banner>
       {infobox && infoboxHasContent(infobox) ? (
@@ -416,24 +428,15 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
 }
 
 // ========== CATEGORY LISTING ==========
-/** `noun` names what the category holds — a board of ideas creates an Idea, not a Page. */
+/**
+ * `noun` names what the category holds – a board of ideas creates an Idea, not a Page.
+ * Straight to the editor: the slug comes from the title there, in the one field that
+ * edits it. This used to ask for the slug first and then show that field again.
+ */
 export function NewPageControl({ tagPath, noun = 'Page' }: { tagPath: string; noun?: string }) {
-  const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const [newSlug, setNewSlug] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
   if (!isAuthenticated) return null;
-  return (
-    <div className="row">
-      {showCreate ? (
-        <>
-          <Input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder={`${noun.toLowerCase()}-slug`} className="w-48" onKeyDown={e => e.key === 'Enter' && newSlug.trim() && router.push(`/${tagPath}/${slugifyHeading(newSlug)}`)} autoFocus />
-          <Button size="sm" onClick={() => { const s = slugifyHeading(newSlug); if (s) router.push(`/${tagPath}/${s}`); }} disabled={!newSlug.trim()}>Go</Button>
-          <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
-        </>
-      ) : <Button size="sm" onClick={() => setShowCreate(true)}><Plus size={16} />New {noun}</Button>}
-    </div>
-  );
+  return <Link href={`/${tagPath}?new`} prefetch={false}><Button size="sm"><Plus size={16} />New {noun}</Button></Link>;
 }
 
 /** The pages in a category: count bar, grid, filter rail. Stands alone, or runs under the category's hub article. */
@@ -441,7 +444,6 @@ function CategoryListing({ tagPath, pages, sort, total, facetGroups, filters, le
   tagPath: string[]; pages: WikiPage[]; sort: SortOrder; total: number;
   facetGroups: FacetControlGroup[]; filters: FacetFilters; letters: Control[]; letter?: string; heading?: ReactNode;
 }) {
-  const { isAuthenticated } = useAuth();
   const [showFilters, setShowFilters] = useState(false);
   const pathStr = tagPath.join('/');
   const tag = findTagByPath(tagPath);
@@ -462,7 +464,9 @@ function CategoryListing({ tagPath, pages, sort, total, facetGroups, filters, le
       />
       <div className={cn(hasRail && 'category-with-rail')}>
         <div className="category-results">
-          {pages.length > 0 ? (
+          {/* Nothing to list is said once, by the results bar: "No pages match
+              these filters" with its Clear link, or "This section has no pages yet". */}
+          {pages.length > 0 && (
             <div className="category-grid">
               {pages.map(p => (
                 <Link key={p.id} href={pagePath(p.tagPath, p.slug)}>
@@ -479,20 +483,6 @@ function CategoryListing({ tagPath, pages, sort, total, facetGroups, filters, le
                 </Link>
               ))}
             </div>
-          ) : (
-            <Card className="empty-state">
-              {total > 0 ? (
-                <>
-                  <p className="text-text-muted">No pages match these filters.</p>
-                  <Link href={categoryHref(pathStr, { sort })} className="link mt-2 inline-block">Clear filters</Link>
-                </>
-              ) : (
-                <>
-                  <p className="text-text-muted">No pages in this category yet.</p>
-                  {isAuthenticated && <small className="mt-2 block">Click "New Page" above to create one.</small>}
-                </>
-              )}
-            </Card>
           )}
         </div>
         {hasRail && (
@@ -576,7 +566,7 @@ type RelatedPage = Pick<WikiPage, 'id' | 'title' | 'slug' | 'tagPath'> & { snipp
 export type RelatedPages = { pages: RelatedPage[]; sharedFacet: SharedFacet | null };
 
 // ========== PAGE VIEW (Read-only) ==========
-function PageViewContent({ page, related, series, sections, listing, pageNav, nowMs }: { page: WikiPage; related: RelatedPages; series: PageRef | null; sections?: ReactNode; listing?: ReactNode; pageNav?: ReactNode; nowMs: number }) {
+function PageViewContent({ page, related, series, sections, listing, nowMs }: { page: WikiPage; related: RelatedPages; series: PageRef | null; sections?: ReactNode; listing?: ReactNode; nowMs: number }) {
   const { isAuthenticated } = useAuth();
   // Contributor stats belong to the page's *subject* — the explicit
   // metadata.subjectUserId pointer set on profile pages (community bios,
@@ -591,6 +581,7 @@ function PageViewContent({ page, related, series, sections, listing, pageNav, no
   const fresh = hasOutdatedBanner ? null : freshnessBanner(page, nowMs);
   const sectionName = categoryLabel(findTagByPath(page.tagPath.split('/'))?.name ?? '') || page.tagPath;
   const mainBlocks = [...(fresh ? [fresh] : []), ...blocks.filter(b => b.type !== 'infobox')];
+  const viewPath = pagePath(page.tagPath, page.slug);
 
   // Everything after the prose. On a hub it moves below the listing, so the page
   // reads article → the pages in it → provenance and discussion.
@@ -605,12 +596,8 @@ function PageViewContent({ page, related, series, sections, listing, pageNav, no
         href={categoryHref(page.tagPath, related.sharedFacet ? { filters: { [related.sharedFacet.key]: related.sharedFacet.value } } : {})}
       />
       {subjectUserId && <UserStats userId={subjectUserId} />}
-      {pageNav}
       <PageMeta page={page} />
       <Discussion pageId={page.id} tagPath={page.tagPath} />
-      {isAuthenticated && (
-        <Link href={`${pagePath(page.tagPath, page.slug)}/edit`} prefetch={false} className="edit-cta">Something missing? Edit this page →</Link>
-      )}
     </>
   );
 
@@ -635,7 +622,10 @@ function PageViewContent({ page, related, series, sections, listing, pageNav, no
   return (
     <article className="stack">
       <Banner src={page.bannerImage} title={page.title} tagPath={page.tagPath}>
-        <Breadcrumbs path={[...page.tagPath.split('/'), page.slug].filter(Boolean)} leafTitle={page.title} />
+        <Breadcrumbs
+          path={[...page.tagPath.split('/'), page.slug].filter(Boolean)} leafTitle={page.title}
+          actions={<PageActions historyHref={`${viewPath}/history`} editHref={isAuthenticated ? `${viewPath}/edit` : undefined} />}
+        />
         <h1 id={slugifyHeading(page.title)} className="m-0!">{page.title}</h1>
       </Banner>
       {showInfobox ? (
@@ -653,7 +643,7 @@ function PageViewContent({ page, related, series, sections, listing, pageNav, no
 }
 
 // ========== PAGE VIEW WRAPPER ==========
-export function PageView({ page, tagPath, slug, isEditMode, related = { pages: [], sharedFacet: null }, series = null, pageNav, nowMs }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; related?: RelatedPages; series?: PageRef | null; /** Server-rendered, so the foot nav stays out of this client bundle. */ pageNav?: ReactNode; nowMs: number }) {
+export function PageView({ page, tagPath, slug, isEditMode, related = { pages: [], sharedFacet: null }, series = null, nowMs }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; related?: RelatedPages; series?: PageRef | null; nowMs: number }) {
   const { isAuthenticated } = useAuth();
   // The header sits outside this tree and cites the page it is on; it knows
   // only the URL, and a slug is not a title.
@@ -664,7 +654,7 @@ export function PageView({ page, tagPath, slug, isEditMode, related = { pages: [
 
   const viewPath = pagePath(tagPath, slug);
 
-  if (isEditMode && !isAuthenticated) return <StatusCard status="authRequired" backHref={viewPath} />;
+  if (isEditMode && !isAuthenticated) return <AuthRequired backHref={viewPath} />;
   if (!page) return <LazyPageEditor tagPath={tagPath} slug={slug} />;
-  return isEditMode ? <LazyPageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} related={related} series={series} pageNav={pageNav} nowMs={nowMs} />;
+  return isEditMode ? <LazyPageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} related={related} series={series} nowMs={nowMs} />;
 }

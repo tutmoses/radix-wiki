@@ -15,6 +15,7 @@ import { relativeTime } from 'wiki-formant/freshness';
 import { findTagByPath, getMetadataKeys, type SortOrder } from '@/lib/tags';
 import { NewPageControl, SortToggle } from './PageContent';
 import type { WikiPage, PageMetadata, IdeasPage } from '@/types';
+import { EmptyState } from '@/components/EmptyState';
 
 function parseAssignee(raw?: string): { name: string; address: string } | null {
   if (!raw) return null;
@@ -86,7 +87,7 @@ function IdeasListView({ pages, categoryFilter, statusFilter, statusOptions, pri
     return result;
   }, [pages, categoryFilter, statusFilter]);
 
-  if (filtered.length === 0) return <div className="board-empty">No ideas yet.</div>;
+  if (filtered.length === 0) return <EmptyState title="No ideas yet." />;
 
   return (
     <div className="ideas-list">
@@ -119,7 +120,6 @@ function IdeasListView({ pages, categoryFilter, statusFilter, statusOptions, pri
 function sortPages(pages: IdeasPage[], sort: SortOrder): IdeasPage[] {
   return [...pages].sort((a, b) => {
     if (sort === 'title') return a.title.localeCompare(b.title);
-    if (sort === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     return new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime();
   });
 }

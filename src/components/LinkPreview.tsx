@@ -14,7 +14,7 @@ import { useLinkPreview } from 'wiki-formant/react';
 type Preview = { found: boolean; title?: string; excerpt?: string; bannerImage?: string | null };
 
 // Non-article top-level routes that would never resolve to a page preview.
-const SKIP_PREFIX = new Set(['charts', 'search', 'leaderboard', 'welcome', 'rewards']);
+const SKIP_PREFIX = new Set(['charts', 'search', 'leaderboard']);
 
 const eligible = (a: HTMLAnchorElement): boolean => {
   if (!a.closest('.prose-content')) return false;

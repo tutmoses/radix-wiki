@@ -13,7 +13,7 @@ import { parsePagination, paginatedResponse } from 'wiki-formant/pagination';
 import { requireAuth, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { formatVersion, parseVersion, incrementVersion } from 'wiki-formant/versioning';
 import { computeRevisionDiff, type BlockChange } from '@/lib/versioning';
-import { parsePath } from '@/lib/path';
+import { isReservedSlug, parsePath } from '@/lib/path';
 import { orderByIds, searchPages, resolveBlockData, loadPageHistory, getCategoryPages, AUTHOR_SELECT, NOT_HIDDEN, PAGE_INCLUDE, PAGE_LIST_SELECT } from '@/lib/wiki';
 import { blockIssues, validateBlocks } from '@/lib/block-utils';
 import { describeBlockIssues } from 'wiki-formant/validation';
@@ -176,7 +176,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     }
 
     // Only the wiki's own rows answer here. The app routes (charts, leaderboard,
-    // rewards, welcome, a token's detail) parse with the homepage's empty
+    // settings, a token's detail) parse with the homepage's empty
     // tagPath and slug, and used to fall through to the homepage row below:
     // /charts.md served the homepage's markdown with a 200.
     if (parsed.type !== 'homepage' && parsed.type !== 'category' && parsed.type !== 'page') {
@@ -333,7 +333,9 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
     if ('error' in auth) return auth.error;
 
     let slug = body.slug || slugifyHeading(title);
-    const existing = await prisma.page.findUnique({ where: pageKey({ tagPath, slug }) });
+    // A reserved slug is taken the way an existing page's is: a title like
+    // "History" would otherwise land on a URL that opens the category's history.
+    const existing = isReservedSlug(tagPath, slug) || await prisma.page.findUnique({ where: pageKey({ tagPath, slug }) });
     if (existing) slug = `${slug}-${Date.now().toString(36)}`;
 
     const page = await createPage({
@@ -384,6 +386,8 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
 
     const slugUpdate = newSlug && newSlug !== existing.slug ? slugifyHeading(newSlug) : undefined;
     if (slugUpdate) {
+      // A rename has no suffix to fall back on, so a reserved slug is refused outright.
+      if (isReservedSlug(existing.tagPath, slugUpdate)) return errors.badRequest('That slug belongs to a view or a subcategory of this section');
       const conflict = await prisma.page.findUnique({ where: pageKey({ tagPath: existing.tagPath, slug: slugUpdate }) });
       if (conflict) return errors.badRequest('A page with that slug already exists in this category');
     }

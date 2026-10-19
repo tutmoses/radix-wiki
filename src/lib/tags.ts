@@ -9,7 +9,8 @@ export interface MetadataKeyDefinition extends FormantMetadataKey {
   required?: boolean;
 }
 
-export type SortOrder = 'title' | 'newest' | 'oldest' | 'recent';
+/** A–Z, or most recently updated first (by the `date` field where the section declares one). */
+export type SortOrder = 'title' | 'recent';
 
 export interface TagNode {
   name: string;
@@ -69,7 +70,7 @@ export const TAG_HIERARCHY: TagNode[] = [
       {
         name: 'History / Events',
         slug: 'history',
-        sort: 'newest',
+        sort: 'recent',
         // No `mainArticle`: History of Radix is this category's hub article (the
         // empty slug), not a topic its pages are part of. It traces the protocol's
         // lineage and says nothing about the workshops and hackathons filed here,
@@ -136,7 +137,7 @@ export const TAG_HIERARCHY: TagNode[] = [
       { key: 'open positions', label: 'Open Positions:', type: 'text' },
     ],
     xrd: { create: 20_000 } },
-  { name: '✍️ Blog', slug: 'blog', sort: 'newest',
+  { name: '✍️ Blog', slug: 'blog', sort: 'recent',
     description: 'Long-form essays and analysis from the RADIX Wiki community — protocol commentary, ecosystem deep-dives, and editorial pieces.',
     metadataKeys: [{ key: 'date', label: 'Published:', type: 'date' }], xrd: { create: 50_000 } },
   {

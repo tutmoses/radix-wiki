@@ -3,11 +3,8 @@
 'use client';
 
 import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type HTMLAttributes } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, FileText } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { cn } from '@/lib/utils';
-import { slugifyHeading } from 'wiki-formant/headings';
 import { useClickOutside } from 'wiki-formant/react';
 
 // Dropdown
@@ -80,30 +77,6 @@ const badgeVariants: Record<BadgeVariant, string> = {
 
 export function Badge({ className, variant = 'default', ...props }: HTMLAttributes<HTMLSpanElement> & { variant?: BadgeVariant }) {
   return <span className={cn('badge', badgeVariants[variant], className)} {...props} />;
-}
-
-// StatusCard - Reusable status/error display
-const STATUS = {
-  authRequired: { title: 'Authentication Required', message: 'Please connect your Radix wallet.' },
-  notAuthorized: { title: 'Not Authorized', message: 'You can only edit your own pages in this category.' },
-  locked: { title: 'Page Locked', message: 'This page is locked and cannot be edited.' },
-  error: { title: 'Error', message: 'Failed to load page' },
-} as const;
-
-export function StatusCard({ status, backHref }: { status: keyof typeof STATUS; backHref: string }) {
-  const { title, message } = STATUS[status];
-  return (
-    <div className="center">
-      <Card className="text-center max-w-md">
-        <div className="stack items-center py-12">
-          <div className="status-icon"><FileText size={32} /></div>
-          <h1 id={slugifyHeading(title)}>{title}</h1>
-          <p className="text-text-muted">{message}</p>
-          <Link href={backHref}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link>
-        </div>
-      </Card>
-    </div>
-  );
 }
 
 /** The tip-jar QR, shared by the block view and its editor; `.tip-jar-qr` sizes it. */

@@ -7,8 +7,17 @@ import { STATIC_PATH_TYPES } from '@/lib/static-pages';
 const SUFFIXES = ['edit', 'history', 'mdx'] as const;
 type Suffix = typeof SUFFIXES[number];
 
+/**
+ * A slug no page in `tagPath` can hold, because `parsePath` reads that URL as
+ * something else: a mode suffix (`/blog/history` is the blog's history) or a
+ * child category. Page creation treats it as taken.
+ */
+export function isReservedSlug(tagPath: string, slug: string): boolean {
+  return SUFFIXES.includes(slug as Suffix) || isValidTagPath([...tagPath.split('/'), slug]);
+}
+
 interface ParsedPath {
-  type: 'homepage' | 'category' | 'page' | 'history' | 'edit' | 'mdx' | 'leaderboard' | 'welcome' | 'rewards' | 'search' | 'maintenance' | 'stats' | 'charts' | 'charts-validators' | 'charts-tokens' | 'token-detail' | 'invalid';
+  type: 'homepage' | 'category' | 'page' | 'history' | 'edit' | 'mdx' | 'leaderboard' | 'search' | 'maintenance' | 'stats' | 'settings' | 'charts' | 'charts-validators' | 'charts-tokens' | 'token-detail' | 'invalid';
   tagPath: string;
   slug: string;
   suffix: Suffix | null;

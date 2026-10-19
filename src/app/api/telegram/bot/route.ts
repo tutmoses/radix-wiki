@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma/client';
 import { json } from 'wiki-formant/http';
 import { sendMessage, telegramWebhookSecret } from '@/lib/webhooks';
 import { secretMatches } from '@/lib/api';
+import { SITE_URL } from '@/lib/site';
 
 export async function POST(request: Request) {
   // Anyone can POST here. Without Telegram's secret header, a forged update could
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
 
     // Handle /start without token
     if (text === '/start') {
-      await sendMessage(chatId, 'Welcome to RADIX Wiki notifications!\n\nTo connect, click the "Connect Telegram" button in your wiki profile settings. That will give you a link back here.');
+      await sendMessage(chatId, `This bot sends RADIX Wiki notifications.\n\nTo connect, sign in at ${SITE_URL}/settings and press "Connect Telegram", which gives you a link back here.`);
       return json({ ok: true });
     }
 

@@ -42,6 +42,7 @@ import { bannerVariant, openingText } from 'wiki-formant/text';
 import { describe } from 'wiki-formant/metadata';
 import { InfoboxAside, InfoboxFacts, formatFactValue } from 'wiki-formant/react-server';
 import { OCISWAP_API } from '@/lib/radix/config';
+import { EmptyState } from '@/components/EmptyState';
 
 // ========== PAGE CARD ==========
 /** A page card's banner: the page's own image, or its generated one. */
@@ -99,7 +100,7 @@ function RecentPagesBlockView({ block }: { block: RecentPagesBlock }) {
   const { data, isLoading } = useFetch<WikiPage[]>(block.resolvedPages ? null : `/api/wiki?${params}`, { transform: d => d.items || [] });
   const display = block.resolvedPages || data || [];
   if (isLoading && !display.length) return <div className="recent-pages-grid">{Array.from({ length: Math.min(block.limit, 3) }, (_, i) => <div key={i} className="h-32 skeleton" />)}</div>;
-  if (!display.length) return <p className="text-text-muted">No pages found.</p>;
+  if (!display.length) return <EmptyState title="No pages found." />;
   return <div className="recent-pages-grid">{display.map(p => <PageCard key={p.id} page={p} />)}</div>;
 }
 
@@ -185,7 +186,7 @@ function RssFeedBlockView({ block }: { block: RssFeedBlock }) {
   const items = preResolved || data || [];
 
   if (!preResolved && isLoading) return <div className="rss-feed"><div className="rss-feed-scroll"><div className="stack-sm">{Array.from({ length: 3 }, (_, i) => <div key={i} className="h-[280px] skeleton rounded-md" />)}</div></div></div>;
-  if (!items.length) return <p className="text-text-muted">No feed items found.</p>;
+  if (!items.length) return <EmptyState title="No feed items found." />;
 
   // Wrapper is the fill target: beside a taller sibling column it stretches, and the
   // absolutely-positioned scroller inside keeps the feed's own length out of the layout.

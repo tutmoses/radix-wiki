@@ -1,7 +1,7 @@
 // src/app/[[...path]]/page.tsx
 
 import type { Metadata } from 'next';
-import { Suspense, type ReactNode } from 'react';
+import { Suspense } from 'react';
 import { notFound, redirect } from 'next/navigation';
 import { parsePath } from '@/lib/path';
 import { getHomepage, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getPageByAsset } from '@/lib/wiki';
@@ -26,8 +26,7 @@ import dynamic from 'next/dynamic';
 
 const IdeasView = dynamic(() => import('./IdeasView'), { loading: () => <PageSkeleton /> });
 const LeaderboardView = dynamic(() => import('@/components/LeaderboardView'), { loading: () => <PageSkeleton /> });
-const WelcomeView = dynamic(() => import('@/components/WelcomeView'), { loading: () => <PageSkeleton /> });
-const RewardsView = dynamic(() => import('@/components/RewardsView'), { loading: () => <PageSkeleton /> });
+const SettingsView = dynamic(() => import('@/components/SettingsView'), { loading: () => <PageSkeleton /> });
 const SearchView = dynamic(() => import('@/components/SearchView'), { loading: () => <PageSkeleton /> });
 const MaintenanceView = dynamic(() => import('@/components/MaintenanceView'), { loading: () => <PageSkeleton /> });
 const SiteStats = dynamic(() => import('@/components/SiteStats'), { loading: () => <PageSkeleton /> });
@@ -35,13 +34,9 @@ import ChartsOverview from '@/components/charts/ChartsOverview';
 import ValidatorsView from '@/components/charts/ValidatorsView';
 import TokensView from '@/components/charts/TokensView';
 import TokenDetailView from '@/components/charts/TokenDetailView';
-import { pageDescription, pagePath, pageUrl } from '@/lib/utils';
+import { pageDescription, pageUrl } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_REFS, SITE_URL, WIKI_LICENSE } from '@/lib/site';
-import Link from 'next/link';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { PageNav } from 'wiki-formant/react-server';
-import { adjacentPages } from 'wiki-formant/pagination';
 import { ogMetadata, ogImageUrl } from '@/lib/og';
 import { articleType, aboutEntity, articleLearningProps } from '@/lib/entity-ld';
 import { getTokenDetail } from '@/lib/radix/tokens';
@@ -325,7 +320,7 @@ function linksTo(content: unknown, href: string): boolean {
   );
 }
 
-const VALID_SORTS = new Set<string>(['title', 'newest', 'oldest', 'recent']);
+const VALID_SORTS = new Set<string>(['title', 'recent']);
 
 // Read the clock once, here on the server, and hand it to the views: as a prop
 // where a view needs it to decide something (the freshness banner), and through
@@ -364,8 +359,9 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
     return <SiteStats query={query} invite={str(query.invite)} />;
   }
   if (parsed.type === 'leaderboard') return <LeaderboardView entries={(await getEditorScores()).map(publicScore)} />;
-  if (parsed.type === 'welcome') return <WelcomeView />;
-  if (parsed.type === 'rewards') return <RewardsView />;
+  // `?watch=` names the page or section a Telegram subscription is offered for:
+  // Tools → Watch sends a reader here to connect Telegram first.
+  if (parsed.type === 'settings') return <SettingsView watch={str((await searchParams).watch)} />;
   if (parsed.type === 'charts') return <ChartsOverview />;
   if (parsed.type === 'charts-validators') return <ValidatorsView />;
   if (parsed.type === 'charts-tokens') return <TokensView />;
@@ -405,6 +401,11 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
     // top of the render.
     const query = await searchParams;
     const sortParam = str(query.sort);
+
+    // `?new` is New Page: the editor for a page in this category, slug from its title.
+    if (query.new !== undefined && await getSession()) {
+      return <PageView page={null} tagPath={parsed.tagPath} slug="" isEditMode={false} nowMs={nowMs} />;
+    }
 
     if (isIdeasPath(parsed.tagPath)) {
       const defaultSort = getSortOrder(tagSegments);
@@ -505,29 +506,16 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
   // mounts a stored `src` as-is, and metadata fields are set via innerHTML.
   const page = parsed.suffix === 'edit' ? rawPage && sanitizePage(rawPage) : await withProcessedContent(rawPage);
   let related: RelatedPages = { pages: [], sharedFacet: null };
-  let pageNav: ReactNode = null;
   if (page && parsed.suffix !== 'edit') {
-    // One ordered fetch, two readers. The ranked panel wants this page removed;
-    // the foot nav wants it left in, because the sequence it walks is the one
-    // the section listing already shows and it finds itself in that sequence.
-    // No adjacency query: prev/next costs nothing beyond the call already here.
-    const ordered = await getCategoryPages(parsed.tagPath);
-    const ranked = rankRelated(page, ordered.filter(p => p.slug !== parsed.slug), parsed.tagPath);
+    // No prev/next beside it: no section stores an order, so "next" was the next
+    // title or date in a set, and See also already walks that set by relevance
+    // (STRUCTURE.md S12, one home per lateral move).
+    const siblings = (await getCategoryPages(parsed.tagPath)).filter(p => p.slug !== parsed.slug);
+    const ranked = rankRelated(page, siblings, parsed.tagPath);
     related = {
       pages: ranked.pages.map(p => ({ id: p.id, title: p.title, slug: p.slug, tagPath: p.tagPath, snippet: describe(p.snippet, 100) })),
       sharedFacet: ranked.sharedFacet,
     };
-    const { prev, next } = adjacentPages(ordered, p => p.slug === parsed.slug);
-    const ref = (p: typeof prev) => (p ? { title: p.title, href: pagePath(p.tagPath, p.slug) } : null);
-    pageNav = (
-      <PageNav
-        link={Link}
-        prev={ref(prev)}
-        next={ref(next)}
-        prevGlyph={<ArrowLeft size={14} />}
-        nextGlyph={<ArrowRight size={14} />}
-      />
-    );
   }
   // The topic this page is part of, unless this page *is* it.
   const mainArticle = getMainArticle(parsed.tagPath);
@@ -539,7 +527,7 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
     <>
       {page && <JsonLd data={pageLd(page, pageUrl)} />}
       {faq && <JsonLd data={faq} />}
-      <PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} related={related} series={series} pageNav={pageNav} nowMs={nowMs} />
+      <PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} related={related} series={series} nowMs={nowMs} />
     </>
   );
 }

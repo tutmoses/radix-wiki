@@ -59,7 +59,7 @@ export default function LeaderboardView({ entries }: { entries: LeaderboardEntry
 
       <DataTable
         rows={ranked} columns={COLUMNS} defaultKey="points" numbered={false}
-        rowKey={e => e.id} rowId={e => `u-${e.id}`} empty="No contributors yet. Be the first!"
+        rowKey={e => e.id} rowId={e => `u-${e.id}`} empty="No contributors yet."
       />
     </div>
   );

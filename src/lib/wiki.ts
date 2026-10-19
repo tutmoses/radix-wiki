@@ -121,8 +121,6 @@ export const getLatestRecap = cached('getLatestRecap',
 
 const sortOrderBy: Record<SortOrder, object> = {
   title: { title: 'asc' as const },
-  newest: { createdAt: 'desc' as const },
-  oldest: { createdAt: 'asc' as const },
   recent: { updatedAt: 'desc' as const },
 };
 
@@ -138,11 +136,11 @@ export const getCategoryPages = cached('getCategoryPages',
       take: limit,
     }).then(rows => rows.map(listRow)) as unknown as WikiPage[];
     if (!hasDateMeta) return pages;
-    const dir = resolvedSort === 'oldest' ? 1 : -1;
+    // Newest `date` first: a blog post or an event is as recent as the day it is about.
     return pages.sort((a, b) => {
       const da = (a.metadata as Record<string, string> | null)?.date || '';
       const db = (b.metadata as Record<string, string> | null)?.date || '';
-      return (da < db ? -1 : da > db ? 1 : 0) * dir;
+      return da < db ? 1 : da > db ? -1 : 0;
     });
   },
 );

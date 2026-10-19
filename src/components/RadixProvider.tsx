@@ -3,7 +3,6 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { useStore } from '@/hooks';
 import { RADIX_CONFIG } from '@/lib/radix/config';
 import { sendJson } from '@/lib/utils';
@@ -20,7 +19,6 @@ const toWalletData = ({ persona, accounts }: RadixWalletData): RadixWalletData =
 });
 
 export function RadixProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const rdtRef = useRef<RadixDappToolkitType | null>(null);
   const setSession = useStore(s => s.setSession);
   const setLoading = useStore(s => s.setLoading);
@@ -28,10 +26,6 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
   const setWalletData = useStore(s => s.setWalletData);
   const setRdtReady = useStore(s => s.setRdtReady);
   const _setRdtCallbacks = useStore(s => s._setRdtCallbacks);
-
-  // Stable ref for router to avoid re-creating the dataRequestControl callback
-  const routerRef = useRef(router);
-  routerRef.current = router;
 
   const createSession = useCallback(async (
     walletData: RadixWalletData,
@@ -48,9 +42,8 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
       throw new Error(body.error || 'Authentication failed');
     }
 
-    const session = await response.json();
-    setSession(session);
-    if (session.isNewUser) routerRef.current.push('/welcome');
+    // The reader stays on the page they connected from.
+    setSession(await response.json());
   }, [setSession]);
 
   // Check existing session on mount (fast, no heavy imports)

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui';
 import { useAuth } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiComment } from '@/types';
+import { EmptyState } from '@/components/EmptyState';
 
 const MAX_DEPTH = 3;
 
@@ -155,7 +156,7 @@ export function Discussion({ pageId }: { pageId: string; tagPath: string }) {
           ) : <p className="text-text-muted surface p-4 text-center">Connect your wallet to join the discussion.</p>}
           {isLoading ? <div className="stack">{[1, 2].map(i => <div key={i} className="h-20 skeleton" />)}</div>
             : comments.length > 0 ? <div className="stack">{comments.map(c => <CommentThread key={c.id} comment={c} depth={0} onReply={handlePost} onDelete={handleDelete} currentUserId={user?.id} />)}</div>
-            : <p className="text-text-muted text-center py-4">No comments yet. Be the first to start the discussion!</p>}
+            : <EmptyState title="No comments yet." />}
         </div>
       )}
     </section>

@@ -10,7 +10,8 @@
 // shows is precisely the mismatch Google drops a rich result for.
 
 import Link from 'next/link';
-import { Breadcrumbs as SharedBreadcrumbs } from 'wiki-formant/react-server';
+import type { ReactNode } from 'react';
+import { Breadcrumbs as SharedBreadcrumbs, BreadcrumbsRow } from 'wiki-formant/react-server';
 import { findTagByPath } from '@/lib/tags';
 import { SITE_URL } from '@/lib/site';
 
@@ -25,9 +26,11 @@ interface BreadcrumbsProps {
   leafTitle?: string;
   /** A trailing mode crumb — Edit, History, Create. Not a destination. */
   suffix?: string;
+  /** Right of the trail: `PageActions`. */
+  actions?: ReactNode;
 }
 
-export function Breadcrumbs({ path, leafTitle, suffix }: BreadcrumbsProps) {
+export function Breadcrumbs({ path, leafTitle, suffix, actions }: BreadcrumbsProps) {
   const items = [
     { label: 'Home', href: '/' },
     ...path.map((segment, i) => {
@@ -43,5 +46,22 @@ export function Breadcrumbs({ path, leafTitle, suffix }: BreadcrumbsProps) {
     ...(suffix ? [{ label: suffix.replace(/-/g, ' ') }] : []),
   ];
 
-  return <SharedBreadcrumbs items={items} base={SITE_URL} link={Link} />;
+  return actions
+    ? <BreadcrumbsRow items={items} base={SITE_URL} link={Link} actions={actions} />
+    : <SharedBreadcrumbs items={items} base={SITE_URL} link={Link} />;
+}
+
+/**
+ * History and Edit, beside the trail. The one home for both: they used to be a
+ * header pencil, a foot link, a Tools item and the meta line's revision count.
+ * Each is passed only where its control applies, so the caller keeps the rule.
+ */
+export function PageActions({ editHref, historyHref, className }: { editHref?: string; historyHref?: string; className?: string }) {
+  if (!editHref && !historyHref) return null;
+  return (
+    <nav className={className ? `page-actions ${className}` : 'page-actions'} aria-label="Page actions">
+      {historyHref && <Link href={historyHref} prefetch={false} className="breadcrumb-link">History</Link>}
+      {editHref && <Link href={editHref} prefetch={false} className="breadcrumb-link">Edit</Link>}
+    </nav>
+  );
 }

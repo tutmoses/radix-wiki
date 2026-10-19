@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
-import { Card } from '@/components/ui';
+import { EmptyState } from '@/components/EmptyState';
+import { RewardsSection } from '@/components/RewardsSection';
 import type { MaintenanceQueue } from '@/lib/maintenance';
 
 function MaintenanceView({ queues }: { queues: MaintenanceQueue[] }) {
@@ -16,7 +17,7 @@ function MaintenanceView({ queues }: { queues: MaintenanceQueue[] }) {
         leaves the list on the next revalidation.
       </p>
       {total === 0 ? (
-        <Card className="empty-state"><p className="text-text-muted">Nothing needs attention. Every page is verified, linked, sourced, and complete.</p></Card>
+        <EmptyState title="Nothing needs attention." description="Every page is verified, linked, sourced and complete." />
       ) : (
         queues.map(queue => (
           <section key={queue.key} className="maintenance-queue">
@@ -33,6 +34,7 @@ function MaintenanceView({ queues }: { queues: MaintenanceQueue[] }) {
           </section>
         ))
       )}
+      <RewardsSection />
     </div>
   );
 }

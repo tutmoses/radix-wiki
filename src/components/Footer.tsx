@@ -2,14 +2,12 @@
 
 import Link from 'next/link';
 
+// Home, Contents, Charts and Leaderboard are the sidebar's; the footer keeps
+// what nothing else on the page links to.
 export function Footer() {
   return (
     <footer className="footer">
       <nav className="footer-links" aria-label="Footer">
-        <Link href="/">Home</Link>
-        <Link href="/contents">Contents</Link>
-        <Link href="/charts">Charts</Link>
-        <Link href="/leaderboard">Leaderboard</Link>
         <a href="/llms.txt">llms.txt</a>
         <Link href="/contents/resources/legal/terms-of-use">Terms</Link>
         <Link href="/contents/resources/legal/privacy-policy">Privacy</Link>

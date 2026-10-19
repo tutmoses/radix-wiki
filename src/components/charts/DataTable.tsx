@@ -8,6 +8,7 @@
 
 import { useMemo, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/components/EmptyState';
 import { SortHeader, useTableSort } from 'wiki-formant/react';
 
 // `text` vs `num` decides more than the comparator: a text column opens A–Z on
@@ -66,7 +67,7 @@ export function DataTable<T>({ rows, columns, defaultKey, rowKey, rowId, numbere
           ))}
           {!shown.length && (
             <tr>
-              <td colSpan={columns.length + Number(numbered)} className="data-table-td text-center text-text-muted py-8">{empty}</td>
+              <td colSpan={columns.length + Number(numbered)} className="data-table-td"><EmptyState title={empty} /></td>
             </tr>
           )}
         </tbody>

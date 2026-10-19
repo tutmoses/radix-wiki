@@ -5,8 +5,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Trash2, Copy, Check, Loader2, ExternalLink, Bell, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui';
+import { EmptyState } from '@/components/EmptyState';
 import { cn, sendJson } from '@/lib/utils';
-import { useStore, useWikiPathname } from '@/hooks';
+import { useStore } from '@/hooks';
 import { tagLabel } from '@/lib/tags';
 import { parsePath } from '@/lib/path';
 import { useCopy } from 'wiki-formant/react';
@@ -42,9 +43,9 @@ const EVENT_OPTIONS = [
   { value: 'comment.created', label: 'Comment created' },
 ] as const;
 
-/** The page or category on screen, as a subscription target; null where there is none. */
-function parseCurrentContext(pathname: string): { tagPath: string; slug: string | null; label: string } | null {
-  const { tagPath, slug } = parsePath(pathname.split('/').filter(Boolean));
+/** The page or category `/settings?watch=` names, as a subscription target; null where there is none. */
+function parseWatchTarget(path = ''): { tagPath: string; slug: string | null; label: string } | null {
+  const { tagPath, slug } = parsePath(path.split('/').filter(Boolean));
   if (!tagPath) return null;
   return slug
     ? { tagPath, slug, label: slug.replace(/-/g, ' ') }
@@ -56,8 +57,7 @@ function parseCurrentContext(pathname: string): { tagPath: string; slug: string 
 const postTelegram = (body: object) => sendJson('/api/telegram', 'POST', body);
 
 /**
- * The `/api/telegram` client, shared by the settings panel and the header's
- * watch toggle.
+ * The `/api/telegram` client, shared by /settings and the page-tools watch toggle.
  *
  * `enabled` is false where there is nothing to ask about — the page-tools menu
  * opens for anonymous readers and off-page routes too.
@@ -124,13 +124,12 @@ export function useTelegram(enabled = true) {
   return { state, loading, deepLink, connect, subscribe, unsubscribe, disconnect };
 }
 
-function TelegramSection() {
-  const pathname = useWikiPathname();
+function TelegramSection({ watch }: { watch?: string }) {
   const { state, loading, deepLink, connect, subscribe, unsubscribe, disconnect } = useTelegram();
   const [subscribing, setSubscribing] = useState(false);
   const showToast = useStore(s => s.showToast);
 
-  const context = parseCurrentContext(pathname);
+  const context = parseWatchTarget(watch);
 
   const handleSubscribe = async () => {
     if (!context) return;
@@ -224,9 +223,7 @@ function TelegramSection() {
           )}
 
           {subs.length === 0 && !context && (
-            <div className="telegram-empty">
-              <p className="text-small text-text-muted">Navigate to a page or section to subscribe.</p>
-            </div>
+            <EmptyState title="No subscriptions yet." description="Use Watch this page in a page's Tools menu to get its edits and comments in Telegram." />
           )}
         </div>
       ) : (
@@ -240,7 +237,8 @@ function TelegramSection() {
 
 // ===== Webhooks Section =====
 
-export function WebhookSettings() {
+/** `watch` is a page or section path to offer a Telegram subscription for. */
+export function WebhookSettings({ watch }: { watch?: string }) {
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -307,7 +305,7 @@ export function WebhookSettings() {
   return (
     <div className="webhook-content">
       {/* Telegram section */}
-      <TelegramSection />
+      <TelegramSection watch={watch} />
 
       <div className="webhook-divider" />
 
@@ -336,10 +334,7 @@ export function WebhookSettings() {
 
           {/* Webhook list */}
           {webhooks.length === 0 && !showForm ? (
-            <div className="webhook-empty">
-              <p>No custom webhooks</p>
-              <Button variant="ghost" size="sm" onClick={() => setShowForm(true)}><Plus size={14} />Add webhook</Button>
-            </div>
+            <EmptyState title="No custom webhooks." action={<Button variant="ghost" size="sm" onClick={() => setShowForm(true)}><Plus size={14} />Add webhook</Button>} />
           ) : (
             <div className="webhook-list">
               {webhooks.map(w => (

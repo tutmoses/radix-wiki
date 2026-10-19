@@ -67,6 +67,8 @@ export function usePagePath() {
   const isPage = !!slug;
   return {
     isHomepage, isPage,
+    /** A category's own page (its listing or hub), not its edit or history view. */
+    sectionPath: type === 'category' && !suffix ? tagPath : null,
     isEdit: suffix === 'edit',
     isHistory: suffix === 'history',
     viewPath: isPage ? `/${tagPath}/${slug}` : '/',

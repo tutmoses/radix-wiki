@@ -34,15 +34,15 @@ export const STATIC_PAGES: Record<string, StaticPage> = {
   charts: { path: 'charts', title: 'Charts', description: 'Live Radix network charts: daily activity since Babylon, the $XRD price, staking and OciSwap trading week by week, top tokens and validators.', changeFrequency: 'daily', priority: 0.7 },
   'charts-validators': { path: 'charts/validators', title: 'Validators', description: 'Every Radix validator with its stake, fee, pending fee changes, 7-day uptime and owner stake, and how concentrated staking is.', changeFrequency: 'daily', priority: 0.7 },
   'charts-tokens': { path: 'charts/tokens', title: 'Tokens', description: 'Radix tokens traded on OciSwap in the last 24 hours, by volume, with price and 24h change.', changeFrequency: 'daily', priority: 0.7 },
-  welcome: { path: 'welcome', title: 'Welcome', description: 'Get started with RADIX Wiki — connect your Radix wallet and begin contributing to the decentralized knowledge base.', changeFrequency: 'monthly', priority: 0.5 },
   leaderboard: { path: 'leaderboard', title: 'Leaderboard', description: 'Top RADIX.wiki contributors ranked by contribution points.', changeFrequency: 'monthly', priority: 0.5 },
-  rewards: { path: 'rewards', title: 'Rewards', description: 'Track contributor rewards and $XRD airdrop eligibility on RADIX Wiki.', changeFrequency: 'monthly', priority: 0.5 },
   // Maintenance is a work queue, hidden the way Wikipedia hides its
   // maintenance categories.
   search: { path: 'search', title: 'Search', description: 'Search the community-maintained RADIX Wiki.', noindex: true },
   maintenance: { path: 'maintenance', title: 'Maintenance', description: 'Pages flagged as outdated, orphaned, unsourced, or missing required metadata.', noindex: true },
   // The wiki's own analytics, behind a passkey (`src/lib/admin.ts`).
   stats: { path: 'stats', title: 'Stats', description: 'Visitors, pages and agent traffic for RADIX Wiki.', noindex: true },
+  // A signed-in account's Telegram link and webhooks; nothing here for anyone else.
+  settings: { path: 'settings', title: 'Notification settings', description: 'Telegram and webhook notifications for your RADIX Wiki account.', noindex: true },
 };
 
 /** Every route with a sitemap row, bar the homepage — its URL is the bare origin. */
