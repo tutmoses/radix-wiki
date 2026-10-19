@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma/client';
 import { store, toWikiPage, authorsOf } from '@/lib/wiki';
 import { handleRoute, json, errors } from 'wiki-formant/http';
 import { requireAuth, cachedJson, CACHE, type RouteContext } from '@/lib/api';
-import { buildPageBackupManifest, readAnchorFromLedger, readLedgerBackup } from '@/lib/radix/ledger';
+import { buildPageBackupManifest, pageChunkKey, readAnchorFromLedger, readLedgerBackup } from '@/lib/radix/ledger';
 import { postGateway } from '@/lib/radix/gateway';
 import { blocksToMdx } from '@/lib/mdx';
 import type { NextRequest } from 'next/server';
@@ -28,21 +28,29 @@ async function prepare(radixAddress: string, { tagPath, slug }: Body) {
   });
 }
 
-type CommittedDetails = { transaction?: { transaction_status?: string; affected_global_entities?: string[] } };
+type CommittedDetails = { transaction?: { transaction_status?: string; affected_global_entities?: string[]; manifest_instructions?: string } };
 
 async function confirm(radixAddress: string, { tagPath, slug, txHash }: Body) {
   if (!tagPath || !slug || !txHash) return errors.badRequest('tagPath, slug, and txHash are required');
 
-  // Only a committed transaction on the caller's own account counts as a backup:
-  // any signed-in wallet could otherwise stamp any page with any string.
+  // Only a committed backup of this page on the caller's own account counts: the
+  // transaction must write the page's first chunk, and the backup that chunk now
+  // holds must be this page's path, not another category's page with the same slug.
   const details = await postGateway<CommittedDetails>(
     '/transaction/committed-details',
-    { intent_hash: txHash, opt_ins: { affected_global_entities: true } },
+    { intent_hash: txHash, opt_ins: { affected_global_entities: true, manifest_instructions: true } },
     'ledger-confirm',
   );
   const tx = details?.transaction;
   if (tx?.transaction_status !== 'CommittedSuccess' || !tx.affected_global_entities?.includes(radixAddress)) {
     return errors.badRequest('txHash is not a committed transaction on your account');
+  }
+  if (!tx.manifest_instructions?.includes(`"${pageChunkKey(slug, 0)}"`)) {
+    return errors.badRequest('txHash is not a backup of this page');
+  }
+  const { pages } = await readLedgerBackup(radixAddress);
+  if (!pages.some(p => p.slug === slug && p.tagPath === tagPath)) {
+    return errors.badRequest('Your account does not hold a backup of this page');
   }
 
   // Raw, so a backup leaves updatedAt alone and writes no revision: it is not an edit to the page.

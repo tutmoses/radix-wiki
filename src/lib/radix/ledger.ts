@@ -28,6 +28,11 @@ const CHUNK_MAX = 3800; // safe limit under Radix's 4096-byte metadata cap
 
 // ========== MANIFEST BUILDER ==========
 
+/** The account metadata key holding chunk `i` of a page's backup. */
+export function pageChunkKey(slug: string, i: number): string {
+  return `${PAGE_PREFIX}${slug}:${i}`;
+}
+
 function metadataInstruction(address: string, key: string, value: string): string {
   const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   return `SET_METADATA\n  Address("${address}")\n  "${key}"\n  Enum<Metadata::String>("${escaped}")\n;\n`;
@@ -51,11 +56,10 @@ export function buildPageBackupManifest(
     chunks: chunks.length,
   };
 
-  const baseKey = `${PAGE_PREFIX}${meta.slug}`;
   const instructions = [
     metadataInstruction(accountAddress, ANCHOR_KEY, JSON.stringify(anchor)),
     ...chunks.map((chunk, i) =>
-      metadataInstruction(accountAddress, `${baseKey}:${i}`, chunk),
+      metadataInstruction(accountAddress, pageChunkKey(meta.slug, i), chunk),
     ),
   ];
 
