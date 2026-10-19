@@ -13,9 +13,10 @@ import { isActivityMetric } from '@/lib/radix/metrics';
 //
 // Counted against the live database rather than assumed: `store` and `footer`
 // appear in no page and no revision, so they are gone entirely. `stats` (1 page,
-// 3 revisions) and `testimonial` (1 page, 5 revisions) DO have live content --
-// an earlier version of this comment called all four unused, which would have
-// broken two pages -- so they stay valid and renderable, just not insertable.
+// 3 revisions) and `testimonial` (13 Week in Review issues, written by its
+// routine) DO have live content -- an earlier version of this comment called all
+// four unused, which would have broken them -- so they stay valid and
+// renderable, just not insertable.
 // `tipJar` is likewise unused today but stays offered in the editor. Stats has
 // an editor, so the revisions that carry it can be edited, but is not offered.
 type BlockSpec = { label: string; icon: LucideIcon; hint: string; insertable?: true; atomic?: true; create: () => Omit<Block, 'id'> };
@@ -38,7 +39,7 @@ export const BLOCK_META: Record<BlockType, BlockSpec> = {
   references: { label: 'References', icon: ListOrdered, hint: 'Numbered sources the text cites', insertable: true, atomic: true, create: CORE.references },
   infobox: { label: 'Infobox', icon: Info, hint: 'A sidebar beside the article', create: CORE.infobox },
   stats: { label: 'Stats', icon: BarChart3, hint: 'A row of headline figures', create: CORE.stats },
-  testimonial: { label: 'Testimonial', icon: MessageSquareQuote, hint: 'A quote and who said it', create: () => ({ type: 'testimonial', quote: 'An amazing product that changed everything.', author: 'Jane Doe', role: 'CEO' }) },
+  testimonial: { label: 'Testimonial', icon: MessageSquareQuote, hint: 'A quote and who said it', create: CORE.testimonial },
 };
 
 /** Every type the wire format accepts — the /openapi.json Block enum reads it. */
@@ -79,8 +80,6 @@ const { validateBlocks: validate, blockIssues } = createBlockValidator({
         return typeof b.url === 'string';
       case 'networkChart':
         return isActivityMetric(b.metric) && (b.range === undefined || typeof b.range === 'string');
-      case 'testimonial':
-        return typeof b.quote === 'string' && typeof b.author === 'string';
       case 'tipJar':
         return typeof b.address === 'string';
       default:

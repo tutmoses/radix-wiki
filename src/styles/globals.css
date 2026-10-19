@@ -644,11 +644,14 @@
   .stat-grid-3 { @apply sm:grid-cols-3; }
   .stat-grid-4 { @apply sm:grid-cols-4; }
 
-  /* ===== PULL QUOTE (testimonial block) ===== */
-  .pull-quote { @apply flex flex-col gap-2 my-6 pl-5 border-l-4 border-accent; }
-  .pull-quote-body { @apply m-0 p-0 border-0 not-italic text-lg text-text; }
-  .pull-quote-attr { @apply flex flex-wrap items-center gap-2 text-text-muted text-small; }
-  .pull-quote-role { @apply px-2 py-0.5 bg-surface-1 rounded-full text-xs; }
+  /* ===== TESTIMONIAL (TestimonialView) ===== */
+  .testimonial { @apply flex flex-col gap-2 my-6 pl-5 border-l-4 border-accent; }
+  .testimonial > blockquote { @apply m-0 p-0 border-0 not-italic text-lg text-text; }
+  .testimonial figcaption { @apply flex flex-wrap items-center gap-2 text-text-muted text-small; }
+  .testimonial figcaption img { @apply size-8 rounded-full object-cover; }
+  .testimonial figcaption > span { @apply flex flex-wrap items-center gap-2; }
+  .testimonial strong { @apply font-normal; }
+  .testimonial small { @apply px-2 py-0.5 bg-surface-1 rounded-full text-xs; }
 
   /* ===== SCORE RING ===== */
   .score-ring { @apply flex flex-col gap-4 items-center p-4 bg-surface-1 rounded-xl; }

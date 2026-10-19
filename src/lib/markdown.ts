@@ -14,15 +14,13 @@
 // switch over the union means a new block type is a compile error until it is
 // handled, rather than silently rendering as nothing.
 
-import { decodeEntities, inlineToMarkdown, markdownDocument } from 'wiki-formant/markdown';
+import { inlineToMarkdown, markdownDocument } from 'wiki-formant/markdown';
 import { coreAtomicToMarkdown, renderBlockTree, linkList } from 'wiki-formant/blocks';
 import { pageUrl } from '@/lib/utils';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { activityLabel } from '@/lib/radix/metrics';
 import type { Block, AtomicBlock } from '@/types/blocks';
 import { BLOCK_SHAPE } from '@/lib/block-shape';
-
-const decode = decodeEntities;
 
 // The shared inline converter, aliased so the block renderers below read unchanged.
 const inline = inlineToMarkdown;
@@ -36,7 +34,7 @@ const pageLinks = (pages: ResolvedPage[]) =>
 export function atomicToMarkdown(block: AtomicBlock): string {
   switch (block.type) {
     case 'content': case 'codeTabs': case 'banner':
-    case 'references': case 'stats': case 'linkGrid':
+    case 'references': case 'stats': case 'linkGrid': case 'testimonial':
       return coreAtomicToMarkdown(block, { siteUrl: SITE_URL });
 
     case 'recentPages':
@@ -59,9 +57,6 @@ export function atomicToMarkdown(block: AtomicBlock): string {
 
     case 'networkChart':
       return `_Live network chart: ${activityLabel(block.metric)} per day — ${SITE_URL}/charts?m=${block.metric}_`;
-
-    case 'testimonial':
-      return `> "${decode(block.quote)}"\n> — ${block.author}${block.role ? `, ${block.role}` : ''}`;
 
     case 'tipJar':
       return `**${block.label || 'Tip the author'}**${block.message ? `\n\n${inline(block.message)}` : ''}${block.address ? `\n\nRadix: \`${block.address}\`` : ''}`;

@@ -14,7 +14,7 @@ function atomicText(block: Block | AtomicBlock): string {
     // Page lists are resolved server-side, so they read only after
     // `resolveBlockData`; a raw row has no `resolvedPages` and extracts to empty.
     case 'content': case 'codeTabs': case 'banner': case 'references':
-    case 'stats': case 'linkGrid': case 'recentPages': case 'pageList':
+    case 'stats': case 'linkGrid': case 'testimonial': case 'recentPages': case 'pageList':
       return coreAtomicText(block);
     default: return '';
   }

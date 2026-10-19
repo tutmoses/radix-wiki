@@ -22,12 +22,13 @@ import {
   LinkGridView,
   ReferencesView,
   StatsView,
+  TestimonialView,
 } from 'wiki-formant/block-views';
 import { processHtml } from '@/lib/html';
 import { useFetch } from '@/hooks';
 import { Badge, TipJarQr } from '@/components/ui';
 import type { WikiPage, PageMetadata } from '@/types';
-import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, NetworkChartBlock, RssFeedBlock, InfoboxBlock, AtomicBlock, TipJarBlock, BannerVariant, TestimonialBlock } from '@/types/blocks';
+import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, NetworkChartBlock, RssFeedBlock, InfoboxBlock, AtomicBlock, TipJarBlock, BannerVariant } from '@/types/blocks';
 import { getMetadataKeys } from '@/lib/tags';
 import { metadataRows } from '@/lib/taxonomy';
 import { TokenChart } from '@/components/charts/TokenChart';
@@ -343,22 +344,10 @@ const BANNER_META: Record<BannerVariant, { message: string; icon: LucideIcon; po
 
 /** One quotation, attributed. Quoting a person is the cheapest way a recap can
  *  carry a voice that is not its own, and it was being typed as plain prose. */
-function TestimonialBlockView({ block }: { block: TestimonialBlock }) {
-  if (!block.quote?.trim()) return null;
-  return (
-    <figure className="pull-quote">
-      <blockquote className="pull-quote-body">{block.quote}</blockquote>
-      <figcaption className="pull-quote-attr">
-        {block.author}{block.role && <span className="pull-quote-role">{block.role}</span>}
-      </figcaption>
-    </figure>
-  );
-}
-
 function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
   switch (block.type) {
     case 'stats': return <StatsView items={block.items} columns={block.columns ?? 4} />;
-    case 'testimonial': return <TestimonialBlockView block={block} />;
+    case 'testimonial': return <TestimonialView {...block} />;
     case 'content': return <ContentBlockView html={block.text} />;
     case 'recentPages': return <RecentPagesBlockView block={block} />;
     case 'pageList': return <PageListBlockView block={block} />;

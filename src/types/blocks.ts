@@ -14,7 +14,7 @@ import type { ActivityMetric } from '@/lib/radix/metrics';
 
 // ---- the shared core ---------------------------------------------------------
 //
-// Six of the core blocks and the two containers are `wiki-formant/blocks`', the
+// Seven of the core blocks and the two containers are `wiki-formant/blocks`', the
 // shape all three wikis store, so `wiki-formant/block-editor` can edit them.
 // What stays here is what is this wiki's: its page lists, which hold its own
 // page rows, and its native types.
@@ -27,8 +27,9 @@ import type {
   LinkGridBlock,
   ReferencesBlock,
   StatsBlock,
+  TestimonialBlock,
 } from 'wiki-formant/blocks';
-export type { BannerBlock, CodeTabsBlock, ContentBlock, LinkGridBlock, ReferencesBlock, StatsBlock };
+export type { BannerBlock, CodeTabsBlock, ContentBlock, LinkGridBlock, ReferencesBlock, StatsBlock, TestimonialBlock };
 export type { BannerVariant } from 'wiki-formant/text';
 
 export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice' | 'networkChart' | 'infobox' | 'rssFeed' | 'codeTabs' | 'stats' | 'testimonial' | 'linkGrid' | 'tipJar' | 'references' | 'banner';
@@ -41,7 +42,6 @@ export interface AssetPriceBlock extends BaseBlock { type: 'assetPrice'; resourc
 /** Daily network activity, live: the /charts series for one metric, fetched on the reader's side. */
 export interface NetworkChartBlock extends BaseBlock { type: 'networkChart'; metric: ActivityMetric; range?: ChartRange; }
 export interface RssFeedBlock extends BaseBlock { type: 'rssFeed'; url: string; limit?: number; resolvedItems?: { title: string; link: string; image?: string; source: string; date?: string; description?: string }[]; }
-export interface TestimonialBlock extends BaseBlock { type: 'testimonial'; quote: string; author: string; role?: string; avatarUrl?: string; }
 export interface TipJarBlock extends BaseBlock { type: 'tipJar'; address: string; label?: string; message?: string; }
 
 // Atomic blocks that can be nested inside containers
