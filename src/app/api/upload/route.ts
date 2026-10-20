@@ -4,7 +4,6 @@
 // to the wiki's standard here: at most 1600px wide (2x the ~800px prose column)
 // and WebP, at q90 for PNG sources, which are usually screenshots or diagrams
 // whose text smears lower, and q80 for photographs.
-// scripts/standardize-images.mjs applies the same rules to images already stored.
 
 import { uploadHandler } from 'wiki-formant/upload';
 import { requireAuth } from '@/lib/api';

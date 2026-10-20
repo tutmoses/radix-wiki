@@ -20,10 +20,9 @@ tsconfig.tsbuildinfo
 .telegram-state.json
 .telegram-scout-state.json
 
-# Script byproducts, not source: generated data manifests, and .backups/,
-# which holds gzipped DB dumps. The tools themselves are tracked.
+# Script byproducts, not source: generated data manifests. The tools
+# themselves are tracked.
 /scripts/*.json
-/scripts/.backups/
 data/tweet-queue.json
 
 # Regenerable renders — node brand-assets/generate-infographics.mjs
