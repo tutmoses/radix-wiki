@@ -20,7 +20,7 @@ import { describe } from 'wiki-formant/metadata';
 import { openingText } from 'wiki-formant/text';
 import { isoDate } from 'wiki-formant/freshness';
 import { SIBLING_WIKI, SITE_URL, WIKI_LICENSE } from '@/lib/site';
-import { extractText } from '@/lib/content';
+import { blocksToMarkdown } from '@/lib/markdown';
 import { CHARTS_PAGES } from '@/lib/static-pages';
 import type { Block } from '@/types/blocks';
 import type { CorpusSection } from 'wiki-formant/corpus';
@@ -64,7 +64,7 @@ export async function corpusSections(tagPath?: string): Promise<CorpusSection[]>
     orderBy: { updatedAt: 'desc' },
   });
   return pages.map(p => {
-    const body = extractText((p.content as unknown as Block[]) || []);
+    const body = blocksToMarkdown((p.content as unknown as Block[]) || []);
     const snippet = describe(openingText(p.content));
     const section = `## ${p.title}\n\nURL: ${pageUrl(p.tagPath, p.slug)}\nUpdated: ${isoDate(p.updatedAt)}\n${snippet ? `Summary: ${cleanSnippet(snippet)}\n` : ''}\n${body}`;
     return { path: `${p.tagPath}/${p.slug}`, tagPath: p.tagPath, section };

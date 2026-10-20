@@ -4,7 +4,7 @@ import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
 import { wikiStore, type ListSort, type WikiPageRow } from 'wiki-formant/store';
 import { searchWiki, type WikiRow } from 'wiki-formant/wiki-tools';
-import { extractText } from '@/lib/content';
+import { blocksToMarkdown } from '@/lib/markdown';
 import { prisma } from '@/lib/prisma/client';
 import { pageUrl } from '@/lib/utils';
 import { getSortOrder, getMetadataKeys, HIDDEN_TAG_PATHS } from '@/lib/tags';
@@ -263,7 +263,7 @@ export const NOT_HIDDEN = { notIn: HIDDEN_TAG_PATHS } as const;
 export const WIKI_READ = {
   store,
   url: pageUrl,
-  text: extractText,
+  text: blocksToMarkdown,
   metadata: listingMetadata,
 };
 
