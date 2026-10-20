@@ -25,6 +25,12 @@ import {
   distinctEtagChecks,
   payloadBudget,
   robotsChecks,
+  manifestParity,
+  rowParity,
+  twinParity,
+  editReadChecks,
+  openapiWriteParity,
+  rolaOriginCheck,
 } from 'wiki-formant/conformance';
 import serverManifest from '../server.json';
 import { validateBlocks, blockIssues } from '@/lib/block-utils';
@@ -40,6 +46,7 @@ const { rpc, call, payload, check } = t;
   await versionCoherence(t, serverManifest.version, standardVersionSources(t, ['/openapi.json', '/.well-known/openapi.json']), init.result?.serverInfo?.version);
 
   await agentCardParity(t);
+  await manifestParity(t, { writeAuth: true });
   await annotationChecks(t, { writes: ['get_challenge', 'login', 'create_page', 'edit_page', 'restore_revision', 'delete_page', 'upload_image'] });
 
   // The three calls an agent makes before anything else. One page with a
@@ -74,8 +81,6 @@ const { rpc, call, payload, check } = t;
   const search = payload(await call('search_wiki', { query: 'radix', pageSize: 5 })) as { total?: number; pages?: Array<{ id?: string; tagPath: string; slug: string; url: string; snippet?: string }> };
   const first = search?.pages?.[0];
   check('search_wiki', (search?.total ?? 0) > 0 && !!first?.url, `${search?.total} hits, first="${first?.tagPath}/${first?.slug}"`);
-  // A pageList block names pages by id, so an agent building one takes them from a listing.
-  check('rows carry the page id', !!search?.pages?.length && search.pages.every(p => typeof p.id === 'string' && p.id.length > 0), `first id=${first?.id}`);
 
   const page = payload(await call('get_page', { tagPath: first?.tagPath ?? '', slug: first?.slug ?? '' })) as { title?: string; content?: string };
   check('get_page', !!page?.title, `"${page?.title}" ${page?.content?.length ?? 0} chars`);
@@ -85,29 +90,22 @@ const { rpc, call, payload, check } = t;
   const byPath = payload(await call('get_page', { path: `${first?.tagPath}/${first?.slug}` })) as { title?: string };
   check('get_page(path)', byPath?.title === page?.title, `path form === tagPath/slug form ("${byPath?.title}")`);
   check('entities decoded', !/&(mdash|ndash|ldquo|rsquo|nbsp);/.test(page?.content ?? ''), 'no literal &mdash;/&nbsp; in extracted text');
+  if (first) await twinParity(t, 'get_page is the .md twin', `${first.tagPath}/${first.slug}.md`, page?.content ?? '');
 
-  // What edit_page takes back: the stored blocks, which the write path must accept unchanged.
-  const withBlocks = payload(await call('get_page', { path: 'ecosystem/radix-blue-balls', blocks: true })) as { id?: string; version?: string; content?: unknown; metadata?: unknown; bannerImage?: unknown; editorIds?: unknown };
-  check('get_page(blocks)', !!withBlocks?.id && !!withBlocks?.version && validateBlocks(withBlocks?.content)
-    && typeof withBlocks.metadata === 'object' && 'bannerImage' in withBlocks && Array.isArray(withBlocks.editorIds),
-    Array.isArray(withBlocks?.content)
-      ? `${withBlocks.content.length} blocks, id=${withBlocks.id}, v${withBlocks.version}${validateBlocks(withBlocks.content) ? '' : `: ${describeBlockIssues(blockIssues(withBlocks.content))}`}`
-      : `no block array: ${JSON.stringify(withBlocks).slice(0, 80)}`);
-
-  const history = payload(await call('get_page_history', { path: 'ecosystem/radix-blue-balls', limit: 3 })) as { currentVersion?: string; revisions?: Array<{ id?: string; version?: string; author?: unknown }> };
-  check('get_page_history', !!history?.revisions?.[0]?.id && history.revisions[0].version === history.currentVersion && 'author' in history.revisions[0],
-    `${history?.revisions?.length ?? 0} revisions, newest v${history?.revisions?.[0]?.version} of v${history?.currentVersion}`);
+  // What edit_page takes back: the stored blocks, which the write path must accept
+  // unchanged. A pageList block names pages by id, so rows must carry it.
+  await editReadChecks(t, {
+    path: 'ecosystem/radix-blue-balls',
+    rows: search?.pages,
+    validate: blocks => validateBlocks(blocks) || describeBlockIssues(blockIssues(blocks)),
+  });
+  // This server's edit fields, which it keeps in metadata and edit_page takes as fields.
+  const withBlocks = payload(await call('get_page', { path: 'ecosystem/radix-blue-balls', blocks: true })) as { bannerImage?: unknown; editorIds?: unknown };
+  check('get_page(blocks) edit fields', typeof withBlocks === 'object' && !!withBlocks && 'bannerImage' in withBlocks && Array.isArray(withBlocks.editorIds), `bannerImage=${JSON.stringify(withBlocks?.bannerImage)}, editorIds=${JSON.stringify(withBlocks?.editorIds)}`);
 
   // Every field a REST write accepts, the matching tool must take: an edit_page
   // without baseVersion silently overwrote whatever landed in between.
-  const spec = await (await fetch(`${BASE}/openapi.json`)).json() as { paths: Record<string, Record<string, { requestBody?: { content: Record<string, { schema: { properties?: Record<string, unknown> } }> } }>> };
-  const tools = list.result?.tools ?? [];
-  for (const [route, method, tool] of [['/api/wiki', 'post', 'create_page'], ['/api/wiki/{path}', 'put', 'edit_page'], ['/api/wiki/{path}/history', 'post', 'restore_revision']] as const) {
-    const fields = Object.keys(spec.paths[route]?.[method]?.requestBody?.content['application/json']?.schema.properties ?? {});
-    const props = Object.keys((tools.find(x => x.name === tool)?.inputSchema as { properties?: object } | undefined)?.properties ?? {});
-    const missing = fields.filter(f => !props.includes(f));
-    check(`${tool} ⊇ ${method.toUpperCase()} ${route}`, fields.length > 0 && !missing.length, missing.length ? `missing: ${missing.join(', ')}` : `${fields.length} fields`);
-  }
+  await openapiWriteParity(t, [['/api/wiki', 'post', 'create_page'], ['/api/wiki/{path}', 'put', 'edit_page'], ['/api/wiki/{path}/history', 'post', 'restore_revision']], `${BASE}/openapi.json`);
 
   const listed = payload(await call('list_pages', { pageSize: 5 })) as { pages?: unknown[]; total?: number };
   check('list_pages', (listed?.pages?.length ?? 0) > 0, `${listed?.pages?.length} of ${listed?.total}`);
@@ -166,6 +164,7 @@ const { rpc, call, payload, check } = t;
 
   const challenge = payload(await call('get_challenge')) as { challenge?: string; sign?: { message?: string; then?: string } };
   check('get_challenge', !!challenge?.challenge && !!challenge?.sign?.message?.includes('blake2b-256'), `challenge=${challenge?.challenge?.slice(0, 12)}… recipe present`);
+  await rolaOriginCheck(t);
 
   const badLogin = await call('login', { challenge: challenge?.challenge ?? 'x', address: 'account_rdx1xxxx', publicKey: '00', signature: '00', curve: 'curve25519' });
   check('login teaches on failure', !!badLogin.result?.isError, JSON.stringify(payload(badLogin)).slice(0, 100));
@@ -174,8 +173,7 @@ const { rpc, call, payload, check } = t;
   console.log(`\n=== plain-GET surface ===`);
   const gs = (await (await fetch(`${BASE}/api/wiki?q=radix&pageSize=5`)).json()) as { total?: number; items?: Array<Record<string, unknown>> };
   check('GET /api/wiki?q=', (gs.total ?? 0) > 0 && (gs.items?.length ?? 0) > 0, `${gs.total} hits`);
-  const rowsMatch = JSON.stringify(gs.items?.[0]) === JSON.stringify(search?.pages?.[0]);
-  check('search q= row-identity', rowsMatch, rowsMatch ? 'GET rows === search_wiki rows' : `GET=${JSON.stringify(gs.items?.[0]).slice(0, 80)} MCP=${JSON.stringify(search?.pages?.[0]).slice(0, 80)}`);
+  rowParity(t, 'search q= row-identity', search?.pages, gs.items);
 
   if (first) {
     const md = await fetch(`${BASE}/${first.tagPath}/${first.slug}.md`);
