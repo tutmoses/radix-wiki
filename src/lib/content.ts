@@ -7,15 +7,21 @@
 
 import { coreAtomicText, renderBlockTree } from 'wiki-formant/blocks';
 import { BLOCK_SHAPE } from '@/lib/block-shape';
+import { atomicToMarkdown } from '@/lib/markdown';
 import type { Block, AtomicBlock } from '@/types/blocks';
 
 function atomicText(block: Block | AtomicBlock): string {
   switch (block.type) {
-    // Page lists are resolved server-side, so they read only after
-    // `resolveBlockData`; a raw row has no `resolvedPages` and extracts to empty.
     case 'content': case 'codeTabs': case 'banner': case 'references':
-    case 'stats': case 'linkGrid': case 'testimonial': case 'recentPages': case 'pageList':
+    case 'stats': case 'linkGrid': case 'testimonial':
       return coreAtomicText(block);
+    // Page lists resolve server-side (`resolveBlockData`) and the rest are live
+    // widgets, so a raw row reads as the `.md` twin's line for it: the live URL,
+    // or the tip address, rather than nothing.
+    case 'recentPages': case 'pageList':
+      return block.resolvedPages?.length ? coreAtomicText(block) : atomicToMarkdown(block);
+    case 'rssFeed': case 'assetPrice': case 'networkChart': case 'tipJar':
+      return atomicToMarkdown(block);
     default: return '';
   }
 }
