@@ -294,6 +294,8 @@ export const WIKI_READ = {
   store,
   url: pageUrl,
   text: blocksToMarkdown,
+  // The page's own resolver, so a live list reads over MCP as on the page and its twin.
+  resolve: resolveBlockData,
   metadata: listingMetadata,
 };
 
