@@ -1,0 +1,33 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+
+  // Entry points the App Router loads by convention and nothing imports. The
+  // `.well-known` line is not redundant with the one above it: it is a dotted
+  // directory, and a glob that does not name it skips the agent-surface routes.
+  "entry": [
+    "src/app/**/page.tsx",
+    "src/app/**/layout.tsx",
+    "src/app/**/route.{ts,tsx}",
+    "src/app/**/{error,not-found,global-error}.tsx",
+    "src/app/.well-known/**/route.ts",
+    "src/app/**/{sitemap,robots,manifest}.ts",
+
+    // The routines run these from the command line, and they reach into `src`.
+    "scripts/*.{ts,mjs}",
+    "brand-assets/*.mjs",
+    "studio/**/*.mjs"
+  ],
+
+  "project": ["src/**/*.{ts,tsx}", "scripts/*.{ts,mjs}", "brand-assets/*.mjs", "studio/**/*.mjs"],
+
+  "ignoreDependencies": [
+    // katex ships its own types except for `katex/contrib/auto-render`.
+    "@types/katex",
+    // Reached through `@tailwindcss/postcss` and the `@import` in globals.css,
+    // neither of which is a TS import graph edge.
+    "tailwindcss"
+  ],
+
+  // `withClient` shells out to the Vercel CLI to invalidate the `wiki` tag.
+  "ignoreBinaries": ["vercel"]
+}

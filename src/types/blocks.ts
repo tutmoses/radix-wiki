@@ -29,7 +29,7 @@ import type {
   StatsBlock,
   TestimonialBlock,
 } from 'wiki-formant/blocks';
-export type { BannerBlock, CodeTabsBlock, ContentBlock, LinkGridBlock, ReferencesBlock, StatsBlock, TestimonialBlock };
+export type { CodeTabsBlock };
 export type { BannerVariant } from 'wiki-formant/text';
 
 export type BlockType = 'content' | 'recentPages' | 'pageList' | 'columns' | 'assetPrice' | 'networkChart' | 'infobox' | 'rssFeed' | 'codeTabs' | 'stats' | 'testimonial' | 'linkGrid' | 'tipJar' | 'references' | 'banner';
