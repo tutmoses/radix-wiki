@@ -48,10 +48,13 @@ export function secretMatches(given: string | null | undefined, expected: string
   return timingSafeEqual(digest(given), digest(expected));
 }
 
+/** The largest request body Vercel lets reach a function; anything larger is refused before a route sees it. */
+export const REQUEST_BODY_MAX = 4.5 * 1024 * 1024;
+
 /** What /api/upload holds every image to, here so the upload_image tool quotes the route. */
 export const UPLOAD = {
-  // Generous because the output is re-encoded down anyway.
-  maxBytes: 25 * 1024 * 1024,
+  // As much as can arrive: the output is re-encoded down anyway.
+  maxBytes: REQUEST_BODY_MAX,
   // 2x the ~800px prose column.
   maxWidth: 1600,
   // What the route's sniff accepts, keyed so a format wiki-formant adds or drops fails the type check.

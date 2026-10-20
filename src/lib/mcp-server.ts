@@ -19,6 +19,7 @@ import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 import { RADIX_CONFIG } from '@/lib/radix/config';
 import { getLedgerDayRows } from '@/lib/radix/activity';
 import { trackMcpCall } from '@/lib/track';
+import { uploadImage } from '@/lib/upload';
 import { generateChallenge } from '@/lib/auth';
 import { McpToolError, readArgs, type McpServerConfig, type McpPrompt, type McpResource, type ToolContext } from 'wiki-formant/mcp';
 
@@ -224,20 +225,20 @@ async function login(args: Record<string, unknown>) {
 // one handler that already owns them. Nothing about the write path is
 // reimplemented here — this is a transport, not a second implementation.
 
-async function forwardWrite(path: string, method: 'POST' | 'PUT' | 'DELETE', body: unknown, auth: string | null): Promise<Record<string, unknown>> {
+/** The caller's bearer token, or the teaching refusal that names the login flow. */
+function signedIn(request: Request): string {
+  const auth = request.headers.get('Authorization');
   if (!auth) {
     throw new McpToolError(
       'Not authenticated. Call get_challenge, sign the ROLA message with your own key, call login, then resend this call with the returned token as an HTTP `Authorization: Bearer <token>` header.',
       { flow: ['get_challenge', 'login', 'the write tool'], reference: `${SITE_URL}/AGENTS.md` },
     );
   }
-  // A form goes as multipart, with the boundary fetch writes into its own Content-Type.
-  const form = body instanceof FormData;
-  const res = await fetch(`${SITE_URL}${path}`, {
-    method,
-    headers: form ? { Authorization: auth } : { 'Content-Type': 'application/json', Authorization: auth },
-    body: form ? body : JSON.stringify(body),
-  });
+  return auth;
+}
+
+/** A write route's JSON, or its error as a tool error the agent can act on. */
+async function answer(res: Response): Promise<Record<string, unknown>> {
   const data = await res.json().catch(() => null) as Record<string, unknown> | null;
   if (!res.ok) {
     throw new McpToolError((data?.error as string) || `Request failed (${res.status})`, res.status === 409
@@ -247,9 +248,18 @@ async function forwardWrite(path: string, method: 'POST' | 'PUT' | 'DELETE', bod
   return data ?? {};
 }
 
-async function create_page(args: Record<string, unknown>, auth: string | null) {
+async function forwardWrite(path: string, method: 'POST' | 'PUT' | 'DELETE', body: unknown, request: Request): Promise<Record<string, unknown>> {
+  const auth = signedIn(request);
+  return answer(await fetch(`${SITE_URL}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', Authorization: auth },
+    body: JSON.stringify(body),
+  }));
+}
+
+async function create_page(args: Record<string, unknown>, request: Request) {
   const { tagPath, title, content, metadata, slug, bannerImage } = args;
-  const result = await forwardWrite('/api/wiki', 'POST', { tagPath, title, content, metadata, slug, bannerImage }, auth);
+  const result = await forwardWrite('/api/wiki', 'POST', { tagPath, title, content, metadata, slug, bannerImage }, request);
   return {
     created: true,
     url: pageUrl(result.tagPath as string, result.slug as string),
@@ -260,9 +270,9 @@ async function create_page(args: Record<string, unknown>, auth: string | null) {
   };
 }
 
-async function edit_page(args: Record<string, unknown>, auth: string | null) {
+async function edit_page(args: Record<string, unknown>, request: Request) {
   const { tagPath, slug, content, title, revisionMessage, metadata, verified, baseVersion, newSlug, editorIds, bannerImage } = args;
-  const result = await forwardWrite(`/api/wiki${pagePath(tagPath as string, (slug as string) ?? '')}`, 'PUT', { content, title, revisionMessage, metadata, verified, baseVersion, newSlug, editorIds, bannerImage }, auth);
+  const result = await forwardWrite(`/api/wiki${pagePath(tagPath as string, (slug as string) ?? '')}`, 'PUT', { content, title, revisionMessage, metadata, verified, baseVersion, newSlug, editorIds, bannerImage }, request);
   return {
     edited: true,
     url: pageUrl(result.tagPath as string, result.slug as string),
@@ -270,26 +280,32 @@ async function edit_page(args: Record<string, unknown>, auth: string | null) {
   };
 }
 
-async function restore_revision(args: Record<string, unknown>, auth: string | null) {
+async function restore_revision(args: Record<string, unknown>, request: Request) {
   const path = segmentsOf(String(args.path ?? '')).join('/');
-  const result = await forwardWrite(`/api/wiki/${path}/history`, 'POST', { revisionId: args.revisionId }, auth);
+  const result = await forwardWrite(`/api/wiki/${path}/history`, 'POST', { revisionId: args.revisionId }, request);
   return { restored: true, url: `${SITE_URL}/${path}`, version: result.version };
 }
 
-async function delete_page(args: Record<string, unknown>, auth: string | null) {
+async function delete_page(args: Record<string, unknown>, request: Request) {
   const path = segmentsOf(String(args.path ?? '')).join('/');
-  await forwardWrite(`/api/wiki/${path}`, 'DELETE', undefined, auth);
+  await forwardWrite(`/api/wiki/${path}`, 'DELETE', undefined, request);
   return { deleted: true, path };
 }
 
-// The same multipart POST the editor sends, so /api/upload's size cap, format
-// sniff, re-encode and rate limit apply once, in the route.
-async function upload_image(raw: Record<string, unknown>, auth: string | null) {
+// The same multipart POST the editor sends, through the same handler, so its
+// size cap, format sniff, re-encode and rate limit apply once.
+async function upload_image(raw: Record<string, unknown>, request: Request) {
+  signedIn(request);
   const args = readArgs(raw);
   const bytes = Buffer.from(args.str('data').replace(/^data:[^,]*,/, ''), 'base64');
   const form = new FormData();
   form.append('file', new Blob([bytes], { type: args.str('contentType') }), args.str('filename'));
-  const { url } = await forwardWrite('/api/upload', 'POST', form, auth);
+  // In-process, with the agent's own headers: the handler's per-IP limit then
+  // counts this agent, not the server's address that every forwarded call shares.
+  const headers = new Headers(request.headers);
+  headers.delete('content-type');
+  headers.delete('content-length');
+  const { url } = await answer(await uploadImage(new Request(`${SITE_URL}/api/upload`, { method: 'POST', headers, body: form })));
   return { url };
 }
 
@@ -315,17 +331,17 @@ async function get_network_activity(raw: Record<string, unknown>) {
 
 type Handler = (args: Record<string, unknown>) => Promise<unknown>;
 
-export function serverConfig(auth: string | null): McpServerConfig {
+export function serverConfig(request: Request): McpServerConfig {
   const handlers: Record<string, Handler> = {
     get_ideas_board,
     get_network_activity,
     get_challenge,
     login,
-    create_page: args => create_page(args, auth),
-    edit_page: args => edit_page(args, auth),
-    restore_revision: args => restore_revision(args, auth),
-    delete_page: args => delete_page(args, auth),
-    upload_image: args => upload_image(args, auth),
+    create_page: args => create_page(args, request),
+    edit_page: args => edit_page(args, request),
+    restore_revision: args => restore_revision(args, request),
+    delete_page: args => delete_page(args, request),
+    upload_image: args => upload_image(args, request),
   };
   return {
     serverInfo: SERVER_INFO,

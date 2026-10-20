@@ -20,5 +20,5 @@ export const GET = () => mcpGet(`${SITE_URL}/AGENTS.md`);
 // the headroom headers are one decision shared with the other agent surfaces,
 // not four transcriptions of it.
 export async function POST(request: NextRequest) {
-  return mcpResponse(request, serverConfig(request.headers.get('Authorization')));
+  return mcpResponse(request, serverConfig(request));
 }

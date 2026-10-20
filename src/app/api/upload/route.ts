@@ -1,24 +1,6 @@
-// src/app/api/upload/route.ts
-//
-// The only route by which an image enters the wiki, so every image is brought
-// to the wiki's standard here: at most 1600px wide (2x the ~800px prose column)
-// and WebP, at q90 for PNG sources, which are usually screenshots or diagrams
-// whose text smears lower, and q80 for photographs.
-
-import { uploadHandler } from 'wiki-formant/upload';
-import { requireAuth, UPLOAD } from '@/lib/api';
+// src/app/api/upload/route.ts — the upload handler (@/lib/upload) as a route.
 
 // sharp is a native module — this route must never be moved to the edge runtime.
 export const runtime = 'nodejs';
 
-export const POST = uploadHandler({
-  authorize: async request => {
-    const auth = await requireAuth(request);
-    return 'error' in auth ? auth.error : auth.session.userId;
-  },
-  maxBytes: UPLOAD.maxBytes,
-  encode: (image, { format, width }) => ({
-    image: (width > UPLOAD.maxWidth ? image.resize({ width: UPLOAD.maxWidth }) : image).webp({ quality: format === 'png' ? 90 : 80, effort: 6 }),
-    format: 'webp',
-  }),
-});
+export { uploadImage as POST } from '@/lib/upload';

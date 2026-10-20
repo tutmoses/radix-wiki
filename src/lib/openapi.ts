@@ -317,7 +317,7 @@ export const SPEC = {
     '/api/upload': {
       post: {
         summary: 'Upload an image',
-        description: `Returns the URL to use in a page's HTML or as its bannerImage. At most ${UPLOAD.maxBytes / 1024 / 1024} MB, as ${Object.values(UPLOAD.formats).join(', ')}, read from the bytes; stored as WebP at most ${UPLOAD.maxWidth}px wide, without its metadata.`,
+        description: `Returns the URL to use in a page's HTML or as its bannerImage. At most ${UPLOAD.maxBytes / 1024 / 1024} MB, the whole request included, as ${Object.values(UPLOAD.formats).join(', ')}, read from the bytes; stored as WebP at most ${UPLOAD.maxWidth}px wide, without its metadata.`,
         security: rolaAuth,
         requestBody: {
           required: true,
