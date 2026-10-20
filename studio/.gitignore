@@ -1,3 +1,4 @@
 .work/
 out/
-assets/bed.*
+assets/
+narration/**/*.flac
