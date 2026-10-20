@@ -19,6 +19,8 @@ export interface TagNode extends WikiNode {
   sort?: SortOrder;
   xrd?: { create?: number; edit?: number; comment?: number };
   metadataKeys?: MetadataKeyDefinition[];
+  /** The listing's document `<title>` where `name` alone would repeat its main article's. */
+  seoTitle?: string;
 }
 
 // Shared by developers/tools and developers/ai-agents: both catalogue third-party
@@ -97,7 +99,7 @@ export const TAG_HIERARCHY: TagNode[] = [
     description: 'Build on Radix — tutorials, guides, design patterns, and API references for Scrypto, transaction manifests, and the Radix stack.',
     children: [
       { name: 'Getting Started', slug: 'getting-started', description: 'Install Scrypto, write your first blueprint, and deploy to the network.' },
-      { name: 'Scrypto', slug: 'scrypto', mainArticle: 'contents/tech/core-protocols/scrypto-programming-language', description: 'Asset-oriented programming: resources, auth, testing, and design patterns.',
+      { name: 'Scrypto', slug: 'scrypto', mainArticle: 'contents/tech/core-protocols/scrypto-programming-language', seoTitle: 'Scrypto Developer Guides: Resources, Auth and Testing', description: 'Asset-oriented programming: resources, auth, testing, and design patterns.',
         metadataKeys: [
           { key: 'patternType', label: 'Pattern Type:', type: 'text' },
           { key: 'concepts', label: 'Concepts:', type: 'text' },

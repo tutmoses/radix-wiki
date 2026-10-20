@@ -26,11 +26,11 @@ interface StaticPage {
 
 /** Declaration order is the sitemap's order. */
 export const STATIC_PAGES: Record<string, StaticPage> = {
-  // The title asks "what is Radix" and the description answers it before it says
-  // what this site is. Both used to describe the wiki, which is why the homepage
-  // was not the candidate Google picked for that query – it ranked a Core Concepts
-  // page at 63 instead, on a phrase the homepage's own lead sentence answers outright.
-  homepage: { path: '', title: 'Radix Wiki: What Is Radix ($XRD)? The Radix DLT Ecosystem', description: 'Radix is a layer-1 protocol built for DeFi, founded by Dan Hughes and running on Cerberus consensus. The community wiki for $XRD, Scrypto and the Radix Engine.', absoluteTitle: true, imageTitle: SITE_NAME },
+  // The title names the wiki first; the "what is Radix" query is answered by the
+  // description and the page's own "What is Radix?" section. Retitled to lead with
+  // that question on 12 October 2026, the homepage fell from about 2 to 11-21 for
+  // "radix wiki" in Search Console within a day and gained nothing for "what is radix".
+  homepage: { path: '', title: 'Radix Wiki: $XRD, Scrypto & the Radix DLT Crypto Ecosystem', description: 'Radix is a layer-1 protocol built for DeFi, founded by Dan Hughes and running on Cerberus consensus. The community wiki for $XRD, Scrypto and the Radix Engine.', absoluteTitle: true, imageTitle: SITE_NAME },
   charts: { path: 'charts', title: 'Charts', description: 'Live Radix network charts: daily activity since Babylon, the $XRD price, staking and OciSwap trading week by week, top tokens and validators.', changeFrequency: 'daily', priority: 0.7 },
   'charts-validators': { path: 'charts/validators', title: 'Validators', description: 'Every Radix validator with its stake, fee, pending fee changes, 7-day uptime and owner stake, and how concentrated staking is.', changeFrequency: 'daily', priority: 0.7 },
   'charts-tokens': { path: 'charts/tokens', title: 'Tokens', description: 'Radix tokens traded on OciSwap in the last 24 hours, by volume, with price and 24h change.', changeFrequency: 'daily', priority: 0.7 },

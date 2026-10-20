@@ -124,10 +124,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const parentPath = tagSegments.slice(0, -1).join(' › ');
     const hubExcerpt = (hub?.metadata as Record<string, string> | null)?.excerpt;
     const title = hub?.title || categoryName;
+    // The SERP form, as on articles: a hub's seoTitle, else the tag's own, so a
+    // listing never shares its main article's title.
+    const seoTitle = hub ? documentTitle(hub.title, hub.metadata) : tag?.seoTitle || categoryName;
     const description = hubExcerpt || tag?.description
       || `${categoryName} on RADIX Wiki${parentPath ? ` (${parentPath})` : ''} — browse community-maintained pages covering ${categoryName.toLowerCase()} in the Radix DLT ecosystem.`;
     return {
-      title, description,
+      title: seoTitle, description,
       ...ogMetadata({
         title, description,
         url: `${SITE_URL}/${parsed.tagPath}`, tagPath: parsed.tagPath,
