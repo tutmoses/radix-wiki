@@ -23,6 +23,7 @@ import { corpusSections } from '@/lib/llms';
 import { TAG_TREE, SHARED_PATHS, getMetadataKeys, xrdGates } from '@/lib/tags';
 import { categoryLabel } from '@/lib/utils';
 import { BLOCK_SCHEMA } from '@/lib/block-utils';
+import { UPLOAD } from '@/lib/api';
 
 /** Reported by `initialize`. `name` is the MCP server id, distinct from the
  *  registry's namespaced `serverManifest.name`. */
@@ -229,6 +230,27 @@ export const TOOLS: McpToolSpec[] = [
       type: 'object',
       properties: { path: { type: 'string', description: 'The page\'s whole path' } },
       required: ['path'],
+    },
+  },
+  {
+    name: 'upload_image',
+    title: 'Upload an image',
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    description: `Upload an image and get back the URL the editor stores: put it in a content block as \`<img src="…" alt="…">\`, or pass it to create_page or edit_page as bannerImage. Requires a ROLA bearer token, as create_page does. Send the file base64-encoded, at most ${UPLOAD.maxBytes / 1024 / 1024} MB, as ${new Intl.ListFormat('en', { type: 'disjunction' }).format(Object.values(UPLOAD.formats))}. The format is read from the bytes, not from contentType or the name; the image is stored as WebP at most ${UPLOAD.maxWidth}px wide, without its metadata.`,
+    auth: 'rola',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        data: { type: 'string', description: 'The image file, base64-encoded; a `data:` URL prefix is accepted' },
+        filename: { type: 'string', description: 'File name, e.g. "validator-map.png"' },
+        contentType: { type: 'string', description: 'MIME type, e.g. "image/png"' },
+      },
+      required: ['data', 'filename', 'contentType'],
+    },
+    skill: {
+      id: 'upload',
+      tags: ['write', 'image', 'upload', 'contribute'],
+      examples: ['Add a diagram to a wiki page', 'Set a banner image on a page'],
     },
   },
 ];

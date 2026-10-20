@@ -5,6 +5,7 @@ import { getSession } from '@/lib/auth';
 import { requireBalance, type BalanceAction } from '@/lib/radix/balance';
 import { json, errors } from 'wiki-formant/http';
 import { rateLimit, rateLimitedResponse, type RateLimitOptions } from 'wiki-formant/rate-limit';
+import type { ImageFormat } from 'wiki-formant/upload';
 import type { AuthSession } from '@/types';
 
 export type RouteContext<T = Record<string, string | string[]>> = { params: Promise<T> };
@@ -46,6 +47,16 @@ export function secretMatches(given: string | null | undefined, expected: string
   const digest = (s: string) => createHash('sha256').update(s).digest();
   return timingSafeEqual(digest(given), digest(expected));
 }
+
+/** What /api/upload holds every image to, here so the upload_image tool quotes the route. */
+export const UPLOAD = {
+  // Generous because the output is re-encoded down anyway.
+  maxBytes: 25 * 1024 * 1024,
+  // 2x the ~800px prose column.
+  maxWidth: 1600,
+  // What the route's sniff accepts, keyed so a format wiki-formant adds or drops fails the type check.
+  formats: { jpg: 'JPEG', png: 'PNG', gif: 'GIF', webp: 'WebP', avif: 'AVIF' } satisfies Record<ImageFormat, string>,
+};
 
 export const CACHE = {
   short: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },

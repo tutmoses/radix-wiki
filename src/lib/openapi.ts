@@ -13,6 +13,7 @@ import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { SERVER_INFO } from '@/lib/mcp-tools';
 import { BLOCK_SCHEMA } from '@/lib/block-utils';
 import { SHARED_PATHS, xrdGates } from '@/lib/tags';
+import { UPLOAD } from '@/lib/api';
 
 const rolaAuth = [{ rolaBearer: [] as string[] }];
 
@@ -310,6 +311,23 @@ export const SPEC = {
           '401': { description: 'Missing or invalid bearer token' },
           '403': { description: 'Locked page or author-only category' },
           '404': { description: 'No page at this path' },
+        },
+      },
+    },
+    '/api/upload': {
+      post: {
+        summary: 'Upload an image',
+        description: `Returns the URL to use in a page's HTML or as its bannerImage. At most ${UPLOAD.maxBytes / 1024 / 1024} MB, as ${Object.values(UPLOAD.formats).join(', ')}, read from the bytes; stored as WebP at most ${UPLOAD.maxWidth}px wide, without its metadata.`,
+        security: rolaAuth,
+        requestBody: {
+          required: true,
+          content: { 'multipart/form-data': { schema: { type: 'object', required: ['file'], properties: { file: { type: 'string', format: 'binary' } } } } },
+        },
+        responses: {
+          '200': { description: 'Stored', content: { 'application/json': { schema: { type: 'object', properties: { url: { type: 'string', format: 'uri' } } } } } },
+          '400': { description: 'No file, too large, or not an accepted image' },
+          '401': { description: 'Missing or invalid bearer token' },
+          '429': { description: 'Too many uploads' },
         },
       },
     },

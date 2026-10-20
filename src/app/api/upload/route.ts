@@ -6,7 +6,7 @@
 // whose text smears lower, and q80 for photographs.
 
 import { uploadHandler } from 'wiki-formant/upload';
-import { requireAuth } from '@/lib/api';
+import { requireAuth, UPLOAD } from '@/lib/api';
 
 // sharp is a native module — this route must never be moved to the edge runtime.
 export const runtime = 'nodejs';
@@ -16,10 +16,9 @@ export const POST = uploadHandler({
     const auth = await requireAuth(request);
     return 'error' in auth ? auth.error : auth.session.userId;
   },
-  // Generous because the output is re-encoded down anyway.
-  maxBytes: 25 * 1024 * 1024,
+  maxBytes: UPLOAD.maxBytes,
   encode: (image, { format, width }) => ({
-    image: (width > 1600 ? image.resize({ width: 1600 }) : image).webp({ quality: format === 'png' ? 90 : 80, effort: 6 }),
+    image: (width > UPLOAD.maxWidth ? image.resize({ width: UPLOAD.maxWidth }) : image).webp({ quality: format === 'png' ? 90 : 80, effort: 6 }),
     format: 'webp',
   }),
 });

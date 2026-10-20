@@ -231,10 +231,12 @@ async function forwardWrite(path: string, method: 'POST' | 'PUT' | 'DELETE', bod
       { flow: ['get_challenge', 'login', 'the write tool'], reference: `${SITE_URL}/AGENTS.md` },
     );
   }
+  // A form goes as multipart, with the boundary fetch writes into its own Content-Type.
+  const form = body instanceof FormData;
   const res = await fetch(`${SITE_URL}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json', Authorization: auth },
-    body: JSON.stringify(body),
+    headers: form ? { Authorization: auth } : { 'Content-Type': 'application/json', Authorization: auth },
+    body: form ? body : JSON.stringify(body),
   });
   const data = await res.json().catch(() => null) as Record<string, unknown> | null;
   if (!res.ok) {
@@ -280,6 +282,17 @@ async function delete_page(args: Record<string, unknown>, auth: string | null) {
   return { deleted: true, path };
 }
 
+// The same multipart POST the editor sends, so /api/upload's size cap, format
+// sniff, re-encode and rate limit apply once, in the route.
+async function upload_image(raw: Record<string, unknown>, auth: string | null) {
+  const args = readArgs(raw);
+  const bytes = Buffer.from(args.str('data').replace(/^data:[^,]*,/, ''), 'base64');
+  const form = new FormData();
+  form.append('file', new Blob([bytes], { type: args.str('contentType') }), args.str('filename'));
+  const { url } = await forwardWrite('/api/upload', 'POST', form, auth);
+  return { url };
+}
+
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 async function get_network_activity(raw: Record<string, unknown>) {
@@ -312,6 +325,7 @@ export function serverConfig(auth: string | null): McpServerConfig {
     edit_page: args => edit_page(args, auth),
     restore_revision: args => restore_revision(args, auth),
     delete_page: args => delete_page(args, auth),
+    upload_image: args => upload_image(args, auth),
   };
   return {
     serverInfo: SERVER_INFO,

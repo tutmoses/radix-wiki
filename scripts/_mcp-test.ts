@@ -40,7 +40,7 @@ const { rpc, call, payload, check } = t;
   await versionCoherence(t, serverManifest.version, standardVersionSources(t, ['/openapi.json', '/.well-known/openapi.json']), init.result?.serverInfo?.version);
 
   await agentCardParity(t);
-  await annotationChecks(t, { writes: ['get_challenge', 'login', 'create_page', 'edit_page', 'restore_revision', 'delete_page'] });
+  await annotationChecks(t, { writes: ['get_challenge', 'login', 'create_page', 'edit_page', 'restore_revision', 'delete_page', 'upload_image'] });
 
   // The three calls an agent makes before anything else. One page with a
   // 327 KB blob in its metadata column put all three over 350 KB — roughly
@@ -61,7 +61,7 @@ const { rpc, call, payload, check } = t;
   console.log(`\n=== tools ===`);
   const list = await rpc('tools/list');
   const toolNames = (list.result?.tools ?? []).map(t => t.name);
-  const expected = ['search_wiki', 'get_page', 'get_pages', 'list_pages', 'get_categories', 'get_recent_changes', 'get_full_corpus', 'get_ideas_board', 'get_network_activity', 'get_page_history', 'get_challenge', 'login', 'create_page', 'edit_page', 'restore_revision', 'delete_page'];
+  const expected = ['search_wiki', 'get_page', 'get_pages', 'list_pages', 'get_categories', 'get_recent_changes', 'get_full_corpus', 'get_ideas_board', 'get_network_activity', 'get_page_history', 'get_challenge', 'login', 'create_page', 'edit_page', 'restore_revision', 'delete_page', 'upload_image'];
   check('tools/list', expected.every(n => toolNames.includes(n)), `${toolNames.length} tools: ${toolNames.join(', ')}`);
 
   const prompts = await rpc('prompts/list');
@@ -155,6 +155,14 @@ const { rpc, call, payload, check } = t;
   const unauthed = await call('create_page', { tagPath: 'ecosystem', title: 'x', content: [{}] });
   const unauthedText = unauthed.result?.content?.[0]?.text ?? '';
   check('write tools teach auth', !!unauthed.result?.isError && unauthedText.includes('get_challenge'), unauthedText.slice(0, 90).replace(/\n/g, ' '));
+
+  // Read-only: with no token the tool refuses before it forwards anything to /api/upload.
+  const upload = (list.result?.tools ?? []).find(x => x.name === 'upload_image');
+  const uploadArgs = Object.keys((upload?.inputSchema as { properties?: object } | undefined)?.properties ?? {});
+  check('upload_image schema', ['data', 'filename', 'contentType'].every(k => uploadArgs.includes(k)) && upload?.annotations?.destructiveHint === false, uploadArgs.join(', ') || 'not listed');
+  const unauthedUpload = await call('upload_image', { data: 'iVBORw0KGgo=', filename: 'x.png', contentType: 'image/png' });
+  const unauthedUploadText = unauthedUpload.result?.content?.[0]?.text ?? '';
+  check('upload_image teaches auth', !!unauthedUpload.result?.isError && unauthedUploadText.includes('get_challenge'), unauthedUploadText.slice(0, 90).replace(/\n/g, ' '));
 
   const challenge = payload(await call('get_challenge')) as { challenge?: string; sign?: { message?: string; then?: string } };
   check('get_challenge', !!challenge?.challenge && !!challenge?.sign?.message?.includes('blake2b-256'), `challenge=${challenge?.challenge?.slice(0, 12)}… recipe present`);
