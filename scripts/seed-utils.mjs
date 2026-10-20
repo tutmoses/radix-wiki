@@ -121,8 +121,9 @@ export function assertLinkShapes(blocks, where = 'content') {
  * never be left behind and must never look like a success.
  *
  * A run that wrote anything ends by invalidating the `wiki` cache tag. Pages
- * revalidate daily and the app's own write routes call `revalidateTag('wiki')`;
- * a script bypasses those routes, so without this its edit stays stale for a day.
+ * revalidate daily and the app's own write routes bust the pages they change
+ * (`revalidatePage`); a script bypasses those routes and may touch any number of
+ * pages, so it expires the whole wiki rather than stay stale for a day.
  */
 export async function withClient(fn) {
   const { Pool } = pg;

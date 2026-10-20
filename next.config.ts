@@ -27,6 +27,11 @@ export default withWikiDefaults({
       { protocol: 'https', hostname: '*.public.blob.vercel-storage.com' },
       { protocol: 'https', hostname: '*.blob.vercel-storage.com' },
     ],
+    // As miow's: three widths per kind, and a month in the optimizer's cache.
+    // Every distinct width a srcset names is its own transformation and cache write.
+    deviceSizes: [640, 1080, 1920],
+    imageSizes: [96, 256, 384],
+    minimumCacheTTL: 31 * 24 * 60 * 60,
   },
 
   async redirects() {

@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { notFound, redirect } from 'next/navigation';
 import { parsePath } from '@/lib/path';
-import { getHomepage, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getPageByAsset } from '@/lib/wiki';
+import { getHomepage, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getPageByAsset, getSiblingPages, getAssetPages } from '@/lib/wiki';
 import { getMaintenanceQueues } from '@/lib/maintenance';
 import { getSession } from '@/lib/auth';
 import { rankRelated, taxonomy } from '@/lib/taxonomy';
@@ -40,7 +40,7 @@ import { slugifyHeading } from 'wiki-formant/headings';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_REFS, SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { ogMetadata, ogImageUrl } from '@/lib/og';
 import { articleType, aboutEntity, articleLearningProps } from '@/lib/entity-ld';
-import { getTokenDetail } from '@/lib/radix/tokens';
+import { getTokenDetail, getTopTokens } from '@/lib/radix/tokens';
 import { getEditorScores, publicScore } from '@/lib/scoring';
 import type { Block } from '@/types/blocks';
 import type { WikiPage } from '@/types';
@@ -62,9 +62,9 @@ export async function generateStaticParams() {
 /** How many article links a section card carries before it defers to its own page. */
 
 export const dynamicParams = true;
-// A day, not a minute: every API write that changes what a page renders busts the
-// `wiki` tag (`revalidateTag` in the wiki, comments and auth routes), so an edit
-// shows at once and the timer only backstops. At 60s every article was re-rendered
+// A day, not a minute: every API write busts the pages it changes (`revalidatePage`
+// in lib/wiki.ts, called from the wiki and comments routes), so an edit shows at
+// once and the timer only backstops. At 60s every article was re-rendered
 // and rewritten to ISR each minute. `CACHE_OPTS` in lib/wiki.ts must match, or its
 // shorter revalidate pins the page back down.
 export const revalidate = 86400;
@@ -74,12 +74,23 @@ type Props = { params: Promise<{ path?: string[] }>; searchParams: Promise<Recor
 
 const NOINDEX_ROBOTS = { index: false, follow: true, googleBot: { index: false, follow: true } } as const;
 
+/**
+ * A token has a page when the wiki lists it: OciSwap's traded tokens, which the
+ * tables link, and those an article documents. Any other `resource_` address is
+ * a 404, where each one used to render, and keep, a page of its own.
+ */
+async function isListedToken(address: string) {
+  const [top, assets] = await Promise.all([getTopTokens().catch(() => []), getAssetPages().catch(() => ({}))]);
+  return address in assets || top.some(t => t.address === address);
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { path } = await params;
   const parsed = parsePath(path);
 
   // Token detail — derive unique metadata from on-chain data
   if (parsed.type === 'token-detail' && parsed.tokenAddress) {
+    if (!await isListedToken(parsed.tokenAddress)) notFound();
     const token = await getTokenDetail(parsed.tokenAddress);
     if (!token) notFound();
     const canonical = `${SITE_URL}/charts/tokens/${parsed.tokenAddress}`;
@@ -369,6 +380,7 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
   if (parsed.type === 'charts-validators') return <ValidatorsView />;
   if (parsed.type === 'charts-tokens') return <TokensView />;
   if (parsed.type === 'token-detail' && parsed.tokenAddress) {
+    if (!await isListedToken(parsed.tokenAddress)) notFound();
     const wikiPage = await getPageByAsset(parsed.tokenAddress);
     return <TokenDetailView address={parsed.tokenAddress} wikiPage={wikiPage} />;
   }
@@ -482,7 +494,7 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
     // No prev/next beside it: no section stores an order, so "next" was the next
     // title or date in a set, and See also already walks that set by relevance
     // (STRUCTURE.md S12, one home per lateral move).
-    const siblings = (await getCategoryPages(parsed.tagPath)).filter(p => p.slug !== parsed.slug);
+    const siblings = (await getSiblingPages(parsed.tagPath)).filter(p => p.slug !== parsed.slug);
     const ranked = rankRelated(page, siblings, parsed.tagPath);
     related = {
       pages: ranked.pages.map(p => ({ id: p.id, title: p.title, slug: p.slug, tagPath: p.tagPath, snippet: describe(p.snippet, 100) })),

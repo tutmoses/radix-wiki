@@ -103,8 +103,13 @@ async function _fetchTopTokens(): Promise<TokenSummary[]> {
     .filter((t): t is TokenSummary => t !== null && t.price > 0 && (t.volume24h ?? 0) > 0);
 }
 
+/** A route revalidates at the shortest cache it reads, so these hold 15 minutes, not one:
+ *  at 60s every token page was re-rendered and rewritten each minute. The browser fetches
+ *  live prices for itself. */
+const TOKEN_REVALIDATE = 900;
+
 // Cache successful results only: don't poison the cache with [] on transient failures.
-const _getTopTokensCached = unstable_cache(_fetchTopTokens, ['radix-top-tokens-v5'], { revalidate: 60, tags: ['charts'] });
+const _getTopTokensCached = unstable_cache(_fetchTopTokens, ['radix-top-tokens-v5'], { revalidate: TOKEN_REVALIDATE, tags: ['charts'] });
 
 export const getTopTokens = cache(async (): Promise<TokenSummary[]> => {
   const cached = await _getTopTokensCached();
@@ -215,7 +220,7 @@ async function _getTokenDetailRaw(address: string): Promise<TokenDetail | null> 
 }
 
 export const getTokenDetail = cache(
-  unstable_cache(_getTokenDetailRaw, ['radix-token-detail-v3'], { revalidate: 60, tags: ['charts'] }),
+  unstable_cache(_getTokenDetailRaw, ['radix-token-detail-v3'], { revalidate: TOKEN_REVALIDATE, tags: ['charts'] }),
 );
 
 interface TokenHolder {
@@ -270,7 +275,7 @@ async function _fetchTokenHolders(address: string): Promise<TokenHolders> {
 }
 
 export const getTokenHolders = cache(
-  unstable_cache(_fetchTokenHolders, ['radix-token-holders-v3'], { revalidate: 300, tags: ['charts'] }),
+  unstable_cache(_fetchTokenHolders, ['radix-token-holders-v3'], { revalidate: TOKEN_REVALIDATE, tags: ['charts'] }),
 );
 
 interface DexStats {

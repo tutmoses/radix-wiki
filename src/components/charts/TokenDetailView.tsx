@@ -47,11 +47,10 @@ function external(href: string, label: ReactNode) {
 
 const ADDRESS = /^([a-z]+)_(rdx|tdx)/;
 
-/** A metadata value: a resource opens its token page, another address its Dashboard page, a URL itself. */
+/** A metadata value: an address opens its Dashboard page, a URL itself. A resource
+ *  named here is mostly a badge or a receipt, which has no token page. */
 function metadataValue(value: string) {
-  const prefix = ADDRESS.exec(value)?.[1];
-  if (prefix === 'resource') return <Link href={`/charts/tokens/${value}`}>{shortenAddress(value)}</Link>;
-  if (prefix) return external(dashboardEntity(value).href, shortenAddress(value));
+  if (ADDRESS.test(value)) return external(dashboardEntity(value).href, shortenAddress(value));
   if (/^https?:\/\//.test(value)) return external(value, value.replace(/^https?:\/\//, ''));
   return value;
 }
@@ -61,7 +60,7 @@ function roleValue({ rule, badge, locked }: TokenRole) {
     <>
       {rule}
       {locked && <span className="text-text-muted"> · locked</span>}
-      {badge && <div className="text-small">Badge <Link href={`/charts/tokens/${badge}`}>{shortenAddress(badge)}</Link></div>}
+      {badge && <div className="text-small">Badge {external(dashboardEntity(badge).href, shortenAddress(badge))}</div>}
     </>
   );
 }

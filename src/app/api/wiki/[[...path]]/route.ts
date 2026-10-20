@@ -1,7 +1,6 @@
 // src/app/api/wiki/[[...path]]/route.ts
 
 import { NextRequest, NextResponse, after } from 'next/server';
-import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { pageUrl, pagePath } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
@@ -12,7 +11,7 @@ import { parsePagination, paginatedResponse } from 'wiki-formant/pagination';
 import { requireAuth, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { toListing } from 'wiki-formant/store';
 import { isReservedSlug, parsePath } from '@/lib/path';
-import { store, toWikiPage, authorsOf, deletePage, searchPages, resolveBlockData, loadPageHistory, getCategoryPages } from '@/lib/wiki';
+import { store, toWikiPage, authorsOf, deletePage, searchPages, resolveBlockData, loadPageHistory, getCategoryPages, revalidatePage } from '@/lib/wiki';
 import { blockIssues, validateBlocks } from '@/lib/block-utils';
 import { describeBlockIssues } from 'wiki-formant/validation';
 import { blocksToMdx } from '@/lib/mdx';
@@ -278,7 +277,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
       if (!revisionId) return errors.badRequest('Revision ID required');
 
       const restored = await store.restore(page.tagPath, page.slug, revisionId, { authorId: auth.session.userId });
-      revalidateTag('wiki', { expire: 0 });
+      revalidatePage(page.tagPath, page.slug);
       return json({ success: true, version: restored.page.version });
     }
 
@@ -313,7 +312,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
     const page = await withAuthor(row);
 
     const priorRevisions = await prisma.wikiRevision.count({ where: { authorId: auth.session.userId } });
-    revalidateTag('wiki', { expire: 0 });
+    revalidatePage(tagPath, slug);
     deliverWebhooks('page.created', page, { changeType: 'major', message: 'Initial version', version: page.version }, { displayName: page.author?.displayName ?? null, radixAddress: auth.session.radixAddress });
     return json({ ...page, isFirstContribution: priorRevisions === 1 }, 201);
   }, 'Failed to create');
@@ -346,7 +345,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
         metadata: storedMetadata(undefined, {}, { banner: bannerImage ?? null }) ?? {},
         authorId: auth.session.userId,
       });
-      revalidateTag('wiki', { expire: 0 });
+      revalidatePage('', '');
       return json(await withAuthor(page), 201);
     }
 
@@ -391,7 +390,8 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
       after(() => prisma.notification.create({ data: { userId, actorId: auth.session.userId, type: 'page_edited', pageId: existing.id } }).catch(() => {}));
     }
     const totalRevisions = await prisma.wikiRevision.count({ where: { authorId: auth.session.userId } });
-    revalidateTag('wiki', { expire: 0 });
+    // A rename expires the old URL and the new one, which may hold a cached 404.
+    revalidatePage(existing.tagPath, existing.slug, page.slug);
     if (result.changeType !== 'none') {
       deliverWebhooks('page.updated', page, { changeType: result.changeType, message: revisionMessage ?? null, version: page.version }, { displayName: page.author?.displayName ?? null, radixAddress: auth.session.radixAddress });
     }
@@ -422,7 +422,7 @@ export async function DELETE(request: NextRequest, context: RouteContext<PathPar
     }
 
     await deletePage(existing);
-    revalidateTag('wiki', { expire: 0 });
+    revalidatePage(existing.tagPath, existing.slug);
     deliverWebhooks('page.deleted', toWikiPage(existing), null, { displayName: null, radixAddress: auth.session.radixAddress });
     return json({ success: true });
   }, 'Failed to delete');

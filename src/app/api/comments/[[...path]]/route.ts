@@ -6,11 +6,17 @@ import { prisma } from '@/lib/prisma/client';
 import { json, errors, handleRoute } from 'wiki-formant/http';
 import { parsePagination, paginatedResponse } from 'wiki-formant/pagination';
 import { requireAuth, CACHE, type RouteContext } from '@/lib/api';
-import { AUTHOR_SELECT } from '@/lib/wiki';
+import { AUTHOR_SELECT, isIdeasPath, pageTag, revalidatePage } from '@/lib/wiki';
 import type { CommentInput } from '@/types';
 import { deliverWebhooks } from '@/lib/webhooks';
 
 type PathParams = { path?: string[] };
+
+/** A comment changes its page, and on the ideas board the listing's reply count and last activity too. */
+function revalidateDiscussion({ tagPath, slug }: { tagPath: string; slug: string }) {
+  if (isIdeasPath(tagPath)) revalidatePage(tagPath, slug);
+  else revalidateTag(pageTag(tagPath, slug), { expire: 0 });
+}
 
 export async function GET(request: NextRequest) {
   return handleRoute(async () => {
@@ -70,8 +76,7 @@ export async function POST(request: NextRequest) {
       },
       include: { author: AUTHOR_SELECT },
     });
-    // The ideas listing shows each page's reply count and last activity.
-    revalidateTag('wiki', { expire: 0 });
+    revalidateDiscussion(page);
 
     // Notifications are written after the response, never failing the comment.
     const notify = (userId: string, type: string) => after(() =>
@@ -99,7 +104,8 @@ export async function DELETE(request: NextRequest, context: RouteContext<PathPar
     if (comment.authorId !== auth.session.userId) return errors.forbidden();
 
     await prisma.comment.delete({ where: { id } });
-    revalidateTag('wiki', { expire: 0 });
+    const page = await prisma.wikiPage.findUnique({ where: { id: comment.pageId }, select: { tagPath: true, slug: true } });
+    if (page) revalidateDiscussion(page);
     return json({ success: true });
   }, 'Failed to delete comment');
 }

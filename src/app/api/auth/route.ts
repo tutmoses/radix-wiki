@@ -1,7 +1,6 @@
 // src/app/api/auth/route.ts
 
 import { NextRequest } from 'next/server';
-import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { getSession, createSession, destroySession, verifySignedChallenge } from '@/lib/auth';
 import { json, errors, handleRoute } from 'wiki-formant/http';
@@ -64,7 +63,6 @@ export async function POST(request: NextRequest) {
         },
       });
     } else if (persona?.identityAddress || persona?.label) {
-      const previousName = user.displayName;
       user = await prisma.user.update({
         where: { id: user.id },
         data: {
@@ -72,8 +70,6 @@ export async function POST(request: NextRequest) {
           displayName: persona?.label || user.displayName,
         },
       });
-      // Articles print their author's name, so a renamed persona busts the cached pages.
-      if (user.displayName !== previousName) revalidateTag('wiki', { expire: 0 });
     }
 
     const token = await createSession(

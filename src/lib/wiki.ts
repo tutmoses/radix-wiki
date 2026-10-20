@@ -1,7 +1,7 @@
 // src/lib/wiki.ts - Server-side data fetching
 
 import { cache } from 'react';
-import { unstable_cache } from 'next/cache';
+import { revalidateTag, unstable_cache } from 'next/cache';
 import { wikiStore, type ListSort, type WikiPageRow } from 'wiki-formant/store';
 import { searchWiki, type WikiRow } from 'wiki-formant/wiki-tools';
 import { blocksToMarkdown } from '@/lib/markdown';
@@ -64,17 +64,36 @@ const withAuthors = async <R extends Omit<WikiPageRow, 'content'> & { content?: 
 
 /** A day, matching the catch-all page's `revalidate`: a page takes the shortest
  *  revalidate of any cache it reads, so a minute here re-rendered every article each
- *  minute. Writes bust the `wiki` tag, so the day is only a backstop. */
+ *  minute. Writes bust the pages they change (`revalidatePage`), so the day is only a
+ *  backstop. Everything also carries `wiki`, which a bulk rewrite busts whole. */
 const CACHE_OPTS = { tags: ['wiki'], revalidate: 86400 };
+
+/** The tag of what a URL renders: its path, so `page:/` is the homepage and `page:/ideas` the ideas board. */
+export const pageTag = (tagPath: string, slug = '') => `page:/${[tagPath, slug].filter(Boolean).join('/')}`;
+
+/**
+ * Expires what an edit to a page changes: the page at each of `slugs`, and every
+ * category above it up to the homepage, since each one lists or counts what it
+ * holds. A page's tags reach every route that read it, so the rest of the wiki
+ * stays cached. Busting `wiki` instead re-rendered all of it on every edit.
+ */
+export function revalidatePage(tagPath: string, ...slugs: string[]) {
+  const segments = tagPath ? tagPath.split('/') : [];
+  const tags = new Set([...segments.map((_, i) => segments.slice(0, i).join('/')), tagPath].map(t => pageTag(t)));
+  for (const slug of slugs) tags.add(pageTag(tagPath, slug));
+  for (const tag of tags) revalidateTag(tag, { expire: 0 });
+}
 
 /** A cache hit returns plain JSON and a miss the live rows; flattening before
  *  caching gives both the identical plain shape across the RSC boundary. */
 const plain = <T>(value: T): T => value == null ? value : JSON.parse(JSON.stringify(value));
 
-/** Shorthand for cache(unstable_cache(fn, [key], CACHE_OPTS)) */
-export function cached<T extends (...args: any[]) => Promise<any>>(key: string, fn: T): T {
+/** Shorthand for cache(unstable_cache(fn, [key], CACHE_OPTS)), plus the page tags `tagsOf` names for a call's arguments. */
+export function cached<T extends (...args: any[]) => Promise<any>>(key: string, fn: T, tagsOf?: (...args: Parameters<T>) => string[]): T {
   const wrapped = async (...args: Parameters<T>) => plain(await fn(...args));
-  return cache(unstable_cache(wrapped as T, [key], CACHE_OPTS)) as T;
+  if (!tagsOf) return cache(unstable_cache(wrapped as T, [key], CACHE_OPTS)) as T;
+  return cache((...args: Parameters<T>) =>
+    unstable_cache(wrapped, [key], { ...CACHE_OPTS, tags: [...CACHE_OPTS.tags, ...tagsOf(...args)] })(...args)) as T;
 }
 
 // ========== DATA FETCHING ==========
@@ -84,6 +103,7 @@ export const getPage = cached('getPage',
     const row = await store.get(tagPath, slug);
     return row && toWikiPage(row, await authorsOf([row.authorId]));
   },
+  (tagPath, slug) => [pageTag(tagPath, slug)],
 );
 
 /** The root's own article occupies the empty slug of the empty tag path. */
@@ -138,17 +158,25 @@ export const getLatestRecap = cached('getLatestRecap',
   async (): Promise<PageRef | null> => {
     return prisma.wikiPage.findFirst({ where: { siteId: '', tagPath: 'blog', slug: { startsWith: RECAP_PREFIX } }, orderBy: { createdAt: 'desc' }, select: PAGE_REF_SELECT });
   },
+  () => [pageTag('blog')],
 );
 
-export const getCategoryPages = cached('getCategoryPages',
-  async (tagPath: string, sort?: ListSort, limit = 200): Promise<WikiPage[]> => {
-    const resolved = sort ?? getSortOrder(tagPath.split('/'));
-    // Newest `date` first where the section declares one: a blog post or an event
-    // is as recent as the day it is about.
-    const dated = resolved !== 'title' && getMetadataKeys(tagPath.split('/')).some(k => k.key === 'date' && k.type === 'date');
-    return withAuthors(await store.list(tagPath, { sort: dated ? 'date' : resolved, limit }));
-  },
-);
+async function listCategory(tagPath: string, sort?: ListSort, limit = 200): Promise<WikiPage[]> {
+  const resolved = sort ?? getSortOrder(tagPath.split('/'));
+  // Newest `date` first where the section declares one: a blog post or an event
+  // is as recent as the day it is about.
+  const dated = resolved !== 'title' && getMetadataKeys(tagPath.split('/')).some(k => k.key === 'date' && k.type === 'date');
+  return withAuthors(await store.list(tagPath, { sort: dated ? 'date' : resolved, limit }));
+}
+
+export const getCategoryPages = cached('getCategoryPages', listCategory, tagPath => [pageTag(tagPath)]);
+
+/**
+ * The category's listing as the pool an article's See also ranks from, under
+ * `wiki` alone. Tagged with its category, every edit would re-render each of
+ * the page's siblings to refresh their related links.
+ */
+export const getSiblingPages = cached('getSiblingPages', (tagPath: string) => listCategory(tagPath));
 
 /**
  * Title-only refs for everything under a category. A subcategory card used to
@@ -156,7 +184,7 @@ export const getCategoryPages = cached('getCategoryPages',
  * cards leading to more cards; with the titles it holds, the card is the index
  * and every article is one hop from the category it lives in.
  */
-export const getSubtreeRefs = cached('getSubtreeRefs', (tagPath: string) => store.subtree(tagPath));
+export const getSubtreeRefs = cached('getSubtreeRefs', (tagPath: string) => store.subtree(tagPath), tagPath => [pageTag(tagPath)]);
 
 /** Title-only lookup — a category's main article usually lives in another category. */
 export const getPageRef = cached('getPageRef',
@@ -165,6 +193,7 @@ export const getPageRef = cached('getPageRef',
     const page = await store.get(path.slice(0, -(slug.length + 1)), slug);
     return page && { title: page.title, href: `/${path}` };
   },
+  path => [pageTag(path)],
 );
 
 export function isIdeasPath(tagPath: string): boolean {
@@ -192,6 +221,7 @@ export const getIdeasPages = cached('getIdeasPages',
       lastActivity: byPage.get(p.id)?._max.createdAt ?? p.createdAt,
     }));
   },
+  tagPath => [pageTag(tagPath)],
 );
 
 /**
@@ -211,7 +241,7 @@ export async function loadPageHistory(tagPath: string, slug: string) {
   };
 }
 
-export const getPageHistory = cached('getPageHistory', loadPageHistory);
+export const getPageHistory = cached('getPageHistory', loadPageHistory, (tagPath, slug) => [pageTag(tagPath, slug)]);
 
 /** Deletes a page, its history, and the comments and notifications that point at it. */
 export async function deletePage(page: { id: string; tagPath: string; slug: string }) {
@@ -280,6 +310,7 @@ const getRecentPages = cached('getRecentPages',
   // none is asking "what changed on the wiki", and the answer to that is
   // article space.
   async (tagPath: string | undefined, limit: number) => withAuthors(await store.recent({ tagPath, limit })),
+  tagPath => [pageTag(tagPath ?? '')],
 );
 
 const getPagesByIds = cached('getPagesByIds', async (ids: string[]) => withAuthors(await store.byIds(ids)));
