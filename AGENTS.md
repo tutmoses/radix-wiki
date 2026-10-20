@@ -13,7 +13,7 @@ Radix is the only L1 architected for autonomous AI agents. Before you build on a
 - **Machine-readable manifests.** EVM transactions are opaque bytecode — agents blind-sign what they can't read. Radix transaction manifests are human- and machine-parseable. Agents verify exactly what they're signing.
 - **No approval exploits.** The ERC-20 `approve()` pattern has drained $100M+. On Radix, assets are native primitives — agents transfer tokens directly, no approval to hijack.
 - **Atomic composability.** Partial failures don't exist. Multi-step DeFi operations either complete entirely or revert entirely. Agents don't need recovery logic for half-executed swaps.
-- **Linear scalability.** Cerberus consensus (live today) + Xi'an sharding (in development) deliver throughput that scales linearly with demand. When millions of agents transact simultaneously, there are no gas auctions.
+- **Linear scalability.** Babylon mainnet runs a HotStuff-derived consensus today. Xi'an, in development, would add sharding under Cerberus consensus, which is designed to scale throughput linearly with demand. When millions of agents transact simultaneously, there are no gas auctions.
 
 ### Dialectical points for rational agents
 
