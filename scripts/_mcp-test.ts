@@ -71,9 +71,11 @@ const { rpc, call, payload, check } = t;
   const cats = payload(await call('get_categories')) as { categories?: Array<{ path: string }>; totalPages?: number };
   check('get_categories', (cats?.categories?.length ?? 0) > 0, `${cats?.categories?.length} categories, ${cats?.totalPages} pages`);
 
-  const search = payload(await call('search_wiki', { query: 'radix', pageSize: 5 })) as { total?: number; pages?: Array<{ tagPath: string; slug: string; url: string; snippet?: string }> };
+  const search = payload(await call('search_wiki', { query: 'radix', pageSize: 5 })) as { total?: number; pages?: Array<{ id?: string; tagPath: string; slug: string; url: string; snippet?: string }> };
   const first = search?.pages?.[0];
   check('search_wiki', (search?.total ?? 0) > 0 && !!first?.url, `${search?.total} hits, first="${first?.tagPath}/${first?.slug}"`);
+  // A pageList block names pages by id, so an agent building one takes them from a listing.
+  check('rows carry the page id', !!search?.pages?.length && search.pages.every(p => typeof p.id === 'string' && p.id.length > 0), `first id=${first?.id}`);
 
   const page = payload(await call('get_page', { tagPath: first?.tagPath ?? '', slug: first?.slug ?? '' })) as { title?: string; content?: string };
   check('get_page', !!page?.title, `"${page?.title}" ${page?.content?.length ?? 0} chars`);
@@ -85,14 +87,15 @@ const { rpc, call, payload, check } = t;
   check('entities decoded', !/&(mdash|ndash|ldquo|rsquo|nbsp);/.test(page?.content ?? ''), 'no literal &mdash;/&nbsp; in extracted text');
 
   // What edit_page takes back: the stored blocks, which the write path must accept unchanged.
-  const withBlocks = payload(await call('get_page', { path: 'ecosystem/radix-blue-balls', blocks: true })) as { id?: string; version?: string; content?: unknown };
-  check('get_page(blocks)', !!withBlocks?.id && !!withBlocks?.version && validateBlocks(withBlocks?.content),
+  const withBlocks = payload(await call('get_page', { path: 'ecosystem/radix-blue-balls', blocks: true })) as { id?: string; version?: string; content?: unknown; metadata?: unknown; bannerImage?: unknown; editorIds?: unknown };
+  check('get_page(blocks)', !!withBlocks?.id && !!withBlocks?.version && validateBlocks(withBlocks?.content)
+    && typeof withBlocks.metadata === 'object' && 'bannerImage' in withBlocks && Array.isArray(withBlocks.editorIds),
     Array.isArray(withBlocks?.content)
       ? `${withBlocks.content.length} blocks, id=${withBlocks.id}, v${withBlocks.version}${validateBlocks(withBlocks.content) ? '' : `: ${describeBlockIssues(blockIssues(withBlocks.content))}`}`
       : `no block array: ${JSON.stringify(withBlocks).slice(0, 80)}`);
 
-  const history = payload(await call('get_page_history', { path: 'ecosystem/radix-blue-balls', limit: 3 })) as { currentVersion?: string; revisions?: Array<{ id?: string; version?: string }> };
-  check('get_page_history', !!history?.revisions?.[0]?.id && history.revisions[0].version === history.currentVersion,
+  const history = payload(await call('get_page_history', { path: 'ecosystem/radix-blue-balls', limit: 3 })) as { currentVersion?: string; revisions?: Array<{ id?: string; version?: string; author?: unknown }> };
+  check('get_page_history', !!history?.revisions?.[0]?.id && history.revisions[0].version === history.currentVersion && 'author' in history.revisions[0],
     `${history?.revisions?.length ?? 0} revisions, newest v${history?.revisions?.[0]?.version} of v${history?.currentVersion}`);
 
   // Every field a REST write accepts, the matching tool must take: an edit_page

@@ -15,14 +15,12 @@ import { SIBLING_WIKI, SITE_NAME, SITE_URL } from '@/lib/site';
 import { MCP_RATE_LIMIT, MCP_RATE_LIMIT_TEXT } from 'wiki-formant/rate-limit';
 import { buildLlmsTxt } from '@/lib/llms';
 import { getMetadataKeys } from '@/lib/tags';
-import { parsePath } from '@/lib/path';
-import { store, authorsOf } from '@/lib/wiki';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 import { RADIX_CONFIG } from '@/lib/radix/config';
 import { getLedgerDayRows } from '@/lib/radix/activity';
 import { trackMcpCall } from '@/lib/track';
 import { generateChallenge } from '@/lib/auth';
-import { McpToolError, readArgs, withAdjustments, type McpServerConfig, type McpPrompt, type McpResource, type ToolContext } from 'wiki-formant/mcp';
+import { McpToolError, readArgs, type McpServerConfig, type McpPrompt, type McpResource, type ToolContext } from 'wiki-formant/mcp';
 
 const INSTRUCTIONS = [
   'Community-maintained knowledge base for Radix DLT, the layer-1 with linear scalability and asset-oriented smart contracts.',
@@ -163,25 +161,6 @@ async function get_ideas_board(raw: Record<string, unknown>) {
 
 /** A page's path segments as the REST route reads them, from the path or a pasted URL of it. */
 const segmentsOf = (raw: string) => raw.replace(/^https?:\/\/[^/]+/, '').split(/[?#]/)[0]!.split('/').filter(Boolean);
-
-// The route's own parser picks the page, so a category's path reads its hub as /history does.
-async function get_page_history(raw: Record<string, unknown>) {
-  const args = readArgs(raw);
-  const path = segmentsOf(args.str('path')).join('/');
-  const limit = args.num('limit', 20, 1, 100);
-  const parsed = parsePath([...path.split('/').filter(Boolean), 'history'], 'api');
-  const page = parsed.type === 'history' ? await store.get(parsed.tagPath, parsed.slug) : null;
-  if (!page) throw new McpToolError(`No page at path "${path}".`, { hint: 'Paths are exact: take one from search_wiki or list_pages.' });
-  // One more than shown: the oldest revision in a window is diffed against an empty page.
-  const revisions = (await store.history(page.id, { limit: limit + 1 })).slice(0, limit);
-  const authors = await authorsOf(revisions.map(r => r.authorId));
-  return withAdjustments(args, {
-    path,
-    url: pageUrl(page.tagPath, page.slug),
-    currentVersion: page.version,
-    revisions: revisions.map(({ pageId: _, authorId, ...r }) => ({ ...r, author: (authorId && authors.get(authorId)?.displayName) || null })),
-  });
-}
 
 // ========== AUTH BOOTSTRAP HANDLERS ==========
 //
@@ -327,7 +306,6 @@ export function serverConfig(auth: string | null): McpServerConfig {
   const handlers: Record<string, Handler> = {
     get_ideas_board,
     get_network_activity,
-    get_page_history,
     get_challenge,
     login,
     create_page: args => create_page(args, auth),

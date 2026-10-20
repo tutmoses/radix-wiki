@@ -4,7 +4,7 @@
 // the MCP server (`api/mcp` → tools/list) and by the A2A agent card
 // (`.well-known/agent.json` → skills), so the two can never disagree.
 //
-// Read tools are public, and are `wiki-formant/wiki-tools`: the same seven
+// Read tools are public, and are `wiki-formant/wiki-tools`: the same eight
 // caper and miow's wikis serve, carrying their own handlers, so this module
 // reads the store. Write tools require a ROLA bearer token, and the
 // challenge-sign-verify bootstrap is itself expressed as tools: get_challenge
@@ -18,7 +18,7 @@ import serverManifest from '../../server.json';
 import type { McpTool, ToolAnnotations, ToolSchema } from 'wiki-formant/mcp';
 import { wikiReadTools } from 'wiki-formant/wiki-tools';
 import { SITE_URL } from '@/lib/site';
-import { WIKI_READ, toWikiPage } from '@/lib/wiki';
+import { WIKI_READ, toWikiPage, authorsOf } from '@/lib/wiki';
 import { corpusSections } from '@/lib/llms';
 import { TAG_TREE, SHARED_PATHS, getMetadataKeys, xrdGates } from '@/lib/tags';
 import { categoryLabel } from '@/lib/utils';
@@ -54,28 +54,6 @@ type McpToolSpec = {
 const ideasOptions = (key: string) =>
   (getMetadataKeys(['ideas']).find(k => k.key === key)?.options ?? []).map(o => categoryLabel(o));
 
-/**
- * The shared `get_page`, plus `blocks: true`: the page as the editor loads it,
- * which is what edit_page takes back. The shared tool returns prose only; this
- * belongs in `wiki-formant/wiki-tools`, and lives here until it moves there.
- */
-const withBlocks = (tool: McpToolSpec): McpToolSpec => tool.name !== 'get_page' ? tool : {
-  ...tool,
-  description: `${tool.description} With \`blocks: true\`, \`content\` is the stored block array, ids and all, beside the page \`id\`, its full \`metadata\`, \`bannerImage\` and \`editorIds\`: read it this way before edit_page, and pass \`version\` back as baseVersion.`,
-  inputSchema: {
-    ...tool.inputSchema,
-    properties: { ...tool.inputSchema.properties, blocks: { type: 'boolean', description: 'Return the stored blocks rather than prose, for an edit' } },
-  },
-  handler: async (args, ctx) => {
-    const page = await tool.handler!(args, ctx) as { tagPath: string; slug: string };
-    if (args.blocks !== true) return page;
-    const row = await WIKI_READ.store.get(page.tagPath, page.slug);
-    if (!row) return page;
-    const { id, version, content, metadata, bannerImage, editorIds } = toWikiPage(row);
-    return { ...page, id, version, content, metadata, bannerImage, editorIds };
-  },
-};
-
 export const TOOLS: McpToolSpec[] = [
   ...wikiReadTools({
     ...WIKI_READ,
@@ -85,6 +63,9 @@ export const TOOLS: McpToolSpec[] = [
     label: node => categoryLabel(node.name),
     // The sections /llms-full.txt is made of, so the tool and the file agree byte for byte.
     corpus: corpusSections,
+    // edit_page takes the banner and co-editors as fields, though they are stored in metadata.
+    forEdit: page => { const { bannerImage, editorIds } = toWikiPage(page); return { bannerImage, editorIds }; },
+    authors: async ids => new Map([...await authorsOf(ids)].map(([id, a]) => [id, a.displayName ?? ''])),
     skills: {
       search_wiki: {
         id: 'search',
@@ -97,21 +78,7 @@ export const TOOLS: McpToolSpec[] = [
         examples: ['Read the Radix Engine overview', 'Get the Xi\'an roadmap page'],
       },
     },
-  }).map(withBlocks),
-  {
-    name: 'get_page_history',
-    title: 'Page history',
-    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-    description: 'A page\'s revisions, newest first: each one\'s `id`, version, change type, message, date and the blocks it changed. The `id` is what restore_revision takes. Address the page as get_page does. Defaults: limit 20 (max 100).',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        path: { type: 'string', description: 'The page\'s whole path, as a listing returns it' },
-        limit: { type: 'number', description: 'Most revisions returned (default 20, max 100)' },
-      },
-      required: ['path'],
-    },
-  },
+  }),
   {
     name: 'get_ideas_board',
     title: 'Ideas pipeline',
