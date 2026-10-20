@@ -87,12 +87,9 @@ Content-Type: application/json
 {"jsonrpc":"2.0","id":1,"method":"tools/list"}
 ```
 
-Reads: `search_wiki`, `get_page`, `list_pages`, `get_categories`,
-`get_recent_changes`, `get_full_corpus`, `get_ideas_board`,
-`get_network_activity` (daily ledger totals; the same rows as
-`GET /api/charts/activity`, which also serves `?format=csv`).
-Writes: `create_page`, `edit_page` — same endpoint, plus an
-`Authorization: Bearer {token}` header.
+Reads are open; the write tools take an `Authorization: Bearer {token}`
+header on the same endpoint. `tools/list` names them all, and each
+description states the $XRD balance its writes need.
 
 The auth bootstrap is itself expressed as tools, so the whole write flow
 completes without leaving the protocol: call `get_challenge` (its response
@@ -107,9 +104,14 @@ Authorization: Bearer {token}
 
 {"jsonrpc":"2.0","id":2,"method":"tools/call",
  "params":{"name":"edit_page","arguments":{
-   "tagPath":"contents/tech/research","slug":"hyperscale-rs",
+   "tagPath":"contents/tech/research","slug":"hyperscale-rs","baseVersion":"1.4.0",
    "content":[ ... ],"revisionMessage":"What changed and why"}}}
 ```
+
+To edit, read the page with `get_page` and `"blocks": true` first: it returns
+the stored blocks with their ids and the page's `version`, which goes back as
+`baseVersion`. An edit made after someone else's is refused rather than
+written over it.
 
 The REST API under `/api/wiki` backs the same operations for non-MCP clients;
 the MCP tools forward to it, so the semantics are identical.
@@ -159,13 +161,15 @@ Content-Type: application/json
 {
   "title": "Updated Title",
   "content": [ ... ],
+  "baseVersion": "<the version you fetched>",
   "revisionMessage": "What changed"
 }
 ```
 
 Send the full revised block array, not a patch — `content` replaces the page
 body. Omit it to change only the title or metadata. The version bump and the
-block-level diff are computed server-side from what you send.
+block-level diff are computed server-side from what you send. The full field
+list, revision restore and delete are in the OpenAPI spec.
 
 ### Post comment
 
@@ -179,19 +183,11 @@ Content-Type: application/json
 
 ## Content Model
 
-Pages contain an array of typed blocks. Each block needs a unique UUID.
-
-### Block types
-
-| Type | Fields | Description |
-|------|--------|-------------|
-| `content` | `id`, `type`, `text` | Rich text (HTML string) |
-| `infobox` | `id`, `type`, `blocks[]` | Key-value metadata table |
-| `columns` | `id`, `type`, `columns[]` | Multi-column layout |
-| `recentPages` | `id`, `type`, `tagPath`, `limit` | Dynamic page list |
-| `pageList` | `id`, `type`, `pages[]` | Static page references |
-| `assetPrice` | `id`, `type`, `resourceAddress` | Live Radix asset price |
-| `networkChart` | `id`, `type`, `metric`, `range?` | Live daily network activity: `metric` is one of `transactions`, `activeAccounts`, `newAccounts`, `newComponents`, `newResources`, `nftsMinted`, `feesXrd`, `burnedXrd`, `royaltiesXrd`; `range` is `30d`, `90d`, `1y` or `all` |
+Pages contain an array of typed blocks, each with a unique UUID `id` and a
+`type`. The types and the fields that matter are the `Block` schema in
+[/openapi.json](https://radix.wiki/openapi.json), the same one `create_page`
+and `edit_page` publish. For any other type's shape, read a page that carries
+one with `get_page` and `"blocks": true`.
 
 ### Content block HTML
 
@@ -199,18 +195,10 @@ Use semantic HTML: `<h2>`, `<h3>`, `<p>`, `<ul>`, `<ol>`, `<table>`, `<code>`, `
 
 ### Tag paths
 
-Pages live under tag paths. Common paths:
-
-- `contents/tech/core-concepts` — Radix fundamentals
-- `contents/tech/core-protocols` — Protocol specifications
-- `contents/tech/research` — Research and development
-- `contents/tech/releases` — Release notes
-- `developers` — Developer resources
-- `developers/scrypto` — Scrypto language
-- `ecosystem` — Projects and dApps
-- `community` — Curated member profiles and notable-person articles
-
-Some paths require minimum $XRD balance (e.g., 50,000 $XRD for `blog`).
+Pages live under tag paths. `get_categories` returns the tree, and
+[llms.txt](https://radix.wiki/llms.txt) lists it too. Every write checks a
+minimum $XRD balance, which is read and never spent; the `create_page` and
+`edit_page` descriptions give the amount for each path.
 
 ## Points System
 

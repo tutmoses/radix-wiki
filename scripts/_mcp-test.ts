@@ -27,6 +27,8 @@ import {
   robotsChecks,
 } from 'wiki-formant/conformance';
 import serverManifest from '../server.json';
+import { validateBlocks, blockIssues } from '@/lib/block-utils';
+import { describeBlockIssues } from 'wiki-formant/validation';
 
 const BASE = process.argv[2] ?? process.env.MCP_TEST_BASE ?? 'http://localhost:3000';
 const t = createTester({ base: BASE, clientName: 'radix-wiki-mcp-test' });
@@ -38,7 +40,7 @@ const { rpc, call, payload, check } = t;
   await versionCoherence(t, serverManifest.version, standardVersionSources(t, ['/openapi.json', '/.well-known/openapi.json']), init.result?.serverInfo?.version);
 
   await agentCardParity(t);
-  await annotationChecks(t, { writes: ['get_challenge', 'login', 'create_page', 'edit_page'] });
+  await annotationChecks(t, { writes: ['get_challenge', 'login', 'create_page', 'edit_page', 'restore_revision', 'delete_page'] });
 
   // The three calls an agent makes before anything else. One page with a
   // 327 KB blob in its metadata column put all three over 350 KB — roughly
@@ -59,7 +61,7 @@ const { rpc, call, payload, check } = t;
   console.log(`\n=== tools ===`);
   const list = await rpc('tools/list');
   const toolNames = (list.result?.tools ?? []).map(t => t.name);
-  const expected = ['search_wiki', 'get_page', 'get_pages', 'list_pages', 'get_categories', 'get_recent_changes', 'get_full_corpus', 'get_ideas_board', 'get_network_activity', 'get_challenge', 'login', 'create_page', 'edit_page'];
+  const expected = ['search_wiki', 'get_page', 'get_pages', 'list_pages', 'get_categories', 'get_recent_changes', 'get_full_corpus', 'get_ideas_board', 'get_network_activity', 'get_page_history', 'get_challenge', 'login', 'create_page', 'edit_page', 'restore_revision', 'delete_page'];
   check('tools/list', expected.every(n => toolNames.includes(n)), `${toolNames.length} tools: ${toolNames.join(', ')}`);
 
   const prompts = await rpc('prompts/list');
@@ -81,6 +83,28 @@ const { rpc, call, payload, check } = t;
   const byPath = payload(await call('get_page', { path: `${first?.tagPath}/${first?.slug}` })) as { title?: string };
   check('get_page(path)', byPath?.title === page?.title, `path form === tagPath/slug form ("${byPath?.title}")`);
   check('entities decoded', !/&(mdash|ndash|ldquo|rsquo|nbsp);/.test(page?.content ?? ''), 'no literal &mdash;/&nbsp; in extracted text');
+
+  // What edit_page takes back: the stored blocks, which the write path must accept unchanged.
+  const withBlocks = payload(await call('get_page', { path: 'ecosystem/radix-blue-balls', blocks: true })) as { id?: string; version?: string; content?: unknown };
+  check('get_page(blocks)', !!withBlocks?.id && !!withBlocks?.version && validateBlocks(withBlocks?.content),
+    Array.isArray(withBlocks?.content)
+      ? `${withBlocks.content.length} blocks, id=${withBlocks.id}, v${withBlocks.version}${validateBlocks(withBlocks.content) ? '' : `: ${describeBlockIssues(blockIssues(withBlocks.content))}`}`
+      : `no block array: ${JSON.stringify(withBlocks).slice(0, 80)}`);
+
+  const history = payload(await call('get_page_history', { path: 'ecosystem/radix-blue-balls', limit: 3 })) as { currentVersion?: string; revisions?: Array<{ id?: string; version?: string }> };
+  check('get_page_history', !!history?.revisions?.[0]?.id && history.revisions[0].version === history.currentVersion,
+    `${history?.revisions?.length ?? 0} revisions, newest v${history?.revisions?.[0]?.version} of v${history?.currentVersion}`);
+
+  // Every field a REST write accepts, the matching tool must take: an edit_page
+  // without baseVersion silently overwrote whatever landed in between.
+  const spec = await (await fetch(`${BASE}/openapi.json`)).json() as { paths: Record<string, Record<string, { requestBody?: { content: Record<string, { schema: { properties?: Record<string, unknown> } }> } }>> };
+  const tools = list.result?.tools ?? [];
+  for (const [route, method, tool] of [['/api/wiki', 'post', 'create_page'], ['/api/wiki/{path}', 'put', 'edit_page'], ['/api/wiki/{path}/history', 'post', 'restore_revision']] as const) {
+    const fields = Object.keys(spec.paths[route]?.[method]?.requestBody?.content['application/json']?.schema.properties ?? {});
+    const props = Object.keys((tools.find(x => x.name === tool)?.inputSchema as { properties?: object } | undefined)?.properties ?? {});
+    const missing = fields.filter(f => !props.includes(f));
+    check(`${tool} ⊇ ${method.toUpperCase()} ${route}`, fields.length > 0 && !missing.length, missing.length ? `missing: ${missing.join(', ')}` : `${fields.length} fields`);
+  }
 
   const listed = payload(await call('list_pages', { pageSize: 5 })) as { pages?: unknown[]; total?: number };
   check('list_pages', (listed?.pages?.length ?? 0) > 0, `${listed?.pages?.length} of ${listed?.total}`);

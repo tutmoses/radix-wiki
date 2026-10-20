@@ -5,7 +5,7 @@ import { coreAtomicValidator, createBlockValidator, duplicateBlockIds } from 'wi
 import { Activity, Clock, FileText, Columns, TrendingUp, Pencil, Info, Rss, Code2, BarChart3, MessageSquareQuote, LayoutGrid, QrCode, ListOrdered, AlertTriangle, type LucideIcon } from 'lucide-react';
 import { coreBlockDefaults, someBlock } from 'wiki-formant/blocks';
 import { BLOCK_SHAPE } from '@/lib/block-shape';
-import { isActivityMetric } from '@/lib/radix/metrics';
+import { ACTIVITY_METRICS, isActivityMetric } from '@/lib/radix/metrics';
 
 // One row per block type: label, icon and a one-line hint for the editor's
 // Add menu, what inserting it makes, and which menus offer it -- `insertable` the page menu, `atomic` the
@@ -42,8 +42,31 @@ export const BLOCK_META: Record<BlockType, BlockSpec> = {
   testimonial: { label: 'Testimonial', icon: MessageSquareQuote, hint: 'A quote and who said it', create: CORE.testimonial },
 };
 
-/** Every type the wire format accepts — the /openapi.json Block enum reads it. */
-export const BLOCK_TYPES = Object.keys(BLOCK_META) as BlockType[];
+/** Every type the wire format accepts: `BLOCK_SCHEMA`'s enum reads it. */
+const BLOCK_TYPES = Object.keys(BLOCK_META) as BlockType[];
+/**
+ * One block on the wire, as JSON Schema: the /openapi.json `Block` and the item
+ * of every MCP tool's `content` array. Derived, because a hand-listed enum
+ * named six of the fourteen types the write path accepts. The fields named are
+ * the ones an agent cannot guess; every other shape is an existing page's.
+ */
+export const BLOCK_SCHEMA = {
+  type: 'object',
+  description:
+    'A typed block with a unique `id` (UUID) and a `type`. A `content` block carries semantic HTML in `text`; an `infobox` carries nested `blocks`. '
+    + 'For any other type, copy the shape of one already on a page: get_page with `blocks: true` (or GET /api/wiki/{path}) returns blocks as stored.',
+  required: ['id', 'type'],
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    type: { type: 'string', enum: BLOCK_TYPES },
+    text: { type: 'string', description: 'Semantic HTML (content, banner)' },
+    blocks: { type: 'array', items: { type: 'object' }, description: 'Nested leaf blocks (infobox)' },
+    pageIds: { type: 'array', items: { type: 'string' }, description: 'Page ids in display order (pageList): the `id` get_page returns with `blocks: true`' },
+    metric: { type: 'string', enum: ACTIVITY_METRICS.map(m => m.key), description: 'The series charted (networkChart)' },
+  },
+  additionalProperties: true,
+} as const;
+
 export const INSERTABLE_BLOCKS: readonly BlockType[] = BLOCK_TYPES.filter(t => BLOCK_META[t].insertable);
 export const ATOMIC_BLOCK_TYPES: readonly BlockType[] = BLOCK_TYPES.filter(t => BLOCK_META[t].atomic);
 

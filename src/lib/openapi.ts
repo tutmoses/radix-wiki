@@ -11,7 +11,8 @@
 import { openApiLicense } from 'wiki-formant/license';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { SERVER_INFO } from '@/lib/mcp-tools';
-import { BLOCK_TYPES } from '@/lib/block-utils';
+import { BLOCK_SCHEMA } from '@/lib/block-utils';
+import { SHARED_PATHS, xrdGates } from '@/lib/tags';
 
 const rolaAuth = [{ rolaBearer: [] as string[] }];
 
@@ -22,21 +23,6 @@ const pathParam = {
   description:
     'Tag path and slug joined with slashes, e.g. `contents/tech/research/hyperscale-rs`. Tag paths themselves contain slashes, so this parameter spans multiple segments.',
   schema: { type: 'string' },
-};
-
-const block = {
-  type: 'object',
-  description:
-    'Typed content block. Every block needs a unique `id` (UUID) and a `type`. A `content` block carries semantic HTML in `text`; an `infobox` block carries nested `blocks`.',
-  required: ['id', 'type'],
-  properties: {
-    id: { type: 'string', format: 'uuid' },
-    // Derived, because a hand-listed enum drifted: it named six of the fourteen
-    // types the write path actually accepts.
-    type: { type: 'string', enum: BLOCK_TYPES },
-    text: { type: 'string', description: 'Semantic HTML (content blocks)' },
-  },
-  additionalProperties: true,
 };
 
 const page = {
@@ -90,7 +76,7 @@ export const SPEC = {
           `Full spec: ${SITE_URL}/AGENTS.md`,
       },
     },
-    schemas: { Block: block, Page: page, PaginatedPages: paginated },
+    schemas: { Block: BLOCK_SCHEMA, Page: page, PaginatedPages: paginated },
   },
   paths: {
     '/api/auth/challenge': {
@@ -141,7 +127,7 @@ export const SPEC = {
                         properties: {
                           publicKey: { type: 'string', description: 'Hex Ed25519 public key' },
                           signature: { type: 'string', description: 'Hex Ed25519 signature' },
-                          curve: { type: 'string', enum: ['curve25519'] },
+                          curve: { type: 'string', enum: ['curve25519', 'secp256k1'] },
                         },
                       },
                     },
@@ -190,7 +176,7 @@ export const SPEC = {
       post: {
         summary: 'Create a page',
         description:
-          'Some tag paths are $XRD-balance-gated or author-only; required metadata keys vary by tag path (errors name any missing). Slug derives from the title when omitted.',
+          `Needs a wallet holding at least ${xrdGates('create')}, a balance check that spends nothing. Some tag paths are author-only; required metadata keys vary by tag path (errors name any missing). Slug derives from the title when omitted.`,
         security: rolaAuth,
         requestBody: {
           required: true,
@@ -238,7 +224,7 @@ export const SPEC = {
       put: {
         summary: 'Edit a page',
         description:
-          '`content` replaces the whole block array (fetch first, send the full revised array — not a patch); omit it to change only title or metadata. Version bump, block diff, and the revision entry are computed server-side. Locked and author-only pages are rejected.',
+          `\`content\` replaces the whole block array (fetch first, send the full revised array, not a patch); omit it to change only title or metadata. Version bump, block diff, and the revision entry are computed server-side. Needs a wallet holding at least ${xrdGates('edit')}. Locked and author-only pages are rejected.`,
         security: rolaAuth,
         parameters: [pathParam],
         requestBody: {
@@ -252,6 +238,9 @@ export const SPEC = {
                   content: { type: 'array', items: { $ref: '#/components/schemas/Block' } },
                   metadata: { type: 'object', additionalProperties: true },
                   bannerImage: { type: 'string', format: 'uri' },
+                  newSlug: { type: 'string', description: 'Move the page to this slug (an article only; a hub article and the homepage keep theirs)' },
+                  editorIds: { type: 'array', items: { type: 'string' }, description: 'User ids who may co-edit an author-only page. Applied only when the author sends it.' },
+                  baseVersion: { type: 'string', description: 'The `version` the edit started from. A save after the page moved on is refused with 409 rather than overwriting the edit in between.' },
                   revisionMessage: { type: 'string', description: 'What changed and why — always send one' },
                   verified: { type: 'boolean', description: 'True when the page\'s facts were checked against its sources: stamps lastVerifiedAt, which retires the freshness banner. Send it alone to stamp without an edit.' },
                 },
@@ -265,15 +254,17 @@ export const SPEC = {
           '401': { description: 'Missing or invalid bearer token' },
           '403': { description: 'Locked page or author-only category' },
           '404': { description: 'No page at this path' },
+          '409': { description: 'The page moved on since `baseVersion`: fetch it again and reapply the edit' },
         },
       },
       delete: {
-        summary: 'Delete a page (author only)',
+        summary: 'Delete a page',
+        description: `The author may delete their page. On a shared board (${[...SHARED_PATHS].join(', ')}) the page belongs to the board, so anyone who clears the bar to edit it may delete it too. Locked pages, hub articles and the homepage cannot be deleted.`,
         security: rolaAuth,
         parameters: [pathParam],
         responses: {
           '200': { description: 'Deleted' },
-          '403': { description: 'Not the author, or page is locked' },
+          '403': { description: 'Not the author off a shared board, under the edit balance, or page is locked' },
           '404': { description: 'No page at this path' },
         },
       },
@@ -294,6 +285,30 @@ export const SPEC = {
               },
             },
           },
+          '404': { description: 'No page at this path' },
+        },
+      },
+      post: {
+        summary: 'Restore a revision',
+        description: 'Makes an earlier revision the current page, as a new revision. The same gates as an edit: balance, locked pages, author-only categories.',
+        security: rolaAuth,
+        parameters: [pathParam],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['revisionId'],
+                properties: { revisionId: { type: 'string', description: 'A revision `id` from GET /api/wiki/{path}/history' } },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Restored', content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' }, version: { type: 'string' } } } } } },
+          '401': { description: 'Missing or invalid bearer token' },
+          '403': { description: 'Locked page or author-only category' },
           '404': { description: 'No page at this path' },
         },
       },

@@ -162,7 +162,7 @@ const GLOBAL_METADATA_KEYS: MetadataKeyDefinition[] = [
 const AUTHOR_ONLY_PATHS = new Set(['blog']);
 // Ideas are shared work items on a board, not authored articles: whoever files a
 // card does not own it, so any editor may retire one the way any editor may move it.
-const SHARED_PATHS = new Set(['ideas']);
+export const SHARED_PATHS = new Set(['ideas']);
 const LOCKED_PAGES = new Set(['ecosystem/radix-namespace','ecosystem/xrd-domains']);
 export const isLockedPage = (tagPath: string, slug: string): boolean => LOCKED_PAGES.has(`${tagPath}/${slug}`);
 
@@ -214,6 +214,16 @@ const XRD_DEFAULTS = { create: 10_000, edit: 20_000, comment: 10_000 } as const;
 
 export function getXrdRequired(action: 'create' | 'edit' | 'comment', tagPath: string): number {
   return resolveTagPath(tagPath.split('/')).xrdRequirements[action] ?? XRD_DEFAULTS[action];
+}
+
+/**
+ * An action's $XRD bar in words, for the agent-facing descriptions: the default
+ * and every path that sets its own, which then holds beneath it too.
+ */
+export function xrdGates(action: 'create' | 'edit'): string {
+  const own = TAG_TREE.paths().filter(p => !p.hidden && p.node.xrd?.[action] !== undefined)
+    .map(p => `${p.path} ${p.node.xrd![action]!.toLocaleString('en')}`);
+  return `${XRD_DEFAULTS[action].toLocaleString('en')} $XRD${own.length ? ` (${own.join(', ')})` : ''}`;
 }
 
 // $XRD requirements are a minimum wallet balance, not a fee — the balance is read, never spent.

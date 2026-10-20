@@ -15,18 +15,20 @@ import { SIBLING_WIKI, SITE_NAME, SITE_URL } from '@/lib/site';
 import { MCP_RATE_LIMIT, MCP_RATE_LIMIT_TEXT } from 'wiki-formant/rate-limit';
 import { buildLlmsTxt } from '@/lib/llms';
 import { getMetadataKeys } from '@/lib/tags';
+import { parsePath } from '@/lib/path';
+import { store, authorsOf } from '@/lib/wiki';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 import { RADIX_CONFIG } from '@/lib/radix/config';
 import { getLedgerDayRows } from '@/lib/radix/activity';
 import { trackMcpCall } from '@/lib/track';
 import { generateChallenge } from '@/lib/auth';
-import { McpToolError, readArgs, type McpServerConfig, type McpPrompt, type McpResource, type ToolContext } from 'wiki-formant/mcp';
+import { McpToolError, readArgs, withAdjustments, type McpServerConfig, type McpPrompt, type McpResource, type ToolContext } from 'wiki-formant/mcp';
 
 const INSTRUCTIONS = [
   'Community-maintained knowledge base for Radix DLT, the layer-1 with linear scalability and asset-oriented smart contracts.',
   'Usual sequence: get_categories to orient, search_wiki or list_pages to locate, then get_page to read. Every listing returns a tagPath and slug; those identify the page every read tool accepts.',
   `Reads are open and never authenticate. Rate limit: ${MCP_RATE_LIMIT_TEXT}, shared across all methods.`,
-  'Writing without leaving the protocol: get_challenge → sign the ROLA message with your own Ed25519 key → login (returns a Bearer token) → create_page / edit_page with that token as an HTTP `Authorization: Bearer <token>` header on the POSTs carrying the calls.',
+  'Writing without leaving the protocol: get_challenge → sign the ROLA message with your own Ed25519 key → login (returns a Bearer token) → create_page / edit_page with that token as an HTTP `Authorization: Bearer <token>` header on the POSTs carrying the calls. To edit, read the page with get_page and `blocks: true`, then send edit_page its revised blocks and its `version` as baseVersion.',
   `Deep reference (ROLA signing spec, REST equivalents, content model): ${SITE_URL}/AGENTS.md (also served at ${SITE_URL}/agents-md). Any page URL + ".md" is its markdown twin; the homepage's is ${SITE_URL}/index.md.`,
   `The Radix DAO's own decisions are covered here. For ${SIBLING_WIKI.covers}, use the sister wiki's server: ${SIBLING_WIKI.mcp}.`,
 ].join('\n');
@@ -159,6 +161,28 @@ async function get_ideas_board(raw: Record<string, unknown>) {
   return { board: 'ideas', url: `${SITE_URL}/ideas`, totalCards: cards.length, columns };
 }
 
+/** A page's path segments as the REST route reads them, from the path or a pasted URL of it. */
+const segmentsOf = (raw: string) => raw.replace(/^https?:\/\/[^/]+/, '').split(/[?#]/)[0]!.split('/').filter(Boolean);
+
+// The route's own parser picks the page, so a category's path reads its hub as /history does.
+async function get_page_history(raw: Record<string, unknown>) {
+  const args = readArgs(raw);
+  const path = segmentsOf(args.str('path')).join('/');
+  const limit = args.num('limit', 20, 1, 100);
+  const parsed = parsePath([...path.split('/').filter(Boolean), 'history'], 'api');
+  const page = parsed.type === 'history' ? await store.get(parsed.tagPath, parsed.slug) : null;
+  if (!page) throw new McpToolError(`No page at path "${path}".`, { hint: 'Paths are exact: take one from search_wiki or list_pages.' });
+  // One more than shown: the oldest revision in a window is diffed against an empty page.
+  const revisions = (await store.history(page.id, { limit: limit + 1 })).slice(0, limit);
+  const authors = await authorsOf(revisions.map(r => r.authorId));
+  return withAdjustments(args, {
+    path,
+    url: pageUrl(page.tagPath, page.slug),
+    currentVersion: page.version,
+    revisions: revisions.map(({ pageId: _, authorId, ...r }) => ({ ...r, author: (authorId && authors.get(authorId)?.displayName) || null })),
+  });
+}
+
 // ========== AUTH BOOTSTRAP HANDLERS ==========
 //
 // The challenge→sign→token chain as tools, forwarding to the same REST auth
@@ -221,11 +245,11 @@ async function login(args: Record<string, unknown>) {
 // one handler that already owns them. Nothing about the write path is
 // reimplemented here — this is a transport, not a second implementation.
 
-async function forwardWrite(path: string, method: 'POST' | 'PUT', body: unknown, auth: string | null): Promise<Record<string, unknown>> {
+async function forwardWrite(path: string, method: 'POST' | 'PUT' | 'DELETE', body: unknown, auth: string | null): Promise<Record<string, unknown>> {
   if (!auth) {
     throw new McpToolError(
       'Not authenticated. Call get_challenge, sign the ROLA message with your own key, call login, then resend this call with the returned token as an HTTP `Authorization: Bearer <token>` header.',
-      { flow: ['get_challenge', 'login', 'create_page / edit_page'], reference: `${SITE_URL}/AGENTS.md` },
+      { flow: ['get_challenge', 'login', 'the write tool'], reference: `${SITE_URL}/AGENTS.md` },
     );
   }
   const res = await fetch(`${SITE_URL}${path}`, {
@@ -234,7 +258,11 @@ async function forwardWrite(path: string, method: 'POST' | 'PUT', body: unknown,
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => null) as Record<string, unknown> | null;
-  if (!res.ok) throw new McpToolError((data?.error as string) || `Request failed (${res.status})`);
+  if (!res.ok) {
+    throw new McpToolError((data?.error as string) || `Request failed (${res.status})`, res.status === 409
+      ? { hint: 'The page changed since you read it. Read it again with get_page and `blocks: true`, reapply your change, and send the new `version` as baseVersion.' }
+      : undefined);
+  }
   return data ?? {};
 }
 
@@ -252,13 +280,25 @@ async function create_page(args: Record<string, unknown>, auth: string | null) {
 }
 
 async function edit_page(args: Record<string, unknown>, auth: string | null) {
-  const { tagPath, slug, content, title, revisionMessage, metadata, verified } = args;
-  const result = await forwardWrite(`/api/wiki${pagePath(tagPath as string, (slug as string) ?? '')}`, 'PUT', { content, title, revisionMessage, metadata, verified }, auth);
+  const { tagPath, slug, content, title, revisionMessage, metadata, verified, baseVersion, newSlug, editorIds, bannerImage } = args;
+  const result = await forwardWrite(`/api/wiki${pagePath(tagPath as string, (slug as string) ?? '')}`, 'PUT', { content, title, revisionMessage, metadata, verified, baseVersion, newSlug, editorIds, bannerImage }, auth);
   return {
     edited: true,
     url: pageUrl(result.tagPath as string, result.slug as string),
     version: result.version,
   };
+}
+
+async function restore_revision(args: Record<string, unknown>, auth: string | null) {
+  const path = segmentsOf(String(args.path ?? '')).join('/');
+  const result = await forwardWrite(`/api/wiki/${path}/history`, 'POST', { revisionId: args.revisionId }, auth);
+  return { restored: true, url: `${SITE_URL}/${path}`, version: result.version };
+}
+
+async function delete_page(args: Record<string, unknown>, auth: string | null) {
+  const path = segmentsOf(String(args.path ?? '')).join('/');
+  await forwardWrite(`/api/wiki/${path}`, 'DELETE', undefined, auth);
+  return { deleted: true, path };
 }
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -287,10 +327,13 @@ export function serverConfig(auth: string | null): McpServerConfig {
   const handlers: Record<string, Handler> = {
     get_ideas_board,
     get_network_activity,
+    get_page_history,
     get_challenge,
     login,
     create_page: args => create_page(args, auth),
     edit_page: args => edit_page(args, auth),
+    restore_revision: args => restore_revision(args, auth),
+    delete_page: args => delete_page(args, auth),
   };
   return {
     serverInfo: SERVER_INFO,

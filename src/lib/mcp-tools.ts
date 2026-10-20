@@ -18,10 +18,11 @@ import serverManifest from '../../server.json';
 import type { McpTool, ToolAnnotations, ToolSchema } from 'wiki-formant/mcp';
 import { wikiReadTools } from 'wiki-formant/wiki-tools';
 import { SITE_URL } from '@/lib/site';
-import { WIKI_READ } from '@/lib/wiki';
+import { WIKI_READ, toWikiPage } from '@/lib/wiki';
 import { corpusSections } from '@/lib/llms';
-import { TAG_TREE } from '@/lib/tags';
+import { TAG_TREE, SHARED_PATHS, getMetadataKeys, xrdGates } from '@/lib/tags';
 import { categoryLabel } from '@/lib/utils';
+import { BLOCK_SCHEMA } from '@/lib/block-utils';
 
 /** Reported by `initialize`. `name` is the MCP server id, distinct from the
  *  registry's namespaced `serverManifest.name`. */
@@ -49,6 +50,32 @@ type McpToolSpec = {
   handler?: McpTool['handler'];
 };
 
+/** An Ideas board facet's options as the board labels them. */
+const ideasOptions = (key: string) =>
+  (getMetadataKeys(['ideas']).find(k => k.key === key)?.options ?? []).map(o => categoryLabel(o));
+
+/**
+ * The shared `get_page`, plus `blocks: true`: the page as the editor loads it,
+ * which is what edit_page takes back. The shared tool returns prose only; this
+ * belongs in `wiki-formant/wiki-tools`, and lives here until it moves there.
+ */
+const withBlocks = (tool: McpToolSpec): McpToolSpec => tool.name !== 'get_page' ? tool : {
+  ...tool,
+  description: `${tool.description} With \`blocks: true\`, \`content\` is the stored block array, ids and all, beside the page \`id\`, its full \`metadata\`, \`bannerImage\` and \`editorIds\`: read it this way before edit_page, and pass \`version\` back as baseVersion.`,
+  inputSchema: {
+    ...tool.inputSchema,
+    properties: { ...tool.inputSchema.properties, blocks: { type: 'boolean', description: 'Return the stored blocks rather than prose, for an edit' } },
+  },
+  handler: async (args, ctx) => {
+    const page = await tool.handler!(args, ctx) as { tagPath: string; slug: string };
+    if (args.blocks !== true) return page;
+    const row = await WIKI_READ.store.get(page.tagPath, page.slug);
+    if (!row) return page;
+    const { id, version, content, metadata, bannerImage, editorIds } = toWikiPage(row);
+    return { ...page, id, version, content, metadata, bannerImage, editorIds };
+  },
+};
+
 export const TOOLS: McpToolSpec[] = [
   ...wikiReadTools({
     ...WIKI_READ,
@@ -70,16 +97,30 @@ export const TOOLS: McpToolSpec[] = [
         examples: ['Read the Radix Engine overview', 'Get the Xi\'an roadmap page'],
       },
     },
-  }),
+  }).map(withBlocks),
+  {
+    name: 'get_page_history',
+    title: 'Page history',
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+    description: 'A page\'s revisions, newest first: each one\'s `id`, version, change type, message, date and the blocks it changed. The `id` is what restore_revision takes. Address the page as get_page does. Defaults: limit 20 (max 100).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'The page\'s whole path, as a listing returns it' },
+        limit: { type: 'number', description: 'Most revisions returned (default 20, max 100)' },
+      },
+      required: ['path'],
+    },
+  },
   {
     name: 'get_ideas_board',
     title: 'Ideas pipeline',
     annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-    description: 'Get the RADIX Wiki Ideas Pipeline kanban — community proposals and Radix DAO tasks grouped into status columns (Discussion → Proposed → Approved → In Progress → Testing → Done), each card carrying its working group, category, priority, and assignee. Use this to follow DAO / project progress.',
+    description: `Get the RADIX Wiki Ideas Pipeline kanban: community proposals and Radix DAO tasks grouped into status columns (${ideasOptions('status').join(' → ')}), each card carrying its working group, category, priority, and assignee. Use this to follow DAO / project progress.`,
     inputSchema: {
       type: 'object',
       properties: {
-        category: { type: 'string', description: 'Filter to one category: Governance, Protocol, Tooling, Ecosystem, or Community' },
+        category: { type: 'string', description: `Filter to one category: ${ideasOptions('category').join(', ')}` },
         workingGroup: { type: 'string', description: 'Filter by working group name substring, e.g. "Treasury", "Legal", "NetOps"' },
       },
     },
@@ -143,7 +184,7 @@ export const TOOLS: McpToolSpec[] = [
     name: 'create_page',
     title: 'Create a page',
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-    description: `Create a new Radix Wiki page. Requires a ROLA bearer token — see ${SITE_URL}/AGENTS.md for the challenge-sign-verify flow. Call get_categories first for a valid tagPath. Some paths are balance-gated (blog needs 50,000 $XRD). Earns contribution points.`,
+    description: `Create a new Radix Wiki page. Requires a ROLA bearer token; see ${SITE_URL}/AGENTS.md for the challenge-sign-verify flow. Call get_categories first for a valid tagPath. Needs a wallet holding at least ${xrdGates('create')}, a balance check that spends nothing. Earns contribution points.`,
     auth: 'rola',
     inputSchema: {
       type: 'object',
@@ -152,8 +193,8 @@ export const TOOLS: McpToolSpec[] = [
         title: { type: 'string', description: 'Page title' },
         content: {
           type: 'array',
-          description: 'Array of typed blocks. Each needs a unique `id` (UUID) and a `type`. A `content` block carries semantic HTML in `text`; an `infobox` block carries nested `blocks`. Start with an infobox, hyperlink every assertion to its source, no inline styles.',
-          items: { type: 'object' },
+          description: 'Array of typed blocks. Start with an infobox, hyperlink every assertion to its source, no inline styles.',
+          items: BLOCK_SCHEMA,
         },
         metadata: { type: 'object', description: 'Key-value metadata for the page, including `excerpt` (one sentence, ≤160 chars). Some tag paths require specific keys — the error names any that are missing.' },
         slug: { type: 'string', description: 'URL slug (derived from the title when omitted)' },
@@ -171,25 +212,56 @@ export const TOOLS: McpToolSpec[] = [
     name: 'edit_page',
     title: 'Edit a page',
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
-    description: `Edit an existing Radix Wiki page. Requires a ROLA bearer token — see ${SITE_URL}/AGENTS.md. Fetch the page with get_page first and send the full revised block array; the version bump, block-level diff, and revision entry are computed server-side. Locked and author-only pages are rejected. Earns contribution points.`,
+    description: `Edit an existing Radix Wiki page. Requires a ROLA bearer token; see ${SITE_URL}/AGENTS.md. Read the page with get_page and \`blocks: true\`, send the full revised block array, and pass its \`version\` as baseVersion: an edit made after someone else's is refused rather than written over it, so read again and reapply. The version bump, block-level diff, and revision entry are computed server-side. Needs a wallet holding at least ${xrdGates('edit')}. Locked and author-only pages are rejected. Earns contribution points.`,
     auth: 'rola',
     inputSchema: {
       type: 'object',
       properties: {
         tagPath: { type: 'string', description: 'Tag path of the page to edit' },
         slug: { type: 'string', description: 'Slug of the page to edit' },
-        content: { type: 'array', description: 'The full revised block array (not a patch). Omit to change only the title or metadata.', items: { type: 'object' } },
+        baseVersion: { type: 'string', description: 'The `version` get_page returned, which this edit starts from' },
+        content: { type: 'array', description: 'The full revised block array (not a patch). Omit to change only the title or metadata.', items: BLOCK_SCHEMA },
         title: { type: 'string', description: 'New title' },
         revisionMessage: { type: 'string', description: 'What changed and why — shown in the page history. Always send one.' },
-        metadata: { type: 'object', description: 'Replacement metadata object' },
+        metadata: { type: 'object', description: 'Replacement metadata object: the whole `metadata` get_page returns with `blocks: true`, revised' },
+        bannerImage: { type: 'string', description: 'Banner image URL; an empty string removes it' },
+        newSlug: { type: 'string', description: 'Move the page to this slug (an article only)' },
+        editorIds: { type: 'array', description: 'User ids who may co-edit an author-only page. Applied only when the author sends it.' },
         verified: { type: 'boolean', description: 'True when you checked the page\'s facts against its sources: stamps lastVerifiedAt. Send it alone to stamp without an edit.' },
       },
-      required: ['tagPath', 'slug'],
+      required: ['tagPath', 'slug', 'baseVersion'],
     },
     skill: {
       id: 'edit',
       tags: ['write', 'edit', 'contribute', 'revision'],
       examples: ['Fix a dead link on the Cerberus page', 'Add a section to the Scrypto overview'],
+    },
+  },
+  {
+    name: 'restore_revision',
+    title: 'Restore a revision',
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+    description: 'Make an earlier revision the current page, written as a new revision. Requires a ROLA bearer token and passes the same gates as edit_page. Take the revision `id` from get_page_history.',
+    auth: 'rola',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'The page\'s whole path' },
+        revisionId: { type: 'string', description: 'The revision `id` from get_page_history' },
+      },
+      required: ['path', 'revisionId'],
+    },
+  },
+  {
+    name: 'delete_page',
+    title: 'Delete a page',
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+    description: `Delete an article with its history and comments. Requires a ROLA bearer token. Its author may delete it; on a shared board (${[...SHARED_PATHS].join(', ')}), so may anyone who clears the bar to edit it. Locked pages, hub articles and the homepage cannot be deleted.`,
+    auth: 'rola',
+    inputSchema: {
+      type: 'object',
+      properties: { path: { type: 'string', description: 'The page\'s whole path' } },
+      required: ['path'],
     },
   },
 ];
