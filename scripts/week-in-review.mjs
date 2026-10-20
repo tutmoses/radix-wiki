@@ -16,12 +16,11 @@
 // three times (sweeps 202 and 224 found it weeks later) because every anchor in a
 // stale nav still resolves 200.
 
-import { config } from 'dotenv';
 import { bump } from 'wiki-formant/versioning';
 import { uid, AUTHOR_ID, isLockedPage, esc, meta, withClient, readPage, storeFor, writeRevision } from './seed-utils.mjs';
 import { RECAP_PREFIX, SERIES_SLUG, issueLabel, scoreline } from '../src/lib/week-in-review.ts';
 
-config({ path: new URL('../.env', import.meta.url) });
+process.loadEnvFile(new URL('../.env', import.meta.url));
 
 const TAG = 'blog';
 const INDEX_TITLE = 'Radix Week in Review';

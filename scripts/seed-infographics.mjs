@@ -3,13 +3,12 @@
 //
 // Idempotent: keyed on data-graphic="<marker>" (re-run replaces in place). Writes
 // one revisions row per changed page. Skips locked pages. Run: node scripts/seed-infographics.mjs
-import { config } from 'dotenv';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isLockedPage, withClient, embedFigure, readPage } from './seed-utils.mjs';
 import { figureBlock } from '../brand-assets/kit.mjs';
-config();
+try { process.loadEnvFile(); } catch {} // the .env in the working directory, if there is one
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(__dirname, '..');

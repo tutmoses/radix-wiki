@@ -16,13 +16,12 @@
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { config } from 'dotenv';
 import {
   isLockedPage, argOf, fmt as fmtOr, compact as compactOr, delta, withClient, embedFigure, readPage,
 } from './seed-utils.mjs';
 import { C, MONO, t, wrap, paras, card, sectionLabel, frame, figureBlock, renderPngs } from '../brand-assets/kit.mjs';
 
-config({ path: new URL('../.env', import.meta.url) });
+process.loadEnvFile(new URL('../.env', import.meta.url));
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(REPO, 'brand-assets/wir');

@@ -6,11 +6,10 @@ import { execFileSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
-import { config } from 'dotenv';
 import { bump } from 'wiki-formant/versioning';
 import { wikiStore } from 'wiki-formant/store';
 import { validateLinkGroups, validateReferenceItems } from 'wiki-formant/validation';
-config();
+try { process.loadEnvFile(); } catch {} // the .env in the working directory, if there is one
 
 export const uid = () => randomUUID();
 export const AUTHOR_ID = 'cmk5t48vx0000005zc5se4dqz';

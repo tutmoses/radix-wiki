@@ -20,7 +20,6 @@
 // Prints a human summary to stdout and, with --json, the full report as JSON.
 
 import { readdirSync } from 'fs';
-import { config } from 'dotenv';
 import { withClient } from './seed-utils.mjs';
 // The probe engine is `wiki-formant/link-check`, shared with caper. Each repo
 // had learned a different half of the same lesson — this one knew that npmjs
@@ -30,7 +29,7 @@ import { withClient } from './seed-utils.mjs';
 // now apply on every run, in both repos.
 import { collectBlockLinks, mapLimit, probeExternal, unverifiableReason } from 'wiki-formant/link-check';
 
-config({ path: new URL('../.env', import.meta.url) });
+process.loadEnvFile(new URL('../.env', import.meta.url));
 
 const args = process.argv.slice(2);
 const asJson = args.includes('--json');

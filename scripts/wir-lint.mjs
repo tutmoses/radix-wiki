@@ -14,11 +14,10 @@
 // a rule that blocks a true story from shipping is worse than the drift it prevents.
 
 import fs from 'node:fs';
-import { config } from 'dotenv';
 import { safeLinkHref } from 'wiki-formant/validation';
 import { argOf, withClient } from './seed-utils.mjs';
 
-config({ path: new URL('../.env', import.meta.url) });
+process.loadEnvFile(new URL('../.env', import.meta.url));
 
 const TAG = 'blog';
 const RECAP_LIKE = 'week-in-review-%';

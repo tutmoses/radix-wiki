@@ -8,9 +8,8 @@
 // a run resumes after the last one, so stopping it costs only the day in progress. After
 // that the daily cron (/api/cron/ledger-days) keeps the table current.
 
-import { config } from 'dotenv';
-
-config({ quiet: true });
+try { process.loadEnvFile(); } catch {} // the .env in the working directory, if there is one
+export {}; // a module, so the await below is top-level
 
 // The Prisma client connects on import, so it is loaded only once the env is.
 const { syncLedgerDays } = await import('@/lib/radix/activity');

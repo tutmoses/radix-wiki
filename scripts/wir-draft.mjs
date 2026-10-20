@@ -13,10 +13,9 @@
 // Nothing here touches the database.
 
 import fs from 'node:fs';
-import { config } from 'dotenv';
 import { uid, argOf, weekKey, fmt, compact, withClient, readPage } from './seed-utils.mjs';
 
-config({ path: new URL('../.env', import.meta.url) });
+process.loadEnvFile(new URL('../.env', import.meta.url));
 
 const SNAP_TAG = 'contents/tech/operations';
 const SNAP_SLUG = 'network-weekly';

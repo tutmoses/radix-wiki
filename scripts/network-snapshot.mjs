@@ -23,13 +23,12 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { config } from 'dotenv';
 import { bump } from 'wiki-formant/versioning';
 import {
   uid, AUTHOR_ID, isLockedPage, esc, meta, argOf, weekKey, fmt, compact, delta, withClient, readPage, storeFor, writeRevision,
 } from './seed-utils.mjs';
 
-config({ path: new URL('../.env', import.meta.url) });
+process.loadEnvFile(new URL('../.env', import.meta.url));
 
 const TAG = 'contents/tech/operations';
 const SLUG = 'network-weekly';
