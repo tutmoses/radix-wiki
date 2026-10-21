@@ -1,0 +1,85 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "radix-wiki",
+  "version": "1.0.0",
+  "description": "Search and read RADIX Wiki, the community-edited encyclopedia of Radix, a layer-1 blockchain with asset-oriented smart contracts.",
+  "author": { "name": "RADIX Wiki", "url": "https://radix.wiki" },
+  "homepage": "https://radix.wiki",
+  "repository": "https://github.com/tutmoses/radix-wiki",
+  "license": "CC-BY-4.0",
+  "keywords": ["radix", "blockchain", "wiki", "scrypto", "defi"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "RADIX Wiki",
+        "shortDescription": "The Radix encyclopedia",
+        "longDescription": "RADIX Wiki is a community-edited encyclopedia that documents Radix, a layer-1 blockchain with asset-oriented smart contracts, for its users and builders. This plugin searches and reads its pages: the network and its consensus, Scrypto (Radix's Rust SDK), the wallet, the ecosystem's projects, and the Radix DAO's working groups and proposals. It also reads the DAO's ideas pipeline and recent network activity. Each result carries its page's radix.wiki address.\n\nThe plugin only reads. Editing a page takes a signature from your own Radix key, which happens on radix.wiki or through its main MCP server at radix.wiki/api/mcp. Nothing on the wiki is financial advice.",
+        "developerName": "RADIX Wiki",
+        "category": "Education",
+        "capabilities": ["Read"],
+        "websiteURL": "https://radix.wiki",
+        "privacyPolicyURL": "https://radix.wiki/contents/resources/legal/privacy-policy",
+        "termsOfServiceURL": "https://radix.wiki/contents/resources/legal/terms-of-use",
+        "defaultPrompt": [
+          "What is Radix, and how does it differ from other layer-1s?",
+          "What has changed on RADIX Wiki this month?",
+          "How do I write my first Scrypto blueprint?"
+        ],
+        "brandColor": "#E0565C",
+        "brandColorDark": "#FF9DA0",
+        "logo": "./assets/logo.png"
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Explains a core concept from the wiki and cites it",
+              "prompt": "What is Cerberus consensus on Radix?",
+              "tools_triggered": "search_wiki, get_page",
+              "expected_behavior": "Finds the Cerberus page, explains the consensus protocol from it, and links the radix.wiki page it used."
+            },
+            {
+              "description": "Shows how the wiki is organised",
+              "prompt": "What topics does RADIX Wiki cover?",
+              "tools_triggered": "get_categories, list_pages",
+              "expected_behavior": "Lists the wiki's top-level categories with page counts and names a few pages in the largest ones."
+            },
+            {
+              "description": "Summarises recent edits",
+              "prompt": "What changed on RADIX Wiki in the last 30 days?",
+              "tools_triggered": "get_recent_changes",
+              "expected_behavior": "Lists the pages created or edited in the last 30 days, grouped by topic, each with a link."
+            },
+            {
+              "description": "Reads the DAO's ideas pipeline",
+              "prompt": "What is the Radix DAO working on right now?",
+              "tools_triggered": "get_ideas_board",
+              "expected_behavior": "Lists proposals and tasks by status column with their working group, and links the cards it names."
+            },
+            {
+              "description": "Answers a builder question from a technical page",
+              "prompt": "How do resources and vaults work in Scrypto?",
+              "tools_triggered": "search_wiki, get_page",
+              "expected_behavior": "Explains resources and vaults from the wiki's Scrypto pages and cites each page used."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Price prediction and investment advice are out of scope",
+              "prompt": "Should I buy XRD before the next upgrade?"
+            },
+            {
+              "description": "The plugin cannot edit pages",
+              "prompt": "Rewrite the Radix Wallet page on RADIX Wiki for me."
+            },
+            {
+              "description": "Unrelated to Radix",
+              "prompt": "What is the weather in London tomorrow?"
+            }
+          ]
+        },
+        "commerce": false
+      }
+    }
+  }
+}
