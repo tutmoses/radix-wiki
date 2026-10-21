@@ -31,8 +31,11 @@ import {
   editReadChecks,
   openapiWriteParity,
   rolaOriginCheck,
+  pluginParity,
 } from 'wiki-formant/conformance';
 import serverManifest from '../server.json';
+import plugin from '../chatgpt/plugin.json';
+import pluginMcp from '../chatgpt/mcp.json';
 import { validateBlocks, blockIssues } from '@/lib/block-utils';
 import { describeBlockIssues } from 'wiki-formant/validation';
 
@@ -47,6 +50,7 @@ const { rpc, call, payload, check } = t;
 
   await agentCardParity(t);
   await manifestParity(t, { writeAuth: true });
+  await pluginParity(t, { plugin, mcp: pluginMcp });
   await annotationChecks(t, { writes: ['get_challenge', 'login', 'create_page', 'edit_page', 'restore_revision', 'delete_page', 'upload_image'] });
 
   // The three calls an agent makes before anything else. One page with a
