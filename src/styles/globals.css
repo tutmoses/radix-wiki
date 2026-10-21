@@ -299,6 +299,10 @@
   }
   .code-block-wrapper:hover > .code-copy-btn { @apply opacity-100; }
 
+  /* `Pager`: laid out and dimmed at its ends by base.css; its steps read as links. */
+  .pager-step { @apply text-accent hover:text-accent-hover; }
+  .pager-count { @apply text-text-muted text-small; }
+
   /* ===== SKIP LINK ===== */
   .skip-link {
     @apply absolute -top-full left-4 z-50 px-4 py-2 bg-accent text-surface-0 rounded-b font-semibold text-sm;

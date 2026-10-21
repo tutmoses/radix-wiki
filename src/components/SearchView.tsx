@@ -10,6 +10,7 @@ import { pagePath } from '@/lib/utils';
 import Highlight from '@/components/Highlight';
 import type { PageSummary } from '@/lib/wiki';
 import { EmptyState } from '@/components/EmptyState';
+import { Pager } from 'wiki-formant/react-server';
 
 const PAGE_SIZE = 25;
 
@@ -97,13 +98,7 @@ export default function SearchView({ query: initialQuery }: { query: string }) {
         </ul>
       )}
 
-      {totalPages > 1 && (
-        <nav className="row justify-center gap-4" aria-label="Search results pages">
-          <button className="link disabled:opacity-40" disabled={page <= 1 || isSearching} onClick={() => goToPage(page - 1)}>← Previous</button>
-          <span className="text-text-muted text-small">Page {page} of {totalPages}</span>
-          <button className="link disabled:opacity-40" disabled={page >= totalPages || isSearching} onClick={() => goToPage(page + 1)}>Next →</button>
-        </nav>
-      )}
+      <Pager page={page} total={totalPages} onPage={goToPage} disabled={isSearching} label="Search results pages" />
     </div>
   );
 }
