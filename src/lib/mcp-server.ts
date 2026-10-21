@@ -351,6 +351,7 @@ export function serverConfig(request: Request): McpServerConfig {
     })),
     resources: RESOURCES,
     prompts: PROMPTS,
+    answer: { tool: 'search_wiki', argument: 'query' },
     rateLimit: MCP_RATE_LIMIT,
     docsUrl: `${SITE_URL}/AGENTS.md`,
     onCall: (req, body) => trackMcpCall(req, body, SERVER_INFO.name),
