@@ -8,10 +8,10 @@ import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { findTagByPath, tagLabel, isValidTagPath, isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys } from '@/lib/tags';
 import { requireBalance } from '@/lib/radix/balance';
 import { parsePagination, paginatedResponse } from 'wiki-formant/pagination';
-import { requireAuth, cachedJson, CACHE, type RouteContext } from '@/lib/api';
+import { requireAuth, cachedJson, tagged, CACHE, type RouteContext } from '@/lib/api';
 import { toListing } from 'wiki-formant/store';
 import { isReservedSlug, parsePath } from '@/lib/path';
-import { store, toWikiPage, authorsOf, deletePage, searchPages, resolveBlockData, loadPageHistory, getCategoryPages, revalidatePage } from '@/lib/wiki';
+import { store, toWikiPage, authorsOf, deletePage, searchPages, resolveBlockData, loadPageHistory, getCategoryPages, revalidatePage, pageTag, CORPUS_TAG } from '@/lib/wiki';
 import { blockIssues, validateBlocks } from '@/lib/block-utils';
 import { describeBlockIssues, MAX_BLOCK_ROWS } from 'wiki-formant/validation';
 import { blocksToMdx } from '@/lib/mdx';
@@ -21,9 +21,16 @@ import type { WikiPage, WikiPageInput, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
 import { deliverWebhooks } from '@/lib/webhooks';
 import { trackSearch } from '@/lib/track';
-import { VARY_ACCEPT, corpusEtag, markdownHeaders, notModified, teachingNotFound, wantsMarkdown, json, errors, handleRoute } from 'wiki-formant/http';
+import { VARY_ACCEPT, cacheTagHeaders, corpusEtag, markdownHeaders, notModified, teachingNotFound, wantsMarkdown, json, errors, handleRoute } from 'wiki-formant/http';
 
 type PathParams = { path?: string[] };
+
+/**
+ * A listing or search answer. The CDN holds a route handler by its `s-maxage`
+ * alone, so each response here carries the tag of what it reads, which the
+ * save that changes it expires (`revalidatePage`); a listing reads the corpus.
+ */
+const LISTING = { ...CACHE.short, ...cacheTagHeaders(CORPUS_TAG) };
 
 /** A stored page with its author, as every write answers. */
 async function withAuthor(row: Parameters<typeof toWikiPage>[0]): Promise<WikiPage> {
@@ -96,7 +103,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       // where it lives.
       if (searchParams.has('refs')) {
         const rows = await prisma.wikiPage.findMany({ where: { siteId: '' }, select: { id: true, title: true, tagPath: true }, orderBy: { title: 'asc' } });
-        return cachedJson(rows.map(r => ({ id: r.id, title: r.title, detail: r.tagPath || 'Homepage' })));
+        return cachedJson(rows.map(r => ({ id: r.id, title: r.title, detail: r.tagPath || 'Homepage' })), LISTING);
       }
 
       // Batch lookup by id, the shape `/api/users/search?ids=` already uses: it
@@ -134,7 +141,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
         // inside that window fires once — which is the debounce this wants
         // anyway, not a gap in the measurement.
         trackSearch(request.headers, q, total, 'wiki');
-        return cachedJson(paginatedResponse(items, total, page, pageSize));
+        return cachedJson(paginatedResponse(items, total, page, pageSize), LISTING);
       }
 
       const orderBy = sort === 'title' ? { title: 'asc' as const } : { updatedAt: 'desc' as const };
@@ -146,7 +153,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       const authors = await authorsOf(rows.map(r => r.authorId));
       const pages = rows.map(r => toWikiPage({ ...toListing(r), metadata: (r.metadata ?? {}) as Record<string, unknown> }, authors));
 
-      return cachedJson(paginatedResponse(pages, total, page, pageSize));
+      return cachedJson(paginatedResponse(pages, total, page, pageSize), LISTING);
     }
 
     if (parsed.type === 'invalid') return errors.notFound('Invalid path');
@@ -156,7 +163,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     const noPage = (where: string) => teachingNotFound(
       `No page at "${where}".`,
       {
-        index: `${SITE_URL}/llms-index.txt`,
+        map: `${SITE_URL}/llms.txt`,
         search: `${SITE_URL}/api/wiki?q=<term>`,
         categories: `${SITE_URL}/api/wiki?tagPath=`,
         note: 'Every page URL takes a ".md" suffix for its markdown twin, and the homepage\'s is /index.md. Paths are tagPath + slug, e.g. "contents/tech/core-concepts/utxo-model".',
@@ -169,7 +176,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     if (parsed.type === 'history') {
       const history = await loadPageHistory(parsed.tagPath, parsed.slug);
       if (!history) return errors.notFound('Page not found');
-      return cachedJson(history);
+      return cachedJson(history, { ...CACHE.short, ...cacheTagHeaders(pageTag(parsed.tagPath, parsed.slug)) });
     }
 
     // Only the wiki's own rows answer here. The app routes (charts, leaderboard,
@@ -184,7 +191,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     const row = await store.get(parsed.tagPath, parsed.slug);
     const page = row && await withAuthor(row);
 
-    if (!page && parsed.type === 'homepage') return cachedJson(null);
+    if (!page && parsed.type === 'homepage') return cachedJson(null, { ...CACHE.short, ...cacheTagHeaders(CORPUS_TAG) });
 
     // A category with no hub article is still a page to a reader: the listing
     // the HTML shows. Its twin is that listing, or every section linked from a
@@ -200,7 +207,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       }, null);
       const lastModified = updated?.toUTCString();
       const etag = corpusEtag([parsed.tagPath, pages.length, updated]);
-      const headers = markdownHeaders(lastModified, { etag, noindex: true, extra: { ...CACHE.medium, ...VARY_ACCEPT } });
+      const headers = markdownHeaders(lastModified, { etag, noindex: true, extra: { ...CACHE.medium, ...VARY_ACCEPT, ...cacheTagHeaders(pageTag(parsed.tagPath)) } });
       const unchanged = notModified(request, etag, lastModified ?? null, headers);
       if (unchanged) return unchanged;
 
@@ -218,7 +225,8 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     }
 
     // The one 404 that is worth caching: a missing page is a hot path for crawlers.
-    if (!page) return noPage(pagePath(parsed.tagPath, parsed.slug));
+    // It carries the page's tag, so the create that fills the address purges it.
+    if (!page) return tagged(noPage(pagePath(parsed.tagPath, parsed.slug)), pageTag(parsed.tagPath, parsed.slug));
 
     // Agent-friendly text format: the `.md` twin, Accept negotiation, or an
     // explicit ?format=text. Real markdown, no component tags — dynamic
@@ -241,7 +249,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       // 9110 requires.
       const lastModified = page.updatedAt.toUTCString();
       const etag = corpusEtag([page.tagPath, page.slug, page.version, page.updatedAt]);
-      const headers = markdownHeaders(lastModified, { etag, noindex: true, extra: { ...CACHE.medium, ...VARY_ACCEPT } });
+      const headers = markdownHeaders(lastModified, { etag, noindex: true, extra: { ...CACHE.medium, ...VARY_ACCEPT, ...cacheTagHeaders(pageTag(page.tagPath, page.slug)) } });
       const unchanged = notModified(request, etag, lastModified, headers);
       if (unchanged) return unchanged;
       const md = pageToMarkdown({
@@ -255,7 +263,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       return new NextResponse(md, { headers });
     }
 
-    return cachedJson(page, { ...CACHE.short, ...VARY_ACCEPT, 'Last-Modified': page.updatedAt.toUTCString() });
+    return cachedJson(page, { ...CACHE.short, ...VARY_ACCEPT, ...cacheTagHeaders(pageTag(page.tagPath, page.slug)), 'Last-Modified': page.updatedAt.toUTCString() });
   }, 'Failed to fetch');
 }
 

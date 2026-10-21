@@ -72,6 +72,10 @@ const CACHE_OPTS = { tags: ['wiki'], revalidate: 86400 };
 /** The tag of what a URL renders: its path, so `page:/` is the homepage and `page:/ideas` the ideas board. */
 export const pageTag = (tagPath: string, slug = '') => `page:/${[tagPath, slug].filter(Boolean).join('/')}`;
 
+/** The homepage's tag, which every save expires since the homepage lists and
+ *  counts what the wiki holds: a route handler whose text spans the corpus carries it. */
+export const CORPUS_TAG = pageTag('');
+
 /**
  * Expires what an edit to a page changes: the page at each of `slugs`, and every
  * category above it up to the homepage, since each one lists or counts what it

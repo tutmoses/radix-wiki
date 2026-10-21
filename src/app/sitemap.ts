@@ -52,8 +52,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // feeds were listed too, and Search Console filed all five under "crawled,
   // currently not indexed" — the one thing a sitemap row can do for a document
   // that is not a page. Each stays discoverable where it was found before:
-  // the feeds and llms-full.txt are <link rel="alternate"> in the layout, and
-  // llms.txt is the address every agent tries first.
+  // the feeds are <link rel="alternate"> in the layout, and llms.txt is the
+  // address every agent tries first.
   return [
     { url: SITE_URL, lastModified: latest, changeFrequency: 'daily', priority: 1 },
     ...SITEMAP_PAGES.map(p => ({

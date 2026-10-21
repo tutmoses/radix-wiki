@@ -1,7 +1,7 @@
 // src/lib/markdown.ts — the block tree as real markdown, for the `.md` twin of
 // every wiki page (the /:path*.md rewrite → /api/wiki/:path*?format=text), and
 // for every other place an agent reads a page's text: get_page, get_pages and
-// the corpus (/llms-full.txt, get_full_corpus) serialize with the same function,
+// the corpus (get_full_corpus) serialize with the same function,
 // so a page cannot read one way over MCP and another at its twin.
 //
 // It preserves the structure an agent navigates and cites by — headings, lists, tables, code, emphasis — so a fetched page can

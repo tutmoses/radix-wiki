@@ -22,7 +22,6 @@ import {
   annotationChecks,
   conditionalGetChecks,
   descriptorChecks,
-  distinctEtagChecks,
   payloadBudget,
   robotsChecks,
   manifestParity,
@@ -191,14 +190,12 @@ const { rpc, call, payload, check } = t;
   const guessed = await fetch(`${BASE}/contents/tech/zzz-not-a-page.md`);
   const guessedBody = await guessed.text();
   check('a wrong .md teaches',
-    guessed.status === 404 && guessedBody.includes('llms-index.txt') && guessedBody.includes('zzz-not-a-page'),
+    guessed.status === 404 && guessedBody.includes('llms.txt') && guessedBody.includes('zzz-not-a-page'),
     `${guessed.status} ${guessedBody.slice(0, 90)}`);
 
   // Every surface an agent recrawls, not only the ones that already passed.
   await conditionalGetChecks(t, [
     'llms.txt',
-    'llms-index.txt',
-    'llms-full.txt',
     ...(first ? [`${first.tagPath}/${first.slug}.md`] : []),
   ]);
 
@@ -206,17 +203,13 @@ const { rpc, call, payload, check } = t;
   // default list is the six S10 descriptors, which are this origin's six.
   await descriptorChecks(t);
 
-  // Three depths that shared one ETag between them would pass every check
-  // above and still not move when only one of them changed.
-  await distinctEtagChecks(t, ['llms.txt', 'llms-index.txt', 'llms-full.txt']);
-
   await robotsChecks(t, ['/api/mcp', '/llms.txt', '/.well-known/agent-card.json']);
 
   // A sitemap nominates pages for indexing, and Search Console filed the text
   // indexes under "crawled, currently not indexed", so src/app/sitemap.ts leaves
-  // them out on purpose. Agents find them through robots.txt and llms.txt.
+  // llms.txt out on purpose. Agents find it through robots.txt and the layout.
   const sitemap = await (await fetch(`${BASE}/sitemap.xml`)).text();
-  check('sitemap omits the llms exports', !/\/llms(-index|-full)?\.txt/.test(sitemap), 'no llms*.txt rows');
+  check('sitemap omits llms.txt', !/\/llms\.txt/.test(sitemap), 'no llms.txt row');
 
   process.exit(t.summary());
 })();

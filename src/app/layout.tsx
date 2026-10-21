@@ -83,7 +83,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             rail the reader collapsed does not paint open and animate shut. */}
         <script dangerouslySetInnerHTML={{ __html: sidebarBootScript(SIDEBAR_KEY) }} />
         <link rel="help" type="text/plain" href="/llms.txt" />
-        <link rel="alternate" type="text/plain" href="/llms-full.txt" title="Full LLM content" />
         {/* Kept here rather than in `alternates.types`: pages set `alternates.canonical`,
             which replaces the whole object and would drop the feed link from every page. */}
         <link rel="alternate" type="application/rss+xml" href="/blog.xml" title="RADIX Wiki Blog" />

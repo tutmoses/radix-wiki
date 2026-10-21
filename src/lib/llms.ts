@@ -1,5 +1,5 @@
-// src/lib/llms.ts — shared machinery for the llms.txt family of plain-text
-// exports (/llms.txt, /llms-index.txt, /llms-full.txt).
+// src/lib/llms.ts — /llms.txt, the agent-facing map of the wiki, and the
+// corpus walk `get_full_corpus` slices.
 //
 // The conditional-GET plumbing (the corpus ETag, the 304, the text headers)
 // and the excerpt/bullet formatting are `wiki-formant/http`, shared with the
@@ -7,12 +7,14 @@
 // aggregate defines a corpus revision, and how a page row becomes a bullet.
 
 import {
+  cacheTagHeaders,
   cleanSnippet,
+  corpusRoute,
   corpusValidatorsFrom,
-  corpusRoute as sharedCorpusRoute,
   pageLine as formantPageLine,
+  textHeaders,
 } from 'wiki-formant/http';
-import { NOT_HIDDEN } from '@/lib/wiki';
+import { CORPUS_TAG, NOT_HIDDEN } from '@/lib/wiki';
 import { prisma } from '@/lib/prisma/client';
 import { TAG_HIERARCHY, tagPaths } from '@/lib/tags';
 import { categoryLabel, pageUrl } from '@/lib/utils';
@@ -26,34 +28,13 @@ import type { Block } from '@/types/blocks';
 import type { CorpusSection } from 'wiki-formant/corpus';
 import { licenseBlock } from 'wiki-formant/license';
 
-/**
- * This wiki's three corpus depths, bound to the shared route factory.
- *
- * The factory is `wiki-formant/http`. What stays here is the one thing that is
- * this wiki's: which
- * aggregate defines a corpus revision, which `corpusValidators` below answers.
- *
- * The build is handed the date those validators carry, so a document that
- * states one states its Last-Modified. A clock date would ride along in every
- * 304 for as long as the corpus did not move.
- */
-export const corpusRoute = (depth: string, build: (updated: Date) => Promise<string>) =>
-  async (request: Request) => {
-    const validators = await corpusValidators(depth);
-    return sharedCorpusRoute(() => validators, () => build(new Date(validators.lastModified)))(request);
-  };
-
-/** The rows every corpus depth serves: article space, without the homepage row
- *  or the hidden operations paths. */
-export const CORPUS_WHERE = { tagPath: { not: '', ...NOT_HIDDEN } };
+/** The rows the corpus is: article space, without the homepage row or the
+ *  hidden operations paths. */
+const CORPUS_WHERE = { tagPath: { not: '', ...NOT_HIDDEN } };
 
 /**
- * Every page as one section, newest first.
- *
- * Split out of `buildFullCorpus` because /llms-full.txt takes the corpus whole
- * under an ETag while `get_full_corpus` has to hand a model a slice it can
- * actually hold — and to slice it, something has to know where the page
- * boundaries and their sizes are.
+ * Every page as one section, newest first: what `get_full_corpus` slices, so
+ * it knows where the page boundaries and their sizes are.
  */
 export async function corpusSections(tagPath?: string): Promise<CorpusSection[]> {
   const pages = await prisma.wikiPage.findMany({
@@ -71,18 +52,13 @@ export async function corpusSections(tagPath?: string): Promise<CorpusSection[]>
   });
 }
 
-export async function buildFullCorpus(header: (pageCount: number) => string): Promise<string> {
-  const docs = await corpusSections();
-  return [header(docs.length), ...docs.map(d => d.section)].join('\n\n');
-}
-
 /** Display-name lookup from top-level TAG_HIERARCHY slugs (emoji prefix stripped) */
-export const SECTION_NAMES = new Map(
+const SECTION_NAMES = new Map(
   TAG_HIERARCHY.filter(n => !n.hidden && n.slug).map(n => [n.slug, categoryLabel(n.name)]),
 );
 
 /** One markdown bullet for a page: linked title, cleaned excerpt, and the date an agent diffs on. */
-export function pageLine(p: { title: string; tagPath: string | null; slug: string | null; content: unknown; updatedAt: Date }): string {
+function pageLine(p: { title: string; tagPath: string | null; slug: string | null; content: unknown; updatedAt: Date }): string {
   return formantPageLine({
     title: p.title,
     url: pageUrl(p.tagPath ?? '', p.slug ?? ''),
@@ -92,27 +68,26 @@ export function pageLine(p: { title: string; tagPath: string | null; slug: strin
 }
 
 /**
- * Corpus-wide ETag + Last-Modified from page count, newest update and depth.
+ * Corpus-wide ETag + Last-Modified from page count and newest update.
  *
- * Aggregated over exactly the rows the documents project. The maintenance log
+ * Aggregated over exactly the rows the document projects. The maintenance log
  * is rewritten several times a day and appears in none of them, so counting it
- * moved every llms ETag and re-sent a multi-megabyte export that had not
- * changed a byte.
+ * moved the llms ETag and re-sent a document that had not changed a byte.
  */
-async function corpusValidators(depth = '') {
+async function corpusValidators() {
   const agg = await prisma.wikiPage.aggregate({ _count: true, _max: { updatedAt: true }, where: CORPUS_WHERE });
-  return corpusValidatorsFrom([depth, agg._count], [agg._max.updatedAt]);
+  return corpusValidatorsFrom(['llms', agg._count], [agg._max.updatedAt]);
 }
 
 const RECENT_LIMIT = 30;
 
 /**
- * The licence as the text exports state it: `WIKI_LICENSE` through
- * `wiki-formant/license`, so llms.txt and llms-full.txt carry the grant, the
- * credit line and the SPDX id the agent card, the OpenAPI info and the markdown
- * twins carry, rather than a hand-typed copy of each.
+ * The licence as llms.txt states it: `WIKI_LICENSE` through
+ * `wiki-formant/license`, so it carries the grant, the credit line and the SPDX
+ * id the agent card, the OpenAPI info and the markdown twins carry, rather than
+ * a hand-typed copy of each.
  */
-export const LICENSE_BLOCK = licenseBlock({ license: WIKI_LICENSE });
+const LICENSE_BLOCK = licenseBlock({ license: WIKI_LICENSE });
 
 const PREAMBLE = `# RADIX Wiki — The Knowledge Base for Radix DLT
 
@@ -120,8 +95,6 @@ const PREAMBLE = `# RADIX Wiki — The Knowledge Base for Radix DLT
 > layer-1 blockchain architected for linear scalability and asset-oriented
 > smart contracts. Contributors earn points that may be considered in any future $EMOON airdrop.
 >
-> Complete page index: ${SITE_URL}/llms-index.txt
-> Full content export: ${SITE_URL}/llms-full.txt
 > MCP endpoint: ${SITE_URL}/api/mcp (server card: ${SITE_URL}/api/mcp/server-card)
 > OpenAPI spec for the REST API: ${SITE_URL}/openapi.json
 > Agent discovery: ${SITE_URL}/.well-known/agent-card.json
@@ -258,7 +231,7 @@ export async function buildLlmsTxt(): Promise<string> {
     '',
     '## Recently Updated Pages',
     '',
-    `The ${RECENT_LIMIT} most recently updated pages. Every page, grouped by section: ${SITE_URL}/llms-index.txt`,
+    `The ${RECENT_LIMIT} most recently updated pages.`,
     '',
     ...recent.map(pageLine),
     '',
@@ -276,3 +249,14 @@ export async function buildLlmsTxt(): Promise<string> {
     ...categories.map(c => `- [${c.node.name}](${SITE_URL}/${c.path})`),
   ].join('\n');
 }
+
+/**
+ * /llms.txt under its corpus ETag. It carries `CORPUS_TAG`, which every save
+ * expires, because the CDN holds a route handler by its `s-maxage` alone: the
+ * recent-pages list outlived each edit by the edge window.
+ */
+export const llmsTxtRoute = corpusRoute(
+  corpusValidators,
+  buildLlmsTxt,
+  (etag, lastModified) => ({ ...textHeaders(etag, lastModified), ...cacheTagHeaders(CORPUS_TAG) }),
+);

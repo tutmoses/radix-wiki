@@ -80,7 +80,7 @@ const PROMPTS: McpPrompt[] = [
   {
     name: 'ingest_the_wiki',
     description: 'Ingest the whole wiki into my own index',
-    text: 'I want the whole corpus. Call get_full_corpus with sizeOnly=true first and tell me the size and the per-branch breakdown, then pull it in maxChars slices, following nextSkip until truncated is false. Say what the cacheable /llms-full.txt alternative would cost instead.',
+    text: 'I want the whole corpus. Call get_full_corpus with sizeOnly=true first and tell me the size and the per-branch breakdown, then pull it in maxChars slices, following nextSkip until truncated is false.',
   },
   {
     name: 'write_a_page',

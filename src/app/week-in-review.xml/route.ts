@@ -7,6 +7,8 @@
 
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { feedResponse } from 'wiki-formant/feed';
+import { tagged } from '@/lib/api';
+import { pageTag } from '@/lib/wiki';
 import { feedItem, getRecaps } from '@/lib/feed';
 import { SERIES_SLUG, issueLabel } from '@/lib/week-in-review';
 import { licenseNote } from 'wiki-formant/license';
@@ -26,11 +28,12 @@ export async function GET(request: Request) {
       categories: ['Radix Week in Review'],
     }));
 
-  return feedResponse(request, {
+  // Every blog save expires the blog's tag, which purges this at the CDN.
+  return tagged(feedResponse(request, {
     title: 'Radix Week in Review',
     link: `${SITE_URL}/blog/${SERIES_SLUG}`,
     description: `The week in the Radix ecosystem, read against the ledger. ${scoreline}`,
     copyright: licenseNote(WIKI_LICENSE),
     self: `${SITE_URL}/week-in-review.xml`,
-  }, items);
+  }, items), pageTag('blog'));
 }

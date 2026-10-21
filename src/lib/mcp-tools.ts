@@ -62,7 +62,6 @@ export const TOOLS: McpToolSpec[] = [
     noun: 'the Radix Wiki',
     corpusTitle: 'Radix Wiki — Full Content',
     label: node => categoryLabel(node.name),
-    // The sections /llms-full.txt is made of, so the tool and the file agree byte for byte.
     corpus: corpusSections,
     // edit_page takes the banner and co-editors as fields, though they are stored in metadata.
     forEdit: page => { const { bannerImage, editorIds } = toWikiPage(page); return { bannerImage, editorIds }; },

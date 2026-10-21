@@ -9,7 +9,7 @@ export default function robots(): MetadataRoute.Robots {
   // one-char margin deciding whether agents can read the twins at all. Naming the twin
   // route outright settles it at 16 characters against 9.
   //
-  // /api/mcp, the three llms exports, /openapi.json and /.well-known/ are
+  // /api/mcp, /llms.txt, /openapi.json and /.well-known/ are
   // `AGENT_SURFACE_PATHS`, which `crawlerRules` allows in every group without
   // being told. This list is what this origin serves beyond them.
   const aiAllow = ['/', '/api/wiki/', '/api/wiki/*/mdx$'];
