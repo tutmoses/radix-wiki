@@ -20,15 +20,17 @@ import {
   CodeTabsView,
   ColumnsView,
   LinkGridView,
+  PageRefsView,
   ReferencesView,
   StatsView,
   TestimonialView,
 } from 'wiki-formant/block-views';
 import { processHtml } from '@/lib/html';
 import { useFetch } from '@/hooks';
+import { blockLimit, MAX_BLOCK_ROWS } from 'wiki-formant/validation';
 import { Badge, TipJarQr } from '@/components/ui';
 import type { WikiPage, PageMetadata } from '@/types';
-import type { Block, RecentPagesBlock, PageListBlock, AssetPriceBlock, NetworkChartBlock, RssFeedBlock, InfoboxBlock, AtomicBlock, TipJarBlock, BannerVariant } from '@/types/blocks';
+import type { Block, ListBlock, AssetPriceBlock, NetworkChartBlock, RssFeedBlock, InfoboxBlock, AtomicBlock, TipJarBlock, BannerVariant } from '@/types/blocks';
 import { getMetadataKeys } from '@/lib/tags';
 import { metadataRows } from '@/lib/taxonomy';
 import { TokenChart } from '@/components/charts/TokenChart';
@@ -59,19 +61,10 @@ export function PageThumb({ page }: { page: Pick<WikiPage, 'title' | 'tagPath' |
   );
 }
 
-const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; compact?: boolean }) {
+const PageCard = memo(function PageCard({ page }: { page: WikiPage }) {
   const now = useNow();
   const leafTag = findTagByPath(page.tagPath.split('/'));
   const href = pagePath(page.tagPath, page.slug);
-
-  if (compact) {
-    return (
-      <Link href={href} className="page-card-compact">
-        <Image src={page.bannerImage || generateBannerSvg(page.title, page.tagPath)} alt="" width={32} height={32} className="page-card-icon" unoptimized={!page.bannerImage} />
-        <span className="group-hover:text-accent transition-colors truncate">{page.title}</span>
-      </Link>
-    );
-  }
 
   return (
     <Link href={href} className="group">
@@ -91,30 +84,36 @@ const PageCard = memo(function PageCard({ page, compact }: { page: WikiPage; com
 });
 
 // ========== BLOCK VIEW COMPONENTS ==========
-function RecentPagesBlockView({ block }: { block: RecentPagesBlock }) {
-  const params = new URLSearchParams({ pageSize: String(block.limit) });
-  if (block.tagPath) params.set('tagPath', block.tagPath);
-  params.set('sort', 'updatedAt');
-  // Like PageListBlockView below: a server-resolved list never fetches. It used
-  // to re-fetch on every hydration and replace the list the page was rendered
-  // with, for the same rows the server had just queried.
-  const { data, isLoading } = useFetch<WikiPage[]>(block.resolvedPages ? null : `/api/wiki?${params}`, { transform: d => d.items || [] });
-  const display = block.resolvedPages || data || [];
-  if (isLoading && !display.length) return <div className="recent-pages-grid">{Array.from({ length: Math.min(block.limit, 3) }, (_, i) => <div key={i} className="h-32 skeleton" />)}</div>;
-  if (!display.length) return <EmptyState title="No pages found." />;
-  return <div className="recent-pages-grid">{display.map(p => <PageCard key={p.id} page={p} />)}</div>;
+/** Where an unresolved list reads its pages on the client: the same rows resolveBlockData queries. */
+function listUrl(block: ListBlock): string | null {
+  switch (block.source) {
+    case 'chosen':
+      return block.pages?.length ? `/api/wiki?ids=${block.pages.join(',')}` : null;
+    case 'newest':
+      return `/api/wiki?${new URLSearchParams({ pageSize: String(blockLimit(block.count, 5)), sort: 'updatedAt', ...(block.under && { tagPath: block.under }) })}`;
+    case 'under':
+      return block.under ? `/api/wiki?${new URLSearchParams({ pageSize: String(blockLimit(block.count, MAX_BLOCK_ROWS)), sort: 'title', tagPath: block.under })}` : null;
+  }
 }
 
-function PageListBlockView({ block }: { block: PageListBlock }) {
+function ListBlockView({ block }: { block: ListBlock }) {
+  const now = useNow();
   // A server-resolved list never fetches, and `useFetch(null)` reports isLoading
-  // false — so the skeleton below cannot flash over a list that already exists.
-  const { data, isLoading } = useFetch<WikiPage[]>(
-    block.resolvedPages || !block.pageIds.length ? null : `/api/wiki?ids=${block.pageIds.join(',')}`,
-  );
-  const pages = block.resolvedPages || data || [];
-  if (isLoading) return <div className="row-lg"><div className="flex-1 h-20 skeleton" /></div>;
-  if (!pages.length) return <p className="text-text-muted">No pages selected.</p>;
-  return <div className="row-lg flex-wrap">{pages.map(p => <PageCard key={p.id} page={p} compact />)}</div>;
+  // false, so the skeleton cannot flash over a list that already exists. The
+  // fetch is for a list drawn before the server has resolved it, as the
+  // homepage is just after a save.
+  const { data, isLoading } = useFetch<WikiPage[]>(block.items ? null : listUrl(block), {
+    transform: d => (Array.isArray(d) ? d : d.items || []),
+  });
+  const pages = block.items || data || [];
+  if (isLoading && !pages.length) return <div className="recent-pages-grid">{Array.from({ length: 2 }, (_, i) => <div key={i} className="h-32 skeleton" />)}</div>;
+  if (block.show === 'cards') {
+    return pages.length
+      ? <div className="recent-pages-grid">{pages.map(p => <PageCard key={p.id} page={p} />)}</div>
+      : <EmptyState title="No pages found." />;
+  }
+  const refs = pages.map(p => ({ title: p.title, href: pagePath(p.tagPath, p.slug), timeAgo: relativeTime(p.updatedAt, now, AGO), updated: new Date(p.updatedAt).toISOString() }));
+  return <PageRefsView refs={refs} link={Link} empty="No pages found." />;
 }
 
 type PriceData = { price: number; change24h?: number; symbol?: string; name?: string };
@@ -349,8 +348,7 @@ function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
     case 'stats': return <StatsView items={block.items} columns={block.columns ?? 4} />;
     case 'testimonial': return <TestimonialView {...block} />;
     case 'content': return <ContentBlockView html={block.text} />;
-    case 'recentPages': return <RecentPagesBlockView block={block} />;
-    case 'pageList': return <PageListBlockView block={block} />;
+    case 'list': return <ListBlockView block={block} />;
     case 'assetPrice': return <AssetPriceBlockView block={block} />;
     case 'networkChart': return <NetworkChartBlockView block={block} />;
     case 'rssFeed': return <RssFeedBlockView block={block} />;

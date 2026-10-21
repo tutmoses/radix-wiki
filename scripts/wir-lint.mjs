@@ -83,8 +83,8 @@ function htmlOf(blocks, badLinks) {
     }
     if (b.type === 'testimonial') out.push(`<blockquote>${b.quote}</blockquote>`);
     if (b.type === 'stats') for (const i of b.items || []) out.push(`${i.label} ${i.value}`);
-    // A pageList is a link into the corpus even though it stores ids, not hrefs.
-    if (b.type === 'pageList') for (const id of b.pageIds || []) out.push(`<a href="/page/${id}"></a>`);
+    // A list of picked pages links into the corpus even though it stores ids, not hrefs.
+    if (b.type === 'list') for (const id of b.pages || []) out.push(`<a href="/page/${id}"></a>`);
   };
   for (const b of blocks || []) {
     if (b.type === 'infobox') (b.blocks || []).forEach(atomic);

@@ -63,7 +63,7 @@ function renderAtomic(block: AtomicBlock): string {
       return (block.tabs ?? []).map(t => `<pre><code>${escXml(t.code)}</code></pre>`).join('');
     case 'banner':
       return block.text ? `<p><em>${escXml(block.text)}</em></p>` : '';
-    // pageList / recentPages / rssFeed resolve their rows at render time and carry
+    // list / rssFeed resolve their rows at render time and carry
     // none in the stored block, so a feed built straight off the DB has nothing to show.
     default:
       return '';

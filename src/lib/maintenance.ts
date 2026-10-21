@@ -13,12 +13,12 @@ import { cached } from '@/lib/wiki';
 import { pagePath } from '@/lib/utils';
 import { isStale, daysSince } from 'wiki-formant/freshness';
 import { getMetadataKeys } from '@/lib/tags';
+import { leafBlocks } from '@/lib/block-shape';
+import type { Block } from '@/types/blocks';
 
 const HREF = /href=\\?"([^"\\?#]+)/g;
 /** A `references` block keeps each citation in a `url` field, not an href. */
 const REF_URL = /"url":"https?:/g;
-/** Page ids are cuids; block ids are dashed UUIDs, which this can't span. */
-const CUID = /c[a-z0-9]{20,}/g;
 
 interface MaintenanceItem { title: string; href: string; tagPath: string; detail: string }
 export interface MaintenanceQueue { key: string; title: string; description: string; items: MaintenanceItem[] }
@@ -52,8 +52,10 @@ export const getMaintenanceQueues = cached('getMaintenanceQueuesWithRefs', async
       else if (/^https?:/i.test(target)) outbound++;
     }
     external.set(page.id, outbound + (text.match(REF_URL)?.length ?? 0));
-    // A `pageList` block references pages by id rather than by href.
-    for (const [token] of text.matchAll(CUID)) if (token !== page.id && ids.has(token)) linkedIds.add(token);
+    // A list that picks its pages names them by id rather than by href.
+    for (const b of Array.isArray(page.content) ? leafBlocks(page.content as Block[]) : []) {
+      if (b.type === 'list') for (const id of b.pages ?? []) if (id !== page.id && ids.has(id)) linkedIds.add(id);
+    }
   }
 
   const orphaned = pages.filter(p => !linkedPaths.has(href(p)) && !linkedIds.has(p.id));

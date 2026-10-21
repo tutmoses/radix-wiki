@@ -473,13 +473,14 @@
   .page-card-title { @apply font-medium transition-colors truncate; .group:hover & { @apply text-accent; } }
   .page-card-snippet { @apply text-text-muted line-clamp-2 text-small; }
   .page-card-meta { @apply flex items-center gap-2 flex-wrap mt-auto pt-1; }
-  /* `min-w-0` twice, and both are load-bearing. The title span is `truncate`,
-     which is `white-space: nowrap` — so its min-content is the untruncated
-     title, and a flex item's `min-width: auto` refuses to go below that. The
-     card grew to fit the text instead of the text ellipsing, and then the card
-     itself, a flex item of a wrapping row, refused to shrink in turn. */
-  .page-card-compact { @apply flex items-center gap-2 p-3 min-w-0 max-w-full bg-surface-1 border border-border-muted rounded-lg hover:bg-surface-2 transition-colors; > span { @apply min-w-0; } }
-  .page-card-icon { @apply size-8 rounded object-cover shrink-0; }
+
+  /* ===== PAGE LINKS =====
+     A list block shown as links: wiki-formant's `PageRefsView`, one row a page. */
+  .page-refs { @apply list-none p-0 m-0 flex flex-col divide-y divide-border-muted bg-surface-1 border border-border-muted rounded-lg overflow-hidden; }
+  .page-ref { @apply flex items-baseline justify-between gap-3 min-w-0 px-4 py-2.5 hover:bg-surface-2 transition-colors; &:hover .page-ref-title { @apply text-accent; } }
+  .page-ref-title { @apply min-w-0 truncate font-medium transition-colors; }
+  .page-ref-time { @apply shrink-0 text-small text-text-muted; }
+  .page-refs-empty { @apply text-text-muted; }
 
   /* ===== EMPTY STATE ===== */
   /* `EmptyState`. The padding and centring are wiki-formant/base.css's

@@ -38,15 +38,11 @@ export function atomicToMarkdown(block: AtomicBlock): string {
     case 'references': case 'stats': case 'linkGrid': case 'testimonial':
       return coreAtomicToMarkdown(block, { siteUrl: SITE_URL });
 
-    case 'recentPages':
-      return block.resolvedPages?.length
-        ? pageLinks(block.resolvedPages)
-        : `_Dynamic page list — live at ${block.tagPath ? `${SITE_URL}/${block.tagPath}` : SITE_URL}_`;
-
-    case 'pageList':
-      return block.resolvedPages?.length
-        ? pageLinks(block.resolvedPages)
-        : '_Curated page list — rendered on the live page._';
+    case 'list':
+      if (block.items?.length) return pageLinks(block.items);
+      return block.source === 'chosen'
+        ? '_Curated page list, rendered on the live page._'
+        : `_Dynamic page list, live at ${block.under ? `${SITE_URL}/${block.under}` : SITE_URL}_`;
 
     case 'rssFeed':
       return block.resolvedItems?.length

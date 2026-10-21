@@ -9,7 +9,8 @@ import { prisma } from '@/lib/prisma/client';
 import { pageUrl } from '@/lib/utils';
 import { getSortOrder, getMetadataKeys, HIDDEN_TAG_PATHS } from '@/lib/tags';
 import type { WikiAuthor, WikiPage, IdeasPage } from '@/types';
-import type { Block, RecentPagesBlock, PageListBlock, RssFeedBlock } from '@/types/blocks';
+import type { Block, ListBlock, RssFeedBlock } from '@/types/blocks';
+import { blockLimit, MAX_BLOCK_ROWS } from 'wiki-formant/validation';
 import { leafBlocks } from '@/lib/block-shape';
 import { RECAP_PREFIX } from '@/lib/week-in-review';
 
@@ -328,26 +329,31 @@ const getFeedItems = cached('getFeedItems',
   },
 );
 
-/** Pre-resolve recentPages, pageList, and rssFeed blocks server-side to avoid client waterfalls. */
-export async function resolveBlockData(blocks: Block[]): Promise<Block[]> {
-  const recentPending: { block: RecentPagesBlock; promise: Promise<any[]> }[] = [];
-  const listPending: { block: PageListBlock; promise: Promise<any[]> }[] = [];
-  const feedPending: { block: RssFeedBlock; promise: Promise<any[]> }[] = [];
-
-  for (const b of leafBlocks(blocks)) {
-    if (b.type === 'recentPages') recentPending.push({ block: b, promise: getRecentPages(b.tagPath, b.limit) });
-    else if (b.type === 'pageList') listPending.push({ block: b, promise: getPagesByIds(b.pageIds) });
-    else if (b.type === 'rssFeed') feedPending.push({ block: b, promise: getFeedItems(b.url, b.limit || 20) });
+/**
+ * A list's pages. `newest` is the store's recent pages, within `under` when it
+ * names a category; `under` is that category's own listing, in its own order;
+ * `chosen` is the picked ids, in the order picked.
+ */
+function listPages(b: ListBlock): Promise<WikiPage[]> {
+  switch (b.source) {
+    case 'newest': return getRecentPages(b.under, blockLimit(b.count, 5));
+    case 'under': return b.under ? getCategoryPages(b.under, undefined, blockLimit(b.count, MAX_BLOCK_ROWS)) : Promise.resolve([]);
+    case 'chosen': return getPagesByIds(b.pages ?? []);
   }
-  if (!recentPending.length && !listPending.length && !feedPending.length) return blocks;
+}
 
-  const [recentResults, listResults, feedResults] = await Promise.all([
-    Promise.all(recentPending.map(p => p.promise)),
-    Promise.all(listPending.map(p => p.promise)),
-    Promise.all(feedPending.map(p => p.promise)),
+/** Pre-resolve list and rssFeed blocks server-side to avoid client waterfalls. */
+export async function resolveBlockData(blocks: Block[]): Promise<Block[]> {
+  const leaves = leafBlocks(blocks);
+  const lists = leaves.filter((b): b is ListBlock => b.type === 'list');
+  const feeds = leaves.filter((b): b is RssFeedBlock => b.type === 'rssFeed');
+  if (!lists.length && !feeds.length) return blocks;
+
+  const [listResults, feedResults] = await Promise.all([
+    Promise.all(lists.map(listPages)),
+    Promise.all(feeds.map(b => getFeedItems(b.url, b.limit || 20))),
   ]);
-  recentPending.forEach((p, i) => { p.block.resolvedPages = recentResults[i]; });
-  listPending.forEach((p, i) => { p.block.resolvedPages = listResults[i]; });
-  feedPending.forEach((p, i) => { p.block.resolvedItems = feedResults[i]; });
+  lists.forEach((b, i) => { b.items = listResults[i]; });
+  feeds.forEach((b, i) => { b.resolvedItems = feedResults[i]; });
   return blocks;
 }

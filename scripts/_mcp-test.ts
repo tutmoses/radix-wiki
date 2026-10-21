@@ -93,7 +93,7 @@ const { rpc, call, payload, check } = t;
   if (first) await twinParity(t, 'get_page is the .md twin', `${first.tagPath}/${first.slug}.md`, page?.content ?? '');
 
   // What edit_page takes back: the stored blocks, which the write path must accept
-  // unchanged. A pageList block names pages by id, so rows must carry it.
+  // unchanged. A list block picks pages by id, so rows must carry it.
   await editReadChecks(t, {
     path: 'ecosystem/radix-blue-balls',
     rows: search?.pages,
@@ -183,7 +183,7 @@ const { rpc, call, payload, check } = t;
       md.status === 200 && (md.headers.get('content-type') ?? '').includes('text/markdown') && !!md.headers.get('last-modified') && !!md.headers.get('etag'),
       `${md.status} ${md.headers.get('content-type')} etag=${md.headers.get('etag')}`,
     );
-    check('.md is real markdown', !/<(Infobox|RecentPages|PageList|AssetPrice|Column)/.test(mdBody) && !mdBody.includes('. $1'), 'no JSX component tags, no $1 artifacts');
+    check('.md is real markdown', !/<(Infobox|List|AssetPrice|Column)\b/.test(mdBody) && !mdBody.includes('. $1'), 'no JSX component tags, no $1 artifacts');
   }
 
   // The plain-GET lane's commonest mistake, and the one an agent that guessed a

@@ -11,8 +11,7 @@ import type { Block, AtomicBlock, ColumnsBlock, InfoboxBlock } from '@/types/blo
 // disagree about a code fence or an entity.
 function convertAtomicBlock(block: AtomicBlock): string {
   switch (block.type) {
-    case 'recentPages': return `<RecentPages limit={${block.limit}}${block.tagPath ? ` tagPath="${block.tagPath}"` : ''} />`;
-    case 'pageList': return `<PageList pageIds={${JSON.stringify(block.pageIds)}} />`;
+    case 'list': return `<List ${[`source="${block.source}"`, block.under && `under="${block.under}"`, block.count && `count={${block.count}}`, block.pages && `pages={${JSON.stringify(block.pages)}}`, `show="${block.show}"`].filter(Boolean).join(' ')} />`;
     case 'assetPrice': return `<AssetPrice ${[block.resourceAddress && `resourceAddress="${block.resourceAddress}"`, block.showChange && 'showChange'].filter(Boolean).join(' ')} />`;
     case 'networkChart': return `<NetworkChart metric="${block.metric}"${block.range ? ` range="${block.range}"` : ''} />`;
     case 'rssFeed': return `<RssFeed url="${block.url}" limit={${block.limit || 20}} />`;

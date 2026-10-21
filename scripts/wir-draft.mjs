@@ -87,7 +87,7 @@ await withClient(async (client) => {
       ? `<p>Pages edited in the seven days to ${week}:</p>`
       : `<p>No article changed this week.</p>`)));
   if (touched.length) {
-    blocks.push({ id: uid(), type: 'pageList', pageIds: touched.map((p) => p.id) });
+    blocks.push({ id: uid(), type: 'list', source: 'chosen', pages: touched.map((p) => p.id), show: 'links' });
   }
 
   // --- the ledger table, second to last before Sources; wir-figure greps this heading

@@ -13,7 +13,7 @@ import { toListing } from 'wiki-formant/store';
 import { isReservedSlug, parsePath } from '@/lib/path';
 import { store, toWikiPage, authorsOf, deletePage, searchPages, resolveBlockData, loadPageHistory, getCategoryPages, revalidatePage } from '@/lib/wiki';
 import { blockIssues, validateBlocks } from '@/lib/block-utils';
-import { describeBlockIssues } from 'wiki-formant/validation';
+import { describeBlockIssues, MAX_BLOCK_ROWS } from 'wiki-formant/validation';
 import { blocksToMdx } from '@/lib/mdx';
 import { pageToMarkdown } from '@/lib/markdown';
 import { markdownDocument } from 'wiki-formant/markdown';
@@ -91,15 +91,22 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     }
 
     // List mode
-    if (!path?.length && (searchParams.has('page') || searchParams.has('pageSize') || searchParams.has('q') || searchParams.has('tagPath') || searchParams.has('sort') || searchParams.has('ids'))) {
+    if (!path?.length && (searchParams.has('page') || searchParams.has('pageSize') || searchParams.has('q') || searchParams.has('tagPath') || searchParams.has('sort') || searchParams.has('ids') || searchParams.has('refs'))) {
+      // Every page as a list block's picker offers it: its id, its title, and
+      // where it lives.
+      if (searchParams.has('refs')) {
+        const rows = await prisma.wikiPage.findMany({ where: { siteId: '' }, select: { id: true, title: true, tagPath: true }, orderBy: { title: 'asc' } });
+        return cachedJson(rows.map(r => ({ id: r.id, title: r.title, detail: r.tagPath || 'Homepage' })));
+      }
+
       // Batch lookup by id, the shape `/api/users/search?ids=` already uses: it
-      // hydrates a pageList block's stored ids on the client.
+      // hydrates a list block's picked ids on the client.
       const idsParam = searchParams.get('ids');
       if (idsParam !== null) {
-        const ids = idsParam.split(',').filter(Boolean).slice(0, 50);
+        const ids = idsParam.split(',').filter(Boolean).slice(0, MAX_BLOCK_ROWS);
         if (!ids.length) return json([]);
         // The author's chosen order, not the database's: getPagesByIds already
-        // orders its server-resolved twin this way, and a pageList block that
+        // orders its server-resolved twin this way, and a list block that
         // hydrates on the client must not reshuffle itself.
         const rows = await store.byIds(ids);
         const authors = await authorsOf(rows.map(r => r.authorId));
@@ -114,7 +121,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       // The same rule getRecentPages applies server-side: a listing that names a
       // path gets that path, hidden or not; one that names none is asking what
       // changed on the wiki, and the answer to that is article space. Without
-      // it the recentPages widget re-fetched here on hydration and put the
+      // it the recent-pages widget re-fetched here on hydration and put the
       // maintenance log back on top of the server-rendered list.
       const where = { siteId: '', tagPath: tagPath ?? { notIn: store.hidden } };
 

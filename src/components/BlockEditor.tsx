@@ -6,17 +6,19 @@ import { useMemo, type ReactNode } from 'react';
 import { EditorContent, UrlPromptField, WikiToolbar, toolbarActions, uploadImageTo, useUrlPrompt, useWikiEditor, type ToolbarKey } from 'wiki-formant/editor';
 import {
   BannerFields, BlockEditor as FormantBlockEditor, Choice, CodeTabsFields, ColumnsFields, Field, InfoboxFields, LimitField, LinkGridFields,
-  PageListFields, ReferencesFields, StatsFields, type BlockEditorKit, type BlockMeta, type BlockSchema, type ChoiceProps, type FieldProps, type MenuProps,
+  ListFields, ReferencesFields, StatsFields, type BlockEditorKit, type BlockMeta, type BlockSchema, type ChoiceProps, type FieldProps, type MenuProps, type PageOption,
 } from 'wiki-formant/block-editor';
 import { CHART_RANGES } from 'wiki-formant/chart';
 import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Bold, Italic, Link2, Unlink, Heading2, Heading3, Heading4, List, TableIcon, Globe, LayoutList, Info } from 'lucide-react';
-import { cn, tipAddress } from '@/lib/utils';
+import { categoryLabel, cn, tipAddress } from '@/lib/utils';
+import { TAG_TREE, tagPaths } from '@/lib/tags';
+import { useFetch } from '@/hooks';
 import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock } from '@/lib/block-utils';
 import { resolveMapUrl } from 'wiki-formant/maps';
 import { ACTIVITY_METRICS } from '@/lib/radix/metrics';
 import { Button, Dropdown, TipJarQr } from '@/components/ui';
 import { Iframe, YouTube, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock, HeadingIds } from '@/lib/tiptap/extensions';
-import type { AtomicBlock, Block, BlockType, InfoboxBlock, AssetPriceBlock, NetworkChartBlock, RssFeedBlock, TipJarBlock, RecentPagesBlock } from '@/types/blocks';
+import type { AtomicBlock, Block, BlockType, InfoboxBlock, AssetPriceBlock, NetworkChartBlock, RssFeedBlock, TipJarBlock, ListBlock } from '@/types/blocks';
 
 // The upload endpoint is this app's, so the hook takes the uploader rather than
 // owning one. Module-level because the hook's upload callback depends on it.
@@ -73,15 +75,16 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
 
 type EditProps<T extends Block> = { block: T; onUpdate: (b: T) => void };
 
-function RecentPagesEdit({ block, onUpdate }: EditProps<RecentPagesBlock>) {
-  return (
-    <div className="stack-sm">
-      <Field label="Filter by category (optional)" hint="Leave empty to show all recent pages">
-        <input type="text" className="input" value={block.tagPath || ''} onChange={e => onUpdate({ ...block, tagPath: e.target.value || undefined })} placeholder="e.g., contents/tech" />
-      </Field>
-      <LimitField label="Pages to show" value={block.limit} onChange={limit => onUpdate({ ...block, limit })} />
-    </div>
-  );
+// Every category a list may name, as its trail: "Contents › Tech › Releases".
+const SECTIONS = tagPaths().filter(t => t.path).map(t => ({
+  value: t.path,
+  label: TAG_TREE.crumbs(t.path).map(c => categoryLabel(c.label)).join(' › '),
+}));
+
+function ListEdit({ block, onUpdate }: EditProps<ListBlock>) {
+  // The pages to pick from, fetched only once the list picks by hand.
+  const { data: pages } = useFetch<PageOption[]>(block.source === 'chosen' ? '/api/wiki?refs' : null);
+  return <ListFields block={block} onUpdate={onUpdate} pages={pages ?? undefined} sections={SECTIONS} />;
 }
 
 const rangeOptions = (ranges: readonly string[]) => ranges.map(r => ({ value: r, label: r === 'all' ? 'All' : r.toUpperCase() }));
@@ -150,8 +153,7 @@ function TipJarEdit({ block, onUpdate }: EditProps<TipJarBlock>) {
 function renderBody(block: Block, onUpdate: (b: Block) => void): ReactNode {
   switch (block.type) {
     case 'content': return <RichTextEditor value={block.text} onChange={text => onUpdate({ ...block, text })} />;
-    case 'recentPages': return <RecentPagesEdit block={block} onUpdate={onUpdate} />;
-    case 'pageList': return <PageListFields block={block} onUpdate={onUpdate} />;
+    case 'list': return <ListEdit block={block} onUpdate={onUpdate} />;
     case 'assetPrice': return <AssetPriceEdit block={block} onUpdate={onUpdate} />;
     case 'networkChart': return <NetworkChartEdit block={block} onUpdate={onUpdate} />;
     case 'rssFeed': return <RssFeedEdit block={block} onUpdate={onUpdate} />;
@@ -181,6 +183,16 @@ function LabelledField({ label, hint, children }: FieldProps) {
 }
 
 function ToggleChoice({ label, value, options, onChange }: ChoiceProps) {
+  // A row of buttons holds a few values; a list's categories take a select.
+  if (options.length > 6) {
+    return (
+      <LabelledField label={label}>
+        <select className="input" value={value} onChange={e => onChange(e.target.value)}>
+          {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </LabelledField>
+    );
+  }
   return (
     <div className="stack-xs">
       <span className="font-medium text-small">{label}</span>

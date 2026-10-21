@@ -1,9 +1,9 @@
 // src/lib/block-utils.ts - Shared block constants and utilities
 
 import type { Block, BlockType } from '@/types/blocks';
-import { coreAtomicValidator, createBlockValidator, duplicateBlockIds } from 'wiki-formant/validation';
-import { Activity, Clock, FileText, Columns, TrendingUp, Pencil, Info, Rss, Code2, BarChart3, MessageSquareQuote, LayoutGrid, QrCode, ListOrdered, AlertTriangle, type LucideIcon } from 'lucide-react';
-import { coreBlockDefaults, someBlock } from 'wiki-formant/blocks';
+import { coreAtomicValidator, createBlockValidator, duplicateBlockIds, MAX_BLOCK_ROWS } from 'wiki-formant/validation';
+import { Activity, List, Columns, TrendingUp, Pencil, Info, Rss, Code2, BarChart3, MessageSquareQuote, LayoutGrid, QrCode, ListOrdered, AlertTriangle, type LucideIcon } from 'lucide-react';
+import { coreBlockDefaults, LIST_SOURCES, someBlock } from 'wiki-formant/blocks';
 import { BLOCK_SHAPE } from '@/lib/block-shape';
 import { ACTIVITY_METRICS, isActivityMetric } from '@/lib/radix/metrics';
 
@@ -28,8 +28,7 @@ export const BLOCK_META: Record<BlockType, BlockSpec> = {
   content: { label: 'Content', icon: Pencil, hint: 'Text, headings, images, tables and embeds', insertable: true, atomic: true, create: CORE.content },
   banner: { label: 'Notice Banner', icon: AlertTriangle, hint: 'A notice at the top of the page', insertable: true, atomic: true, create: CORE.banner },
   columns: { label: 'Columns', icon: Columns, hint: 'Two to four columns of blocks', insertable: true, create: CORE.columns },
-  recentPages: { label: 'Recent Pages', icon: Clock, hint: 'The latest pages, from one category or all', insertable: true, atomic: true, create: CORE.recentPages },
-  pageList: { label: 'Page List', icon: FileText, hint: 'Pages you pick, in your order', insertable: true, atomic: true, create: CORE.pageList },
+  list: { label: 'Page List', icon: List, hint: 'The pages in a category, the newest, or pages you pick', insertable: true, atomic: true, create: CORE.list },
   assetPrice: { label: 'Asset Price', icon: TrendingUp, hint: "A Radix token's live price and chart", insertable: true, atomic: true, create: () => ({ type: 'assetPrice', resourceAddress: 'resource_rdx1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxradxrd', showChange: true }) },
   networkChart: { label: 'Network Chart', icon: Activity, hint: 'Daily Radix network activity, live', insertable: true, atomic: true, create: () => ({ type: 'networkChart', metric: 'transactions', range: '1y' }) },
   rssFeed: { label: 'RSS Feed', icon: Rss, hint: 'Items from an RSS or JSON feed', insertable: true, atomic: true, create: () => ({ type: 'rssFeed', url: 'https://tutmoses.github.io/rss-feed/feeds.json', limit: 15 }) },
@@ -61,7 +60,11 @@ export const BLOCK_SCHEMA = {
     type: { type: 'string', enum: BLOCK_TYPES },
     text: { type: 'string', description: 'Semantic HTML (content, banner)' },
     blocks: { type: 'array', items: { type: 'object' }, description: 'Nested leaf blocks (infobox)' },
-    pageIds: { type: 'array', items: { type: 'string' }, description: 'Page ids in display order (pageList): the `id` get_page returns with `blocks: true`' },
+    source: { type: 'string', enum: LIST_SOURCES, description: 'Where a list\'s pages come from (list): `under` the pages in the category `under` names, `newest` the newest `count` pages (within `under` if given), `chosen` the pages in `pages`' },
+    under: { type: 'string', description: 'A tag path, such as `contents/tech` (list)' },
+    count: { type: 'integer', minimum: 1, maximum: MAX_BLOCK_ROWS, description: 'How many of the newest (list)' },
+    pages: { type: 'array', items: { type: 'string' }, maxItems: MAX_BLOCK_ROWS, description: 'Page ids in display order (list, `chosen`): the `id` get_page returns with `blocks: true`' },
+    show: { type: 'string', enum: ['links', 'cards'], description: 'Each page as a link with its age, or as a card with its banner and opening line (list)' },
     metric: { type: 'string', enum: ACTIVITY_METRICS.map(m => m.key), description: 'The series charted (networkChart)' },
   },
   additionalProperties: true,
