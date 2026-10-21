@@ -18,6 +18,7 @@
         "category": "Education",
         "capabilities": ["Read"],
         "websiteURL": "https://radix.wiki",
+        "supportURL": "https://x.com/RadixWiki",
         "privacyPolicyURL": "https://radix.wiki/contents/resources/legal/privacy-policy",
         "termsOfServiceURL": "https://radix.wiki/contents/resources/legal/terms-of-use",
         "defaultPrompt": [
