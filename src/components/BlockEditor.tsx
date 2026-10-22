@@ -17,7 +17,8 @@ import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplica
 import { resolveMapUrl } from 'wiki-formant/maps';
 import { ACTIVITY_METRICS } from '@/lib/radix/metrics';
 import { Button, Dropdown, TipJarQr } from '@/components/ui';
-import { Iframe, YouTube, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock, HeadingIds } from '@/lib/tiptap/extensions';
+import { embedNodes } from 'wiki-formant/tiptap';
+import { TabGroup, TabItem, CodeBlock, HeadingIds } from '@/lib/tiptap/extensions';
 import type { AtomicBlock, Block, BlockType, InfoboxBlock, AssetPriceBlock, NetworkChartBlock, RssFeedBlock, TipJarBlock, ListBlock } from '@/types/blocks';
 
 // The upload endpoint is this app's, so the hook takes the uploader rather than
@@ -41,7 +42,7 @@ const PROMPT_CLASSES = { row: 'row', input: 'input', apply: 'btn btn-primary', c
 function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   // This wiki's own nodes, built from its class names and icons. Memoised
   // because a fresh array would tear the editor down and lose the selection.
-  const nodes = useMemo(() => [YouTube, Iframe, TwitterEmbed, MapEmbed, TabGroup, TabItem, CodeBlock, HeadingIds], []);
+  const nodes = useMemo(() => [...embedNodes(), TabGroup, TabItem, CodeBlock, HeadingIds], []);
   const { editor, fileInputRef, isUploading, handleFileChange, triggerUpload, isActive } = useWikiEditor({
     value,
     onChange,

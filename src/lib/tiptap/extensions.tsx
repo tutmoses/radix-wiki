@@ -1,19 +1,15 @@
 // src/lib/tiptap/extensions.tsx — this wiki's binding of the shared editor nodes.
 //
 // The nodes themselves are `wiki-formant/tiptap`, shared with caper. What stays
-// here is the part that is this wiki's: the class tokens, the icon set and the
-// API route a shortened map URL has to be resolved through.
+// here is the part that is this wiki's: the class tokens and the icon set. The
+// embeds carry neither, so they are `embedNodes()` in the editor, straight from
+// the package.
 
 'use client';
 
 import { ChevronDown, Check, Code, Plus, X } from 'lucide-react';
-import { createCodeBlock, createHeadingIds, createMapEmbed, createTabs } from 'wiki-formant/tiptap';
+import { createCodeBlock, createHeadingIds, createTabs } from 'wiki-formant/tiptap';
 import { slugifyHeading } from 'wiki-formant/headings';
-import { resolveMapUrl } from 'wiki-formant/maps';
-
-export { Iframe, YouTube, TwitterEmbed } from 'wiki-formant/tiptap';
-
-export const MapEmbed = createMapEmbed({ resolveMapUrl });
 
 export const CodeBlock = createCodeBlock({
   classNames: {
