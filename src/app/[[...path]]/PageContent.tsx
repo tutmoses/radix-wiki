@@ -303,7 +303,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const res = await sendJson('/api/wiki', 'PUT', { title: 'Homepage', content, bannerImage });
+      const res = await sendJson('/api/wiki', 'PUT', { title: page?.title, content, bannerImage });
       if (res.ok) router.push('/');
       else alert((await res.json()).error || 'Failed to save');
     } catch { alert('Failed to save'); }
