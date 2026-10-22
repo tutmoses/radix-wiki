@@ -87,8 +87,8 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** One menu for the account: who is connected, their profile, their notification settings, the way out. */
-function AccountMenu({ name, profilePath, onClose, onLogout }: { name: string; profilePath: string | null; onClose: () => void; onLogout: () => void }) {
+/** One menu for the account: who is connected, their profile, their notification settings, the ways out. */
+function AccountMenu({ name, profilePath, onClose, onLogout }: { name: string; profilePath: string | null; onClose: () => void; onLogout: (everywhere?: boolean) => void }) {
   return (
     <Dropdown onClose={onClose}>
       <div className="dropdown-header">{name}</div>
@@ -96,6 +96,12 @@ function AccountMenu({ name, profilePath, onClose, onLogout }: { name: string; p
       <Link href="/settings" className="dropdown-item" onClick={onClose}><Settings size={16} />Notification settings</Link>
       <button onClick={() => { onClose(); onLogout(); }} className="dropdown-item text-error hover:text-error/80">
         <LogOut size={16} />Disconnect
+      </button>
+      <button
+        onClick={() => { onClose(); if (confirm('Sign out every browser and agent signed in with this account?')) onLogout(true); }}
+        className="dropdown-item text-error hover:text-error/80"
+      >
+        <LogOut size={16} />Sign out everywhere
       </button>
     </Dropdown>
   );
@@ -311,9 +317,9 @@ export function Header() {
     router.push(pagePath(page.tagPath, page.slug));
   }
 
-  const handleLogout = async () => {
+  const handleLogout = async (everywhere?: boolean) => {
     setShowUserMenu(false);
-    await logout();
+    await logout(everywhere);
   };
 
   return (

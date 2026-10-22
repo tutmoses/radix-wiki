@@ -97,7 +97,7 @@ interface AppStore {
   setLoading: (isLoading: boolean) => void;
   setWalletData: (walletData: RadixWalletData | null) => void;
   connect: () => void;
-  logout: () => Promise<void>;
+  logout: (everywhere?: boolean) => Promise<void>;
   toast: { message: string; type: 'success' | 'info' } | null;
   showToast: (message: string, type?: 'success' | 'info') => void;
   dismissToast: () => void;
@@ -155,10 +155,10 @@ export const useStore = create<AppStore>()((set, get) => ({
       set({ _pendingConnect: true });
     }
   },
-  logout: async () => {
+  logout: async (everywhere = false) => {
     const { _rdtDisconnect } = get();
     try {
-      await fetch('/api/auth', { method: 'DELETE' });
+      await fetch(everywhere ? '/api/auth?everywhere' : '/api/auth', { method: 'DELETE' });
     } catch (error) {
       console.error('Failed to clear server session:', error);
     }

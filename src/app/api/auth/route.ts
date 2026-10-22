@@ -91,9 +91,10 @@ export async function POST(request: NextRequest) {
   }, 'Auth error');
 }
 
-export async function DELETE() {
+/** `?everywhere` signs out every browser and agent the user is signed in on. */
+export async function DELETE(request: NextRequest) {
   return handleRoute(async () => {
-    await destroySession();
+    await destroySession(request.nextUrl.searchParams.has('everywhere'));
     return json({ success: true });
   }, 'Logout error');
 }

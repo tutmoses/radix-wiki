@@ -3,7 +3,8 @@
 // The challenge, the wallet's proof of it and the HS256 token are
 // `wiki-formant/rola`, shared with caper. What is this wiki's own is the
 // session: a `Session` row behind a seven-day cookie, so signing out revokes
-// the token, and the same token taken as a Bearer header by agents.
+// the token (signing out everywhere, every token the user holds), and the same
+// token taken as a Bearer header by agents.
 
 import { cookies } from 'next/headers';
 import { bearerToken, createRola, sessionSecret, signSession, verifySession } from 'wiki-formant/rola';
@@ -75,9 +76,13 @@ export async function getSession(request?: { headers: { get(name: string): strin
   return bearer ? verifyToken(bearer) : null;
 }
 
-export async function destroySession(): Promise<void> {
+/** Signs this browser out; `everywhere` ends every session its user holds, agents' Bearer tokens included. */
+export async function destroySession(everywhere = false): Promise<void> {
   const jar = await cookies();
   const token = jar.get(COOKIE)?.value;
-  if (token) await prisma.session.deleteMany({ where: { token } });
+  if (token) {
+    const session = everywhere ? await verifyToken(token) : null;
+    await prisma.session.deleteMany({ where: session ? { userId: session.userId } : { token } });
+  }
   jar.delete(COOKIE);
 }
