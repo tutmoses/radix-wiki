@@ -146,7 +146,7 @@ export const SPEC = {
                 schema: {
                   type: 'object',
                   properties: {
-                    token: { type: 'string', description: 'JWT for `Authorization: Bearer`' },
+                    token: { type: 'string', description: 'JWT for `Authorization: Bearer`. Omitted for a browser request (one carrying `Sec-Fetch-Site`), which is authenticated by the httpOnly session cookie instead.' },
                     userId: { type: 'string' },
                     radixAddress: { type: 'string' },
                     expiresAt: { type: 'string', format: 'date-time' },

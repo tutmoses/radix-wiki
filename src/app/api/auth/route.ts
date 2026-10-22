@@ -79,13 +79,19 @@ export async function POST(request: NextRequest) {
       user.displayName || undefined
     );
 
+    // A browser is authenticated by the httpOnly cookie `createSession` just set, so
+    // the token stays out of reach of page scripts. Every browser sends
+    // `Sec-Fetch-Site` and no script can remove it; an agent (curl, the MCP `login`
+    // tool) sends none and takes the token back to use as its Bearer header.
+    const fromBrowser = request.headers.has('sec-fetch-site');
+
     return json({
       userId: user.id,
       radixAddress: user.radixAddress,
       personaAddress: user.personaAddress,
       displayName: user.displayName,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      token,
+      ...(fromBrowser ? {} : { token }),
       isNewUser,
     });
   }, 'Auth error');
