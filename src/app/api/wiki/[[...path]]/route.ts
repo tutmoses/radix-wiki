@@ -338,7 +338,10 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     const { path } = await context.params;
     const parsed = parsePath(path, 'api');
 
-    if (parsed.type === 'invalid' || parsed.type === 'history') return errors.notFound('Invalid path');
+    // Only the wiki's own rows take a write, as GET answers only them: the app
+    // routes (/charts, /settings, …) parse with the homepage's empty tagPath and
+    // slug, and a PUT to one of them, or to a page's /mdx, saved that row instead.
+    if (parsed.type !== 'homepage' && parsed.type !== 'category' && parsed.type !== 'page') return errors.notFound('Invalid path');
 
     const auth = await requireAuth(request, { type: 'edit', tagPath: parsed.tagPath });
     if ('error' in auth) return auth.error;
