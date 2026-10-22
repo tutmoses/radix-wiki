@@ -50,7 +50,8 @@ export async function POST(request: NextRequest) {
         url,
         secret: generateWebhookSecret(),
         events,
-        tagPathFilter: tagPathFilter || null,
+        // Matched by whole segment, so `contents/tech/` would match nothing below it.
+        tagPathFilter: tagPathFilter?.replace(/^\/+|\/+$/g, '') || null,
       },
     });
 

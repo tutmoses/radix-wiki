@@ -166,9 +166,13 @@ export const SHARED_PATHS = new Set(['ideas']);
 const LOCKED_PAGES = new Set(['ecosystem/radix-namespace','ecosystem/xrd-domains']);
 export const isLockedPage = (tagPath: string, slug: string): boolean => LOCKED_PAGES.has(`${tagPath}/${slug}`);
 
+/** `tagPath` is `under` or nested beneath it, matched by whole segment: `ecosystem` does not take `ecosystem-news`. */
+export const isWithin = (tagPath: string, under: string): boolean =>
+  tagPath === under || tagPath.startsWith(under + '/');
+
 /** A path is under `paths` when it is one of them or nested beneath one. */
 const isUnder = (paths: Set<string>, tagPath: string): boolean =>
-  paths.has(tagPath) || [...paths].some(p => tagPath.startsWith(p + '/'));
+  [...paths].some(p => isWithin(tagPath, p));
 
 /** Pages here belong to the board, not to their author — any editor can delete them. */
 export const isSharedPath = (tagPath: string): boolean => isUnder(SHARED_PATHS, tagPath);

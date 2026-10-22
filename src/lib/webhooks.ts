@@ -9,6 +9,7 @@ import { after } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { pageUrl, shortenAddress } from '@/lib/utils';
 import { SITE_URL } from '@/lib/site';
+import { isWithin } from '@/lib/tags';
 import { escXml } from 'wiki-formant/feed';
 
 export type WebhookEvent = 'page.created' | 'page.updated' | 'page.deleted' | 'comment.created';
@@ -70,7 +71,7 @@ async function deliverHttp({ event, page, revision, actor, comment }: Notificati
   });
 
   const matching = webhooks.filter(
-    (w) => !w.tagPathFilter || page.tagPath.startsWith(w.tagPathFilter),
+    (w) => !w.tagPathFilter || isWithin(page.tagPath, w.tagPathFilter),
   );
 
   if (matching.length === 0) return;
@@ -167,7 +168,7 @@ function matchesSubscription(
 ): boolean {
   if (!sub.tagPath) return false;
   if (sub.pageSlug) return sub.tagPath === page.tagPath && sub.pageSlug === page.slug;
-  return page.tagPath === sub.tagPath || page.tagPath.startsWith(sub.tagPath + '/');
+  return isWithin(page.tagPath, sub.tagPath);
 }
 
 async function deliverTelegram(notification: Notification): Promise<void> {
