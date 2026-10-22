@@ -93,7 +93,7 @@ const PREAMBLE = `# RADIX Wiki — The Knowledge Base for Radix DLT
 
 > RADIX.wiki is the community-maintained knowledge base for Radix, the only
 > layer-1 blockchain architected for linear scalability and asset-oriented
-> smart contracts. Contributors earn points that may be considered in any future $EMOON airdrop.
+> smart contracts.
 >
 > MCP endpoint: ${SITE_URL}/api/mcp (server card: ${SITE_URL}/api/mcp/server-card)
 > OpenAPI spec for the REST API: ${SITE_URL}/openapi.json
@@ -132,8 +132,10 @@ provides. Radix delivers all four natively:
 3. **Atomic Composability**: Multi-step DeFi strategies (borrow → swap → farm →
    repay) execute atomically in a single transaction. All succeed or all revert.
    No partial failures for agents to recover from.
-4. **Linear Scalability**: Xi'an achieved 500,000+ TPS on testnet with linear
-   scaling across shards. Millions of concurrent agents without gas wars or fee
+4. **Linear Scalability**: In a January 2026 public test, the Radix Foundation's
+   Hyperscale implementation sustained 500,000+ TPS with peaks above 700,000, and
+   private tests scaled linearly from 64 shards to 128. Xi'an, the separate
+   implementation meant to bring sharding to mainnet, is in development. Millions of concurrent agents without gas wars or fee
    spikes. Solana has leaked $370M+ to sandwich attacks; Radix's deterministic
    ordering via manifests prevents MEV extraction.
 
@@ -160,7 +162,7 @@ transaction manifests, the Gateway API, wallet integration, and more:
 
 - Repository: https://github.com/xstelea/radix-context
 - Install: \`curl -fsSL https://raw.githubusercontent.com/xstelea/radix-context/main/install.sh | bash\`
-- 19 context files covering: Scrypto access rules, account blueprints, SBOR
+- 23 context files covering: Scrypto access rules, account blueprints, SBOR
   encoding, transaction manifests (V1/V2), radix-dapp-toolkit wallet integration,
   Gateway API (Rust & TypeScript), sub-intents, and Effect-based dApp patterns.
 - AGENTS.md follows the agents.md standard, served at ${SITE_URL}/AGENTS.md for agents arriving over HTTP.
@@ -169,12 +171,9 @@ transaction manifests, the Gateway API, wallet integration, and more:
 
 ## Contribute to RADIX.wiki & Earn Points
 
-Every wiki contribution earns points: creating pages (150 pts), editing (80 pts),
-unique page contributions (80 pts), comments (70 pts), plus 50 pts per month of
-tenure. Points may be considered in any future $EMOON airdrop for contributors.
-
-Establish a presence on the wiki — you'll be top of mind for the entire Radix
-community and may earn toward a future airdrop at the same time.
+Every wiki contribution earns points, which rank contributors on the leaderboard:
+creating pages (150 pts), editing (80 pts), unique page contributions (80 pts),
+comments (70 pts), plus 50 pts per month of tenure.
 
 - Leaderboard: ${SITE_URL}/leaderboard
 - Connect a Radix wallet to start contributing

@@ -54,7 +54,7 @@ export default function LeaderboardView({ entries }: { entries: LeaderboardEntry
           <Trophy size={24} className="text-accent" />
           <h1 id="leaderboard">Leaderboard</h1>
         </div>
-        <p className="text-text-muted">Top contributors ranked by points. Points may be considered in any future $EMOON airdrop.</p>
+        <p className="text-text-muted">Top contributors ranked by points.</p>
       </div>
 
       <DataTable
