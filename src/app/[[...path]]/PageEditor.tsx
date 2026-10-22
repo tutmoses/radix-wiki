@@ -20,52 +20,12 @@ import { Banner, BlockEditor, InfoboxEditor } from './PageContent';
 import type { WikiPage, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
 import { useSaveShortcut, useTypeahead, useUnsavedChanges, useClickOutside } from 'wiki-formant/react';
+import { WikiLine } from 'wiki-formant/editor';
 
 // ========== METADATA FIELDS ==========
-function RichInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const onChangeRef = useRef(onChange);
-  // Written after render, not during: a ref mutated mid-render can tear under
-  // concurrent rendering. Callers only read it from events, which run later.
-  useEffect(() => { onChangeRef.current = onChange; });
-
-  useEffect(() => {
-    if (ref.current && ref.current.innerHTML !== value) ref.current.innerHTML = value || '';
-  }, [value]);
-
-  const handlePaste = useCallback((e: React.ClipboardEvent) => {
-    const html = e.clipboardData.getData('text/html');
-    if (!html) return;
-    e.preventDefault();
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    doc.body.querySelectorAll('*').forEach(el => {
-      if (el.tagName === 'A') { Array.from(el.attributes).forEach(a => { if (a.name !== 'href') el.removeAttribute(a.name); }); return; }
-      const parent = el.parentNode!;
-      while (el.firstChild) parent.insertBefore(el.firstChild, el);
-      parent.removeChild(el);
-    });
-    const sel = window.getSelection();
-    if (!sel?.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    range.deleteContents();
-    const frag = range.createContextualFragment(doc.body.innerHTML);
-    range.insertNode(frag);
-    range.collapse(false);
-    onChangeRef.current(ref.current?.innerHTML || '');
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      contentEditable
-      suppressContentEditableWarning
-      onInput={() => onChangeRef.current(ref.current?.innerHTML || '')}
-      onPaste={handlePaste}
-      data-placeholder={placeholder}
-      className="rich-input"
-    />
-  );
-}
+// A text value is stored HTML: the infobox writes one carrying markup as prose,
+// through the sanitiser's prose set, so a link, bold and italic all survive it.
+const TEXT_MARKS = ['bold', 'italic', 'link'] as const;
 
 function parseAssignee(raw: string): string {
   if (!raw) return '';
@@ -183,10 +143,13 @@ function MetadataFields({ metadataKeys, metadata, onChange, invalidKeys = [] }: 
                 ))}
               </select>
             ) : type === 'text' ? (
-              <RichInput
+              <WikiLine
+                as="div"
                 value={metadata[key] || ''}
                 onChange={v => updateField(key, v)}
                 placeholder={label}
+                marks={TEXT_MARKS}
+                className="rich-input"
               />
             ) : type === 'url' ? (
               <Input

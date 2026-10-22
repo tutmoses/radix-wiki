@@ -180,20 +180,6 @@
   /* Code block with language selector */
   .code-block-wrapper { @apply relative my-4; pre { @apply m-0 border border-border-muted rounded-lg p-4 pr-24; background-color: var(--color-code-bg); } code { @apply bg-transparent p-0; } }
 
-  /* Tabs - consolidated */
-  [data-tabs] {
-    .tabs-list { @apply flex gap-1 border-b border-border-muted mb-4; }
-    .tab-button { @apply py-2 px-4 bg-transparent border-b-2 border-transparent text-text-muted cursor-pointer transition-all hover:text-text; &.active { @apply text-accent border-accent; } }
-  }
-  .tabs-editor {
-    @apply border border-border-muted rounded-lg overflow-hidden;
-    .tabs-list { @apply flex items-center gap-1 p-2 bg-surface-1 border-b border-border-muted mb-0; }
-    .tab-button-edit { @apply flex items-center gap-1 py-1 px-2 bg-surface-2 rounded border border-transparent; &.active { @apply bg-accent-muted border-accent; } }
-    .tab-title-input { @apply bg-transparent border-0 outline-none w-24 text-small text-text placeholder:text-text-muted; }
-    .tab-remove { @apply p-0.5 rounded-sm text-text-muted cursor-pointer hover:text-error hover:bg-surface-2; }
-    .tab-add { @apply py-1 px-2 text-text-muted cursor-pointer rounded hover:text-accent hover:bg-surface-2; }
-    .tabs-content { @apply p-4; }
-  }
   /* KaTeX math */
   .katex-display { @apply my-4 overflow-x-auto overflow-y-hidden; }
   .katex { @apply text-text; }
@@ -284,14 +270,21 @@
      base.css is imported into this layer, which outranks `@layer base`, so a
      rule that restyles or overrides one of its selectors has to sit here. */
 
-  /* The editor shows the tab `data-active-tab` names; a reader's panels are base.css's. */
-  [data-tabs] [data-tab-item] { @apply hidden; }
-  [data-tabs][data-active-tab="0"] [data-tab-item]:nth-of-type(1),
-  [data-tabs][data-active-tab="1"] [data-tab-item]:nth-of-type(2),
-  [data-tabs][data-active-tab="2"] [data-tab-item]:nth-of-type(3),
-  [data-tabs][data-active-tab="3"] [data-tab-item]:nth-of-type(4),
-  [data-tabs][data-active-tab="4"] [data-tab-item]:nth-of-type(5),
-  [data-tabs][data-active-tab="5"] [data-tab-item]:nth-of-type(6) { @apply block; }
+  /* Tabs: base.css draws its own tab classes, which are this wiki's names too, and
+     shows the panel the editor selected; these are this wiki's look over them. */
+  [data-tabs] {
+    .tabs-list { @apply flex gap-1 border-b border-border-muted mb-4; }
+    .tab-button { @apply py-2 px-4 bg-transparent border-b-2 border-transparent text-text-muted cursor-pointer transition-all hover:text-text; &.active { @apply text-accent border-accent; } }
+  }
+  .tabs-editor {
+    @apply border border-border-muted rounded-lg overflow-hidden;
+    .tabs-list { @apply flex items-center gap-1 p-2 bg-surface-1 border-b border-border-muted mb-0; }
+    .tab-button-edit { @apply flex items-center gap-1 py-1 px-2 bg-surface-2 rounded border border-transparent; &.active { @apply bg-accent-muted border-accent; } }
+    .tab-title-input { @apply bg-transparent border-0 outline-none w-24 text-small text-text placeholder:text-text-muted; }
+    .tab-remove { @apply p-0.5 rounded-sm text-text-muted cursor-pointer opacity-100 hover:text-error hover:bg-surface-2; }
+    .tab-add { @apply py-1 px-2 text-text-muted cursor-pointer rounded opacity-100 hover:text-accent hover:bg-surface-2; }
+    .tabs-content { @apply p-4; }
+  }
 
   /* Copy button on code blocks: placed and revealed by base.css, themed here. */
   .code-copy-btn {
@@ -692,7 +685,8 @@
   /* ===== METADATA FIELDS ===== */
   .metadata-panel { @apply flex flex-col gap-2 p-4 rounded-lg bg-surface-1 border border-border; }
   .metadata-grid { @apply grid grid-cols-1 md:grid-cols-2 gap-4; }
-  .rich-input { @apply w-full py-2 px-4 bg-surface-0 border border-border rounded transition-all focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-muted placeholder:text-text-muted placeholder:opacity-60 min-h-9 [&:empty]:before:content-[attr(data-placeholder)] [&:empty]:before:text-text-muted [&_a]:text-accent [&_a]:underline; }
+  /* A `WikiLine`: base.css gives it its outline and its placeholder, which reads as an input's here. */
+  .rich-input { @apply w-full py-2 px-4 bg-surface-0 border border-border rounded transition-all focus:border-accent focus:ring-2 focus:ring-accent-muted min-h-9 [&::before]:text-text-muted [&_a]:text-accent [&_a]:underline; }
 
   /* ===== SLUG EDITOR ===== */
   .slug-editor { @apply flex items-center gap-2 text-small text-text-muted py-1; }

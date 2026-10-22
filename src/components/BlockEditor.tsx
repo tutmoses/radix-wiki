@@ -3,13 +3,13 @@
 'use client';
 
 import { useMemo, type ReactNode } from 'react';
-import { EditorContent, UrlPromptField, WikiToolbar, toolbarActions, uploadImageTo, useUrlPrompt, useWikiEditor, type ToolbarKey } from 'wiki-formant/editor';
+import { EditorContent, UrlPromptField, WikiToolbar, uploadImageTo, useUrlPrompt, useWikiEditor, type WikiToolbarProps } from 'wiki-formant/editor';
 import {
   BannerFields, BlockEditor as FormantBlockEditor, Choice, CodeTabsFields, ColumnsFields, Field, InfoboxFields, LimitField, LinkGridFields,
   ListFields, ReferencesFields, StatsFields, type BlockEditorKit, type BlockMeta, type BlockSchema, type ChoiceProps, type FieldProps, type MenuProps, type PageOption,
 } from 'wiki-formant/block-editor';
 import { CHART_RANGES } from 'wiki-formant/chart';
-import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Bold, Italic, Link2, Unlink, Heading2, Heading3, Heading4, List, TableIcon, Globe, LayoutList, Info } from 'lucide-react';
+import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Bold, Italic, Link2, Unlink, Heading2, Heading3, Heading4, List, ListOrdered, TableIcon, Globe, LayoutList, Info, Undo2, Redo2 } from 'lucide-react';
 import { categoryLabel, cn, tipAddress } from '@/lib/utils';
 import { TAG_TREE, tagPaths } from '@/lib/tags';
 import { useFetch } from '@/hooks';
@@ -25,17 +25,17 @@ import type { AtomicBlock, Block, BlockType, InfoboxBlock, AssetPriceBlock, Netw
 // owning one. Module-level because the hook's upload callback depends on it.
 const uploadImage = uploadImageTo('/api/upload');
 
-// The editor's state, its toolbar's layout and the address field are
-// `wiki-formant/editor`, shared with caper and acuiq2; the icons, the classes and
-// this wiki's own nodes are what is left here.
-const FORMAT_ACTIONS = toolbarActions(['bold', 'italic', 'code', 'link', 'h2', 'h3', 'h4', 'bulletList', 'blockquote', 'codeBlock', 'divider']);
-const INSERT_ACTIONS = toolbarActions(['table', 'tabs']);
-const TOOLBAR_ICONS: Partial<Record<ToolbarKey, ReactNode>> & { unlink: ReactNode; upload: ReactNode; embed: ReactNode } = {
-  bold: <Bold size={14} />, italic: <Italic size={14} />, code: <Code size={14} />, link: <Link2 size={14} />,
-  h2: <Heading2 size={14} />, h3: <Heading3 size={14} />, h4: <Heading4 size={14} />, bulletList: <List size={14} />,
-  blockquote: <Quote size={14} />, codeBlock: <Code size={14} />, divider: <Minus size={14} />, table: <TableIcon size={14} />,
-  tabs: <LayoutList size={14} />, unlink: <Unlink size={14} />, upload: <Upload size={14} />, embed: <Globe size={14} />,
-};
+// The editor's state, its toolbar and the address field are `wiki-formant/editor`,
+// shared with caper and acuiq2. The toolbar shows every button the editor's nodes
+// allow, so the icons cover them all; they, the classes and this wiki's own nodes
+// are what is left here.
+const TOOLBAR_ICONS = {
+  undo: <Undo2 size={14} />, redo: <Redo2 size={14} />,
+  bold: <Bold size={14} />, italic: <Italic size={14} />, code: <Code size={14} />, link: <Link2 size={14} />, unlink: <Unlink size={14} />,
+  h2: <Heading2 size={14} />, h3: <Heading3 size={14} />, h4: <Heading4 size={14} />,
+  bulletList: <List size={14} />, orderedList: <ListOrdered size={14} />, blockquote: <Quote size={14} />, codeBlock: <Code size={14} />,
+  upload: <Upload size={14} />, embed: <Globe size={14} />, table: <TableIcon size={14} />, tabs: <LayoutList size={14} />, divider: <Minus size={14} />,
+} satisfies Required<WikiToolbarProps['icons']>;
 const TOOLBAR_CLASSES = { toolbar: 'toolbar', button: 'toolbar-btn', pressed: 'toolbar-btn-on', divider: 'toolbar-divider', tableButton: 'toolbar-btn text-xs', danger: 'hover:text-error' };
 const PROMPT_CLASSES = { row: 'row', input: 'input', apply: 'btn btn-primary', cancel: 'btn' };
 
@@ -43,7 +43,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
   // This wiki's own nodes, built from its class names and icons. Memoised
   // because a fresh array would tear the editor down and lose the selection.
   const nodes = useMemo(() => [...embedNodes(), TabGroup, TabItem, CodeBlock, HeadingIds], []);
-  const { editor, fileInputRef, isUploading, handleFileChange, triggerUpload, isActive } = useWikiEditor({
+  const { editor, fileInputRef, isUploading, handleFileChange, triggerUpload } = useWikiEditor({
     value,
     onChange,
     placeholder,
@@ -58,10 +58,9 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
     <div className="stack-sm">
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" className="hidden" onChange={handleFileChange} />
       {editor && (
-        <WikiToolbar editor={editor} isActive={isActive} prompt={prompt} actions={FORMAT_ACTIONS} trailing={INSERT_ACTIONS}
-          onUpload={triggerUpload} embed icons={TOOLBAR_ICONS} classNames={TOOLBAR_CLASSES} />
+        <WikiToolbar editor={editor} prompt={prompt} onUpload={triggerUpload} icons={TOOLBAR_ICONS} classNames={TOOLBAR_CLASSES} />
       )}
-      <UrlPromptField prompt={prompt} placeholders={{ embed: 'YouTube, Twitter/X, Maps, or iframe URL' }} classNames={PROMPT_CLASSES} />
+      <UrlPromptField prompt={prompt} classNames={PROMPT_CLASSES} />
       <div className={cn('tiptap-editor tiptap-field', isUploading && 'tiptap-field-disabled')}>
         <EditorContent editor={editor} />
         {isUploading && <div className="text-center text-text-muted text-small py-2">Uploading image...</div>}

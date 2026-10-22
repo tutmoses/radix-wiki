@@ -40,7 +40,7 @@ import { activityLabel } from '@/lib/radix/metrics';
 import { formatPriceSubscript } from '@/components/charts/format';
 // The rendered-article passes are `wiki-formant/dom`, run by the hooks that
 // wrap them, shared with caper.
-import { useArticlePasses, useCopy, useTweetEmbeds } from 'wiki-formant/react';
+import { useArticlePasses, useCopy } from 'wiki-formant/react';
 import { bannerVariant, openingText } from 'wiki-formant/text';
 import { describe } from 'wiki-formant/metadata';
 import { InfoboxAside, InfoboxFacts, formatFactValue } from 'wiki-formant/react-server';
@@ -281,7 +281,9 @@ const ContentBlockView = memo(function ContentBlockView({ html }: { html: string
   const ref = useRef<HTMLDivElement>(null);
   const processedHtml = useMemo(() => processHtml(html), [html]);
 
-  useTweetEmbeds(ref, [html]);
+  // A text block in the infobox sits outside the article's container, so each
+  // block runs the passes on itself too; every pass skips what it has done.
+  useArticlePasses(ref, [html]);
 
   useEffect(() => {
     const el = ref.current;
