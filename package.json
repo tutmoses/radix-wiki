@@ -40,12 +40,11 @@
     "sharp": "^0.35.3",
     "tailwind-merge": "^3.5.0",
     "unified": "^11.0.5",
-    "wiki-formant": "^0.81.0",
+    "wiki-formant": "^0.83.1",
     "zustand": "^5.0.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",
-    "@types/katex": "^0.16.8",
     "@types/node": "^24.19.2",
     "@types/pg": "^8.16.0",
     "@types/react": "^19.0.0",

@@ -181,7 +181,7 @@
   .code-block-wrapper { @apply relative my-4; pre { @apply m-0 border border-border-muted rounded-lg p-4 pr-24; background-color: var(--color-code-bg); } code { @apply bg-transparent p-0; } }
 
   /* KaTeX math */
-  .katex-display { @apply my-4 overflow-x-auto overflow-y-hidden; }
+  .katex-display { @apply my-4; }
   .katex { @apply text-text; }
 
   /* rehype-pretty-code blocks */
@@ -281,8 +281,8 @@
     .tabs-list { @apply flex items-center gap-1 p-2 bg-surface-1 border-b border-border-muted mb-0; }
     .tab-button-edit { @apply flex items-center gap-1 py-1 px-2 bg-surface-2 rounded border border-transparent; &.active { @apply bg-accent-muted border-accent; } }
     .tab-title-input { @apply bg-transparent border-0 outline-none w-24 text-small text-text placeholder:text-text-muted; }
-    .tab-remove { @apply p-0.5 rounded-sm text-text-muted cursor-pointer opacity-100 hover:text-error hover:bg-surface-2; }
-    .tab-add { @apply py-1 px-2 text-text-muted cursor-pointer rounded opacity-100 hover:text-accent hover:bg-surface-2; }
+    .tab-remove { @apply p-0.5 rounded-sm text-text-muted cursor-pointer hover:text-error hover:bg-surface-2; }
+    .tab-add { @apply py-1 px-2 text-text-muted cursor-pointer rounded hover:text-accent hover:bg-surface-2; }
     .tabs-content { @apply p-4; }
   }
 

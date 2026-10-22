@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useCallback, useEffect, useRef, memo, useMemo, type ReactNode } from 'react';
+import { useCallback, useRef, memo, useMemo, type ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, FileText, Copy, Check, AlertTriangle, Megaphone, CalendarClock, type LucideIcon } from 'lucide-react';
@@ -284,23 +284,6 @@ const ContentBlockView = memo(function ContentBlockView({ html }: { html: string
   // A text block in the infobox sits outside the article's container, so each
   // block runs the passes on itself too; every pass skips what it has done.
   useArticlePasses(ref, [html]);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || !/\$\$|\\\(|\\\[/.test(html)) return;
-    import('katex/dist/katex.min.css').then(() => import('katex/contrib/auto-render')).then(({ default: render }) => {
-      render(el, {
-        delimiters: [
-          // No single-$ delimiter: prose writes $XRD, and two cashtags in a
-          // block with any maths would render the text between them as a formula.
-          { left: '$$', right: '$$', display: true },
-          { left: '\\(', right: '\\)', display: false },
-          { left: '\\[', right: '\\]', display: true },
-        ],
-        throwOnError: false,
-      });
-    });
-  }, [html]);
 
   return processedHtml.trim() ? <div ref={ref} className="prose-content" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: processedHtml }} /> : null;
 });
