@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   publish:
-    uses: tutmoses/wiki-formant/.github/workflows/publish-mcp-registry.yml@main
+    uses: tutmoses/wiki-formant/.github/workflows/publish-mcp-registry.yml@073b00a67027f25f8a42b3c51a32df7e8e0d2bb2 # main
     with: { domain: radix.wiki }
     secrets:
       MCP_REGISTRY_PRIVATE_KEY: ${{ secrets.MCP_REGISTRY_PRIVATE_KEY }}

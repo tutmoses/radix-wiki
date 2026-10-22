@@ -33,6 +33,9 @@ const WRITE_LIMIT: RateLimitOptions = { capacity: 30, refillPerSec: 0.2 };
 export const IP_LIMITS = {
   challenge: { capacity: 10, refillPerSec: 1 / 30 },
   settings: { capacity: 20, refillPerSec: 1 / 60 },
+  // A keyword search is an unauthenticated scan of every page's prose; the
+  // edge cache in front of it holds a repeated query, never a fresh one.
+  search: { capacity: 60, refillPerSec: 1 },
 } satisfies Record<string, RateLimitOptions>;
 
 /** The 429 for a caller over `key`'s budget, or null while they are within it. */

@@ -8,7 +8,8 @@ import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { findTagByPath, tagLabel, isValidTagPath, isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys } from '@/lib/tags';
 import { requireBalance } from '@/lib/radix/balance';
 import { parsePagination, paginatedResponse } from 'wiki-formant/pagination';
-import { requireAuth, cachedJson, tagged, CACHE, type RouteContext } from '@/lib/api';
+import { requireAuth, cachedJson, tagged, CACHE, overBudget, IP_LIMITS, type RouteContext } from '@/lib/api';
+import { clientKey } from 'wiki-formant/rate-limit';
 import { toListing } from 'wiki-formant/store';
 import { isReservedSlug, parsePath } from '@/lib/path';
 import { store, toWikiPage, authorsOf, deletePage, searchPages, resolveBlockData, loadPageHistory, getCategoryPages, revalidatePage, pageTag, routeTags, CORPUS_TAG } from '@/lib/wiki';
@@ -133,6 +134,8 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       const where = { siteId: '', tagPath: tagPath ?? { notIn: store.hidden } };
 
       if (q) {
+        const capped = overBudget(clientKey('wiki-search', request.headers), IP_LIMITS.search);
+        if (capped) return capped;
         // The GET-only twin of MCP search_wiki: identical ranking (titles ahead
         // of body prose) and row-identical results, because both call `searchPages`.
         const { items, total } = await searchPages(q, { tagPath, page, size: pageSize });
