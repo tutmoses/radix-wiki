@@ -68,7 +68,7 @@ const withAuthors = async <R extends Omit<WikiPageRow, 'content'> & { content?: 
  *  revalidate of any cache it reads, so a minute here re-rendered every article each
  *  minute. Writes bust the pages they change (`revalidatePage`), so the day is only a
  *  backstop. Everything also carries `wiki`, which a bulk rewrite busts whole. */
-export const WIKI_TAG = 'wiki';
+const WIKI_TAG = 'wiki';
 const CACHE_OPTS = { tags: [WIKI_TAG], revalidate: 86400 };
 
 /** The tag of what a URL renders: its path, so `page:/` is the homepage and `page:/ideas` the ideas board. */
@@ -239,7 +239,7 @@ export const getIdeasPages = cached('getIdeasPages',
  * A page's history for the history view and `/api/wiki/…/history`, each
  * revision diffed against the one before it. Uncached, and deliberately
  * reachable that way: the API route is the documented way to confirm a
- * direct-DB script write landed, and those scripts do not revalidate the tag.
+ * direct-DB script write landed before any cache has caught up with it.
  */
 export async function loadPageHistory(tagPath: string, slug: string) {
   const page = await store.get(tagPath, slug);

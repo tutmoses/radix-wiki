@@ -21,8 +21,6 @@
   "project": ["src/**/*.{ts,tsx}", "scripts/*.{ts,mjs}", "brand-assets/*.mjs", "studio/**/*.mjs"],
 
   "ignoreDependencies": [
-    // katex ships its own types except for `katex/contrib/auto-render`.
-    "@types/katex",
     // Reached through `@tailwindcss/postcss` and the `@import` in globals.css,
     // neither of which is a TS import graph edge.
     "tailwindcss"
