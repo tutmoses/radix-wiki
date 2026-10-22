@@ -103,7 +103,16 @@ export async function DELETE(request: NextRequest, context: RouteContext<PathPar
     if (!comment) return errors.notFound('Comment not found');
     if (comment.authorId !== auth.session.userId) return errors.forbidden();
 
-    await prisma.comment.delete({ where: { id } });
+    // The delete cascades to the replies, at any depth; the notifications naming any
+    // of them go too, rather than pointing at a comment that is gone.
+    const ids = [id];
+    for (let level = [id]; level.length; ids.push(...level)) {
+      level = (await prisma.comment.findMany({ where: { parentId: { in: level } }, select: { id: true } })).map(c => c.id);
+    }
+    await prisma.$transaction([
+      prisma.notification.deleteMany({ where: { commentId: { in: ids } } }),
+      prisma.comment.delete({ where: { id } }),
+    ]);
     const page = await prisma.wikiPage.findUnique({ where: { id: comment.pageId }, select: { tagPath: true, slug: true } });
     if (page) revalidateDiscussion(page);
     return json({ success: true });
