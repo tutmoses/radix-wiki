@@ -59,8 +59,6 @@ export async function generateStaticParams() {
   ];
 }
 
-/** How many article links a section card carries before it defers to its own page. */
-
 export const dynamicParams = true;
 // A day, not a minute: every API write busts the pages it changes (`revalidatePage`
 // in lib/wiki.ts, called from the wiki and comments routes), so an edit shows at
@@ -363,8 +361,9 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
   if (parsed.type === 'invalid') notFound();
 
   // The page-level /mdx URL is an export, not a page — send it to the API route
-  // instead of rendering a duplicate article at a noindex URL.
-  if (parsed.type === 'mdx') redirect(parsed.slug ? `/api/wiki/${parsed.tagPath}/${parsed.slug}/mdx` : '/api/wiki/mdx');
+  // instead of rendering a duplicate article at a noindex URL. A category's /mdx
+  // is its hub article's (empty slug), not the homepage's.
+  if (parsed.type === 'mdx') redirect(`/api/wiki/${[parsed.tagPath, parsed.slug, 'mdx'].filter(Boolean).join('/')}`);
 
   if (parsed.type === 'search') return <SearchView query={str((await searchParams).q) ?? ''} />;
   if (parsed.type === 'maintenance') return <MaintenanceView queues={await getMaintenanceQueues()} />;
