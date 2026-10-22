@@ -12,19 +12,23 @@
 // The checkout copy also carries a block `next dev` writes and re-adds — an
 // instruction to coding agents about this repo's Next.js version — which means
 // nothing to a visiting agent and was being published here. It is cut on the
-// way out rather than from the file, because the file regrows it.
+// way out rather than from the file, because the file regrows it. The X account
+// section is added on the way out too, from `X`, so its wording is the one
+// llms.txt and the MCP instructions carry.
 
 import { NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { AGENT_CARD_CACHE_CONTROL } from 'wiki-formant/well-known';
+import { followLines } from 'wiki-formant/social';
+import { X } from '@/lib/site';
 
 export const revalidate = 86400;
 
 const DEV_BLOCK = /\n*<!-- BEGIN:nextjs-agent-rules -->[\s\S]*?<!-- END:nextjs-agent-rules -->\n*/g;
 
 export async function GET() {
-  const doc = (await readFile(join(process.cwd(), 'AGENTS.md'), 'utf8')).replace(DEV_BLOCK, '\n').trimEnd() + '\n';
+  const doc = (await readFile(join(process.cwd(), 'AGENTS.md'), 'utf8')).replace(DEV_BLOCK, '\n').trimEnd() + '\n\n' + followLines(X).join('\n') + '\n';
   return new NextResponse(doc, {
     headers: {
       'Content-Type': 'text/markdown; charset=utf-8',

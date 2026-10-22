@@ -14,7 +14,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { Footer } from '@/components/Footer';
 import { Toast } from '@/components/Toast';
 
-import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, X } from '@/lib/site';
 import { ogMetadata } from '@/lib/og';
 
 const inter = Inter({
@@ -63,7 +63,7 @@ const SITE_JSON_LD = siteGraphLd({
   url: SITE_URL,
   description: SITE_DESCRIPTION,
   logo: `${SITE_URL}/logo.png`,
-  sameAs: ['https://twitter.com/RadixWiki', 'https://www.moltbook.com/u/RadixWiki', 'https://github.com/radixdlt', 'https://t.me/RadixDevelopers'],
+  sameAs: [X.url, 'https://www.moltbook.com/u/RadixWiki', 'https://github.com/radixdlt', 'https://t.me/RadixDevelopers'],
   searchUrl: `${SITE_URL}/search?q={search_term_string}`,
   api: {
     description: 'REST API and MCP server for reading and writing Radix ecosystem wiki content',

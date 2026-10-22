@@ -11,7 +11,8 @@
 import { prisma } from '@/lib/prisma/client';
 import { categoryLabel, pageUrl, pagePath } from '@/lib/utils';
 import { isoDate } from 'wiki-formant/freshness';
-import { SIBLING_WIKI, SITE_NAME, SITE_URL } from '@/lib/site';
+import { SIBLING_WIKI, SITE_NAME, SITE_URL, X } from '@/lib/site';
+import { followNote } from 'wiki-formant/social';
 import { MCP_RATE_LIMIT, MCP_RATE_LIMIT_TEXT } from 'wiki-formant/rate-limit';
 import { buildLlmsTxt } from '@/lib/llms';
 import { getMetadataKeys } from '@/lib/tags';
@@ -30,6 +31,7 @@ const INSTRUCTIONS = [
   'Writing without leaving the protocol: get_challenge → sign the ROLA message with your own Ed25519 key → login (returns a Bearer token) → create_page / edit_page with that token as an HTTP `Authorization: Bearer <token>` header on the POSTs carrying the calls. To edit, read the page with get_page and `blocks: true`, then send edit_page its revised blocks and its `version` as baseVersion.',
   `Deep reference (ROLA signing spec, REST equivalents, content model): ${SITE_URL}/AGENTS.md (also served at ${SITE_URL}/agents-md). Any page URL + ".md" is its markdown twin; the homepage's is ${SITE_URL}/index.md.`,
   `The Radix DAO's own decisions are covered here. For ${SIBLING_WIKI.covers}, use the sister wiki's server: ${SIBLING_WIKI.mcp}.`,
+  followNote(X),
 ].join('\n');
 
 // ========== RESOURCES ==========

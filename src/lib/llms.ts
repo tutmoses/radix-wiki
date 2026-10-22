@@ -21,7 +21,8 @@ import { categoryLabel, pageUrl } from '@/lib/utils';
 import { describe } from 'wiki-formant/metadata';
 import { openingText } from 'wiki-formant/text';
 import { isoDate } from 'wiki-formant/freshness';
-import { SIBLING_WIKI, SITE_URL, WIKI_LICENSE } from '@/lib/site';
+import { SIBLING_WIKI, SITE_URL, WIKI_LICENSE, X } from '@/lib/site';
+import { followLines } from 'wiki-formant/social';
 import { blocksToMarkdown } from '@/lib/markdown';
 import { CHARTS_PAGES } from '@/lib/static-pages';
 import type { Block } from '@/types/blocks';
@@ -178,6 +179,8 @@ community and may earn toward a future airdrop at the same time.
 
 - Leaderboard: ${SITE_URL}/leaderboard
 - Connect a Radix wallet to start contributing
+
+${followLines(X).join('\n')}
 
 ${LICENSE_BLOCK}
 

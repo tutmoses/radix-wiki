@@ -2,6 +2,7 @@
 // and placed as in caper and acuiq2 so one grep finds it in all three.
 import { ccBy40 } from 'wiki-formant/license';
 import { siteRefs } from 'wiki-formant/metadata';
+import { xAccount } from 'wiki-formant/social';
 
 export const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
 export const SITE_NAME = 'RADIX Wiki';
@@ -12,6 +13,15 @@ export const SITE_DESCRIPTION = 'RADIX Wiki is a community-edited encyclopedia t
 // Article and collection points at these rather than restating the nodes, which
 // had been declared twice and had already parted on the logo.
 export const SITE_REFS = siteRefs(SITE_URL);
+
+// The X account, as the social cards, the JSON-LD `sameAs`, the footer, llms.txt,
+// AGENTS.md and the MCP instructions name it. `posts` is what the `tweet` and
+// `radix-week-in-review` routines in radix-studio post from it.
+export const X = xAccount({
+  siteName: SITE_NAME,
+  handle: '@RadixWiki',
+  posts: 'news from the Radix ecosystem, one update per post, and a link to the Week in Review essay every Sunday',
+});
 
 // The sister wiki, named in llms.txt and the MCP instructions so an agent that
 // arrives here with a question about DAOs in general finds where it is answered.

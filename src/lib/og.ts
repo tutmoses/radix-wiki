@@ -6,9 +6,9 @@
 
 import type { Metadata } from 'next';
 import { sitePageMetadata, type PageMetadataOptions } from 'wiki-formant/metadata';
-import { SITE_NAME, SITE_URL } from '@/lib/site';
+import { SITE_NAME, SITE_URL, X } from '@/lib/site';
 
-const pageMetadata = sitePageMetadata({ siteName: SITE_NAME, handle: '@RadixWiki' });
+const pageMetadata = sitePageMetadata({ siteName: SITE_NAME, handle: X.handle });
 
 /** URL of the generated 1200x630 card. `tagPath` picks the section palette; `banner` overrides the gradient. */
 export function ogImageUrl({ title, description, tagPath, banner }: {
