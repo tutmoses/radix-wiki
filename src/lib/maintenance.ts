@@ -8,7 +8,7 @@ import { prisma } from '@/lib/prisma/client';
 import { cached } from '@/lib/wiki';
 import { pagePath } from '@/lib/utils';
 import { getMetadataKeys } from '@/lib/tags';
-import { leafBlocks } from '@/lib/block-shape';
+import { leafBlocks } from '@/lib/block-utils';
 import { maintenanceQueues, type MaintenanceQueue } from 'wiki-formant/queues';
 import type { Block } from '@/types/blocks';
 

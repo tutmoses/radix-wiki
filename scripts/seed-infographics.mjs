@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isLockedPage, withClient, embedFigure, readPage } from './seed-utils.mjs';
+import { isLockedPage, withClient, embedFigure, readPage } from './wiki-utils.ts';
 import { figureBlock } from '../brand-assets/kit.mjs';
 try { process.loadEnvFile(); } catch {} // the .env in the working directory, if there is one
 

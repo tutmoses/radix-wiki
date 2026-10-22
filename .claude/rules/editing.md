@@ -4,10 +4,10 @@ How a script creates or edits a page in radix.wiki's production database.
 
 ## Seeding Wiki Pages
 
-To create pages programmatically (bypassing API auth), write `scripts/seed-<name>.mjs` with a `pages` array and pass it to `insertPages(pages, defaultTagPath, revisionMessage)` from `scripts/seed-utils.mjs`. It checks existence per page (idempotent), honours `LOCKED_PAGES`, and writes each page and its first revision through the store. The seed scripts that stay are `seed-utils.mjs` (the shared helpers) and `seed-infographics.mjs` (the deploy the infographics routine calls every time); every other `seed-*` is deleted once its page is verified.
+To create pages programmatically (bypassing API auth), write `scripts/seed-<name>.ts` with a `pages` array and pass it to `insertPages(pages, defaultTagPath, revisionMessage)` from `scripts/wiki-utils.ts`. It checks existence per page (idempotent), honours `LOCKED_PAGES`, and writes each page and its first revision through the store. The scripts that stay are `wiki-utils.ts` (this wiki's helpers over `wiki-formant/scripts`) and `seed-infographics.mjs` (the deploy the infographics routine calls every time); every other `seed-*` is deleted once its page is verified.
 
 ```javascript
-import { uid, insertPages } from './seed-utils.mjs';
+import { uid, insertPages } from './wiki-utils.ts';
 
 const pages = [
   {
@@ -28,7 +28,7 @@ await insertPages(pages, 'contents/tech/core-concepts', 'Initial page');
 - **Block IDs:** every block and nested block gets `uid()`. `'content'` carries an HTML string in `text`; `'infobox'` carries `blocks: AtomicBlock[]`.
 - **Columns:** `WikiPage` has no `excerpt` column; the excerpt lives at `metadata.excerpt` (the `/blog.xml` feed reads it).
 - **Tag paths** must exist in `TAG_HIERARCHY`.
-- **Author:** `AUTHOR_ID` from `seed-utils.mjs` (Hydrate).
+- **Author:** `AUTHOR_ID` from `wiki-utils.ts` (Hydrate); its `writeRevision` signs every revision with it.
 
 ### Content quality standards
 - **Voice** — `radix-studio/VOICE.md` §4 Essay
@@ -44,12 +44,12 @@ await insertPages(pages, 'contents/tech/core-concepts', 'Initial page');
 
 Seeding creates; **most script work edits**. This is the dominant operation in `scripts/` and has its own recipe — do not reach for `insertPages()` to change a page that already exists.
 
-Write `scripts/sweep-<run>-<topic>.mjs` (a sweep edit) or `scripts/update-<area>-<n>.mjs` (a one-off fix), import the shared helpers, and follow the read → guard → mutate → write shape below. Read with `readPage` and write through `writeRevision`, which is the app's own store; never hand-write SQL against `WikiPage` or `WikiRevision`.
+Write `scripts/sweep-<run>-<topic>.ts` (a sweep edit) or `scripts/update-<area>-<n>.ts` (a one-off fix), import the shared helpers, and follow the read → guard → mutate → write shape below. Read with `readPage` and write through `writeRevision` (`wiki-formant/scripts`', signed by Hydrate), which is the app's own store; never hand-write SQL against `WikiPage` or `WikiRevision`. Node 24 runs a `.ts` script as is.
 
-Neither kind is committed; the revision row is the record. An `update-*` script is one-time: run it, verify the edit through the API, and delete it in the same session. `sweep-*` scripts are gitignored (`.gitignore` → `/scripts/sweep-*.mjs`): wiki-sweep leaves them on disk, untracked.
+Neither kind is committed; the revision row is the record. An `update-*` script is one-time: run it, verify the edit through the API, and delete it in the same session. `sweep-*` scripts are gitignored (`.gitignore` → `/scripts/sweep-*.{mjs,ts}`): wiki-sweep leaves them on disk, untracked.
 
 ```javascript
-import { uid, isLockedPage, withClient, readPage, writeRevision } from './seed-utils.mjs';
+import { uid, isLockedPage, withClient, readPage, writeRevision } from './wiki-utils.ts';
 
 const DRY = process.argv.includes('--dry-run');
 

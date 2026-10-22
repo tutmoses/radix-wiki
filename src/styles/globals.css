@@ -13,6 +13,22 @@
    from the package, so its dist is a content root like any other. */
 @source "../../node_modules/wiki-formant/dist";
 
+/* The package's components, drawn in this wiki's palette (base.css, "the look"). */
+:root {
+  --ui-surface: var(--color-surface-1);
+  --ui-surface-2: var(--color-surface-2);
+  --ui-border: var(--color-border-muted);
+  --ui-radius: var(--radius);
+  --ui-pad: 1rem;
+  --ui-small: var(--text-small);
+  --ui-muted: var(--color-text-muted);
+  --ui-accent: var(--color-accent);
+  --ui-on-accent: var(--color-surface-0);
+  --ui-up: var(--color-success);
+  --ui-down: var(--color-error);
+  --ui-shadow: var(--shadow);
+}
+
 @theme {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --color-surface-0: #393e50;
@@ -158,17 +174,7 @@
     .path a[href] { @apply no-underline; &::after { content: none; } }
   }
 
-  /* ===== HEADING PERMALINK ANCHORS ===== */
-  :is(h2, h3, h4):has(> .heading-anchor) { @apply relative; }
-  .heading-anchor {
-    @apply absolute top-0 -left-5 text-text-muted opacity-0 transition-opacity;
-    font-weight: 400;
-    &::before { content: '#'; }
-    &:hover { @apply text-accent; }
-  }
-  :is(h2, h3, h4):hover > .heading-anchor,
-  .heading-anchor:focus-visible { @apply opacity-100; }
-
+      
   :is(.tiptap-editor .tiptap, .prose-content) {
     img { @apply max-w-full h-auto rounded-lg my-4; &.ProseMirror-selectednode { @apply outline-2 outline-accent outline-offset-2; } }
     div[data-youtube-video] { @apply my-4; iframe { @apply rounded-lg; } &.ProseMirror-selectednode iframe { @apply outline-2 outline-accent outline-offset-2; } }
@@ -211,13 +217,7 @@
   [data-callout] > div { @apply flex-1 min-w-0; p:last-child { @apply mb-0; } }
   [data-callout-title] { @apply font-semibold mb-1; }
 
-  /* ===== CODE TABS ===== */
-  .code-tabs { @apply border border-border-muted rounded-lg my-4; }
-  .code-tabs-list { @apply gap-0 border-b border-border-muted; background-color: var(--color-code-tabs-bg); }
-  .code-tabs-btn { @apply px-4 py-2 text-small text-text-muted border-b-2 border-transparent transition-colors hover:text-text; background: transparent; }
-  .code-tabs-btn-active { @apply text-accent border-accent; }
-  .code-tabs pre { @apply m-0 border-0 rounded-none; }
-
+          
   /* ===== TIP JAR BLOCK ===== */
   .tip-jar { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; max-width: 22rem; margin-inline: auto; padding: 1.5rem; text-align: center; background: var(--color-surface-1); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
   .tip-jar-label { font-size: var(--text-h4); font-weight: 600; color: var(--color-text); }
@@ -230,21 +230,11 @@
   .tip-jar-address:hover { color: var(--color-accent); border-color: var(--color-accent); }
   .tip-jar-address-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  /* ===== EDITORIAL NOTICE BANNERS ===== */
-  .editorial-banner { @apply items-start gap-3 p-3 my-3 rounded-lg border text-small; }
-  .editorial-banner-icon { @apply shrink-0 mt-0.5; }
-  .editorial-banner-body { @apply flex-1 min-w-0 m-0; }
-  .editorial-banner-stub, .editorial-banner-cleanup { @apply border-info/30 bg-info/10; .editorial-banner-icon { @apply text-info; } }
-  .editorial-banner-unsourced, .editorial-banner-outdated { @apply border-warning/30 bg-warning/10; .editorial-banner-icon { @apply text-warning; } }
-  .editorial-banner-promotional, .editorial-banner-coi { @apply border-error/30 bg-error/10; .editorial-banner-icon { @apply text-error; } }
+    .editorial-banner-icon { @apply shrink-0 mt-0.5; }
+    .editorial-banner-stub, .editorial-banner-cleanup { @apply border-info/30 bg-info/10; .editorial-banner-icon { @apply text-info; } }
+    .editorial-banner-promotional, .editorial-banner-coi { @apply border-error/30 bg-error/10; .editorial-banner-icon { @apply text-error; } }
 
-  /* ===== REFERENCES BLOCK ===== */
-  .references-block { @apply mt-6 pt-4 border-t border-border-muted; h2 { @apply text-h4 mb-2; } }
-  .references-list { @apply list-decimal pl-6 text-small text-text-muted; }
-  .reference-item { @apply pl-1 mb-1; scroll-margin-top: calc(var(--header-height) + 1rem); a { @apply text-accent hover:underline; } }
-  .reference-item:target { @apply bg-accent-muted rounded; }
-  .ref-backlink { @apply text-accent hover:text-accent-hover; }
-
+          
   /* ===== INLINE CITATIONS ===== */
   sup.cite, sup.cite a { @apply text-accent no-underline text-[0.7em] align-super; }
   .citation-needed { @apply text-[0.7em] align-super text-error italic; }
@@ -286,11 +276,7 @@
     .tabs-content { @apply p-4; }
   }
 
-  /* Copy button on code blocks: placed and revealed by base.css, themed here. */
-  .code-copy-btn {
-    @apply p-1.5 rounded bg-white/10 text-text-muted transition-all hover:bg-white/20 hover:text-text z-10;
-  }
-  .code-block-wrapper:hover > .code-copy-btn { @apply opacity-100; }
+    .code-block-wrapper:hover > .code-copy-btn { @apply opacity-100; }
 
   /* `Pager`: laid out and dimmed at its ends by base.css; its steps read as links. */
   .pager-step { @apply text-accent hover:text-accent-hover; }
@@ -357,10 +343,7 @@
      banner's overlay draws it the way it draws the trail beside it. */
   .page-actions { @apply flex items-center gap-3 text-small; }
 
-  /* ===== LINKS ===== */
-  /* Matches the base `a` rule so a <button> can be styled as an inline link. */
-  .link { @apply text-accent no-underline cursor-pointer hover:text-accent-hover; }
-  .link-muted { @apply text-text-muted hover:text-text; }
+    .link-muted { @apply text-text-muted hover:text-text; }
 
   /* ===== RESPONSIVE ===== */
   .hidden-mobile { display: none; }
@@ -416,9 +399,8 @@
      the same on all three wikis; this is the surface. `--rail-top` is what the
      sticky rail clears and `--rail-border` the rule beside it, which becomes
      the drawer's foot. */
-  .wiki-sidebar { @apply bg-surface-0; --rail-top: var(--header-height); --rail-border: 1px solid var(--color-border-muted); }
-  .wiki-sidebar__scroll { @apply pb-24; }
-  .sidebar-label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3; }
+  .wiki-sidebar { @apply bg-surface-0; --rail-top: var(--header-height); }
+    .sidebar-label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3; }
 
   /* Nav items */
   .nav-item { @apply flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-text-muted hover:bg-surface-2 hover:text-text; }
@@ -467,10 +449,7 @@
   .page-card-snippet { @apply text-text-muted line-clamp-2 text-small; }
   .page-card-meta { @apply flex items-center gap-2 flex-wrap mt-auto pt-1; }
 
-  /* ===== PAGE LINKS =====
-     A list block shown as links: wiki-formant's `PageRefsView`, one row a page. */
-  .page-refs { @apply list-none p-0 m-0 flex flex-col divide-y divide-border-muted bg-surface-1 border border-border-muted rounded-lg overflow-hidden; }
-  .page-ref { @apply flex items-baseline justify-between gap-3 min-w-0 px-4 py-2.5 hover:bg-surface-2 transition-colors; &:hover .page-ref-title { @apply text-accent; } }
+    .page-ref { @apply flex items-baseline justify-between gap-3 min-w-0 px-4 py-2.5 hover:bg-surface-2 transition-colors; &:hover .page-ref-title { @apply text-accent; } }
   .page-ref-title { @apply min-w-0 truncate font-medium transition-colors; }
   .page-ref-time { @apply shrink-0 text-small text-text-muted; }
   .page-refs-empty { @apply text-text-muted; }
@@ -502,8 +481,7 @@
   /* Two columns for most of the range: this grid runs both full-width and inside
      the article column beside an infobox, and three cards there truncate titles. */
   .section-index { @apply grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 auto-rows-fr gap-3; }
-  .section-card { @apply flex flex-col gap-2 p-4 bg-surface-1 border border-border-muted rounded-lg transition-colors hover:border-accent; }
-  /* A heading element, so a category index has an outline rather than an h1 and
+    /* A heading element, so a category index has an outline rather than an h1 and
      nothing under it — drawn as the card title it has always been. */
   .section-card-title { @apply m-0 mt-0 text-base font-medium border-b-0; a { @apply transition-colors hover:text-accent; } }
   .section-card-desc { @apply m-0 text-text-muted text-small; }
@@ -542,8 +520,7 @@
 
   /* ===== CATEGORY RESULTS BAR ===== */
   .results-bar { @apply flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-border-muted; }
-  .facet-summary { @apply m-0 text-text-muted text-small; }
-  .filter-toggle { @apply md:hidden inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border-muted bg-surface-1 text-small text-text-muted transition-colors hover:border-accent hover:text-text; }
+    .filter-toggle { @apply md:hidden inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border-muted bg-surface-1 text-small text-text-muted transition-colors hover:border-accent hover:text-text; }
   .filter-toggle-active { @apply border-accent text-text; }
 
   /* ===== CATEGORY RAIL (facets + A–Z index) =====
@@ -588,44 +565,25 @@
   .alpha-letter { @apply text-text-muted no-underline transition-colors hover:text-accent; }
   .alpha-letter-active { @apply text-accent font-semibold; }
 
-  /* ===== MAINTENANCE QUEUES ===== */
-  .maintenance-queue { @apply flex flex-col gap-2 pt-6 border-t border-border-muted; }
-  .maintenance-count { @apply align-middle ml-2 px-2 py-0.5 rounded-full bg-surface-2 text-text-muted text-small font-normal tabular-nums; }
-  .maintenance-list { @apply grid grid-cols-1 md:grid-cols-2 gap-x-6 m-0 p-0 list-none; }
-  .maintenance-item { @apply flex flex-wrap items-baseline gap-x-2 py-1.5 border-b border-border-muted; }
-  .maintenance-detail { @apply text-text-muted text-xs; }
-  .maintenance-description { @apply text-text-muted text-small; }
-  .maintenance-item > a { @apply text-accent hover:text-accent-hover; }
-
+              
   /* ===== STATS (/stats) =====
      The layout and the bars' shape are wiki-formant/base.css; this is the colour. */
   .stats-figures button > span, .stats-list h2 { @apply text-text-muted; }
   .stats-figures strong { @apply text-h3 font-normal; }
-  /* The change from the window before, coloured by whether it is the good way. */
-  .stats-delta { @apply text-[0.6em] font-medium; }
-  .stats-delta[data-better='true'] { @apply text-success; }
-  .stats-delta[data-better='false'] { @apply text-error; }
-  .stats-list li { @apply text-accent; }
+        .stats-list li { @apply text-accent; }
   .stats-list li > span { @apply text-text; }
 
   /* ===== SEE ALSO ===== */
   .see-also { @apply mt-8 pt-6 border-t border-border-muted flex flex-col gap-3; }
   .see-also-heading { @apply text-h4; }
-  .see-also-list { @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 list-none pl-0; }
-  .see-also-item { @apply flex flex-col gap-1 p-3 bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5; }
-  .see-also-title { @apply font-medium; }
-  .see-also-detail { @apply text-text-muted text-small line-clamp-2; }
-
+        
   /* ===== CATEGORY GRID ===== */
   .category-grid { @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4; }
 
   /* ===== STAT GRID ===== */
   .stat-grid { @apply sm:grid-cols-5 gap-3; }
-  .stat-card { @apply gap-1 items-center p-3 bg-surface-1 rounded-lg; }
-  .stat-value { @apply text-h4 font-semibold; }
-  .stat-suffix { @apply ml-0.5 text-small font-normal text-text-muted; }
-  .stat-label { @apply text-text-muted text-xs text-center; }
-  /* Column overrides for the `stats` block; source order beats the base rule. */
+      .stat-suffix { @apply ml-0.5 text-small font-normal text-text-muted; }
+    /* Column overrides for the `stats` block; source order beats the base rule. */
   .stat-grid-2 { @apply sm:grid-cols-2; }
   .stat-grid-3 { @apply sm:grid-cols-3; }
   .stat-grid-4 { @apply sm:grid-cols-4; }
@@ -742,19 +700,10 @@
   /* RevisionChanges (wiki-formant/react-server): the list resets in base.css,
      the colours are these. */
   .revision-changes-panel { @apply bg-surface-0 p-3 border-t border-border-muted text-xs; }
-  .revision-change-action { @apply font-medium; }
-  .revision-change[data-action='added'] .revision-change-action { @apply text-success; }
-  .revision-change[data-action='removed'] .revision-change-action { @apply text-error; }
-  .revision-change[data-action='modified'] .revision-change-action { @apply text-warning; }
-  .revision-change[data-action='moved'] .revision-change-action { @apply text-info; }
-  .revision-diff { @apply leading-relaxed text-text-muted; }
-  .revision-diff del { @apply text-error/80; }
-  .revision-diff ins { @apply text-success bg-success/10 rounded-xs px-0.5 no-underline; }
-
+        .revision-change[data-action='modified'] .revision-change-action { @apply text-warning; }
+        
   /* ===== PAGE WITH INFOBOX LAYOUT ===== */
   .page-with-infobox {
-    @apply gap-6;
-
     @media (min-width: 768px) {
       grid-template-columns: 2fr 1fr;
       grid-template-areas: "content infobox";
@@ -763,17 +712,13 @@
 
   /* Infobox sidebar */
   .infobox-heading { @apply mt-0 border-b-0 text-small font-bold uppercase tracking-wide text-text-muted; }
-  .infobox-facts { @apply m-0; }
-  .infobox-series { @apply items-center gap-0.5 text-center text-small text-text-muted pb-3 border-b border-border-muted; }
-
+    
   .infobox {
-    @apply bg-surface-1 border border-border-muted rounded-lg overflow-hidden p-4;
     width: 100%;
+    overflow: hidden;
     container-type: inline-size;
-    table { table-layout: fixed; width: 100%; white-space: normal; }
-    /* Labels are short and values are the reading, so an even split wastes the
-       rail. 42% is the floor that still fits "Published:" on one line. */
-    th { @apply bg-surface-2; width: 42%; }
+    table { white-space: normal; }
+    th { @apply bg-surface-2; }
 
     /* Between 768px and ~1150px the 1fr rail is only 130–260px wide, and two
        columns in that leaves every label breaking mid-word ("Publi/shed:"). Below
@@ -807,11 +752,7 @@
   .footer { @apply flex items-center justify-between gap-4 flex-wrap border-t border-border-muted py-8 mt-8 mx-auto w-full max-w-[var(--content-width)] text-text-muted text-small; padding-inline: var(--page-pad); }
   .footer-links { @apply flex items-center gap-4 flex-wrap; }
 
-  /* ===== COLUMNS VIEW ===== */
-  /* The row, the stacking and data-gap/data-align are base.css; the space
-     between blocks inside a column is this wiki's. */
-  .column-view { @apply gap-4; }
-
+  
   /* ===== CHARTS / DATA TABLES ===== */
   /* Fits however many cards a row has: five on /charts, six on the validators page, four for OciSwap. */
   .charts-stat-grid { @apply grid grid-cols-2 gap-3; @media (min-width: 640px) { grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); } }
@@ -835,12 +776,7 @@
   .data-table-row { @apply transition-colors hover:bg-surface-1/40; }
   .data-table-row:target { @apply bg-surface-2; }
   .data-table-row:last-child .data-table-td { @apply border-b-0; }
-  /* Every sortable header, React or stored HTML, is a button inside a cell that
-     carries `aria-sort`; base.css resets the button and draws the arrow from the
-     attribute, so the two kinds of table cannot draw it differently. */
-  .sort-header { @apply gap-1 hover:text-text transition-colors; }
-  :is([aria-sort='ascending'], [aria-sort='descending']) > .sort-header { @apply text-text; }
-
+    
   /* /charts/tokens/<address>. Not `.page-with-infobox`, which puts the infobox first on a
      phone: here the name and price come first, then the infobox, then the chart. */
   .token-page {
@@ -866,45 +802,11 @@
   /* ===== ASSET PRICE ===== */
   .asset-price { @apply bg-surface-1 border border-border-muted rounded-lg p-4 flex items-center gap-4; }
 
-  /* ===== CHART (wiki-formant/chart) =====
-     The layout and the pinned buttons are wiki-formant/base.css; this is the look. */
-  .chart { @apply mt-1 rounded-lg border border-border-muted bg-surface-1; }
-  .chart-canvas { @apply text-accent text-[10px]; --chart-axis: var(--color-chart-axis); --chart-up: var(--color-success); --chart-down: var(--color-error); }
-  .chart-status { @apply text-small text-text-muted; }
-  .chart-controls :is(button, a) { @apply text-[10px] rounded-md border border-border opacity-100 hover:bg-surface-2; }
-  .chart-controls :is(button, a):is([aria-pressed='true'], [aria-current]) { @apply bg-accent text-surface-0 border-accent; }
-  .recent-pages-grid { @apply grid grid-cols-1 lg:grid-cols-2 gap-4; }
+            .recent-pages-grid { @apply grid grid-cols-1 lg:grid-cols-2 gap-4; }
 
-  /* ===== LINK GRID ===== */
-  .link-grid { @apply my-4; }
-  .link-grid-group { @apply mt-4 first:mt-0; }
+    .link-grid-group { @apply mt-4 first:mt-0; }
   .link-grid-group h3 { @apply text-h4 font-medium mt-0 mb-3 border-b-0; }
-  .link-grid-group-description { @apply text-text-muted mb-3; }
-  .link-grid-group-description p { @apply m-0; }
-  .link-grid-pills {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-  }
-  .link-grid-pills > a {
-    display: block;
-    padding: 0.625rem 0.875rem;
-    background: var(--color-surface-1);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    font-size: var(--text-small);
-    color: var(--color-text);
-    text-decoration: none;
-    text-align: center;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
-  }
-  .link-grid-pills > a:hover {
-    background: var(--color-surface-2);
-    border-color: var(--color-accent);
-    color: var(--color-accent);
-  }
-
+          
   /* ===== RSS FEED ===== */
   .rss-feed-scroll { @apply max-h-[494px] overflow-y-auto rounded-lg border border-border-muted bg-surface-0; }
   /* Side by side in a columns block, the feed matches its tallest sibling column instead
@@ -921,16 +823,8 @@
   .rss-card-source { @apply text-success font-medium; }
   .rss-card-desc { @apply text-text-muted text-[13px] leading-relaxed; }
 
-  /* ===== LINK PREVIEW (hover cards) ===== */
-  .link-preview-card {
-    @apply fixed z-50 w-80 max-w-[calc(100vw-1rem)] bg-surface-1 border border-border rounded-lg overflow-hidden shadow;
-    animation: fade-in 0.15s ease-out;
-  }
-  .link-preview-banner { @apply w-full h-28 object-cover; }
-  .link-preview-body { @apply p-3 flex flex-col gap-1; }
-  .link-preview-title { @apply font-semibold; }
-  .link-preview-excerpt { @apply text-small text-text-muted line-clamp-4 m-0; }
-
+    .link-preview-banner { @apply w-full h-28 object-cover; }
+      
   /* ===== TOAST ===== */
   .toast {
     @apply fixed bottom-6 right-6 z-50 bg-surface-1 border border-accent/30 rounded-lg px-4 py-3 text-small shadow-lg;

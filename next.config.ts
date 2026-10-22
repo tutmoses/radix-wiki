@@ -89,6 +89,7 @@ export default withWikiDefaults({
     return {
       beforeFiles: [
         { source: '/og', destination: '/api/og' },
+        { source: '/openapi.json', destination: '/.well-known/openapi.json' },
         // Must precede the .md rule below, which would otherwise swallow
         // /AGENTS.md into the wiki API and 404. The agent API reference is a
         // real document, not a wiki page rendered as markdown.

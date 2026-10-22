@@ -26,7 +26,7 @@ import { promisify } from 'node:util';
 import { bump } from 'wiki-formant/versioning';
 import {
   uid, AUTHOR_ID, isLockedPage, esc, meta, argOf, weekKey, fmt, compact, delta, withClient, readPage, storeFor, writeRevision,
-} from './seed-utils.mjs';
+} from './wiki-utils.ts';
 
 process.loadEnvFile(new URL('../.env', import.meta.url));
 

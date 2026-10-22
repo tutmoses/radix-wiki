@@ -19,6 +19,7 @@ import type { ActivityMetric } from '@/lib/radix/metrics';
 // are its own page rows, and its native types.
 import type {
   BannerBlock,
+  BlockTree,
   CodeTabsBlock,
   ColumnsBlock as CoreColumnsBlock,
   ContentBlock,
@@ -49,5 +50,4 @@ export type AtomicBlock = ContentBlock | ListBlock | AssetPriceBlock | NetworkCh
 
 export type InfoboxBlock = CoreInfoboxBlock<AtomicBlock>;
 export type ColumnsBlock = CoreColumnsBlock<AtomicBlock>;
-
-export type Block = AtomicBlock | InfoboxBlock | ColumnsBlock;
+export type Block = BlockTree<AtomicBlock>;

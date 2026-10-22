@@ -15,7 +15,7 @@
 
 import { mapBlockTree } from 'wiki-formant/blocks';
 import { createHtmlSanitizer, sanitizeCoreLeaf } from 'wiki-formant/sanitize';
-import { BLOCK_SHAPE } from '@/lib/block-shape';
+import { BLOCK_SHAPE } from '@/lib/block-utils';
 import type { Block } from '@/types/blocks';
 
 // Third-party embed hosts: the editor's YouTube, tweet and map nodes, plus every

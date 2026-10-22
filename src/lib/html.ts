@@ -8,7 +8,7 @@
 import { articleHtml, slugifyHeading } from 'wiki-formant/headings';
 import type { Block } from '@/types/blocks';
 import { mapBlockTree } from 'wiki-formant/blocks';
-import { BLOCK_SHAPE } from '@/lib/block-shape';
+import { BLOCK_SHAPE } from '@/lib/block-utils';
 import { SITE_URL } from '@/lib/site';
 
 const SELF_HOST = new URL(SITE_URL).host;

@@ -15,7 +15,7 @@
 
 import fs from 'node:fs';
 import { safeLinkHref } from 'wiki-formant/validation';
-import { argOf, withClient } from './seed-utils.mjs';
+import { argOf, withClient } from './wiki-utils.ts';
 
 process.loadEnvFile(new URL('../.env', import.meta.url));
 

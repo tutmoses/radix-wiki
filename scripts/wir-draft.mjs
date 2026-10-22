@@ -13,7 +13,7 @@
 // Nothing here touches the database.
 
 import fs from 'node:fs';
-import { uid, argOf, weekKey, fmt, compact, withClient, readPage } from './seed-utils.mjs';
+import { uid, argOf, weekKey, fmt, compact, withClient, readPage } from './wiki-utils.ts';
 
 process.loadEnvFile(new URL('../.env', import.meta.url));
 

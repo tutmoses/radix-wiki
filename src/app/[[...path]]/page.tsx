@@ -44,7 +44,7 @@ import { getTokenDetail, getTopTokens } from '@/lib/radix/tokens';
 import { getEditorScores, publicScore } from '@/lib/scoring';
 import type { Block } from '@/types/blocks';
 import type { WikiPage } from '@/types';
-import { BLOCK_SHAPE, leafBlocks } from '@/lib/block-shape';
+import { BLOCK_SHAPE, leafBlocks } from '@/lib/block-utils';
 import { someBlock } from 'wiki-formant/blocks';
 
 export async function generateStaticParams() {

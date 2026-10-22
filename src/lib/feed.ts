@@ -23,7 +23,7 @@ import { openingText } from 'wiki-formant/text';
 import { SITE_URL } from '@/lib/site';
 import { ogImageUrl } from '@/lib/og';
 import { absolutise as absolutiseFrom, clampWords, escXml, type FeedItem } from 'wiki-formant/feed';
-import { leafBlocks } from '@/lib/block-shape';
+import { leafBlocks } from '@/lib/block-utils';
 import { prisma } from '@/lib/prisma/client';
 import { RECAP_PREFIX, SERIES_SLUG, scoreline, type LedgerState } from '@/lib/week-in-review';
 

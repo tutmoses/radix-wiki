@@ -12,7 +12,7 @@ import { getSortOrder, getMetadataKeys, HIDDEN_TAG_PATHS } from '@/lib/tags';
 import type { WikiAuthor, WikiPage, IdeasPage } from '@/types';
 import type { Block, ListBlock, RssFeedBlock } from '@/types/blocks';
 import { blockLimit, MAX_BLOCK_ROWS } from 'wiki-formant/validation';
-import { leafBlocks } from '@/lib/block-shape';
+import { leafBlocks } from '@/lib/block-utils';
 import { RECAP_PREFIX } from '@/lib/week-in-review';
 
 /**

@@ -21,7 +21,7 @@ import { pageUrl } from '@/lib/utils';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { activityLabel } from '@/lib/radix/metrics';
 import type { Block, AtomicBlock } from '@/types/blocks';
-import { BLOCK_SHAPE } from '@/lib/block-shape';
+import { BLOCK_SHAPE } from '@/lib/block-utils';
 
 // The shared inline converter, aliased so the block renderers below read unchanged.
 const inline = inlineToMarkdown;

@@ -17,7 +17,7 @@
 // stale nav still resolves 200.
 
 import { bump } from 'wiki-formant/versioning';
-import { uid, AUTHOR_ID, isLockedPage, esc, meta, withClient, readPage, storeFor, writeRevision } from './seed-utils.mjs';
+import { uid, AUTHOR_ID, isLockedPage, esc, meta, withClient, readPage, storeFor, writeRevision } from './wiki-utils.ts';
 import { RECAP_PREFIX, SERIES_SLUG, issueLabel, scoreline } from '../src/lib/week-in-review.ts';
 
 process.loadEnvFile(new URL('../.env', import.meta.url));

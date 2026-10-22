@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import {
   isLockedPage, argOf, fmt as fmtOr, compact as compactOr, delta, withClient, embedFigure, readPage,
-} from './seed-utils.mjs';
+} from './wiki-utils.ts';
 import { C, MONO, t, wrap, paras, card, sectionLabel, frame, figureBlock, renderPngs } from '../brand-assets/kit.mjs';
 
 process.loadEnvFile(new URL('../.env', import.meta.url));
