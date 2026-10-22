@@ -7,14 +7,13 @@
 // aggregate defines a corpus revision, and how a page row becomes a bullet.
 
 import {
-  cacheTagHeaders,
   cleanSnippet,
   corpusRoute,
   corpusValidatorsFrom,
   pageLine as formantPageLine,
   textHeaders,
 } from 'wiki-formant/http';
-import { CORPUS_TAG, NOT_HIDDEN } from '@/lib/wiki';
+import { CORPUS_TAG, NOT_HIDDEN, routeTags } from '@/lib/wiki';
 import { prisma } from '@/lib/prisma/client';
 import { TAG_HIERARCHY, tagPaths } from '@/lib/tags';
 import { categoryLabel, pageUrl } from '@/lib/utils';
@@ -261,5 +260,5 @@ export async function buildLlmsTxt(): Promise<string> {
 export const llmsTxtRoute = corpusRoute(
   corpusValidators,
   buildLlmsTxt,
-  (etag, lastModified) => ({ ...textHeaders(etag, lastModified), ...cacheTagHeaders(CORPUS_TAG) }),
+  (etag, lastModified) => ({ ...textHeaders(etag, lastModified), ...routeTags(CORPUS_TAG) }),
 );

@@ -11,7 +11,7 @@ import { parsePagination, paginatedResponse } from 'wiki-formant/pagination';
 import { requireAuth, cachedJson, tagged, CACHE, type RouteContext } from '@/lib/api';
 import { toListing } from 'wiki-formant/store';
 import { isReservedSlug, parsePath } from '@/lib/path';
-import { store, toWikiPage, authorsOf, deletePage, searchPages, resolveBlockData, loadPageHistory, getCategoryPages, revalidatePage, pageTag, CORPUS_TAG } from '@/lib/wiki';
+import { store, toWikiPage, authorsOf, deletePage, searchPages, resolveBlockData, loadPageHistory, getCategoryPages, revalidatePage, pageTag, routeTags, CORPUS_TAG } from '@/lib/wiki';
 import { blockIssues, validateBlocks } from '@/lib/block-utils';
 import { describeBlockIssues, MAX_BLOCK_ROWS } from 'wiki-formant/validation';
 import { blocksToMdx } from '@/lib/mdx';
@@ -21,7 +21,7 @@ import type { WikiPage, WikiPageInput, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
 import { deliverWebhooks } from '@/lib/webhooks';
 import { trackSearch } from '@/lib/track';
-import { VARY_ACCEPT, cacheTagHeaders, corpusEtag, markdownHeaders, notModified, teachingNotFound, wantsMarkdown, json, errors, handleRoute } from 'wiki-formant/http';
+import { VARY_ACCEPT, corpusEtag, markdownHeaders, notModified, teachingNotFound, wantsMarkdown, json, errors, handleRoute } from 'wiki-formant/http';
 
 type PathParams = { path?: string[] };
 
@@ -30,7 +30,7 @@ type PathParams = { path?: string[] };
  * alone, so each response here carries the tag of what it reads, which the
  * save that changes it expires (`revalidatePage`); a listing reads the corpus.
  */
-const LISTING = { ...CACHE.short, ...cacheTagHeaders(CORPUS_TAG) };
+const LISTING = { ...CACHE.short, ...routeTags(CORPUS_TAG) };
 
 /** A stored page with its author, as every write answers. */
 async function withAuthor(row: Parameters<typeof toWikiPage>[0]): Promise<WikiPage> {
@@ -176,7 +176,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     if (parsed.type === 'history') {
       const history = await loadPageHistory(parsed.tagPath, parsed.slug);
       if (!history) return errors.notFound('Page not found');
-      return cachedJson(history, { ...CACHE.short, ...cacheTagHeaders(pageTag(parsed.tagPath, parsed.slug)) });
+      return cachedJson(history, { ...CACHE.short, ...routeTags(pageTag(parsed.tagPath, parsed.slug)) });
     }
 
     // Only the wiki's own rows answer here. The app routes (charts, leaderboard,
@@ -191,7 +191,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
     const row = await store.get(parsed.tagPath, parsed.slug);
     const page = row && await withAuthor(row);
 
-    if (!page && parsed.type === 'homepage') return cachedJson(null, { ...CACHE.short, ...cacheTagHeaders(CORPUS_TAG) });
+    if (!page && parsed.type === 'homepage') return cachedJson(null, { ...CACHE.short, ...routeTags(CORPUS_TAG) });
 
     // A category with no hub article is still a page to a reader: the listing
     // the HTML shows. Its twin is that listing, or every section linked from a
@@ -207,7 +207,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       }, null);
       const lastModified = updated?.toUTCString();
       const etag = corpusEtag([parsed.tagPath, pages.length, updated]);
-      const headers = markdownHeaders(lastModified, { etag, noindex: true, extra: { ...CACHE.medium, ...VARY_ACCEPT, ...cacheTagHeaders(pageTag(parsed.tagPath)) } });
+      const headers = markdownHeaders(lastModified, { etag, noindex: true, extra: { ...CACHE.medium, ...VARY_ACCEPT, ...routeTags(pageTag(parsed.tagPath)) } });
       const unchanged = notModified(request, etag, lastModified ?? null, headers);
       if (unchanged) return unchanged;
 
@@ -249,7 +249,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       // 9110 requires.
       const lastModified = page.updatedAt.toUTCString();
       const etag = corpusEtag([page.tagPath, page.slug, page.version, page.updatedAt]);
-      const headers = markdownHeaders(lastModified, { etag, noindex: true, extra: { ...CACHE.medium, ...VARY_ACCEPT, ...cacheTagHeaders(pageTag(page.tagPath, page.slug)) } });
+      const headers = markdownHeaders(lastModified, { etag, noindex: true, extra: { ...CACHE.medium, ...VARY_ACCEPT, ...routeTags(pageTag(page.tagPath, page.slug)) } });
       const unchanged = notModified(request, etag, lastModified, headers);
       if (unchanged) return unchanged;
       const md = pageToMarkdown({
@@ -263,7 +263,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       return new NextResponse(md, { headers });
     }
 
-    return cachedJson(page, { ...CACHE.short, ...VARY_ACCEPT, ...cacheTagHeaders(pageTag(page.tagPath, page.slug)), 'Last-Modified': page.updatedAt.toUTCString() });
+    return cachedJson(page, { ...CACHE.short, ...VARY_ACCEPT, ...routeTags(pageTag(page.tagPath, page.slug)), 'Last-Modified': page.updatedAt.toUTCString() });
   }, 'Failed to fetch');
 }
 

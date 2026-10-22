@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { revalidateTag, unstable_cache } from 'next/cache';
 import { wikiStore, type ListSort, type WikiPageRow } from 'wiki-formant/store';
+import { cacheTagHeaders } from 'wiki-formant/http';
 import { searchWiki, type WikiRow } from 'wiki-formant/wiki-tools';
 import { blocksToMarkdown } from '@/lib/markdown';
 import { prisma } from '@/lib/prisma/client';
@@ -67,7 +68,8 @@ const withAuthors = async <R extends Omit<WikiPageRow, 'content'> & { content?: 
  *  revalidate of any cache it reads, so a minute here re-rendered every article each
  *  minute. Writes bust the pages they change (`revalidatePage`), so the day is only a
  *  backstop. Everything also carries `wiki`, which a bulk rewrite busts whole. */
-const CACHE_OPTS = { tags: ['wiki'], revalidate: 86400 };
+export const WIKI_TAG = 'wiki';
+const CACHE_OPTS = { tags: [WIKI_TAG], revalidate: 86400 };
 
 /** The tag of what a URL renders: its path, so `page:/` is the homepage and `page:/ideas` the ideas board. */
 export const pageTag = (tagPath: string, slug = '') => `page:/${[tagPath, slug].filter(Boolean).join('/')}`;
@@ -75,6 +77,10 @@ export const pageTag = (tagPath: string, slug = '') => `page:/${[tagPath, slug].
 /** The homepage's tag, which every save expires since the homepage lists and
  *  counts what the wiki holds: a route handler whose text spans the corpus carries it. */
 export const CORPUS_TAG = pageTag('');
+
+/** The tag headers a route handler sends: its own tags, plus `wiki`, which a
+ *  script's bulk write purges, since it cannot name every page it touched. */
+export const routeTags = (tags: string | readonly string[]) => cacheTagHeaders([WIKI_TAG, ...[tags].flat()]);
 
 /**
  * Expires what an edit to a page changes: the page at each of `slugs`, and every

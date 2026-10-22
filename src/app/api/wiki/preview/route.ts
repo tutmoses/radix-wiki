@@ -2,8 +2,8 @@
 // hover page previews on internal links. Returns only what the hover card needs.
 
 import { NextRequest } from 'next/server';
-import { getPage, pageTag } from '@/lib/wiki';
-import { cacheTagHeaders, handleRoute } from 'wiki-formant/http';
+import { getPage, pageTag, routeTags } from '@/lib/wiki';
+import { handleRoute } from 'wiki-formant/http';
 import { cachedJson, CACHE } from '@/lib/api';
 import { describe } from 'wiki-formant/metadata';
 import { openingText } from 'wiki-formant/text';
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const tagPath = segments.slice(0, -1).join('/');
     const page = await getPage(tagPath, slug);
     // The page's tag, so the save that changes it (or the create that fills it) purges this at the CDN.
-    const headers = { ...CACHE.medium, ...cacheTagHeaders(pageTag(tagPath, slug)) };
+    const headers = { ...CACHE.medium, ...routeTags(pageTag(tagPath, slug)) };
     if (!page) return cachedJson({ found: false }, headers);
     return cachedJson(
       { found: true, title: page.title, excerpt: describe(openingText(page.content), 220), bannerImage: page.bannerImage ?? null },

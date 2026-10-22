@@ -3,7 +3,8 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { getSession } from '@/lib/auth';
 import { requireBalance, type BalanceAction } from '@/lib/radix/balance';
-import { cacheTagHeaders, json, errors } from 'wiki-formant/http';
+import { json, errors } from 'wiki-formant/http';
+import { routeTags } from '@/lib/wiki';
 import { rateLimit, rateLimitedResponse, type RateLimitOptions } from 'wiki-formant/rate-limit';
 import type { ImageFormat } from 'wiki-formant/upload';
 import type { AuthSession } from '@/types';
@@ -68,12 +69,12 @@ export const CACHE = {
 } as const;
 
 /**
- * `res` with `cacheTagHeaders(tags)`, for a response a shared helper builds
+ * `res` with `routeTags(tags)`, for a response a shared helper builds
  * without room for them: the CDN holds a route handler by its `s-maxage` alone,
  * and only the tag lets the save that changes it purge it.
  */
 export function tagged(res: Response, tags: string | readonly string[]): Response {
-  for (const [name, value] of Object.entries(cacheTagHeaders(tags))) res.headers.set(name, value);
+  for (const [name, value] of Object.entries(routeTags(tags))) res.headers.set(name, value);
   return res;
 }
 
