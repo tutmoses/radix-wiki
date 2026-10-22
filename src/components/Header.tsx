@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Search, Menu, X, Loader2, LogOut, User, FileCode, Bell, Database, MoreVertical, Quote, Check, Eye, EyeOff, Settings } from 'lucide-react';
-import { useCopy, useSidebar, useTypeahead, useClickOutside } from 'wiki-formant/react';
+import { focusShown, useCopy, useSearchShortcut, useSidebar, useTypeahead, useClickOutside } from 'wiki-formant/react';
 import type { ComboboxOptionProps } from 'wiki-formant/combobox';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore, useAuth, usePagePath, useFetch } from '@/hooks';
@@ -273,21 +273,10 @@ export function Header() {
   }, [searchQuery, router, clearItems]);
 
   // "/" focuses search from anywhere (Wikipedia-style), unless already typing.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
-      const t = e.target as HTMLElement;
-      if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return;
-      e.preventDefault();
-      // Below `sm` the one field is hidden until the toggle reveals it, and an
-      // `offsetParent` of null is how that reads from here.
-      const input = searchInputRef.current;
-      if (input?.offsetParent) input.focus();
-      else setShowSearch(true);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  // Below `sm` the one field is hidden until the toggle reveals it.
+  useSearchShortcut(() => {
+    if (!focusShown(searchInputRef.current)) setShowSearch(true);
+  });
 
   const displayName = user?.displayName || walletData?.persona?.label ||
     (walletData?.accounts?.[0]?.address ? shortenAddress(walletData.accounts[0].address) : null) ||

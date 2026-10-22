@@ -19,13 +19,13 @@ import { categoryLabel, cn, generateBannerSvg, pagePath, sendJson } from '@/lib/
 import { describe } from 'wiki-formant/metadata';
 import { openingText } from 'wiki-formant/text';
 import { slugifyHeading } from 'wiki-formant/headings';
-import { SITE_NAME } from '@/lib/site';
+import { SITE_NAME, SITE_URL } from '@/lib/site';
 import { AGO, useNow } from '@/lib/now';
 import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder, type TagNode } from '@/lib/tags';
 import { categoryHref, needsAlphaIndex, type Control, type FacetControlGroup, type FacetFilters, type SharedFacet } from '@/lib/taxonomy';
 import { createBlock } from '@/lib/block-utils';
 import { formatDay, freshnessBanner, relativeTime } from 'wiki-formant/freshness';
-import { FacetBar, FacetSummary, RelatedPages as SeeAlso } from 'wiki-formant/react-server';
+import { Cite, FacetBar, FacetSummary, RelatedPages as SeeAlso } from 'wiki-formant/react-server';
 import type { WikiPage } from '@/types';
 import type { Block } from '@/types/blocks';
 
@@ -76,6 +76,7 @@ function PageMeta({ page }: { page: WikiPage }) {
       <span className="font-mono">v{page.version}</span>
       <span>{revisions} revision{revisions === 1 ? '' : 's'}</span>
       {page.lastVerifiedAt && <span>Verified {formatDay(page.lastVerifiedAt)}</span>}
+      <Cite publisher={SITE_NAME} title={page.title} date={page.updatedAt} url={`${SITE_URL}${pagePath(page.tagPath, page.slug)}`} />
     </div>
   );
 }
@@ -538,7 +539,7 @@ function PageViewContent({ page, related, series, sections, listing, nowMs }: { 
   const showInfobox = infoboxHasContent(infobox, page.metadata, page.tagPath);
   // The synthetic freshness notice defers to an author-placed outdated banner.
   const hasOutdatedBanner = blocks.some(b => b.type === 'banner' && b.variant === 'outdated');
-  const fresh = hasOutdatedBanner ? null : freshnessBanner(page, nowMs);
+  const fresh = hasOutdatedBanner ? null : freshnessBanner(page, nowMs, { against: 'current sources and the live ledger' });
   const sectionName = categoryLabel(findTagByPath(page.tagPath.split('/'))?.name ?? '') || page.tagPath;
   const mainBlocks = [...(fresh ? [fresh] : []), ...blocks.filter(b => b.type !== 'infobox')];
   const viewPath = pagePath(page.tagPath, page.slug);

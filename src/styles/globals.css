@@ -488,6 +488,8 @@
 
   /* ===== PAGE META (foot line) ===== */
   .page-meta { @apply flex items-center flex-wrap gap-x-4 gap-y-2 pt-6 border-t border-border-muted text-small text-text-muted; }
+  .article-cite summary { @apply cursor-pointer text-accent hover:text-accent-hover; }
+  .article-cite code { @apply block mt-1 whitespace-normal; }
 
   /* ===== CATEGORY HERO ===== */
   .category-hero { @apply flex flex-col gap-4 pb-4 border-b border-border-muted; }
@@ -592,6 +594,8 @@
   .maintenance-list { @apply grid grid-cols-1 md:grid-cols-2 gap-x-6 m-0 p-0 list-none; }
   .maintenance-item { @apply flex flex-wrap items-baseline gap-x-2 py-1.5 border-b border-border-muted; }
   .maintenance-detail { @apply text-text-muted text-xs; }
+  .maintenance-description { @apply text-text-muted text-small; }
+  .maintenance-item > a { @apply text-accent hover:text-accent-hover; }
 
   /* ===== STATS (/stats) =====
      The layout and the bars' shape are wiki-formant/base.css; this is the colour. */
