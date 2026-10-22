@@ -187,9 +187,10 @@ export const useStore = create<AppStore>()((set, get) => ({
     try {
       await sendJson('/api/notifications', 'PATCH', { ids });
       if (ids) {
+        // Only the ones still unread lower the count: clicking a read notification marks nothing.
         set(s => ({
           notifications: s.notifications.map(n => ids.includes(n.id) ? { ...n, read: true } : n),
-          unreadCount: Math.max(0, s.unreadCount - ids.length),
+          unreadCount: Math.max(0, s.unreadCount - s.notifications.filter(n => ids.includes(n.id) && !n.read).length),
         }));
       } else {
         set(s => ({
