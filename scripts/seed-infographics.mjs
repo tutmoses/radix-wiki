@@ -35,6 +35,18 @@ const SPECS = [
     intro: 'Radix governance spans a family of legal entities and an in-progress handover from the Radix Foundation to a community-owned DAO. The map below shows who holds what today and where authority is heading.',
     caption: 'The Radix entity group and the 2026 Foundation-to-DAO governance handover.',
   },
+  {
+    // Figure only: it illustrates the question-headed section it follows, which carries the prose.
+    file: '04-cerberus-commit', marker: 'cerberus-commit',
+    tagPath: 'contents/tech/core-protocols', slug: 'cerberus-consensus-protocol',
+    heading: 'Cerberus Cross-Shard Commit',
+    caption: 'Core-Cerberus, from section 4 of the academic paper: four steps per shard, with no vote between shards.',
+    place: (blocks) => {
+      const i = blocks.findIndex((b) => b.text?.includes('id="cross-shard-commit"'));
+      if (i < 0) throw new Error('cross-shard-commit section missing');
+      return i + 1;
+    },
+  },
 ];
 
 // The strip/wrap transform is kit.figureBlock — this script used to carry its own
@@ -46,7 +58,7 @@ function figureHtml(s) {
     label: `radix.wiki infographic – ${s.heading}`,
     caption: s.caption,
   });
-  return `<h2>${s.heading}</h2>\n<p>${s.intro}</p>\n${figure}`;
+  return s.intro ? `<h2>${s.heading}</h2>\n<p>${s.intro}</p>\n${figure}` : figure;
 }
 
 await withClient(async (client) => {
@@ -58,6 +70,7 @@ await withClient(async (client) => {
     const res = await embedFigure(client, page, {
       marker: s.marker,
       html: figureHtml(s),
+      place: s.place,
       message: `Add the "${s.heading}" infographic.`,
     });
     if (!res) { console.log(`${s.tagPath}/${s.slug}: unchanged, skip`); continue; }

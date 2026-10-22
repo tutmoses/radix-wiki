@@ -258,11 +258,45 @@ function radixOrgChart() {
   };
 }
 
+// ============================ Cerberus cross-shard commit ==================
+// Core-Cerberus, section 4 of arXiv 2008.04450 (Hellings, Hughes, Primero, Sadoghi; JSys 2023),
+// as set out on contents/tech/core-protocols/cerberus-consensus-protocol#cross-shard-commit.
+function cerberusCommit() {
+  const W = 760, H = 650, L = 48, R = W - L, w = R - L;
+  let b = paras(L, 150, 'In the Cerberus paper, every shard a transaction touches runs the same four steps on its own consensus. The shards never vote together.', 93, { size: 14, lh: 21, fill: C.text2 });
+  b += sectionLabel(L, 210, 'ONE TRANSACTION, EVERY SHARD IT TOUCHES');
+  const steps = [
+    { n: 1, name: 'Local inputs', tag: 'CONSENSUS', desc: 'Agree which of its inputs the shard holds and which are still available.' },
+    { n: 2, name: 'Cross-shard exchange', tag: 'CLUSTER-SENDING', desc: 'Send that finding to every other shard involved, and wait for theirs.' },
+    { n: 3, name: 'Decide outcome', tag: 'SAME RULE', desc: 'Commit if every shard had all its inputs; abort if any shard lacked one.' },
+    { n: 4, name: 'Inform', tag: 'CLIENT', desc: 'Each validator reports; the client needs matching reports from every shard.' },
+  ];
+  const y0 = 228, h = 62, gap = 10;
+  steps.forEach((st, i) => {
+    const y = y0 + i * (h + gap);
+    b += card(L, y, w, h, i === 2);
+    b += `<rect x="${L}" y="${y}" width="3" height="${h}" fill="${i === 2 ? C.getaway : C.jupiter}"/>`;
+    b += numChip(L + 34, y + h / 2, st.n, i === 2 ? C.getaway : C.jupiter);
+    b += t(L + 62, y + 27, st.name, { size: 16, w: 700, fill: C.text });
+    b += t(L + 62, y + 47, st.desc, { size: 13, w: 400, fill: C.text2 });
+    b += t(R - 16, y + 27, st.tag, { size: 11, w: 700, fill: C.muted, anchor: 'end', ls: '0.08em', font: MONO });
+  });
+  const oy = y0 + steps.length * (h + gap) + 14, ow = (w - 14) / 2, oh = 68;
+  b += card(L, oy, ow, oh);
+  b += t(L + 18, oy + 27, 'Two transactions, one input', { size: 14, w: 700, fill: C.jupiter });
+  b += paras(L + 18, oy + 47, 'Each shard pledges its input to the one it saw first, so both abort.', 44, { size: 12, lh: 15, fill: C.text2 });
+  b += card(L + ow + 14, oy, ow, oh);
+  b += t(L + ow + 32, oy + 27, 'An honest client', { size: 14, w: 700, fill: C.xrd });
+  b += paras(L + ow + 32, oy + 47, 'Never signs a competing transaction, so it never sees an abort.', 44, { size: 12, lh: 15, fill: C.text2 });
+  return { W, H, title: 'Cerberus Cross-Shard Commit', tag: 'CORE-CERBERUS', note: 'Hellings, Hughes, Primero, Sadoghi · arXiv 2008.04450 · JSys 2023', body: b };
+}
+
 // ============================ render ========================================
 const GRAPHICS = [
   { file: '01-radix-engine', build: radixEngine },
   { file: '02-org-structure', build: radixOrgChart },
   { file: '03-developer-path', build: developerPath },
+  { file: '04-cerberus-commit', build: cerberusCommit },
 ];
 
 await renderPngs(GRAPHICS.map((g) => {
