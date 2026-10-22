@@ -15,7 +15,18 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const { page, pageSize } = parsePagination(searchParams, { pageSize: 20 });
 
-    const where = { userId: auth.session.userId };
+    // Notification.pageId names a WikiPage row without a relation, so the pages are
+    // joined here, and a deleted page's rows are dropped before the list, its total
+    // and the unread count are taken, so all three count the same rows.
+    const { userId } = auth.session;
+    const pageIds = await prisma.notification.findMany({ where: { userId }, distinct: ['pageId'], select: { pageId: true } });
+    const pages = await prisma.wikiPage.findMany({
+      where: { id: { in: pageIds.map(n => n.pageId) } },
+      select: { id: true, title: true, tagPath: true, slug: true },
+    });
+    const byId = new Map(pages.map(p => [p.id, p]));
+
+    const where = { userId, pageId: { in: [...byId.keys()] } };
     const [notifications, total, unreadCount] = await Promise.all([
       prisma.notification.findMany({
         where,
@@ -25,16 +36,10 @@ export async function GET(request: NextRequest) {
         take: pageSize,
       }),
       prisma.notification.count({ where }),
-      prisma.notification.count({ where: { userId: auth.session.userId, read: false } }),
+      prisma.notification.count({ where: { ...where, read: false } }),
     ]);
 
-    // Notification.pageId names a WikiPage row without a relation, so the pages are joined here.
-    const pages = await prisma.wikiPage.findMany({
-      where: { id: { in: [...new Set(notifications.map(n => n.pageId))] } },
-      select: { id: true, title: true, tagPath: true, slug: true },
-    });
-    const byId = new Map(pages.map(p => [p.id, p]));
-    const items = notifications.flatMap(n => (byId.has(n.pageId) ? [{ ...n, page: byId.get(n.pageId)! }] : []));
+    const items = notifications.map(n => ({ ...n, page: byId.get(n.pageId)! }));
     return json({ ...paginatedResponse(items, total, page, pageSize), unreadCount });
   }, 'Failed to fetch notifications');
 }
