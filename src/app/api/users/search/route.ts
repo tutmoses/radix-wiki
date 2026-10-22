@@ -24,7 +24,9 @@ export async function GET(request: NextRequest) {
       where: {
         OR: [
           { displayName: { contains: q, mode: 'insensitive' } },
-          { radixAddress: { startsWith: q, mode: 'insensitive' } },
+          // A whole address only: a prefix match let `?q=` grow a prefix one character
+          // at a time into the full address that `shortAddress` exists to withhold.
+          { radixAddress: q.toLowerCase() },
         ],
       },
       select: { id: true, displayName: true, shortAddress: true, avatarUrl: true },
