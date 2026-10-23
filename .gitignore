@@ -47,7 +47,8 @@ CLAUDE.md
 next-env.d.ts
 
 # sweep scripts run once against the database; the page revision is the record
-/scripts/sweep-*.{mjs,ts}
+/scripts/sweep-*.mjs
+/scripts/sweep-*.ts
 
 # Written by `prisma-models` on install: the package's models, beside the app's own.
 /prisma/schema/analytics.prisma
