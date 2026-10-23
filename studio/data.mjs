@@ -1,8 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
-//  RADIX.WIKI STUDIO — data helpers
+//  RADIX.WIKI STUDIO – data helpers
 //  Thin read-only `pg` queries over the wiki's "WikiPage" table so a video can pick a
-//  real, currently-live page/category to film (no on-chain state — the wiki signs
-//  nothing). Same Pool pattern as scripts/seed-utils.mjs. Runs under plain `node`,
+//  real, currently-live page to film (no on-chain state: the wiki signs nothing). Same Pool pattern as scripts/seed-utils.mjs. Runs under plain `node`,
 //  so it loads DATABASE_URL itself (Next auto-loads .env for the dev server; this
 //  process does not).
 // ═══════════════════════════════════════════════════════════════════════════
@@ -29,20 +28,9 @@ const pool = () => (_pool ??= new Pool({ connectionString: dbUrl(), max: 1, ssl:
 const q = async (sql, params) => (await pool().query(sql, params)).rows;
 export const disconnect = () => _pool?.end() ?? Promise.resolve();
 
-// The most-populated category (best for a category-grid shot). Falls back to
-// 'ecosystem' if the DB is unreachable so the tour still runs.
-export async function pickCategory() {
-  try {
-    const [r] = await q(
-      `SELECT "tagPath" AS tag_path FROM "WikiPage" WHERE "siteId" = '' AND "tagPath" <> '' GROUP BY "tagPath" ORDER BY COUNT(*) DESC, MAX("updatedAt") DESC LIMIT 1`,
-    );
-    return r?.tag_path ?? "ecosystem";
-  } catch { return "ecosystem"; }
-}
-
 // The page named by TOUR_PAGE (`ecosystem/weft-finance`), so a routine can film the
-// page it just changed; otherwise a recent content/ecosystem article — these always
-// lead with an infobox, ideal for the Ken Burns focal shot. Returns
+// page it just changed; otherwise a recent content/ecosystem article, which
+// leads with an infobox for the Ken Burns shot. Returns
 // { tag_path, slug, title } or null.
 export async function pickPage() {
   const want = process.env.TOUR_PAGE?.replace(/^\/|\/$/g, "");
