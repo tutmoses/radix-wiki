@@ -401,8 +401,6 @@
      the drawer's foot. */
   .wiki-sidebar { @apply bg-surface-0; --rail-top: var(--header-height); }
   .wiki-sidebar__scroll { @apply pb-24; }
-  /* The look in base.css 0.86.0 draws no `.page-refs`; this stays until the release that does. */
-  .page-refs { @apply list-none p-0 m-0 flex flex-col divide-y divide-border-muted bg-surface-1 border border-border-muted rounded-lg overflow-hidden; }
     .sidebar-label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3; }
 
   /* Nav items */
