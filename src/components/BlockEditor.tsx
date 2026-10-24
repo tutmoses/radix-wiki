@@ -6,7 +6,7 @@ import { useMemo, type ReactNode } from 'react';
 import { EditorContent, UrlPromptField, WikiToolbar, uploadImageTo, useUrlPrompt, useWikiEditor, type WikiToolbarProps } from 'wiki-formant/editor';
 import {
   BannerFields, BlockEditor as FormantBlockEditor, Choice, CodeTabsFields, ColumnsFields, Field, InfoboxFields, LimitField, LinkGridFields,
-  EventsFields, ListFields, ReferencesFields, StatsFields, type BlockEditorKit, type BlockMeta, type BlockSchema, type ChoiceProps, type FieldProps, type MenuProps, type PageOption,
+  EventsFields, ListFields, ReferencesFields, StatsFields, TestimonialFields, type BlockEditorKit, type BlockMeta, type BlockSchema, type ChoiceProps, type FieldProps, type MenuProps, type PageOption,
 } from 'wiki-formant/block-editor';
 import { CHART_RANGES } from 'wiki-formant/chart';
 import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Bold, Italic, Link2, Unlink, Heading2, Heading3, Heading4, List, ListOrdered, TableIcon, Globe, LayoutList, Info, Undo2, Redo2 } from 'lucide-react';
@@ -166,8 +166,8 @@ function renderBody(block: Block, onUpdate: (b: Block) => void): ReactNode {
     case 'banner': return <BannerFields block={block} onUpdate={onUpdate} />;
     case 'columns': return <ColumnsFields block={block} onUpdate={onUpdate} />;
     case 'infobox': return <InfoboxFields block={block} onUpdate={onUpdate} />;
-    // A testimonial has no fields here, and is kept as it is.
-    case 'testimonial': return null;
+    case 'testimonial': return <TestimonialFields block={block} onUpdate={onUpdate} />;
+    default: block satisfies never; return null;
   }
 }
 

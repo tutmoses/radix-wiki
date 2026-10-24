@@ -366,6 +366,7 @@ function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
         />
       );
     }
+    default: block satisfies never; return null;
   }
 }
 

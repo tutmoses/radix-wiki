@@ -13,30 +13,23 @@ import type { ActivityMetric } from '@/lib/radix/metrics';
 
 // ---- the shared core ---------------------------------------------------------
 //
-// Eight of the core blocks and the two containers are `wiki-formant/blocks`', the
-// shape all three wikis store, so `wiki-formant/block-editor` can edit them.
-// What stays here is what is this wiki's: the rows its list resolves to, which
-// are its own page rows, and its native types.
+// The core leaves and the two containers are `wiki-formant/blocks`', the shape
+// all four apps store, so `wiki-formant/block-editor` can edit them, and a leaf
+// added there arrives here with the release. What stays here is what is this
+// wiki's: the rows its list resolves to, which are its own page rows, and its
+// native types.
 import type {
-  BannerBlock,
   BlockTree,
   CodeTabsBlock,
   ColumnsBlock as CoreColumnsBlock,
-  ContentBlock,
-  EventsBlock,
+  CoreLeafBlock,
   InfoboxBlock as CoreInfoboxBlock,
-  LinkGridBlock,
   ListBlock as CoreListBlock,
-  ReferencesBlock,
-  StatsBlock,
-  TestimonialBlock,
 } from 'wiki-formant/blocks';
 export type { CodeTabsBlock };
 export type { BannerVariant } from 'wiki-formant/text';
 
-export type BlockType = 'content' | 'list' | 'columns' | 'assetPrice' | 'networkChart' | 'infobox' | 'rssFeed' | 'codeTabs' | 'stats' | 'testimonial' | 'events' | 'linkGrid' | 'tipJar' | 'references' | 'banner';
-
-interface BaseBlock { id: string; type: BlockType; }
+interface BaseBlock { id: string; }
 
 /** `under` is a tag path and `pages` page ids, in the order they are listed. */
 export type ListBlock = CoreListBlock & { items?: WikiPage[] };
@@ -47,8 +40,9 @@ export interface RssFeedBlock extends BaseBlock { type: 'rssFeed'; url: string; 
 export interface TipJarBlock extends BaseBlock { type: 'tipJar'; address: string; label?: string; message?: string; }
 
 // Atomic blocks that can be nested inside containers
-export type AtomicBlock = ContentBlock | ListBlock | AssetPriceBlock | NetworkChartBlock | RssFeedBlock | CodeTabsBlock | StatsBlock | TestimonialBlock | EventsBlock | LinkGridBlock | TipJarBlock | ReferencesBlock | BannerBlock;
+export type AtomicBlock = CoreLeafBlock | ListBlock | AssetPriceBlock | NetworkChartBlock | RssFeedBlock | TipJarBlock;
 
 export type InfoboxBlock = CoreInfoboxBlock<AtomicBlock>;
 export type ColumnsBlock = CoreColumnsBlock<AtomicBlock>;
 export type Block = BlockTree<AtomicBlock>;
+export type BlockType = Block['type'];

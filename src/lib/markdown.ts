@@ -34,10 +34,6 @@ const pageLinks = (pages: ResolvedPage[]) =>
 /** One leaf as markdown. The MDX export reuses it for every static leaf. */
 export function atomicToMarkdown(block: AtomicBlock): string {
   switch (block.type) {
-    case 'content': case 'codeTabs': case 'banner':
-    case 'references': case 'stats': case 'linkGrid': case 'testimonial': case 'events':
-      return coreAtomicToMarkdown(block, { siteUrl: SITE_URL });
-
     case 'list':
       if (block.items?.length) return pageLinks(block.items);
       return block.source === 'chosen'
@@ -58,8 +54,9 @@ export function atomicToMarkdown(block: AtomicBlock): string {
     case 'tipJar':
       return `**${block.label || 'Tip the author'}**${block.message ? `\n\n${inline(block.message)}` : ''}${block.address ? `\n\nRadix: \`${block.address}\`` : ''}`;
 
+    // Every core leaf, so one added to wiki-formant reads here as it lands.
     default:
-      return '';
+      return coreAtomicToMarkdown(block, { siteUrl: SITE_URL });
   }
 }
 

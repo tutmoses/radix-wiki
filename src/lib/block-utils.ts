@@ -27,8 +27,8 @@ export const BLOCK_META: Record<BlockType, BlockSpec> = {
   references: { label: 'References', icon: ListOrdered, hint: 'Numbered sources the text cites', insertable: true, create: CORE.references },
   events: { label: 'Events', icon: CalendarDays, hint: 'Talks, AMAs and conferences, sorted into upcoming and past by date', insertable: true, create: CORE.events },
   infobox: { label: 'Infobox', icon: Info, hint: 'A sidebar beside the article', create: CORE.infobox },
-  stats: { label: 'Stats', icon: BarChart3, hint: 'A row of headline figures', create: CORE.stats },
-  testimonial: { label: 'Testimonial', icon: MessageSquareQuote, hint: 'A quote and who said it', create: CORE.testimonial },
+  stats: { label: 'Stats', icon: BarChart3, hint: 'A row of headline figures', insertable: true, create: CORE.stats },
+  testimonial: { label: 'Testimonial', icon: MessageSquareQuote, hint: 'A quote and who said it', insertable: true, create: CORE.testimonial },
 };
 
 const optionalString = (v: unknown) => v === undefined || typeof v === 'string';
