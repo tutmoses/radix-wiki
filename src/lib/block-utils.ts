@@ -5,7 +5,7 @@
 
 import type { Block, BlockType } from '@/types/blocks';
 import { defineBlocks, MAX_BLOCK_ROWS } from 'wiki-formant/validation';
-import { Activity, List, Columns, TrendingUp, Pencil, Info, Rss, Code2, BarChart3, CalendarDays, MessageSquareQuote, LayoutGrid, QrCode, ListOrdered, AlertTriangle, type LucideIcon } from 'lucide-react';
+import { Activity, List, Columns, TrendingUp, Pencil, Info, Rss, Code2, BarChart3, CalendarDays, MapPin, MessageSquareQuote, LayoutGrid, QrCode, ListOrdered, AlertTriangle, type LucideIcon } from 'lucide-react';
 import { coreBlockDefaults, leafBlocks as leaves, LIST_SOURCES, someBlock } from 'wiki-formant/blocks';
 import { ACTIVITY_METRICS, isActivityMetric } from '@/lib/radix/metrics';
 
@@ -25,6 +25,7 @@ export const BLOCK_META: Record<BlockType, BlockSpec> = {
   linkGrid: { label: 'Link Grid', icon: LayoutGrid, hint: 'Links in groups under headings', insertable: true, create: CORE.linkGrid },
   tipJar: { label: 'Tip Jar', icon: QrCode, hint: 'A QR code for tips to a Radix account', insertable: true, create: () => ({ type: 'tipJar', address: '', label: 'Tip the author ☕️', message: 'Support independent writing on Radix — scan to send $XRD.' }) },
   references: { label: 'References', icon: ListOrdered, hint: 'Numbered sources the text cites', insertable: true, create: CORE.references },
+  locations: { label: 'Locations', icon: MapPin, hint: 'Venues and offices, with their addresses and opening hours', insertable: true, create: CORE.locations },
   events: { label: 'Events', icon: CalendarDays, hint: 'Talks, AMAs and conferences, sorted into upcoming and past by date', insertable: true, create: CORE.events },
   infobox: { label: 'Infobox', icon: Info, hint: 'A sidebar beside the article', create: CORE.infobox },
   stats: { label: 'Stats', icon: BarChart3, hint: 'A row of headline figures', insertable: true, create: CORE.stats },
@@ -55,6 +56,7 @@ export const BLOCK_SCHEMA = {
   description:
     'A typed block with a unique `id` (UUID) and a `type`. A `content` block carries semantic HTML in `text`; an `infobox` carries nested `blocks`. '
     + 'An `events` block carries `items: [{ id, date, end?, text }]`, each date a year, month or day (`2026`, `2026-11`, `2026-11-12`) and `text` inline HTML saying what and where, in any order: the page sorts them into upcoming and past by the day it is read. '
+    + 'A `locations` block carries `items: [{ id, name?, address?, map?, phone?, email?, hours?, timeZone?, note? }]`, each with its address (plain text, a line to a line) or its `hours`, rows of `{ days: ["mon"…"sun"], opens: "08:00", closes: "18:00" }`; the page groups the days and says whether each place is open by its own clock. '
     + 'For any other type, copy the shape of one already on a page: get_page with `blocks: true` (or GET /api/wiki/{path}) returns blocks as stored.',
   required: ['id', 'type'],
   properties: {

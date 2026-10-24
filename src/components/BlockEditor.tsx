@@ -6,7 +6,7 @@ import { useMemo, type ReactNode } from 'react';
 import { EditorContent, UrlPromptField, WikiToolbar, uploadImageTo, useUrlPrompt, useWikiEditor, type WikiToolbarProps } from 'wiki-formant/editor';
 import {
   BannerFields, BlockEditor as FormantBlockEditor, Choice, CodeTabsFields, ColumnsFields, Field, InfoboxFields, LimitField, LinkGridFields,
-  EventsFields, ListFields, ReferencesFields, StatsFields, TestimonialFields, type BlockEditorKit, type BlockMeta, type BlockSchema, type ChoiceProps, type FieldProps, type MenuProps, type PageOption,
+  EventsFields, ListFields, LocationsFields, ReferencesFields, StatsFields, TestimonialFields, type BlockEditorKit, type BlockMeta, type BlockSchema, type ChoiceProps, type FieldProps, type MenuProps, type PageOption,
 } from 'wiki-formant/block-editor';
 import { CHART_RANGES } from 'wiki-formant/chart';
 import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Bold, Italic, Link2, Unlink, Heading2, Heading3, Heading4, List, ListOrdered, TableIcon, Globe, LayoutList, Info, Undo2, Redo2 } from 'lucide-react';
@@ -161,6 +161,7 @@ function renderBody(block: Block, onUpdate: (b: Block) => void): ReactNode {
     case 'codeTabs': return <CodeTabsFields block={block} onUpdate={onUpdate} />;
     case 'stats': return <StatsFields block={block} onUpdate={onUpdate} />;
     case 'events': return <EventsFields block={block} onUpdate={onUpdate} />;
+    case 'locations': return <LocationsFields block={block} onUpdate={onUpdate} />;
     case 'linkGrid': return <LinkGridFields block={block} onUpdate={onUpdate} />;
     case 'references': return <ReferencesFields block={block} onUpdate={onUpdate} />;
     case 'banner': return <BannerFields block={block} onUpdate={onUpdate} />;

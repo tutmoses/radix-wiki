@@ -21,6 +21,7 @@ import {
   ColumnsView,
   EventsView,
   LinkGridView,
+  LocationsView,
   PageRefsView,
   ReferencesView,
   StatsView,
@@ -335,6 +336,7 @@ function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
     case 'testimonial': return <TestimonialView {...block} />;
     // Split by the day resolveBlockData stamped on the server, then by the reader's.
     case 'events': return <EventsView {...block} />;
+    case 'locations': return <LocationsView {...block} />;
     case 'content': return <ContentBlockView html={block.text} />;
     case 'list': return <ListBlockView block={block} />;
     case 'assetPrice': return <AssetPriceBlockView block={block} />;
