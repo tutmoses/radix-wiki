@@ -12,6 +12,7 @@ import { getSortOrder, getMetadataKeys, HIDDEN_TAG_PATHS } from '@/lib/tags';
 import type { WikiAuthor, WikiPage, IdeasPage } from '@/types';
 import type { Block, ListBlock, RssFeedBlock } from '@/types/blocks';
 import { blockLimit, MAX_BLOCK_ROWS } from 'wiki-formant/validation';
+import { today } from 'wiki-formant/blocks';
 import { leafBlocks } from '@/lib/block-utils';
 import { RECAP_PREFIX } from '@/lib/week-in-review';
 
@@ -352,9 +353,12 @@ function listPages(b: ListBlock): Promise<WikiPage[]> {
   }
 }
 
-/** Pre-resolve list and rssFeed blocks server-side to avoid client waterfalls. */
+/** Pre-resolve list and rssFeed blocks server-side to avoid client waterfalls, and date the events blocks. */
 export async function resolveBlockData(blocks: Block[]): Promise<Block[]> {
   const leaves = leafBlocks(blocks);
+  // An events block is split by the day the server renders it, which hydration must match.
+  const day = today();
+  leaves.forEach(b => { if (b.type === 'events') b.day = day; });
   const lists = leaves.filter((b): b is ListBlock => b.type === 'list');
   const feeds = leaves.filter((b): b is RssFeedBlock => b.type === 'rssFeed');
   if (!lists.length && !feeds.length) return blocks;

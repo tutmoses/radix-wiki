@@ -35,7 +35,7 @@ const pageLinks = (pages: ResolvedPage[]) =>
 export function atomicToMarkdown(block: AtomicBlock): string {
   switch (block.type) {
     case 'content': case 'codeTabs': case 'banner':
-    case 'references': case 'stats': case 'linkGrid': case 'testimonial':
+    case 'references': case 'stats': case 'linkGrid': case 'testimonial': case 'events':
       return coreAtomicToMarkdown(block, { siteUrl: SITE_URL });
 
     case 'list':

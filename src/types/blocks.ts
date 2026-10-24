@@ -13,7 +13,7 @@ import type { ActivityMetric } from '@/lib/radix/metrics';
 
 // ---- the shared core ---------------------------------------------------------
 //
-// Seven of the core blocks and the two containers are `wiki-formant/blocks`', the
+// Eight of the core blocks and the two containers are `wiki-formant/blocks`', the
 // shape all three wikis store, so `wiki-formant/block-editor` can edit them.
 // What stays here is what is this wiki's: the rows its list resolves to, which
 // are its own page rows, and its native types.
@@ -23,6 +23,7 @@ import type {
   CodeTabsBlock,
   ColumnsBlock as CoreColumnsBlock,
   ContentBlock,
+  EventsBlock,
   InfoboxBlock as CoreInfoboxBlock,
   LinkGridBlock,
   ListBlock as CoreListBlock,
@@ -33,7 +34,7 @@ import type {
 export type { CodeTabsBlock };
 export type { BannerVariant } from 'wiki-formant/text';
 
-export type BlockType = 'content' | 'list' | 'columns' | 'assetPrice' | 'networkChart' | 'infobox' | 'rssFeed' | 'codeTabs' | 'stats' | 'testimonial' | 'linkGrid' | 'tipJar' | 'references' | 'banner';
+export type BlockType = 'content' | 'list' | 'columns' | 'assetPrice' | 'networkChart' | 'infobox' | 'rssFeed' | 'codeTabs' | 'stats' | 'testimonial' | 'events' | 'linkGrid' | 'tipJar' | 'references' | 'banner';
 
 interface BaseBlock { id: string; type: BlockType; }
 
@@ -46,7 +47,7 @@ export interface RssFeedBlock extends BaseBlock { type: 'rssFeed'; url: string; 
 export interface TipJarBlock extends BaseBlock { type: 'tipJar'; address: string; label?: string; message?: string; }
 
 // Atomic blocks that can be nested inside containers
-export type AtomicBlock = ContentBlock | ListBlock | AssetPriceBlock | NetworkChartBlock | RssFeedBlock | CodeTabsBlock | StatsBlock | TestimonialBlock | LinkGridBlock | TipJarBlock | ReferencesBlock | BannerBlock;
+export type AtomicBlock = ContentBlock | ListBlock | AssetPriceBlock | NetworkChartBlock | RssFeedBlock | CodeTabsBlock | StatsBlock | TestimonialBlock | EventsBlock | LinkGridBlock | TipJarBlock | ReferencesBlock | BannerBlock;
 
 export type InfoboxBlock = CoreInfoboxBlock<AtomicBlock>;
 export type ColumnsBlock = CoreColumnsBlock<AtomicBlock>;

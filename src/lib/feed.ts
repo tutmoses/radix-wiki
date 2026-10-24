@@ -20,6 +20,7 @@ import type { Block, AtomicBlock } from '@/types/blocks';
 import { pageUrl } from '@/lib/utils';
 import { describe } from 'wiki-formant/metadata';
 import { openingText } from 'wiki-formant/text';
+import { eventWhen, splitEvents, today } from 'wiki-formant/blocks';
 import { SITE_URL } from '@/lib/site';
 import { ogImageUrl } from '@/lib/og';
 import { absolutise as absolutiseFrom, clampWords, escXml, type FeedItem } from 'wiki-formant/feed';
@@ -59,6 +60,12 @@ function renderAtomic(block: AtomicBlock): string {
     }
     case 'testimonial':
       return `<blockquote><p>${escXml(block.quote)}</p><footer>${escXml(block.author)}${block.role ? `, ${escXml(block.role)}` : ''}</footer></blockquote>`;
+    case 'events': {
+      const { upcoming, past } = splitEvents(block.items ?? [], today());
+      const list = (heading: string, items: typeof past) =>
+        items.length ? `<h2>${escXml(heading)}</h2><ul>${items.map(e => `<li>${escXml(eventWhen(e))}: ${e.text}</li>`).join('')}</ul>` : '';
+      return list(block.upcoming || 'Upcoming', upcoming) + list(block.past || 'Past', past);
+    }
     case 'codeTabs':
       return (block.tabs ?? []).map(t => `<pre><code>${escXml(t.code)}</code></pre>`).join('');
     case 'banner':

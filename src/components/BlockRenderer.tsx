@@ -19,6 +19,7 @@ import {
   BannerView,
   CodeTabsView,
   ColumnsView,
+  EventsView,
   LinkGridView,
   PageRefsView,
   ReferencesView,
@@ -332,6 +333,8 @@ function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
   switch (block.type) {
     case 'stats': return <StatsView items={block.items} columns={block.columns ?? 4} />;
     case 'testimonial': return <TestimonialView {...block} />;
+    // Split by the day resolveBlockData stamped on the server, then by the reader's.
+    case 'events': return <EventsView {...block} />;
     case 'content': return <ContentBlockView html={block.text} />;
     case 'list': return <ListBlockView block={block} />;
     case 'assetPrice': return <AssetPriceBlockView block={block} />;
