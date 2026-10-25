@@ -728,9 +728,11 @@
 
     /* Between 768px and ~1150px the 1fr rail is only 130–260px wide, and two
        columns in that leaves every label breaking mid-word ("Publi/shed:"). Below
-       the width a table can hold, the label sits above its value instead. */
+       the width a table can hold, the label sits above its value instead. The
+       chart lays itself out in a table too, and stacked, its price axis fell
+       under the plot. */
     @container (max-width: 17rem) {
-      :is(th, td) { display: block; width: auto; }
+      :is(th, td):not(.chart *) { display: block; width: auto; }
       th { border-bottom: 0; }
       td { border-top: 0; }
     }
