@@ -44,7 +44,7 @@ const TableOfContents = () => (
   <SharedToc
     containerSelector="main"
     offsetVar="--header-height"
-    classNames={{ root: 'toc', button: 'toc-btn', label: 'toc-label', list: 'stack-xs pl-4', item: 'toc-item', itemActive: 'toc-item-active' }}
+    classNames={{ root: 'toc', button: 'toc-btn', label: 'toc-label', list: 'nav-list pl-4', item: 'toc-item', itemActive: 'toc-item-active' }}
     icon={expanded => (
       <>
         {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -71,7 +71,7 @@ function CategoryTree({ nodes, parent = '', pathname }: {
   nodes: TagNode[]; parent?: string; pathname: string;
 }) {
   return (
-    <ul className={cn('nav-tree', parent && 'nav-subtree')}>
+    <ul className={cn('nav-list', parent && 'nav-subtree')}>
       {nodes.map(node => {
         const path = parent ? `${parent}/${node.slug}` : node.slug;
         const href = `/${path}`;
@@ -101,17 +101,15 @@ export function Sidebar() {
 
   return (
     <RailShell prefix="wiki-sidebar" label="Wiki navigation">
-      <div className="stack-sm p-4">
-        <nav className="stack-sm" aria-label="Site">
-          <NavItem href="/" icon={<Home size={18} />} label="Home" pathname={pathname} />
-          <NavItem href="/charts" icon={<BarChart3 size={18} />} label="Charts" pathname={pathname} tree />
-          <NavItem href="/leaderboard" icon={<Trophy size={18} />} label="Leaderboard" pathname={pathname} />
-          {/* Editorial work queues — reader nav stays free of maintenance machinery. */}
-          {isAuthenticated && <NavItem href="/maintenance" icon={<Wrench size={18} />} label="Maintenance" pathname={pathname} />}
-        </nav>
-      </div>
+      <nav className="nav-list px-4" aria-label="Site">
+        <NavItem href="/" icon={<Home size={18} />} label="Home" pathname={pathname} />
+        <NavItem href="/charts" icon={<BarChart3 size={18} />} label="Charts" pathname={pathname} tree />
+        <NavItem href="/leaderboard" icon={<Trophy size={18} />} label="Leaderboard" pathname={pathname} />
+        {/* Editorial work queues — reader nav stays free of maintenance machinery. */}
+        {isAuthenticated && <NavItem href="/maintenance" icon={<Wrench size={18} />} label="Maintenance" pathname={pathname} />}
+      </nav>
 
-      <nav className="stack-sm p-4" aria-labelledby="rail-categories">
+      <nav className="nav-list px-4" aria-labelledby="rail-categories">
         <span id="rail-categories" className="sidebar-label">Categories</span>
         <CategoryTree nodes={visibleTags} pathname={pathname} />
       </nav>

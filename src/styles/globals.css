@@ -398,24 +398,29 @@
      a drawer stacked above the article below it — is wiki-formant/base.css,
      the same on all three wikis; this is the surface. `--rail-top` is what the
      sticky rail clears and `--rail-border` the rule beside it, which becomes
-     the drawer's foot. */
-  .wiki-sidebar { @apply bg-surface-0; --rail-top: var(--header-height); }
-  .wiki-sidebar__scroll { @apply pb-24; }
-    .sidebar-label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3; }
+     the drawer's foot.
+
+     Every row in the rail sits on one vertical rhythm, three tokens: a row's
+     own padding, the gap between rows, and the space between sections.
+     `npm run lint:rail` fails on any other vertical spacing in the rail. */
+  .wiki-sidebar { @apply bg-surface-0; --rail-top: var(--header-height); --rail-row: 0.25rem; --rail-gap: 0.125rem; --rail-section: 1.5rem; }
+  .wiki-sidebar__scroll { @apply pb-24 gap-(--rail-section); }
+    .sidebar-label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3 py-(--rail-row); }
 
   /* Nav items */
-  .nav-item { @apply flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-text-muted hover:bg-surface-2 hover:text-text; }
-  /* The category tree is nested lists; the base list rules are for prose. */
-  .nav-tree { @apply flex flex-col gap-2 m-0 p-0 list-none; li { @apply m-0; } }
+  .nav-item { @apply flex items-center gap-x-2 px-3 py-(--rail-row) rounded-md transition-colors text-text-muted hover:bg-surface-2 hover:text-text; }
+  /* A column of rail rows: the site links, the category tree and its open
+     branches, the contents list. The base list rules are for prose. */
+  .nav-list { @apply flex flex-col gap-(--rail-gap) m-0 p-0 list-none; li { @apply flex flex-col gap-(--rail-gap) m-0; } }
   /* A child branch of the category tree: indented under its parent with a rule,
      so the trail is readable without an expander control. */
-  .nav-subtree { @apply mt-1 ml-4 pl-2 border-l border-border-muted; .nav-item { @apply py-1.5 text-small; } }
+  .nav-subtree { @apply ml-4 pl-2 border-l border-border-muted; .nav-item { @apply text-small; } }
 
   /* Table of contents */
-  .toc { @apply flex flex-col gap-2 flex-1 p-4 border-t border-border-muted; }
-  .toc-btn { @apply flex items-center gap-2 px-3 py-2 text-text-muted hover:text-text transition-colors w-full; }
+  .toc { @apply flex flex-col gap-(--rail-gap) flex-1 px-4 pt-(--rail-section) border-t border-border-muted; }
+  .toc-btn { @apply flex items-center gap-x-2 px-3 py-(--rail-row) text-text-muted hover:text-text transition-colors w-full; }
   .toc-label { @apply text-small font-medium uppercase tracking-wide; }
-  .toc-item { @apply text-left text-small text-text-muted hover:text-accent transition-colors py-1 px-2 rounded truncate border-l-2 border-transparent; }
+  .toc-item { @apply text-left text-small text-text-muted hover:text-accent transition-colors py-(--rail-row) px-2 rounded truncate border-l-2 border-transparent; }
   .toc-item-active { @apply text-accent font-medium bg-accent-muted border-accent; }
 
   /* ===== BANNER ===== */
