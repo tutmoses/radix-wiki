@@ -51,7 +51,7 @@ const TableOfContents = () => (
         <ListTree size={16} />
       </>
     )}
-    label="On This Page"
+    label="On this page"
   />
 );
 
