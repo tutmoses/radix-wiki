@@ -4,7 +4,7 @@
 
 import { useCallback } from 'react';
 import { TimeChart, type ChartMarker, type ChartRange, type ChartResolution } from 'wiki-formant/chart';
-import { formatPriceSubscript } from './format';
+import { formatChartPrice } from './format';
 import { OCISWAP_API } from '@/lib/radix/config';
 
 /** OciSwap's UDF resolution for each one the chart asks for. */
@@ -27,5 +27,5 @@ export function TokenChart({ resourceAddress, defaultTimeframe = '30d', height =
     return json.t.map((time, i) => ({ time, value: at(json.c, i) ?? 0, open: at(json.o, i), high: at(json.h, i), low: at(json.l, i), volume: at(json.v, i) }));
   }, [resourceAddress]);
 
-  return <TimeChart series={load} label="Price in USD" range={defaultTimeframe} format={formatPriceSubscript} height={height} markers={markers} />;
+  return <TimeChart series={load} label="Price in USD" range={defaultTimeframe} format={formatChartPrice} height={height} markers={markers} />;
 }

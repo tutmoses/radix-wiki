@@ -11,6 +11,7 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { History as HistoryIcon, Pencil } from 'lucide-react';
 import { Breadcrumbs as SharedBreadcrumbs, BreadcrumbsRow } from 'wiki-formant/react-server';
 import { findTagByPath } from '@/lib/tags';
 import { SITE_URL } from '@/lib/site';
@@ -60,8 +61,8 @@ export function PageActions({ editHref, historyHref, className }: { editHref?: s
   if (!editHref && !historyHref) return null;
   return (
     <nav className={className ? `page-actions ${className}` : 'page-actions'} aria-label="Page actions">
-      {historyHref && <Link href={historyHref} prefetch={false} className="breadcrumb-link">History</Link>}
-      {editHref && <Link href={editHref} prefetch={false} className="breadcrumb-link">Edit</Link>}
+      {historyHref && <Link href={historyHref} prefetch={false} className="page-action" aria-label="History" title="History"><HistoryIcon size={16} aria-hidden /></Link>}
+      {editHref && <Link href={editHref} prefetch={false} className="page-action" aria-label="Edit" title="Edit"><Pencil size={16} aria-hidden /></Link>}
     </nav>
   );
 }

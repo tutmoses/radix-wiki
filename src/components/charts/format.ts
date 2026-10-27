@@ -41,17 +41,24 @@ const SUBSCRIPT_DIGITS = '₀₁₂₃₄₅₆₇₈₉';
 const subscript = (n: number) => String(n).split('').map(d => SUBSCRIPT_DIGITS[+d]).join('');
 
 /**
- * A price, its leading zeros counted in a subscript from two up. An axis tick
- * passes its step, and every tick takes the places that step needs, so 0.95
- * does not read 0.9500 under 1.00 and a stablecoin's ticks do not all read 1.00.
+ * A price on a chart: its ticks, crosshair and last-value label. A subscript is
+ * too small to read at axis size, so up to four leading zeros are written out
+ * (0.000142) and only more are counted. A tick passes its step, and every tick
+ * takes the places that step needs, so 0.95 does not read 0.9500 under 1.00 and a
+ * stablecoin's ticks do not all read 1.00. A label keeps three significant
+ * figures, less trailing zeros, so the last price does not set the axis width.
  */
-export function formatPriceSubscript(p: number, step?: number): string {
+export function formatChartPrice(p: number, step?: number): string {
   if (p === 0) return '0';
-  if (step !== undefined) {
-    const fixed = Math.abs(p).toFixed(stepDecimals(step));
-    const zeros = fixed.match(/^0\.(0*)/)?.[1]!.length ?? 0;
-    return (p < 0 ? '-' : '') + (zeros < 2 ? fixed : `0.${subscript(zeros)}${fixed.slice(2 + zeros)}`);
-  }
+  let fixed = Math.abs(p).toFixed(step === undefined ? Math.max(0, 2 - Math.floor(Math.log10(Math.abs(p)))) : stepDecimals(step));
+  if (step === undefined && fixed.includes('.')) fixed = fixed.replace(/\.?0+$/, '');
+  const zeros = fixed.match(/^0\.(0*)/)?.[1]!.length ?? 0;
+  return (p < 0 ? '-' : '') + (zeros < 5 ? fixed : `0.${subscript(zeros)}${fixed.slice(2 + zeros)}`);
+}
+
+/** A price, its leading zeros counted in a subscript from two up. */
+export function formatPriceSubscript(p: number): string {
+  if (p === 0) return '0';
   if (p >= 1) return p.toFixed(2);
   if (p >= 0.01) return p.toFixed(4);
   const s = p.toFixed(10);

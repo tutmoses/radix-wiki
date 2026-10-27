@@ -341,7 +341,10 @@
   .breadcrumb-current { @apply capitalize text-text; }
   /* Edit and History, right of the trail: the one home for both. A <nav>, so a
      banner's overlay draws it the way it draws the trail beside it. */
-  .page-actions { @apply flex items-center gap-3 text-small; }
+  .page-actions { @apply flex items-center gap-1 text-small; }
+  /* An icon each, named by its label; over a banner the text's shadow does not
+     reach an SVG, so the icon casts its own. */
+  .page-action { @apply inline-flex p-1 rounded text-text-muted hover:text-accent hover:bg-surface-2; .banner-overlay & svg { filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.6)); } }
 
     .link-muted { @apply text-text-muted hover:text-text; }
 
@@ -403,7 +406,7 @@
      Every row in the rail sits on one vertical rhythm, three tokens: a row's
      own padding, the gap between rows, and the space between sections.
      `npm run lint:rail` fails on any other vertical spacing in the rail. */
-  .wiki-sidebar { @apply bg-surface-0; --rail-top: var(--header-height); --rail-row: 0.25rem; --rail-gap: 0.125rem; --rail-section: 1.5rem; }
+  .wiki-sidebar { @apply bg-surface-0; --rail-top: var(--header-height); --rail-row: 0.125rem; --rail-gap: 0.0625rem; --rail-section: 1.25rem; }
   .wiki-sidebar__scroll { @apply pb-24 gap-(--rail-section); }
     .sidebar-label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3 py-(--rail-row); }
 
