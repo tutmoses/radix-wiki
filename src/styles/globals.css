@@ -627,17 +627,7 @@
   .edit-wrapper { @apply flex flex-col gap-4 bg-surface-1 border border-border-muted rounded-lg p-4 border-dashed; }
   .edit-wrapper-label { @apply flex items-center gap-2 text-text-muted; }
 
-  .block-wrapper { @apply relative p-4 rounded-lg border border-border-muted hover:border-border transition-colors; }
-  .block-wrapper[data-nested] { @apply p-3 rounded-md; }
-  .block-wrapper[data-selected] { @apply border-accent bg-accent/5; }
-  .block-label { @apply flex items-center gap-2 text-text-muted text-small font-medium uppercase; }
-  .block-actions { @apply flex items-center gap-2 opacity-0 transition-opacity; .group:hover &, &:has(.dropdown) { @apply opacity-100; } }
-  /* BlockActions renders delete last. */
-  .block-action { @apply p-1 text-text-muted disabled:opacity-30; &:last-child { @apply hover:text-error; } }
-
   .code-tab-input { @apply font-mono text-small min-h-32 resize-y; }
-
-  .insert-btn { @apply flex items-center gap-2 text-text-muted hover:text-text border border-dashed border-border-muted hover:border-border rounded-md transition-colors px-3 py-1.5; }
 
   .block-columns { @apply grid gap-4 md:grid-flow-col md:auto-cols-fr; }
 

@@ -6,7 +6,7 @@ import { useMemo, type ReactNode } from 'react';
 import { EditorContent, UrlPromptField, WikiToolbar, uploadImageTo, useUrlPrompt, useWikiEditor, type WikiToolbarProps } from 'wiki-formant/editor';
 import {
   BannerFields, BlockEditor as FormantBlockEditor, Choice, CodeTabsFields, ColumnsFields, Field, InfoboxFields, LimitField, LinkGridFields,
-  EventsFields, ListFields, LocationsFields, ReferencesFields, StatsFields, TestimonialFields, type BlockEditorKit, type BlockMeta, type BlockSchema, type ChoiceProps, type FieldProps, type MenuProps, type PageOption,
+  EventsFields, ListFields, LocationsFields, ReferencesFields, StatsFields, TestimonialFields, type BlockEditorKit, type BlockMeta, type BlockSchema, type ChoiceProps, type FieldProps, type PageOption,
 } from 'wiki-formant/block-editor';
 import { CHART_RANGES } from 'wiki-formant/chart';
 import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Bold, Italic, Link2, Unlink, Heading2, Heading3, Heading4, List, ListOrdered, TableIcon, Globe, LayoutList, Info, Undo2, Redo2 } from 'lucide-react';
@@ -16,7 +16,7 @@ import { useFetch } from '@/hooks';
 import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock } from '@/lib/block-utils';
 import { resolveMapUrl } from 'wiki-formant/maps';
 import { ACTIVITY_METRICS } from '@/lib/radix/metrics';
-import { Button, Dropdown, TipJarQr } from '@/components/ui';
+import { Button, TipJarQr } from '@/components/ui';
 import { embedNodes } from 'wiki-formant/tiptap';
 import { TabGroup, TabItem, CodeBlock, HeadingIds } from '@/lib/tiptap/extensions';
 import type { AtomicBlock, Block, BlockType, InfoboxBlock, AssetPriceBlock, NetworkChartBlock, RssFeedBlock, TipJarBlock, ListBlock } from '@/types/blocks';
@@ -207,31 +207,14 @@ function ToggleChoice({ label, value, options, onChange }: ChoiceProps) {
   );
 }
 
-function DropdownMenu({ open, onOpenChange, trigger, below, children }: MenuProps) {
-  return (
-    <div className={below ? 'relative' : 'relative center'}>
-      {trigger}
-      {open && (
-        <Dropdown onClose={() => onOpenChange(false)} className={cn('w-64 p-2', !below && 'left-1/2 -translate-x-1/2')}>
-          <div className="stack-sm">{children}</div>
-        </Dropdown>
-      )}
-    </div>
-  );
-}
-
 const KIT: BlockEditorKit = {
   classNames: {
-    list: 'stack', nestedList: 'stack-sm', empty: 'empty-state text-text-muted',
-    card: 'block-wrapper group', cardHead: 'spread mb-3', cardLabel: 'block-label', cardActions: 'block-actions', action: 'icon-btn block-action',
-    addBlock: 'insert-btn', menuItem: 'dropdown-item rounded-md', menuText: 'stack-xs', menuHint: 'text-small text-text-muted',
-    stack: 'stack-sm', row: 'row', nest: 'edit-wrapper', columns: 'block-columns',
+    action: 'icon-btn icon-btn-remove', stack: 'stack-sm', row: 'row', nest: 'edit-wrapper', columns: 'block-columns',
     input: 'input', lang: 'w-36', code: 'code-tab-input', figure: 'w-32', number: 'w-20', muted: 'text-text-muted text-small',
   },
   icons: { add: <Plus size={14} />, up: <ChevronUp size={14} />, down: <ChevronDown size={14} />, duplicate: <Copy size={14} />, remove: <Trash2 size={14} /> },
   Field: LabelledField,
   Choice: ToggleChoice,
-  Menu: DropdownMenu,
   Add: ({ onPress, children }) => <Button size="sm" className="self-start" onClick={onPress}>{children}</Button>,
 };
 
