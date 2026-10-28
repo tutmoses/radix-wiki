@@ -47,6 +47,24 @@ const SPECS = [
       return i + 1;
     },
   },
+  ...[
+    { file: '05-hyperscale-layers', marker: 'hyperscale-layers', heading: 'Three Layers, One Clock', after: '<h3>One Clock</h3>',
+      caption: 'hyperscale-rs runs three consensus mechanisms: the beacon chain assigns committees, each shard orders its own transactions, and execution is voted on separately.' },
+    { file: '06-hyperscale-commit', marker: 'hyperscale-commit', heading: 'Cross-Shard Commitment', after: '<h3>Cross-Shard Commitment Without a Coordinator</h3>',
+      caption: 'A transaction that touches several shards commits on all of them or aborts on all of them, with no coordinator and no vote between shards.' },
+    { file: '07-hyperscale-split', marker: 'hyperscale-split', heading: 'Splitting a Shard', after: '<h3>Dynamic Sharding and Live Resharding</h3>',
+      caption: 'A shard splits while it keeps producing blocks, and its children take over once both can seat a full committee.' },
+    { file: '08-hyperscale-leg-local', marker: 'hyperscale-leg-local', heading: 'Leg Local Execution', after: 'id="leg-local-execution"',
+      caption: 'Leg local execution confines the atomically committed part of a cross-shard swap to the pool shard.' },
+  ].map(({ after, ...s }) => ({
+    // Figure only, each after the hyperscale-rs section it draws.
+    ...s, tagPath: 'contents/tech/research', slug: 'hyperscale-rs',
+    place: (blocks) => {
+      const i = blocks.findIndex((b) => b.text?.includes(after));
+      if (i < 0) throw new Error(`${after} missing`);
+      return i + 1;
+    },
+  })),
 ];
 
 // The strip/wrap transform is kit.figureBlock — this script used to carry its own

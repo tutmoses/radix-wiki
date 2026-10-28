@@ -291,12 +291,170 @@ function cerberusCommit() {
   return { W, H, title: 'Cerberus Cross-Shard Commit', tag: 'CORE-CERBERUS', note: 'Hellings, Hughes, Primero, Sadoghi · arXiv 2008.04450 · JSys 2023', body: b };
 }
 
+// ============================ hyperscale-rs ================================
+// Four figures for contents/tech/research/hyperscale-rs, every label taken from the
+// page's own sections (Architecture, Dynamic Topology, Contention), which cite the
+// project's docs/ and its Telegram channel.
+
+// A numbered card per step, the cerberusCommit layout; `hero` marks the step the figure turns on.
+function stepCards(steps, y0, { h = 62, gap = 10, hero = -1, maxChars = 84 } = {}) {
+  const L = 48, w = 664;
+  let b = '';
+  steps.forEach((st, i) => {
+    const y = y0 + i * (h + gap), col = i === hero ? C.getaway : C.jupiter;
+    b += card(L, y, w, h, i === hero);
+    b += `<rect x="${L}" y="${y}" width="3" height="${h}" fill="${col}"/>`;
+    b += numChip(L + 34, y + h / 2, i + 1, col);
+    b += t(L + 62, y + 27, st.name, { size: 16, w: 700, fill: C.text });
+    b += paras(L + 62, y + 47, st.desc, maxChars, { size: 13, lh: 17, fill: C.text2 });
+    if (st.tag) b += t(L + w - 16, y + 27, st.tag, { size: 11, w: 700, fill: C.muted, anchor: 'end', ls: '0.08em', font: MONO });
+  });
+  return b;
+}
+const down = (cx, y1, y2, col = C.muted) =>
+  `<line x1="${cx}" y1="${y1}" x2="${cx}" y2="${y2 - 2}" stroke="${col}" stroke-width="1.5"/>`
+  + `<path d="M${cx - 6},${y2 - 9} L${cx},${y2} L${cx + 6},${y2 - 9}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+const up = (cx, y1, y2, col = C.muted) =>
+  `<line x1="${cx}" y1="${y1}" x2="${cx}" y2="${y2 + 2}" stroke="${col}" stroke-width="1.5"/>`
+  + `<path d="M${cx - 6},${y2 + 9} L${cx},${y2} L${cx + 6},${y2 + 9}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+function hyperscaleLayers() {
+  const W = 760, L = 48, R = W - L, w = R - L;
+  let b = paras(L, 150, 'What is loosely called the consensus is three mechanisms. Shards order transactions side by side, execution is voted on separately, and the beacon chain assigns committees on a clock every quorum certificate carries.', 93, { size: 14, lh: 21, fill: C.text2 });
+  // Beacon
+  const by = 210, bh = 70;
+  b += card(L, by, w, bh, true);
+  b += t(L + 20, by + 28, 'Beacon consensus', { size: 16, w: 700, fill: C.getaway });
+  b += t(R - 16, by + 28, 'CONTROL PLANE', { size: 11, w: 700, fill: C.muted, anchor: 'end', ls: '0.08em', font: MONO });
+  b += t(L + 20, by + 50, 'Decides which validators govern which shard, and when. Never sees a transaction.', { size: 13, fill: C.text2 });
+  // Lift and lower
+  const ay1 = by + bh + 6, ay2 = ay1 + 62;
+  b += up(L + 40, ay2, ay1, C.jupiter);
+  b += t(L + 56, ay1 + 18, 'lift', { size: 12, w: 700, fill: C.jupiter });
+  b += t(L + 56, ay1 + 35, 'staking, registration, jailing', { size: 12, fill: C.text2 });
+  b += t(L + 56, ay1 + 51, 'and missed proposals', { size: 12, fill: C.text2 });
+  b += down(R - 40, ay1, ay2, C.xrd);
+  b += t(R - 56, ay1 + 18, 'lower', { size: 12, w: 700, fill: C.xrd, anchor: 'end' });
+  b += t(R - 56, ay1 + 35, 'committee assignments,', { size: 12, fill: C.text2, anchor: 'end' });
+  b += t(R - 56, ay1 + 51, 'frozen one epoch ahead', { size: 12, fill: C.text2, anchor: 'end' });
+  // Shards
+  const sy = ay2 + 6, sh = 84, sg = 14, sw = (w - 2 * sg) / 3;
+  ['Shard 1', 'Shard 2', 'Shard N'].forEach((name, i) => {
+    const x = L + i * (sw + sg);
+    b += card(x, sy, sw, sh);
+    b += `<rect x="${x}" y="${sy}" width="3" height="${sh}" fill="${C.jupiter}"/>`;
+    b += t(x + 16, sy + 27, name, { size: 15, w: 700, fill: C.text });
+    b += paras(x + 16, sy + 48, 'Orders its own transactions with a two-chain commit', 30, { size: 12, lh: 16, fill: C.text2 });
+  });
+  b += t(L, sy + sh + 20, 'SHARD CONSENSUS, ONE CHAIN PER SHARD, RUNNING CONCURRENTLY', { size: 11, w: 700, fill: C.muted, ls: '0.08em' });
+  // Execution
+  const ey = sy + sh + 52;
+  b += down(W / 2, sy + sh + 28, ey, C.muted);
+  b += t(W / 2 + 12, sy + sh + 44, 'committed blocks', { size: 12, fill: C.muted });
+  const eh = 62;
+  b += card(L, ey, w, eh);
+  b += `<rect x="${L}" y="${ey}" width="3" height="${eh}" fill="${C.jupiter}"/>`;
+  b += t(L + 20, ey + 27, 'Execution consensus', { size: 16, w: 700, fill: C.text });
+  b += t(L + 20, ey + 47, 'Runs each committed block\'s transactions; the shard\'s committee votes on the outcome.', { size: 13, fill: C.text2 });
+  // Clock
+  const cy = ey + eh + 14, ch = 50;
+  b += `<rect x="${L}" y="${cy}" width="${w}" height="${ch}" rx="${BRAND.radius}" fill="none" stroke="${C.xrd}" stroke-width="1" stroke-dasharray="4 4"/>`;
+  b += t(L + 20, cy + 21, 'One clock', { size: 13, w: 700, fill: C.xrd });
+  b += t(L + 20, cy + 39, 'Every QC carries a weighted timestamp; every committee lookup is schedule.at(weighted_timestamp).', { size: 12, fill: C.text2 });
+  const H = cy + ch + 72;
+  return { W, H, title: 'Three Layers, One Clock', tag: 'HYPERSCALE-RS', note: 'hyperscale-rs docs/01-consensus-layers.md · docs/00-overview.md', body: b };
+}
+
+function hyperscaleCommit() {
+  const W = 760, L = 48, R = W - L, w = R - L;
+  let b = paras(L, 150, 'A transaction that touches several shards commits on all of them or aborts on all of them. No coordinator collects votes, and the shards never vote with each other.', 93, { size: 14, lh: 21, fill: C.text2 });
+  b += sectionLabel(L, 210, 'ONE TRANSACTION, EVERY SHARD IT TOUCHES');
+  const steps = [
+    { name: 'Declare', tag: 'ROUTING', desc: 'The transaction names every object it reads and writes, which fixes the shards involved.' },
+    { name: 'Provision', tag: 'PROVISIONS', desc: 'Each source shard commits it and sends the state others need, proven against its QC-attested root.' },
+    { name: 'Execute and certify', tag: 'TICK', desc: 'Each shard runs it once over its own and provisioned state; 2f+1 matching votes form a certificate.' },
+  ];
+  b += stepCards(steps, 228, { h: 76, hero: 2, maxChars: 76 });
+  const oy = 228 + 3 * 86 + 14, ow = (w - 14) / 2, oh = 76;
+  b += card(L, oy, ow, oh);
+  b += t(L + 18, oy + 27, 'Commit', { size: 14, w: 700, fill: C.xrd });
+  b += paras(L + 18, oy + 47, 'Every participating shard\'s certificate records success.', 44, { size: 12, lh: 15, fill: C.text2 });
+  b += card(L + ow + 14, oy, ow, oh);
+  b += t(L + ow + 32, oy + 27, 'Abort everywhere', { size: 14, w: 700, fill: C.jupiter });
+  b += paras(L + ow + 32, oy + 47, 'One shard aborts, or the batch times out before its provisions arrive.', 44, { size: 12, lh: 15, fill: C.text2 });
+  const H = oy + oh + 72;
+  return { W, H, title: 'Cross-Shard Commitment', tag: 'HYPERSCALE-RS', note: 'hyperscale-rs docs/04-atomic-commitment.md', body: b };
+}
+
+function hyperscaleSplit() {
+  const W = 760, L = 48, R = W - L, w = R - L;
+  let b = paras(L, 150, 'A shard splits without halting: the parent keeps producing blocks until its children can each seat a full committee.', 93, { size: 14, lh: 21, fill: C.text2 });
+  b += sectionLabel(L, 210, 'LIVE RESHARDING');
+  const steps = [
+    { name: 'Threshold', tag: 'PROPOSER', desc: 'Committed state passes the split threshold; the proposer asserts a split and every replica checks it.' },
+    { name: 'Observers', tag: 'BEACON', desc: 'The beacon assigns observers to each child, which snap-sync its subtree and follow the parent.' },
+    { name: 'Seating', tag: '2F+1 READY', desc: 'Once both children can seat 2f+1 ready members, the beacon schedules the cut.' },
+    { name: 'Cut', tag: 'TERMINAL BLOCK', desc: 'The parent\'s last block carries both child roots and fixes the cross-shard work it settled.' },
+  ];
+  b += stepCards(steps, 228, { h: 76, hero: 3, maxChars: 76 });
+  // The trie: one parent root, two child subtrees.
+  const ty = 228 + 4 * 86 + 6, th = 128;
+  b += card(L, ty, w, th);
+  const px = L + 150, py = ty + 26, c1 = L + 80, c2 = L + 220, cy2 = ty + 82;
+  b += `<line x1="${px}" y1="${py}" x2="${c1}" y2="${cy2 - 10}" stroke="${C.getaway}" stroke-width="1.5"/><line x1="${px}" y1="${py}" x2="${c2}" y2="${cy2 - 10}" stroke="${C.getaway}" stroke-width="1.5"/>`;
+  b += `<circle cx="${px}" cy="${py}" r="9" fill="${C.surf2}" stroke="${C.text2}" stroke-width="1.2"/>`;
+  [c1, c2].forEach((cx) => { b += `<path d="M${cx},${cy2 - 10} L${cx - 22},${cy2 + 14} L${cx + 22},${cy2 + 14} Z" fill="${C.gTint}" stroke="${C.getaway}" stroke-width="1.2"/>`; });
+  b += t(px + 16, py + 4, 'parent root', { size: 11, w: 700, fill: C.muted, ls: '0.06em' });
+  [c1, c2].forEach((cx) => { b += t(cx, cy2 + 30, 'child shard', { size: 11, w: 700, fill: C.muted, anchor: 'middle', ls: '0.06em' }); });
+  b += t(L + 320, ty + 40, 'State is one global merkle trie.', { size: 13, w: 700, fill: C.text });
+  b += paras(L + 320, ty + 60, 'A split hands each child one of the parent root\'s two children; a merge joins them under one hash. Nothing is re-keyed.', 46, { size: 12, lh: 16, fill: C.text2 });
+  const H = ty + th + 72;
+  return { W, H, title: 'Splitting a Shard', tag: 'HYPERSCALE-RS', note: 'hyperscale-rs docs/02-dynamic-sharding.md', body: b };
+}
+
+function hyperscaleLegLocal() {
+  const W = 760, L = 48, R = W - L;
+  let b = paras(L, 150, 'Twelve users on twelve shards swap against one XYZ/USDC pool. Leg local execution keeps the part that must succeed or fail together on the pool\'s shard alone.', 93, { size: 14, lh: 21, fill: C.text2 });
+  const cw = 196, gx = (R - L - 3 * cw) / 2, xs = [L, L + cw + gx, L + 2 * (cw + gx)];
+  const top = 222;
+  b += t(xs[0], top, 'INBOUND LEGS', { size: 11, w: 700, fill: C.jupiter, ls: '0.1em' });
+  b += t(xs[1], top, 'ATOMIC CORE', { size: 11, w: 700, fill: C.getaway, ls: '0.1em' });
+  b += t(xs[2], top, 'OUTBOUND LEGS', { size: 11, w: 700, fill: C.xrd, ls: '0.1em' });
+  const rows = ['Taker shard 1', 'Taker shard 2', 'Taker shard 12'], rh = 44, rg = 14, ry0 = top + 16;
+  rows.forEach((name, i) => {
+    const y = ry0 + i * (rh + rg) + (i === 2 ? 22 : 0);
+    b += card(xs[0], y, cw, rh); b += t(xs[0] + 14, y + 27, name, { size: 13, w: 700, fill: C.text });
+    b += card(xs[2], y, cw, rh); b += t(xs[2] + 14, y + 27, name, { size: 13, w: 700, fill: C.text });
+  });
+  b += t(xs[0] + cw / 2, ry0 + 2 * (rh + rg) + 12, '…', { size: 16, w: 700, fill: C.muted, anchor: 'middle' });
+  b += t(xs[2] + cw / 2, ry0 + 2 * (rh + rg) + 12, '…', { size: 16, w: 700, fill: C.muted, anchor: 'middle' });
+  const colH = 3 * rh + 2 * rg + 22, coreY = ry0, coreH = colH;
+  b += card(xs[1], coreY, cw, coreH, true);
+  b += t(xs[1] + 14, coreY + 28, 'Pool shard', { size: 15, w: 700, fill: C.getaway });
+  b += paras(xs[1] + 14, coreY + 52, 'Runs the swap logic and processes every swap in one tick. Succeeds or fails as a unit.', 26, { size: 12, lh: 16, fill: C.text2 });
+  b += arrowR(xs[1] - gx / 2, coreY + coreH / 2, C.jupiter);
+  b += arrowR(xs[2] - gx / 2, coreY + coreH / 2, C.xrd);
+  const ky = ry0 + colH + 30;
+  b += paras(xs[0], ky, 'Value reserved and held in escrow.', 30, { size: 12, lh: 16, fill: C.text2 });
+  b += paras(xs[1], ky, 'The only part committed atomically.', 30, { size: 12, lh: 16, fill: C.text2 });
+  b += paras(xs[2], ky, 'Deliveries that cannot fail, applied if the core succeeds.', 30, { size: 12, lh: 16, fill: C.text2 });
+  const ny = ky + 50;
+  b += `<line x1="${L}" y1="${ny}" x2="${R}" y2="${ny}" stroke="${C.hair}" stroke-width="0.75" stroke-dasharray="4 4"/>`;
+  b += paras(L, ny + 24, 'Certificates still reach the other eleven shards, off the critical path. A core that spans shards runs full atomic commitment.', 100, { size: 12, lh: 16, fill: C.muted });
+  const H = ny + 40 + 72;
+  return { W, H, title: 'Leg Local Execution', tag: 'HYPERSCALE-RS', note: 'hyperscale-rs PR #156 · project channel, 4 September 2026', body: b };
+}
+
 // ============================ render ========================================
 const GRAPHICS = [
   { file: '01-radix-engine', build: radixEngine },
   { file: '02-org-structure', build: radixOrgChart },
   { file: '03-developer-path', build: developerPath },
   { file: '04-cerberus-commit', build: cerberusCommit },
+  { file: '05-hyperscale-layers', build: hyperscaleLayers },
+  { file: '06-hyperscale-commit', build: hyperscaleCommit },
+  { file: '07-hyperscale-split', build: hyperscaleSplit },
+  { file: '08-hyperscale-leg-local', build: hyperscaleLegLocal },
 ];
 
 await renderPngs(GRAPHICS.map((g) => {
