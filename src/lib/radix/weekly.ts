@@ -17,8 +17,6 @@ type Snapshot = {
   xrdSupply?: number;
   nakamoto?: number;
   top10Share?: number;
-  active?: number;
-  ociswap?: { tvlXrd?: number; volume7dXrd?: number; swaps7d?: number } | null;
 };
 
 /** One week, as /charts plots it: `time` in UTC seconds. A figure the week did not record is NaN, which serialises as null and is dropped from that metric's line. */
@@ -28,10 +26,6 @@ export interface WeeklyPoint {
   stakedShare: number;
   nakamoto: number;
   top10Share: number;
-  active: number;
-  dexTvlXrd: number;
-  dexVolumeXrd: number;
-  swaps: number;
 }
 
 const figure = (n: number | undefined | null) => (typeof n === 'number' && isFinite(n) ? n : NaN);
@@ -48,13 +42,9 @@ export const getWeeklySnapshots = unstable_cache(
       stakedShare: s.totalStake && s.xrdSupply ? (s.totalStake / s.xrdSupply) * 100 : NaN,
       nakamoto: figure(s.nakamoto),
       top10Share: figure(s.top10Share),
-      active: figure(s.active),
-      dexTvlXrd: figure(s.ociswap?.tvlXrd),
-      dexVolumeXrd: figure(s.ociswap?.volume7dXrd),
-      swaps: figure(s.ociswap?.swaps7d),
     }));
   },
-  ['network-weekly-v1'],
+  ['network-weekly-v2'],
   // The snapshot script writes through the `wiki` tag like every page edit.
   { revalidate: 86400, tags: ['wiki'] },
 );

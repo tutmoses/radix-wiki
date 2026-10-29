@@ -142,7 +142,7 @@ export default async function ChartsOverview() {
 
       {weeks.length > 1 && (
         <section className="stack-sm">
-          <h2 id="staking-and-dex" className="charts-section-title">Staking and trading, week by week</h2>
+          <h2 id="staking" className="charts-section-title">Staking, week by week</h2>
           <StakingChart weeks={weeks} recordHref={pagePath(WEEKLY_PAGE.tagPath, WEEKLY_PAGE.slug)} />
         </section>
       )}

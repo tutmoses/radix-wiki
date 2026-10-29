@@ -8,29 +8,18 @@
 
 import { useCallback, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import Link from 'next/link';
-import { TimeChart, chartSteps, formatChartValue, stepDecimals, type ChartAggregate, type ChartMarker, type ChartRange, type ChartStep, type ChartView } from 'wiki-formant/chart';
+import { TimeChart, formatChartValue, stepDecimals, type ChartAggregate, type ChartMarker, type ChartRange, type ChartStep, type ChartView } from 'wiki-formant/chart';
 import { cn } from '@/lib/utils';
 import type { NetworkEvent } from '@/lib/radix/events';
 
-/** `aggregate` overrides the chart's for this metric: how its week or month is made from its points. */
-export type Metric<K extends string> = { key: K; label: string; percent?: boolean; aggregate?: ChartAggregate };
+export type Metric<K extends string> = { key: K; label: string; percent?: boolean };
 type Point<K extends string> = { time: number } & Record<K, number | null>;
 
-const DAY = 86_400;
-const SPAN: Partial<Record<ChartRange, number>> = { '30d': 30 * DAY, '90d': 90 * DAY, '1y': 365 * DAY };
 const RANGES: ChartRange[] = ['30d', '90d', '1y', 'all'];
 const STEPS: ChartStep[] = ['day', 'week', 'month'];
 
 const longDay = (time: number) => new Date(time * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 const shortDay = (time: number) => new Date(time * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
-
-/** The step the chart opens a range on, so a URL carries a step only when the reader chose another. */
-function fallbackStep(times: number[], range: ChartRange): ChartStep {
-  const end = times.at(-1) ?? 0;
-  const span = SPAN[range];
-  const start = span === undefined ? times[0] : times.find(t => t > Date.now() / 1000 - span);
-  return chartSteps(end - (start ?? end)).fallback;
-}
 
 // The query string as an external store. Nothing subscribes: the page writes it with
 // replaceState, which fires no event, and only the first client read opens a view.
@@ -46,7 +35,7 @@ function writeQuery(patch: Record<string, string | null>) {
   if (url.href !== window.location.href) window.history.replaceState(window.history.state, '', url);
 }
 
-export function MetricChart<K extends string>({ points, metrics, param, period, compare, aggregate = 'sum', range: defaultRange = '1y', single, markers, events, caption }: {
+export function MetricChart<K extends string>({ points, metrics, param, period, compare, aggregate = 'sum', range: defaultRange = '1y', markers, events, caption }: {
   points: Point<K>[];
   metrics: Metric<K>[];
   /** The query key for the metric; the range and step take `<param>-range` and `<param>-step`. */
@@ -58,8 +47,6 @@ export function MetricChart<K extends string>({ points, metrics, param, period, 
   /** A week or month of counts is their total; of readings, the last. */
   aggregate?: ChartAggregate;
   range?: ChartRange;
-  /** Every point at once, no range buttons: a short series. */
-  single?: boolean;
   markers?: ChartMarker[];
   events?: NetworkEvent[];
   caption?: ReactNode;
@@ -96,13 +83,9 @@ export function MetricChart<K extends string>({ points, metrics, param, period, 
   const onView = useCallback(({ range, step }: ChartView) => {
     // The server-rendered chart reports on mount too: until the query string has been read,
     // a report would erase the view the client chart is about to open on.
-    if (single || !step || !query) return;
-    const times = series.map(p => p.time);
-    writeQuery({
-      [`${param}-range`]: range === defaultRange ? null : range,
-      [`${param}-step`]: step === fallbackStep(times, range) ? null : step,
-    });
-  }, [single, series, param, defaultRange, query]);
+    if (!query) return;
+    writeQuery({ [`${param}-range`]: range === defaultRange ? null : range, [`${param}-step`]: step });
+  }, [param, defaultRange, query]);
 
   const headline = useMemo(() => {
     const last = series.at(-1);
@@ -149,11 +132,11 @@ export function MetricChart<K extends string>({ points, metrics, param, period, 
         key={query ? 'client' : 'server'}
         series={series}
         label={current.label}
-        ranges={single ? ['all'] : RANGES}
-        range={single ? 'all' : query?.range ?? defaultRange}
+        ranges={RANGES}
+        range={query?.range ?? defaultRange}
         step={query?.step}
         onView={onView}
-        aggregate={current.aggregate ?? aggregate}
+        aggregate={aggregate}
         fromZero={!current.percent}
         format={format}
         markers={markers}

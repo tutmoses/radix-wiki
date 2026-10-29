@@ -10,7 +10,6 @@ export const ACTIVITY_METRICS = [
   { key: 'newResources', label: 'Resources created' },
   { key: 'nftsMinted', label: 'NFTs minted' },
   { key: 'feesXrd', label: 'Fees ($XRD)' },
-  { key: 'burnedXrd', label: '$XRD burned' },
   { key: 'royaltiesXrd', label: 'Royalties ($XRD)' },
 ] as const;
 

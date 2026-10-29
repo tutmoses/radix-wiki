@@ -8,22 +8,20 @@
 export interface NetworkEvent {
   /** UTC day, YYYY-MM-DD. */
   date: string;
-  /** One word, to sit above a point: three events in September 2026 fall in adjacent weeks. */
-  label: string;
-  /** The event in full, for the linked list under the chart. */
+  /** The event in full: the mark's tooltip and the linked list under the chart. */
   title: string;
   href: string;
 }
 
 export const NETWORK_EVENTS: NetworkEvent[] = [
-  { date: '2023-09-28', label: 'Babylon', title: 'Babylon mainnet', href: '/contents/tech/releases/radix-mainnet-babylon' },
-  { date: '2024-02-07', label: 'Anemone', title: 'Anemone update', href: '/contents/tech/releases/protocol-updates' },
-  { date: '2024-06-07', label: 'Bottlenose', title: 'Bottlenose update', href: '/contents/tech/releases/protocol-updates' },
-  { date: '2026-02-03', label: 'Rewards', title: 'Radix Rewards paid out', href: '/contents/history/radix-rewards' },
-  { date: '2026-08-31', label: 'Halt', title: 'Hyperlane drain and network halt', href: '/contents/history/hyperlane-asset-drain-2026' },
-  { date: '2026-09-11', label: 'Restart', title: 'Restart on Eagle Ray', href: '/contents/history/hyperlane-asset-drain-2026' },
-  { date: '2026-09-29', label: 'Petition', title: 'HMRC petition against RDX Works', href: '/ecosystem/rdx-works' },
+  { date: '2023-09-28', title: 'Babylon mainnet', href: '/contents/tech/releases/radix-mainnet-babylon' },
+  { date: '2024-02-07', title: 'Anemone update', href: '/contents/tech/releases/protocol-updates' },
+  { date: '2024-06-07', title: 'Bottlenose update', href: '/contents/tech/releases/protocol-updates' },
+  { date: '2026-02-03', title: 'Radix Rewards paid out', href: '/contents/history/radix-rewards' },
+  { date: '2026-08-31', title: 'Hyperlane drain and network halt', href: '/contents/history/hyperlane-asset-drain-2026' },
+  { date: '2026-09-11', title: 'Restart on Eagle Ray', href: '/contents/history/hyperlane-asset-drain-2026' },
+  { date: '2026-09-29', title: 'HMRC petition against RDX Works', href: '/ecosystem/rdx-works' },
 ];
 
 /** The events as chart markers: Unix seconds at the start of the UTC day. */
-export const NETWORK_MARKERS = NETWORK_EVENTS.map(e => ({ time: Date.parse(`${e.date}T00:00:00Z`) / 1000, label: e.label }));
+export const NETWORK_MARKERS = NETWORK_EVENTS.map(e => ({ time: Date.parse(`${e.date}T00:00:00Z`) / 1000, label: e.title }));
