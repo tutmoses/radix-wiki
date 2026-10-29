@@ -7,7 +7,8 @@ import { cacheTagHeaders } from 'wiki-formant/http';
 import { searchWiki, type WikiRow } from 'wiki-formant/wiki-tools';
 import { blocksToMarkdown } from '@/lib/markdown';
 import { prisma } from '@/lib/prisma/client';
-import { pageUrl } from '@/lib/utils';
+import { pagePath, pageUrl } from '@/lib/utils';
+import { parseChartEvents, type NetworkEvent } from '@/lib/radix/events';
 import { getSortOrder, getMetadataKeys, HIDDEN_TAG_PATHS } from '@/lib/tags';
 import type { WikiAuthor, WikiPage, IdeasPage } from '@/types';
 import type { Block, ListBlock, RssFeedBlock } from '@/types/blocks';
@@ -166,6 +167,14 @@ export const getValidatorPages = cached('getValidatorPages',
 );
 
 /** The newest Radix Week in Review recap. */
+/** Every event a page tags for the chart marks (`metadata.chartEvents`), oldest first. */
+export const getNetworkEvents = cached('getNetworkEvents',
+  async (): Promise<NetworkEvent[]> => {
+    const rows = await prisma.wikiPage.findMany({ where: { siteId: '', metadata: { path: ['chartEvents'], string_starts_with: '' } }, select: { tagPath: true, slug: true, metadata: true } });
+    return rows.flatMap(r => parseChartEvents(asMeta(r.metadata).chartEvents, pagePath(r.tagPath, r.slug))).sort((a, b) => a.date.localeCompare(b.date));
+  },
+);
+
 export const getLatestRecap = cached('getLatestRecap',
   async (): Promise<PageRef | null> => {
     return prisma.wikiPage.findFirst({ where: { siteId: '', tagPath: 'blog', slug: { startsWith: RECAP_PREFIX } }, orderBy: { createdAt: 'desc' }, select: PAGE_REF_SELECT });

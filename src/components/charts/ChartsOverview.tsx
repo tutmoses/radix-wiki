@@ -7,9 +7,9 @@ import { getNetworkStats, type NetworkStats } from '@/lib/radix/network';
 import { getDexStats, getTopTokens, type TokenSummary } from '@/lib/radix/tokens';
 import { getLedgerDays, type LedgerDayPoint } from '@/lib/radix/activity';
 import { getWeeklySnapshots, WEEKLY_PAGE } from '@/lib/radix/weekly';
-import { NETWORK_MARKERS } from '@/lib/radix/events';
+import { eventMarkers } from '@/lib/radix/events';
 import { XRD_ADDRESS } from '@/lib/radix/config';
-import { getLatestRecap, getPageByAsset } from '@/lib/wiki';
+import { getLatestRecap, getNetworkEvents, getPageByAsset } from '@/lib/wiki';
 import { pagePath } from '@/lib/utils';
 import { SITE_REFS, SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { ActivityChart } from './ActivityChart';
@@ -80,7 +80,7 @@ function datasetLd(days: LedgerDayPoint[]) {
 export default async function ChartsOverview() {
   // Token prices come from OciSwap and survive a Gateway that will not answer state
   // reads, so they are fetched apart from the ledger and still render alone.
-  const [stats, tokens, days, weeks, dex, recap, xrdPage] = await Promise.all([
+  const [stats, tokens, days, weeks, dex, recap, xrdPage, events] = await Promise.all([
     getNetworkStats().catch(() => null),
     getTopTokens(),
     getLedgerDays().catch(() => []),
@@ -88,6 +88,7 @@ export default async function ChartsOverview() {
     getDexStats(),
     getLatestRecap().catch(() => null),
     getPageByAsset(XRD_ADDRESS).catch(() => null),
+    getNetworkEvents().catch(() => []),
   ]);
   const xrd = tokens.find(t => t.address === XRD_ADDRESS);
   const [tokenTable, validatorTable] = await Promise.all([tokenRows(tokens), stats ? validatorRows(stats) : null]);
@@ -118,7 +119,7 @@ export default async function ChartsOverview() {
       {days.length > 0 && (
         <section className="stack-sm">
           <h2 id="network-activity" className="charts-section-title">Network activity</h2>
-          <ActivityChart days={days} dataUrl={DATA_URL} />
+          <ActivityChart days={days} dataUrl={DATA_URL} events={events} />
         </section>
       )}
 
@@ -131,7 +132,7 @@ export default async function ChartsOverview() {
               <Link href={`/charts/tokens/${XRD_ADDRESS}`} className="charts-section-link">Holders and supply <ArrowRight size={14} /></Link>
             </span>
           </div>
-          <TokenChart resourceAddress={XRD_ADDRESS} defaultTimeframe="1y" height={300} markers={NETWORK_MARKERS} />
+          <TokenChart resourceAddress={XRD_ADDRESS} defaultTimeframe="1y" height={300} markers={eventMarkers(events)} />
           {xrd.marketCap !== undefined && (
             <p className="text-small text-text-muted">
               Market cap ${formatCompact(xrd.marketCap)} at OciSwap&apos;s price, which is the price of its own pools; other venues quote their own.
@@ -143,7 +144,7 @@ export default async function ChartsOverview() {
       {weeks.length > 1 && (
         <section className="stack-sm">
           <h2 id="staking" className="charts-section-title">Staking, week by week</h2>
-          <StakingChart weeks={weeks} recordHref={pagePath(WEEKLY_PAGE.tagPath, WEEKLY_PAGE.slug)} />
+          <StakingChart weeks={weeks} recordHref={pagePath(WEEKLY_PAGE.tagPath, WEEKLY_PAGE.slug)} events={events} />
         </section>
       )}
 

@@ -1,11 +1,13 @@
 // src/app/api/charts/activity/route.ts – the /charts daily activity series, as JSON or CSV.
 //
 // `?from=` and `?to=` (YYYY-MM-DD) narrow it; `?format=csv` downloads it. The rows are the
-// ones the chart draws and the MCP `get_network_activity` tool returns, from one reader.
+// ones the chart draws and the MCP `get_network_activity` tool returns, from one reader; the
+// JSON adds the events the charts mark, each with the page that tells it.
 
 import { errors } from 'wiki-formant/http';
 import { cachedJson, CACHE } from '@/lib/api';
 import { ACTIVITY_COLUMNS, getLedgerDayRows } from '@/lib/radix/activity';
+import { getNetworkEvents } from '@/lib/wiki';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -16,7 +18,7 @@ export async function GET(request: Request) {
   const to = params.get('to') ?? undefined;
   if ((from && !DAY.test(from)) || (to && !DAY.test(to))) return errors.badRequest('from and to are dates, YYYY-MM-DD');
 
-  const rows = await getLedgerDayRows(from, to);
+  const [rows, events] = await Promise.all([getLedgerDayRows(from, to), getNetworkEvents().catch(() => [])]);
   if (params.get('format') === 'csv') {
     const lines = [ACTIVITY_COLUMNS.join(','), ...rows.map(r => ACTIVITY_COLUMNS.map(c => r[c]).join(','))];
     return new Response(`${lines.join('\n')}\n`, {
@@ -32,5 +34,6 @@ export async function GET(request: Request) {
     source: `${SITE_URL}/charts`,
     license: WIKI_LICENSE.url,
     rows,
+    events: events.map(e => ({ ...e, url: `${SITE_URL}${e.href}` })),
   }, CACHE.long);
 }

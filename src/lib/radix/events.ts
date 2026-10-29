@@ -1,27 +1,29 @@
-// src/lib/radix/events.ts – what happened on the network, for the /charts markers.
+// src/lib/radix/events.ts – what happened on the network, for the /charts marks.
 //
-// Each date is the one its wiki page states, and each marker links there, so a spike on a
-// chart carries both its reason and the way into the article. A date known only to the
-// month (the validator subsidy's end in June 2026) is left off: a marker on the first of
-// the month would assert a day nobody recorded.
+// An event is tagged on the page that tells it, as `metadata.chartEvents`: a UTC day and a
+// short title, several separated by semicolons ("2024-02-07 Anemone update; 2024-06-07
+// Bottlenose update"). The title is the mark's tooltip and the list under a chart links the
+// page. A day known only to the month (the validator subsidy's end in June 2026) is not
+// written: a mark on the first of the month would assert a day nobody recorded. This module
+// is pure, so client charts read it; `getNetworkEvents` in `@/lib/wiki` reads the pages.
 
 export interface NetworkEvent {
   /** UTC day, YYYY-MM-DD. */
   date: string;
-  /** The event in full: the mark's tooltip and the linked list under the chart. */
   title: string;
   href: string;
 }
 
-export const NETWORK_EVENTS: NetworkEvent[] = [
-  { date: '2023-09-28', title: 'Babylon mainnet', href: '/contents/tech/releases/radix-mainnet-babylon' },
-  { date: '2024-02-07', title: 'Anemone update', href: '/contents/tech/releases/protocol-updates' },
-  { date: '2024-06-07', title: 'Bottlenose update', href: '/contents/tech/releases/protocol-updates' },
-  { date: '2026-02-03', title: 'Radix Rewards paid out', href: '/contents/history/radix-rewards' },
-  { date: '2026-08-31', title: 'Hyperlane drain and network halt', href: '/contents/history/hyperlane-asset-drain-2026' },
-  { date: '2026-09-11', title: 'Restart on Eagle Ray', href: '/contents/history/hyperlane-asset-drain-2026' },
-  { date: '2026-09-29', title: 'HMRC petition against RDX Works', href: '/ecosystem/rdx-works' },
-];
+const EVENT = /^(\d{4}-\d{2}-\d{2})\s+(.+)$/;
+
+/** A page's `chartEvents`, each linked to the page; a part without a whole day is skipped. */
+export function parseChartEvents(value: unknown, href: string): NetworkEvent[] {
+  if (typeof value !== 'string') return [];
+  return value.split(';').flatMap(part => {
+    const m = EVENT.exec(part.trim());
+    return m ? [{ date: m[1]!, title: m[2]!, href }] : [];
+  });
+}
 
 /** The events as chart markers: Unix seconds at the start of the UTC day. */
-export const NETWORK_MARKERS = NETWORK_EVENTS.map(e => ({ time: Date.parse(`${e.date}T00:00:00Z`) / 1000, label: e.title }));
+export const eventMarkers = (events: NetworkEvent[]) => events.map(e => ({ time: Date.parse(`${e.date}T00:00:00Z`) / 1000, label: e.title }));

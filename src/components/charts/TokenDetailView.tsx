@@ -7,7 +7,8 @@ import { ArrowLeft, Globe } from 'lucide-react';
 import { getTokenDetail, getTokenHolders, type TokenDetail, type TokenHolders, type TokenRole } from '@/lib/radix/tokens';
 import { getNetworkStats } from '@/lib/radix/network';
 import { dashboardEntity, XRD_ADDRESS } from '@/lib/radix/config';
-import { NETWORK_MARKERS } from '@/lib/radix/events';
+import { eventMarkers } from '@/lib/radix/events';
+import { getNetworkEvents } from '@/lib/wiki';
 import { TokenChart } from './TokenChart';
 import { HoldersTable, type HolderRow } from './HoldersTable';
 import { CopyAddress } from './CopyAddress';
@@ -119,7 +120,11 @@ function TokenInfobox({ token, wikiPage }: { token: TokenDetail; wikiPage?: Wiki
 }
 
 export default async function TokenDetailView({ address, wikiPage }: { address: string; wikiPage?: WikiPageRef | null }) {
-  const [token, holders] = await Promise.all([getTokenDetail(address), getTokenHolders(address).catch(() => null)]);
+  const [token, holders, events] = await Promise.all([
+    getTokenDetail(address),
+    getTokenHolders(address).catch(() => null),
+    address === XRD_ADDRESS ? getNetworkEvents().catch(() => []) : [],
+  ]);
   if (!token) notFound();
   const rows = holders ? await holderRows(holders, token.totalSupply) : null;
   const top10 = holders && token.totalSupply ? holders.top.slice(0, 10).reduce((sum, h) => sum + h.amount, 0) / token.totalSupply : undefined;
@@ -180,7 +185,7 @@ export default async function TokenDetailView({ address, wikiPage }: { address: 
         <TokenInfobox token={token} wikiPage={wikiPage} />
 
         <div className="token-body stack">
-          {token.price > 0 && <TokenChart resourceAddress={token.address} defaultTimeframe="30d" height={320} markers={token.address === XRD_ADDRESS ? NETWORK_MARKERS : undefined} />}
+          {token.price > 0 && <TokenChart resourceAddress={token.address} defaultTimeframe="30d" height={320} markers={eventMarkers(events)} />}
           {rows && rows.length > 0 && (
             <section className="stack-sm">
               <h2 id="largest-holders" className="charts-section-title">Largest holders</h2>

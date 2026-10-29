@@ -8,9 +8,9 @@
 
 import { useCallback, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import Link from 'next/link';
-import { TimeChart, formatChartValue, stepDecimals, type ChartAggregate, type ChartMarker, type ChartRange, type ChartStep, type ChartView } from 'wiki-formant/chart';
+import { TimeChart, formatChartValue, stepDecimals, type ChartAggregate, type ChartRange, type ChartStep, type ChartView } from 'wiki-formant/chart';
 import { cn } from '@/lib/utils';
-import type { NetworkEvent } from '@/lib/radix/events';
+import { eventMarkers, type NetworkEvent } from '@/lib/radix/events';
 
 export type Metric<K extends string> = { key: K; label: string; percent?: boolean };
 type Point<K extends string> = { time: number } & Record<K, number | null>;
@@ -35,7 +35,7 @@ function writeQuery(patch: Record<string, string | null>) {
   if (url.href !== window.location.href) window.history.replaceState(window.history.state, '', url);
 }
 
-export function MetricChart<K extends string>({ points, metrics, param, period, compare, aggregate = 'sum', range: defaultRange = '1y', markers, events, caption }: {
+export function MetricChart<K extends string>({ points, metrics, param, period, compare, aggregate = 'sum', range: defaultRange = '1y', events, caption }: {
   points: Point<K>[];
   metrics: Metric<K>[];
   /** The query key for the metric; the range and step take `<param>-range` and `<param>-step`. */
@@ -47,8 +47,8 @@ export function MetricChart<K extends string>({ points, metrics, param, period, 
   /** A week or month of counts is their total; of readings, the last. */
   aggregate?: ChartAggregate;
   range?: ChartRange;
-  markers?: ChartMarker[];
-  events?: NetworkEvent[];
+  /** Marked on the chart, and listed under it with their pages. */
+  events: NetworkEvent[];
   caption?: ReactNode;
 }) {
   // `null` on the server and through hydration, so the prerendered page is the default view.
@@ -97,8 +97,9 @@ export function MetricChart<K extends string>({ points, metrics, param, period, 
     return { last, change, high };
   }, [series, compare.points]);
 
+  const markers = useMemo(() => eventMarkers(events), [events]);
   const first = points[0]?.time;
-  const shownEvents = events?.filter(e => first !== undefined && Date.parse(e.date) / 1000 >= first);
+  const shownEvents = events.filter(e => first !== undefined && Date.parse(e.date) / 1000 >= first);
 
   return (
     <div className="stack-sm">
@@ -143,7 +144,7 @@ export function MetricChart<K extends string>({ points, metrics, param, period, 
         height={300}
       />
 
-      {shownEvents && shownEvents.length > 0 && (
+      {shownEvents.length > 0 && (
         <p className="metric-events">
           <span className="text-text-muted">Marked: </span>
           {shownEvents.map((e, i) => (

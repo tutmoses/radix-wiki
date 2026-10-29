@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useCallback, useRef, memo, useMemo, type ReactNode } from 'react';
+import { useCallback, useRef, memo, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, FileText, Copy, Check, AlertTriangle, Megaphone, CalendarClock, type LucideIcon } from 'lucide-react';
@@ -37,7 +37,7 @@ import { getMetadataKeys } from '@/lib/tags';
 import { metadataRows } from '@/lib/taxonomy';
 import { TokenChart } from '@/components/charts/TokenChart';
 import { TimeChart } from 'wiki-formant/chart';
-import { NETWORK_MARKERS } from '@/lib/radix/events';
+import { eventMarkers, type NetworkEvent } from '@/lib/radix/events';
 import { activityLabel } from '@/lib/radix/metrics';
 import { formatPriceSubscript } from '@/components/charts/format';
 // The rendered-article passes are `wiki-formant/dom`, run by the hooks that
@@ -158,19 +158,22 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
 
 type ActivityRow = { date: string } & Record<string, number>;
 
-/** One metric of the /charts daily series, read from the same API the CSV downloads from. */
+/** One metric of the /charts daily series and the events it marks, read from the same API the CSV downloads from. */
 function NetworkChartBlockView({ block }: { block: NetworkChartBlock }) {
   const label = activityLabel(block.metric);
+  const [events, setEvents] = useState<NetworkEvent[]>([]);
+  const markers = useMemo(() => eventMarkers(events), [events]);
   const load = useCallback(async () => {
     const res = await fetch('/api/charts/activity');
     if (!res.ok) throw new Error('Network activity is unavailable');
-    const { rows } = (await res.json()) as { rows: ActivityRow[] };
-    return rows.map(r => ({ time: Date.parse(`${r.date}T00:00:00Z`) / 1000, value: r[block.metric] ?? 0 }));
+    const json = (await res.json()) as { rows: ActivityRow[]; events: NetworkEvent[] };
+    setEvents(json.events);
+    return json.rows.map(r => ({ time: Date.parse(`${r.date}T00:00:00Z`) / 1000, value: r[block.metric] ?? 0 }));
   }, [block.metric]);
   return (
     <div className="stack-sm">
       <span className="text-small text-text-muted">{label} on the Radix network, totalled by day, week or month</span>
-      <TimeChart series={load} label={label} ranges={DAILY_RANGES} range={block.range ?? '1y'} aggregate="sum" fromZero markers={NETWORK_MARKERS} />
+      <TimeChart series={load} label={label} ranges={DAILY_RANGES} range={block.range ?? '1y'} aggregate="sum" fromZero markers={markers} />
       <Link href={`/charts?m=${block.metric}`} className="charts-section-link">All network charts →</Link>
     </div>
   );
