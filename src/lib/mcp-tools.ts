@@ -10,13 +10,15 @@
 // challenge-sign-verify bootstrap is itself expressed as tools: get_challenge
 // → sign with your own key → login → Bearer token on the Authorization header.
 // /AGENTS.md stays the deep reference, but the chain completes in-protocol.
+// send_feedback closes the list: what an agent missed or found wrong, filed as
+// an "Agent Feedback" event.
 
 // server.json is the registry publish manifest and the only copy of the
 // version that an external system reads, so it owns the number. `initialize`
 // and the server card follow it rather than keeping their own.
 import serverManifest from '../../server.json';
-import type { McpTool, ToolAnnotations, ToolSchema } from 'wiki-formant/mcp';
-import { wikiReadTools } from 'wiki-formant/wiki-tools';
+import { feedbackTool, type McpTool, type ToolAnnotations, type ToolSchema } from 'wiki-formant/mcp';
+import { wikiReadTools, type WikiTool } from 'wiki-formant/wiki-tools';
 import { SITE_URL } from '@/lib/site';
 import { WIKI_READ, toWikiPage, authorsOf } from '@/lib/wiki';
 import { corpusSections } from '@/lib/llms';
@@ -24,6 +26,7 @@ import { TAG_TREE, SHARED_PATHS, getMetadataKeys, xrdGates } from '@/lib/tags';
 import { categoryLabel } from '@/lib/utils';
 import { BLOCK_SCHEMA } from '@/lib/block-utils';
 import { REQUEST_BODY_MAX, UPLOAD } from '@/lib/api';
+import { trackFeedback } from '@/lib/track';
 
 /** Reported by `initialize`. `name` is the MCP server id, distinct from the
  *  registry's namespaced `serverManifest.name`. */
@@ -55,11 +58,13 @@ type McpToolSpec = {
 const ideasOptions = (key: string) =>
   (getMetadataKeys(['ideas']).find(k => k.key === key)?.options ?? []).map(o => categoryLabel(o));
 
+const NOUN = 'the Radix Wiki';
+
 export const TOOLS: McpToolSpec[] = [
   ...wikiReadTools({
     ...WIKI_READ,
     tree: TAG_TREE,
-    noun: 'the Radix Wiki',
+    noun: NOUN,
     corpusTitle: 'Radix Wiki — Full Content',
     label: node => categoryLabel(node.name),
     corpus: corpusSections,
@@ -252,4 +257,6 @@ export const TOOLS: McpToolSpec[] = [
       examples: ['Add a diagram to a wiki page', 'Set a banner image on a page'],
     },
   },
+  // It always sets the title and annotations its McpTool type leaves optional.
+  feedbackTool(trackFeedback, NOUN) as WikiTool,
 ];

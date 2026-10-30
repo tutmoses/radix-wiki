@@ -46,7 +46,7 @@ const { rpc, call, payload, check } = t;
 
   await agentCardParity(t);
   await manifestParity(t, { writeAuth: true });
-  await annotationChecks(t, { writes: ['get_challenge', 'login', 'create_page', 'edit_page', 'restore_revision', 'delete_page', 'upload_image'] });
+  await annotationChecks(t, { writes: ['get_challenge', 'login', 'create_page', 'edit_page', 'restore_revision', 'delete_page', 'upload_image', 'send_feedback'] });
 
   // The three calls an agent makes before anything else. One page with a
   // 327 KB blob in its metadata column put all three over 350 KB — roughly
@@ -67,8 +67,10 @@ const { rpc, call, payload, check } = t;
   console.log(`\n=== tools ===`);
   const list = await rpc('tools/list');
   const toolNames = (list.result?.tools ?? []).map(t => t.name);
-  const expected = ['search_wiki', 'get_page', 'get_pages', 'list_pages', 'get_categories', 'get_recent_changes', 'get_full_corpus', 'get_ideas_board', 'get_network_activity', 'get_page_history', 'get_challenge', 'login', 'create_page', 'edit_page', 'restore_revision', 'delete_page', 'upload_image'];
+  const expected = ['search_wiki', 'get_page', 'get_pages', 'list_pages', 'get_categories', 'get_recent_changes', 'get_full_corpus', 'get_ideas_board', 'get_network_activity', 'get_page_history', 'get_challenge', 'login', 'create_page', 'edit_page', 'restore_revision', 'delete_page', 'upload_image', 'send_feedback'];
   check('tools/list', expected.every(n => toolNames.includes(n)), `${toolNames.length} tools: ${toolNames.join(', ')}`);
+  // Listed, and invited by `initialize`. Never called: run against production, a call is a real report.
+  check('send_feedback invited', toolNames.includes('send_feedback') && (init.result?.instructions ?? '').includes('send_feedback'), 'in tools/list and the initialize instructions');
 
   const prompts = await rpc('prompts/list');
   check('prompts/list', (prompts.result?.prompts?.length ?? 0) >= 5,

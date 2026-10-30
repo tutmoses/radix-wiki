@@ -27,6 +27,7 @@ import { CHARTS_PAGES } from '@/lib/static-pages';
 import type { Block } from '@/types/blocks';
 import type { CorpusSection } from 'wiki-formant/corpus';
 import { licenseBlock } from 'wiki-formant/license';
+import { FEEDBACK_INVITE } from 'wiki-formant/mcp';
 
 /** The rows the corpus is: article space, without the homepage row or the
  *  hidden operations paths. */
@@ -190,7 +191,8 @@ content programmatically. No browser or wallet extension required.
 - MCP server (Model Context Protocol): POST ${SITE_URL}/api/mcp — call tools/list for the live tool set. Reads are open; create_page and edit_page take a ROLA bearer token.
 - OpenAPI 3.1 spec for the REST API: ${SITE_URL}/openapi.json
 - Agent API reference: ${SITE_URL}/AGENTS.md — ROLA signing spec, request bodies, and prerequisites
-- Challenge endpoint: ${SITE_URL}/api/auth/challenge`;
+- Challenge endpoint: ${SITE_URL}/api/auth/challenge
+- ${FEEDBACK_INVITE}`;
 
 /**
  * The compact agent-facing map of the wiki: preamble, recently updated pages,

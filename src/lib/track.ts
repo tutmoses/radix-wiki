@@ -1,7 +1,7 @@
 // src/lib/track.ts – server-side events, counted in this wiki's own database and
 // shared by the proxy ("AI Bot Visit"), the MCP route ("MCP Call"), the wiki
-// search endpoint ("Search Query") and the page-view beacon (POST /api/view),
-// so the four never drift.
+// search endpoint ("Search Query"), the page-view beacon (POST /api/view) and
+// the send_feedback tool ("Agent Feedback"), so the five never drift.
 //
 // `wiki-formant/analytics` owns the tables' SQL, the visitor hash, the props
 // extraction, the production gate (dev and previews share production's
@@ -18,5 +18,5 @@ export const sql: Sql = (query, ...values) => prisma.$queryRawUnsafe(query, ...v
 // A search is filed against the page the reader searched from, else the site.
 // `total` at the call site is the match count before pagination, so the
 // zero-result filter is not confused by a deep page.
-export const { trackEvent, trackMcpCall, trackSearch, viewRoute } =
+export const { trackEvent, trackMcpCall, trackSearch, trackFeedback, viewRoute } =
   createTracker({ sql, defer: after, siteUrl: SITE_URL });
