@@ -18,7 +18,7 @@
 // and the server card follow it rather than keeping their own.
 import serverManifest from '../../server.json';
 import { feedbackTool, type McpTool, type ToolAnnotations, type ToolSchema } from 'wiki-formant/mcp';
-import { wikiReadTools, type WikiTool } from 'wiki-formant/wiki-tools';
+import { wikiReadTools } from 'wiki-formant/wiki-tools';
 import { SITE_URL } from '@/lib/site';
 import { WIKI_READ, toWikiPage, authorsOf } from '@/lib/wiki';
 import { corpusSections } from '@/lib/llms';
@@ -257,6 +257,5 @@ export const TOOLS: McpToolSpec[] = [
       examples: ['Add a diagram to a wiki page', 'Set a banner image on a page'],
     },
   },
-  // It always sets the title and annotations its McpTool type leaves optional.
-  feedbackTool(trackFeedback, NOUN) as WikiTool,
+  feedbackTool(trackFeedback, NOUN),
 ];
