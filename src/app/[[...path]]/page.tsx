@@ -109,7 +109,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const url = staticPath ? `${SITE_URL}/${staticPath}` : SITE_URL;
     // /charts unfurls with its numbers; the meta description stays the fixed one search indexes.
     const live = parsed.type === 'charts' ? await chartsHeadline() : null;
-    const og = ogMetadata({ title, description: live ?? description, url, imageTitle });
+    // The homepage is a row with a banner like any article, and its card is that banner.
+    const banner = parsed.type === 'homepage' ? (await getHomepage())?.bannerImage : null;
+    const og = ogMetadata({ title, description: live ?? description, url, imageTitle, banner });
     return {
       title: absoluteTitle ? { absolute: title } : title,
       description,
