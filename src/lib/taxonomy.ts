@@ -28,6 +28,4 @@ export const taxonomy = createTaxonomy({
 export const {
   rankRelated,
   metadataRows,
-  // The sort toggle's threshold: the same unfiltered count the index reads.
-  needsAlphaIndex,
 } = taxonomy;

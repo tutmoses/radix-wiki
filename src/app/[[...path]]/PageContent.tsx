@@ -22,7 +22,7 @@ import { slugifyHeading } from 'wiki-formant/headings';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
 import { AGO, useNow } from '@/lib/now';
 import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder, type TagNode } from '@/lib/tags';
-import { categoryHref, needsAlphaIndex, type Control, type FacetControlGroup, type FacetFilters, type SharedFacet } from '@/lib/taxonomy';
+import { categoryHref, type Control, type FacetControlGroup, type FacetFilters, type SharedFacet } from '@/lib/taxonomy';
 import { createBlock } from '@/lib/block-utils';
 import { formatDay, freshnessBanner, relativeTime } from 'wiki-formant/freshness';
 import { Cite, FacetBar, FacetSummary, RelatedPages as SeeAlso } from 'wiki-formant/react-server';
@@ -265,8 +265,7 @@ function ResultsBar({ tag, tagPath, total, shown, sort, filters, letter, clearHr
             <SlidersHorizontal size={14} />Filters{narrowed > 0 && ` · ${narrowed}`}
           </button>
         )}
-        {/* A set small enough to need no index offers no sort either: it is A–Z. */}
-        {needsAlphaIndex(total) && <SortToggle sort={sort} tagPath={tagPath} filters={filters} letter={letter} />}
+        {total > 1 && <SortToggle sort={sort} tagPath={tagPath} filters={filters} letter={letter} />}
       </div>
     </div>
   );
