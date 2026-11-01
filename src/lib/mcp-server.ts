@@ -17,11 +17,9 @@ import { MCP_RATE_LIMIT, MCP_RATE_LIMIT_TEXT } from 'wiki-formant/rate-limit';
 import { buildLlmsTxt } from '@/lib/llms';
 import { getMetadataKeys } from '@/lib/tags';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
-import { RADIX_CONFIG } from '@/lib/radix/config';
 import { getLedgerDayRows } from '@/lib/radix/activity';
 import { trackMcpCall } from '@/lib/track';
 import { uploadImage } from '@/lib/upload';
-import { generateChallenge } from '@/lib/auth';
 import { McpToolError, readArgs, type McpServerConfig, type McpPrompt, type McpResource, type ToolContext } from 'wiki-formant/mcp';
 
 const INSTRUCTIONS = [
@@ -165,60 +163,6 @@ async function get_ideas_board(raw: Record<string, unknown>) {
 /** A page's path segments as the REST route reads them, from the path or a pasted URL of it. */
 const segmentsOf = (raw: string) => raw.replace(/^https?:\/\/[^/]+/, '').split(/[?#]/)[0]!.split('/').filter(Boolean);
 
-// ========== AUTH BOOTSTRAP HANDLERS ==========
-//
-// The challenge→sign→token chain as tools, forwarding to the same REST auth
-// endpoints the wallet flow uses, so an agent never has to leave the protocol.
-// Auth rides the HTTP layer, not the tool arguments: `login` returns a Bearer
-// token, and the client sends it as an `Authorization` header on the POSTs
-// that carry subsequent write calls (the CORS allow-list already names it).
-
-// Made here rather than fetched from /api/auth/challenge: that route budgets
-// each caller's address, and a fetch from this function arrives from the
-// server's own, so every agent would share one bucket. This route's own limit
-// already holds each agent to its address.
-async function get_challenge() {
-  const { challenge, expiresAt } = await generateChallenge();
-  return {
-    challenge,
-    expiresAt: expiresAt.toISOString(),
-    sign: {
-      message: `blake2b-256 of: "R" (ascii) + challenge (hex-decoded) + one length byte of "${RADIX_CONFIG.dAppDefinitionAddress}" + that address (utf-8) + "${SITE_URL}" (utf-8)`,
-      curve: 'curve25519 (Ed25519); sign the 32-byte hash, hex-encode the signature',
-      address: 'your virtual account address derived from the public key — the key must be an on-ledger owner_keys entry for that account',
-      then: 'Call login with { challenge, address, publicKey, signature, curve }.',
-    },
-  };
-}
-
-async function login(args: Record<string, unknown>) {
-  const res = await fetch(`${SITE_URL}/api/auth`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      accounts: [{ address: args.address }],
-      signedChallenge: {
-        challenge: args.challenge,
-        address: args.address,
-        proof: { publicKey: args.publicKey, signature: args.signature, curve: args.curve },
-      },
-    }),
-  });
-  const data = await res.json().catch(() => null) as Record<string, unknown> | null;
-  if (!res.ok || !data?.token) {
-    throw new McpToolError((data?.error as string) || `Login failed (${res.status})`, {
-      hint: 'Challenges are single-use and expire after 5 minutes — call get_challenge again. The signing recipe is in its response; the public key must be an on-ledger owner_keys entry for the account.',
-    });
-  }
-  return {
-    token: data.token,
-    tokenType: 'Bearer',
-    expiresAt: data.expiresAt,
-    radixAddress: data.radixAddress,
-    note: 'Send as an HTTP `Authorization: Bearer <token>` header on the POSTs carrying create_page / edit_page calls.',
-  };
-}
-
 // ========== WRITE HANDLERS ==========
 //
 // Writes forward to the REST wiki API carrying the caller's bearer token, so
@@ -337,8 +281,6 @@ export function serverConfig(request: Request): McpServerConfig {
   const handlers: Record<string, Handler> = {
     get_ideas_board,
     get_network_activity,
-    get_challenge,
-    login,
     create_page: args => create_page(args, request),
     edit_page: args => edit_page(args, request),
     restore_revision: args => restore_revision(args, request),

@@ -4,12 +4,12 @@
 // written the same ninety lines: the same 350ms intent delay, the same grace
 // period so the cursor can cross the gap into the card, the same viewport-clamp
 // arithmetic and the same per-href cache. What stays here is the only part that
-// was ever this wiki's — which links are eligible, where a preview comes from,
-// and what the card looks like.
+// was ever this wiki's: which links are eligible and where a preview comes from.
+// The card is the package's too.
 
 'use client';
 
-import { useLinkPreview } from 'wiki-formant/react';
+import { LinkPreviewCard, useLinkPreview } from 'wiki-formant/react';
 
 type Preview = { found: boolean; title?: string; excerpt?: string; bannerImage?: string | null };
 
@@ -38,16 +38,5 @@ export function LinkPreview() {
 
   if (!preview) return null;
 
-  return (
-    <div className="link-preview-card" {...cardProps}>
-      {preview.bannerImage && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={preview.bannerImage} alt="" className="link-preview-banner" loading="lazy" />
-      )}
-      <div className="link-preview-body">
-        <div className="link-preview-title">{preview.title}</div>
-        {preview.excerpt && <p className="link-preview-excerpt">{preview.excerpt}</p>}
-      </div>
-    </div>
-  );
+  return <LinkPreviewCard title={preview.title ?? ''} excerpt={preview.excerpt} bannerImage={preview.bannerImage} {...cardProps} />;
 }

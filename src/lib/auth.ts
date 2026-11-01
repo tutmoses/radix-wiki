@@ -24,7 +24,8 @@ export interface AuthSession {
 type SessionClaims = Omit<AuthSession, 'expiresAt'>;
 
 const COOKIE = 'radix_wiki_session';
-const SESSION_SEC = 7 * 24 * 60 * 60;
+export const SESSION_SEC = 7 * 24 * 60 * 60;
+export const CHALLENGE_TTL_SEC = parseInt(process.env.CHALLENGE_EXPIRATION || '300', 10);
 const secret = sessionSecret(process.env.JWT_SECRET);
 
 export const { generateChallenge, verifySignedChallenge } = createRola({
@@ -33,7 +34,7 @@ export const { generateChallenge, verifySignedChallenge } = createRola({
   networkId: RADIX_CONFIG.networkId,
   applicationName: RADIX_CONFIG.applicationName,
   challenges: prisma.challenge,
-  challengeTtlSec: parseInt(process.env.CHALLENGE_EXPIRATION || '300', 10),
+  challengeTtlSec: CHALLENGE_TTL_SEC,
 });
 
 async function verifyToken(token: string): Promise<AuthSession | null> {

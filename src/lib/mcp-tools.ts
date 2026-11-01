@@ -17,8 +17,9 @@
 // version that an external system reads, so it owns the number. `initialize`
 // and the server card follow it rather than keeping their own.
 import serverManifest from '../../server.json';
-import { feedbackTool, type McpTool, type ToolAnnotations, type ToolSchema } from 'wiki-formant/mcp';
+import { feedbackTool, McpToolError, type McpTool, type ToolAnnotations, type ToolSchema } from 'wiki-formant/mcp';
 import { wikiReadTools } from 'wiki-formant/wiki-tools';
+import { rolaLoginTools } from 'wiki-formant/rola';
 import { SITE_URL } from '@/lib/site';
 import { WIKI_READ, toWikiPage, authorsOf } from '@/lib/wiki';
 import { corpusSections } from '@/lib/llms';
@@ -27,6 +28,8 @@ import { categoryLabel } from '@/lib/utils';
 import { BLOCK_SCHEMA } from '@/lib/block-utils';
 import { REQUEST_BODY_MAX, UPLOAD } from '@/lib/api';
 import { trackFeedback } from '@/lib/track';
+import { generateChallenge, CHALLENGE_TTL_SEC, SESSION_SEC } from '@/lib/auth';
+import { RADIX_CONFIG } from '@/lib/radix/config';
 
 /** Reported by `initialize`. `name` is the MCP server id, distinct from the
  *  registry's namespaced `serverManifest.name`. */
@@ -123,35 +126,38 @@ export const TOOLS: McpToolSpec[] = [
       examples: ['How many transactions did Radix process last week?', 'How much XRD was burned in September 2026?', 'Did activity recover after the August 2026 halt?'],
     },
   },
-  {
-    name: 'get_challenge',
-    title: 'Start a login',
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-    description:
-      'Step 1 of writing to the wiki: a single-use ROLA challenge (5-minute expiry). ' +
-      'The response spells out the exact recipe for the message your Ed25519 key must sign. ' +
-      'You always sign with your OWN key — nothing here custodies anything. Takes no parameters.',
-    inputSchema: { type: 'object', properties: {} },
-  },
-  {
-    name: 'login',
-    title: 'Exchange a signed proof for a token',
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
-    description:
-      'Step 2: exchange the signed ROLA proof for a 7-day Bearer token — the same verification the human wallet flow runs. ' +
-      'Send the returned token as an HTTP `Authorization: Bearer <token>` header on every later create_page / edit_page call; tool arguments never carry it.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        challenge: { type: 'string', description: 'The challenge from get_challenge' },
-        address: { type: 'string', description: 'Your account address (virtual account of the signing key; its public key must be an on-ledger owner_keys entry)' },
-        publicKey: { type: 'string', description: 'Ed25519 public key, hex' },
-        signature: { type: 'string', description: 'Signature over the ROLA message, hex' },
-        curve: { type: 'string', enum: ['curve25519', 'secp256k1'], description: 'Signing curve (Ed25519 = "curve25519")' },
-      },
-      required: ['challenge', 'address', 'publicKey', 'signature', 'curve'],
+  // Forwarded to the REST login the wallet flow uses, so the session and its
+  // user row are made in one place. The challenge is made here rather than
+  // fetched from /api/auth/challenge: that route budgets each caller's address,
+  // and a fetch from this function arrives from the server's own, so every
+  // agent would share one bucket.
+  ...rolaLoginTools({
+    site: 'the wiki',
+    dAppDefinitionAddress: RADIX_CONFIG.dAppDefinitionAddress,
+    origin: RADIX_CONFIG.applicationUrl,
+    generateChallenge,
+    challengeTtlSec: CHALLENGE_TTL_SEC,
+    tokenTtlSec: SESSION_SEC,
+    writeTools: 'create_page / edit_page',
+    notes: {
+      sign: { address: 'your virtual account address derived from the public key — the key must be an on-ledger owner_keys entry' },
+      address: 'Your account address (virtual account of the signing key; its public key must be an on-ledger owner_keys entry)',
     },
-  },
+    login: async signed => {
+      const res = await fetch(`${SITE_URL}/api/auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accounts: [{ address: signed.address }], signedChallenge: signed }),
+      });
+      const data = await res.json().catch(() => null) as { token?: string; expiresAt?: string; radixAddress?: string; error?: string } | null;
+      if (!res.ok || !data?.token || !data.expiresAt) {
+        throw new McpToolError(data?.error || `Login failed (${res.status})`, {
+          hint: `Challenges are single-use and expire after ${CHALLENGE_TTL_SEC / 60} minutes — call get_challenge again. The signing recipe is in its response; the public key must be an on-ledger owner_keys entry for the account.`,
+        });
+      }
+      return { token: data.token, expiresAt: data.expiresAt, radixAddress: data.radixAddress };
+    },
+  }),
   {
     name: 'create_page',
     title: 'Create a page',

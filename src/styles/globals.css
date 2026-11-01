@@ -824,8 +824,6 @@
   .rss-card-source { @apply text-success font-medium; }
   .rss-card-desc { @apply text-text-muted text-[13px] leading-relaxed; }
 
-    .link-preview-banner { @apply w-full h-28 object-cover; }
-
   /* ===== TOAST ===== */
   .toast {
     @apply fixed bottom-6 right-6 z-50 bg-surface-1 border border-accent/30 rounded-lg px-4 py-3 text-small shadow-lg;

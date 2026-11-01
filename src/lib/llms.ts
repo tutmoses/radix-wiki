@@ -25,7 +25,7 @@ import { followLines } from 'wiki-formant/social';
 import { blocksToMarkdown } from '@/lib/markdown';
 import { CHARTS_PAGES } from '@/lib/static-pages';
 import type { Block } from '@/types/blocks';
-import type { CorpusSection } from 'wiki-formant/corpus';
+import type { CorpusSection } from 'wiki-formant/wiki-tools';
 import { licenseBlock } from 'wiki-formant/license';
 import { FEEDBACK_INVITE } from 'wiki-formant/mcp';
 
