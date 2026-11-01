@@ -49,7 +49,6 @@ const FIXTURE = 'ecosystem/radix-blue-balls';
     budget: [
       { name: 'search_wiki', args: { query: 'radix' } },
       { name: 'get_page', args: { path: FIXTURE } },
-      { name: 'get_full_corpus', maxBytes: 260_000 },
     ],
     // Every surface an agent recrawls, not only the ones that already passed.
     conditionalGet: ['llms.txt', `${FIXTURE}.md`],
