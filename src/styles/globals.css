@@ -376,10 +376,10 @@
   .user-avatar-lg { @apply w-10 h-10; }
 
   /* ===== SEARCH ===== */
-  .header-search { @apply relative hidden sm:block flex-1 max-w-xl mx-2; }
-  /* The one search field: inline in the bar above `sm`, its own full-width row
-     under it once the toggle opens it. The bar is a fixed-height flex row, so on
-     a phone the field takes a line rather than competing with the icons. */
+  .header-search { @apply relative hidden flex-1 max-w-xl mx-2; }
+  /* The one search field, a magnifier until opened: inline in the bar above
+     `sm`, its own full-width row under it. The bar is a fixed-height flex row, so
+     on a phone the field takes a line rather than competing with the icons. */
   /* `basis-full`, not `w-full`: `.header-search` is `flex-1` (basis 0), which
      beats a width in a flex row, so only a full basis makes the field wrap onto
      its own line instead of being squeezed between the logo and the icons. */

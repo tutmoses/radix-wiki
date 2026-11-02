@@ -253,7 +253,8 @@ export function Header() {
   } = useTypeahead<PageSummary>({
     fetch: searchPages,
     onPick: page => handleSearchSelect(page),
-    onEscape: () => { setSearchOpen(false); setShowSearch(false); },
+    // Escape shuts the list, and folds the field back to its magnifier once it is empty.
+    onEscape: () => { setSearchOpen(false); if (!searchQuery.trim()) setShowSearch(false); },
   });
   // `searchOpen` is passed because the hook keeps its results when the dropdown
   // closes, and an aria-activedescendant pointing into a list that is not
@@ -273,7 +274,7 @@ export function Header() {
   }, [searchQuery, router, clearItems]);
 
   // "/" focuses search from anywhere (Wikipedia-style), unless already typing.
-  // Below `sm` the one field is hidden until the toggle reveals it.
+  // The one field is hidden until the magnifier reveals it.
   useSearchShortcut(() => {
     if (!focusShown(searchInputRef.current)) setShowSearch(true);
   });
@@ -324,8 +325,8 @@ export function Header() {
             <span className="logo-text">{SITE_NAME}</span>
           </Link>
 
-          {/* One field for both breakpoints: shown inline above `sm`, revealed by
-              the toggle below it. The two copies had drifted, and the desktop one
+          {/* One field for both breakpoints, revealed by the magnifier: inline above
+              `sm`, its own row below it. The two copies had drifted, and the desktop one
               was the broken half — it nested `.search-empty` (itself absolutely
               placed) inside `.search-results`, which is `overflow-hidden`, so
               "No pages found" was clipped to a bordered 2px strip. */}
@@ -334,6 +335,7 @@ export function Header() {
             <Search className="search-icon-left" size={18} />
             <input ref={searchInputRef} type="search" placeholder="Search the wiki..." className="input pl-10" value={searchQuery}
               onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); }}
+              onBlur={() => { if (!searchQuery.trim()) setShowSearch(false); }}
               onKeyDown={onSearchKeyDown} {...searchCombobox.inputProps} />
             {isSearching && <Loader2 className="search-icon-right" size={18} />}
             {searchOpen && searchResults.length > 0 && (
@@ -354,7 +356,10 @@ export function Header() {
           </form>
 
           <div className="header-actions">
-            <button onClick={() => setShowSearch(!showSearch)} className="icon-btn sm:hidden" title="Search" aria-label="Search" aria-expanded={showSearch}><Search size={20} /></button>
+            {/* With no script it goes to the results page. Its mousedown keeps focus
+                in the field, so the field's blur does not fold it before the click. */}
+            <a href="/search" onMouseDown={e => e.preventDefault()} onClick={e => { e.preventDefault(); setShowSearch(!showSearch); }}
+              className="icon-btn text-inherit" title="Search" aria-label="Search" aria-expanded={showSearch}><Search size={20} /></a>
 
             {hasTools && (
               <div className="relative">
