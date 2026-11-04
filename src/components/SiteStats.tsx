@@ -3,6 +3,7 @@
 // and sibling sites.
 
 import { cookies } from 'next/headers';
+import Link from 'next/link';
 import { digest } from 'wiki-formant/analytics';
 import { Stats, StatsGate, statsQuery } from 'wiki-formant/stats';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
@@ -26,7 +27,7 @@ export default async function SiteStats({ query, invite }: { query: Record<strin
         host={new URL(SITE_URL).host}
         classNames={{ text: 'text-text-muted', actions: 'stack-sm items-start', button: 'btn btn-primary', error: 'text-error' }}
       >
-        {async () => <Stats digest={await digest(sql, { ...q, handle: 'radixwiki', siblings: SIBLINGS })} {...q} />}
+        {async () => <Stats digest={await digest(sql, { ...q, handle: 'radixwiki', siblings: SIBLINGS })} {...q} link={Link} />}
       </StatsGate>
     </div>
   );
