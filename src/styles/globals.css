@@ -80,7 +80,12 @@
 @keyframes slide-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 @layer base {
-  html { font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
+  /* No `scroll-behavior: smooth`: a page opened at #anchor would animate toward
+     a position fixed at the start, while blocks above it are still growing, and
+     scroll anchoring is off during a smooth scroll, so it lands short. The rail's
+     table of contents asks for smooth scrolling itself. The padding clears the
+     sticky header for every anchor target, heading or not. */
+  html { font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; scroll-padding-top: calc(var(--header-height) + 1rem); }
   body { @apply bg-surface-0 text-text text-base min-h-screen; }
 
   /* One flow rhythm for every block-level element. Individual rules below carry
@@ -89,9 +94,9 @@
 
   h1, h2, h3, h4 { &:first-child { @apply mt-0; } }
   h1 { @apply text-h1 font-bold mt-8; }
-  h2 { @apply text-h2 font-semibold mt-8 border-b-2 border-border scroll-mt-[calc(var(--header-height)+1rem)]; }
-  h3 { @apply text-h3 font-normal mt-6 scroll-mt-[calc(var(--header-height)+1rem)]; }
-  h4 { @apply text-h4 font-light mt-4 scroll-mt-[calc(var(--header-height)+1rem)]; }
+  h2 { @apply text-h2 font-semibold mt-8 border-b-2 border-border; }
+  h3 { @apply text-h3 font-normal mt-6; }
+  h4 { @apply text-h4 font-light mt-4; }
 
   ul, ol { @apply pl-8; :is(ul, ol) { @apply mt-1 mb-0; } }
   ul { list-style-type: disc; }
