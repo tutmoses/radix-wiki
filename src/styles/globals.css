@@ -816,10 +816,11 @@
   /* ===== RSS FEED ===== */
   .rss-feed-scroll { @apply max-h-[494px] overflow-y-auto rounded-lg border border-border-muted bg-surface-0; }
   /* Side by side in a columns block, the feed matches its tallest sibling column instead
-     of a fixed cap: the column stretches, the wrapper takes the leftover height, and the
+     of a fixed cap: the column stretches, the wrapper takes the leftover height (never under
+     20rem, so a sibling shorter than the feed column leaves it visible), and the
      absolute scroller keeps the feed's own length from inflating the column. */
   .columns-layout > .column-view:has(> .rss-feed) { @apply md:self-stretch; }
-  .column-view > .rss-feed { @apply md:relative md:flex-1 md:min-h-0; }
+  .column-view > .rss-feed { @apply md:relative md:flex-1 md:min-h-80; }
   .column-view > .rss-feed > .rss-feed-scroll { @apply md:absolute md:inset-0 md:max-h-none; }
   .rss-card { @apply bg-surface-1 border border-border-muted rounded-md overflow-hidden transition-colors hover:bg-surface-2; }
   .rss-card-image { @apply w-full h-[200px] relative; }
