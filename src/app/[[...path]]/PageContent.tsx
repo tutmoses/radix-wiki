@@ -284,6 +284,26 @@ function AuthRequired({ backHref }: { backHref: string }) {
   );
 }
 
+// ========== SAVE PHASE ==========
+/**
+ * A save's phases, as both editors run them: one thing happens at a time. A
+ * save refused because the page moved on stays refused: its baseVersion is
+ * stale, and only a reload gives the editor the version to build on.
+ */
+export type SavePhase =
+  /** `missing` names the required metadata fields the last save was refused for. */
+  | { kind: 'editing'; error: string | null; missing?: string[] }
+  | { kind: 'saving' }
+  | { kind: 'conflict'; message: string };
+
+export function ConflictNotice({ message }: { message: string }) {
+  return (
+    <div data-callout="warning">
+      <p>{message} Your changes were not saved: copy anything you want to keep, then <button type="button" className="link" onClick={() => window.location.reload()}>reload the latest version</button>.</p>
+    </div>
+  );
+}
+
 // ========== HOMEPAGE VIEW ==========
 export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEditing: boolean }) {
   const router = useRouter();
@@ -291,8 +311,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   const connect = useStore(s => s.connect);
   const [content, setContent] = useState<Block[]>((page?.content as unknown as Block[]) || []);
   const [bannerImage, setBannerImage] = useState<string | null>(page?.bannerImage || null);
-  // Editing (with the last save's refusal, if any) or saving: the same phases as PageEditor's.
-  const [save, setSave] = useState<{ kind: 'editing'; error: string | null } | { kind: 'saving' }>({ kind: 'editing', error: null });
+  const [save, setSave] = useState<SavePhase>({ kind: 'editing', error: null });
 
   useEffect(() => {
     if (page) { setContent((page.content as unknown as Block[]) || []); setBannerImage(page.bannerImage || null); }
@@ -303,13 +322,19 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   const handleSave = async () => {
     setSave({ kind: 'saving' });
     try {
-      const res = await sendJson('/api/wiki', 'PUT', { title: page?.title, content, bannerImage });
+      // The version it opened, so a save made meanwhile (a routine's, say) is a
+      // 409 to reload from rather than a revision silently written over.
+      const res = await sendJson('/api/wiki', 'PUT', { title: page?.title, content, bannerImage, baseVersion: page?.version });
       // The view may keep this instance across the navigation, so it leaves in the editing phase.
       if (res.ok) { setSave({ kind: 'editing', error: null }); router.push('/'); return; }
-      setSave({ kind: 'editing', error: (await res.json().catch(() => ({}))).error || 'Failed to save.' });
+      const { error } = await res.json().catch(() => ({}));
+      setSave(res.status === 409
+        ? { kind: 'conflict', message: error || 'The homepage changed since it was opened.' }
+        : { kind: 'editing', error: error || 'Failed to save.' });
     } catch { setSave({ kind: 'editing', error: 'Failed to save: the request did not reach the wiki.' }); }
   };
   const isSaving = save.kind === 'saving';
+  const canSave = save.kind === 'editing';
 
   if (isEditing) {
     const infobox = findInfobox(content) || createBlock('infobox') as import('@/types/blocks').InfoboxBlock;
@@ -321,10 +346,11 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
       <div className="stack">
         <div className="spread">
           <Link href="/" className="row link-muted"><ArrowLeft size={16} /><span>Back to Homepage</span></Link>
-          <Button onClick={handleSave} disabled={isSaving} size="sm"><Save size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
+          <Button onClick={handleSave} disabled={!canSave} size="sm"><Save size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
         </div>
         <h1 id="edit-homepage">Edit Homepage</h1>
         {save.kind === 'editing' && save.error && <div data-callout="error"><p>{save.error}</p></div>}
+        {save.kind === 'conflict' && <ConflictNotice message={save.message} />}
         <div data-callout="info"><p>Editing the homepage requires holding <strong>{getXrdRequired('edit', '').toLocaleString('en-US')} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
         <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
         <div className="page-with-infobox">
@@ -337,7 +363,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
         </div>
         <div className="spread">
           <Link href="/"><Button variant="ghost">Cancel</Button></Link>
-          <Button onClick={handleSave} disabled={isSaving}><Save size={18} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
+          <Button onClick={handleSave} disabled={!canSave}><Save size={18} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
         </div>
       </div>
     );

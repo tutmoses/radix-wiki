@@ -6,7 +6,7 @@ import { pageUrl, pagePath } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { findTagByPath, tagLabel, isValidTagPath, isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys } from '@/lib/tags';
-import { requireBalance } from '@/lib/radix/balance';
+import { checkBalance, balanceRefusal } from '@/lib/radix/balance';
 import { parsePagination, paginatedResponse } from 'wiki-formant/pagination';
 import { requireAuth, cachedJson, tagged, CACHE, overBudget, IP_LIMITS, type RouteContext } from '@/lib/api';
 import { clientKey } from 'wiki-formant/rate-limit';
@@ -438,8 +438,9 @@ export async function DELETE(request: NextRequest, context: RouteContext<PathPar
     // board, so anyone who clears the bar to edit it may also delete it.
     if (existing.authorId !== auth.session.userId) {
       if (!isSharedPath(existing.tagPath)) return errors.forbidden();
-      const check = await requireBalance(auth.session, { type: 'edit', tagPath: existing.tagPath });
-      if (!check.ok) return check.response;
+      const action = { type: 'edit', tagPath: existing.tagPath } as const;
+      const check = await checkBalance(auth.session, action);
+      if (check.status !== 'allowed') return balanceRefusal(check, action);
     }
 
     await deletePage(existing);

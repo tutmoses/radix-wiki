@@ -17,7 +17,7 @@ import { slugifyHeading } from 'wiki-formant/headings';
 import { findInfobox } from '@/components/BlockRenderer';
 import { isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, XRD_NOT_A_FEE, type MetadataKeyDefinition } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
-import { Banner, BlockEditor, InfoboxEditor } from './PageContent';
+import { Banner, BlockEditor, ConflictNotice, InfoboxEditor, type SavePhase } from './PageContent';
 import type { WikiPage, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
 import { useSaveShortcut, useTypeahead, useUnsavedChanges, useClickOutside } from 'wiki-formant/react';
@@ -35,8 +35,13 @@ function parseAssignee(raw: string): string {
 
 type UserOption = { id: string; displayName: string | null; shortAddress: string };
 
-const fetchUsers = (q: string, signal: AbortSignal): Promise<UserOption[]> =>
-  fetch(`/api/users/search?q=${encodeURIComponent(q)}`, { signal }).then(r => r.json());
+// A refusal (a 429, say) rejects rather than answering no one, so the typeahead
+// does not cache it as the query's result.
+const fetchUsers = async (q: string, signal: AbortSignal): Promise<UserOption[]> => {
+  const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`, { signal });
+  if (!res.ok) throw new Error(res.statusText || `Failed (${res.status})`);
+  return res.json();
+};
 
 /**
  * The user typeahead. Both places that name a person — the `user` metadata field
@@ -195,11 +200,28 @@ function MetadataFields({ metadataKeys, metadata, onChange, invalidKeys = [] }: 
 }
 
 // ========== EDITOR WHITELIST ==========
-function EditorWhitelist({ editors, onAdd, onRemove }: {
-  editors: UserOption[];
+/** The co-editors the page names, read by id: still loading, unreadable, or their names. */
+type Editors =
+  | { status: 'loading' }
+  | { status: 'failed' }
+  | { status: 'loaded'; users: UserOption[] };
+
+function EditorWhitelist({ editors: list, onAdd, onRemove }: {
+  editors: Editors;
   onAdd: (user: UserOption) => void;
   onRemove: (id: string) => void;
 }) {
+  if (list.status !== 'loaded') {
+    return (
+      <div className="metadata-panel">
+        <h4 className="text-small font-medium text-text-muted m-0!">Allowed Editors</h4>
+        {list.status === 'loading'
+          ? <div className="h-8 skeleton" />
+          : <p className="text-small text-text-muted">The allowed editors could not be loaded, so they are kept as they are. Reload to change them.</p>}
+      </div>
+    );
+  }
+  const editors = list.users;
   return (
     <div className="metadata-panel">
       <h4 className="text-small font-medium text-text-muted m-0!">Allowed Editors</h4>
@@ -219,20 +241,14 @@ function EditorWhitelist({ editors, onAdd, onRemove }: {
 }
 
 // ========== PAGE EDITOR ==========
-// One thing happens at a time, so a save and a delete never overlap. A save
-// refused because the page moved on stays refused: its baseVersion is stale,
-// and only a reload gives the editor the version to build on.
-type Phase =
-  /** `missing` names the required metadata fields the last save was refused for. */
-  | { kind: 'editing'; error: string | null; missing?: string[] }
-  | { kind: 'saving' }
-  | { kind: 'deleting' }
-  | { kind: 'conflict'; message: string };
+// A save's phases, and a delete, so a save and a delete never overlap.
+type Phase = SavePhase | { kind: 'deleting' };
 
 /**
  * The $XRD gate, asked before any writing happens rather than met as a 403
- * after the save. `unknown` is a check that did not answer: the requirement is
- * stated and the save is still allowed, since the route enforces it anyway.
+ * after the save. `unknown` is a check that did not answer (an unreadable
+ * balance, a dropped request): the requirement is stated and the save is still
+ * allowed, since the route enforces it anyway. Only a shortfall's 403 refuses.
  */
 type Gate =
   | { kind: 'checking' }
@@ -270,7 +286,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   // New Page opens with no slug, and the slug follows the title until it is edited.
   const [slugEdited, setSlugEdited] = useState(false);
   const [editorIds, setEditorIds] = useState<string[]>([]);
-  const [editors, setEditors] = useState<UserOption[]>([]);
+  const [editors, setEditors] = useState<Editors>({ status: 'loaded', users: [] });
   const [phase, setPhase] = useState<Phase>({ kind: 'editing', error: null });
   const [revisionMessage, setRevisionMessage] = useState('');
   const [verified, setVerified] = useState(false);
@@ -282,12 +298,11 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
     let cancelled = false;
     setGate({ kind: 'checking' });
     fetch(`/api/auth/gate?type=${isCreating ? 'create' : 'edit'}&tagPath=${encodeURIComponent(tagPath)}`)
-      .then(r => (r.ok ? r.json() : null))
-      .catch(() => null)
-      .then((d: { allowed: boolean; error?: string } | null) => {
-        if (cancelled) return;
-        setGate(!d ? { kind: 'unknown' } : d.allowed ? { kind: 'allowed' } : { kind: 'refused', reason: d.error || 'Your wallet does not hold enough $XRD to save here.' });
-      });
+      .then(async (r): Promise<Gate> => r.ok ? { kind: 'allowed' }
+        : r.status === 403 ? { kind: 'refused', reason: (await r.json().catch(() => ({}))).error || 'Your wallet does not hold enough $XRD to save here.' }
+        : { kind: 'unknown' })
+      .catch((): Gate => ({ kind: 'unknown' }))
+      .then(next => { if (!cancelled) setGate(next); });
     return () => { cancelled = true; };
   }, [isCreating, tagPath]);
 
@@ -299,12 +314,14 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
     setMetadata(initial.metadata);
     setEditSlug(initial.editSlug);
     setEditorIds(initial.editorIds);
-    if (initial.editorIds.length > 0) {
-      fetch(`/api/users/search?ids=${initial.editorIds.join(',')}`)
-        .then(r => r.json()).then(setEditors).catch(() => {});
-    } else {
-      setEditors([]);
-    }
+    if (initial.editorIds.length === 0) { setEditors({ status: 'loaded', users: [] }); return; }
+    let cancelled = false;
+    setEditors({ status: 'loading' });
+    fetch(`/api/users/search?ids=${initial.editorIds.join(',')}`)
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(r.statusText))))
+      .then((users: UserOption[]): Editors => ({ status: 'loaded', users }), (): Editors => ({ status: 'failed' }))
+      .then(next => { if (!cancelled) setEditors(next); });
+    return () => { cancelled = true; };
   }, [initial]);
 
   const shownSlug = isCreating && !slug && !slugEdited ? slugifyHeading(title) : editSlug;
@@ -398,11 +415,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
           <div data-callout="info"><p>{isCreating ? 'Creating a page in' : 'Editing the page at'} <code>{isCreating ? `/${tagPath}` : viewPath}</code> requires holding <strong>{getXrdRequired(isCreating ? 'create' : 'edit', tagPath).toLocaleString('en-US')} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
         ) : null}
         {phase.kind === 'editing' && phase.error && <div data-callout="error"><p>{phase.error}</p></div>}
-        {phase.kind === 'conflict' && (
-          <div data-callout="warning">
-            <p>{phase.message} Your changes were not saved: copy anything you want to keep, then <button type="button" className="link" onClick={() => window.location.reload()}>reload the latest version</button>.</p>
-          </div>
-        )}
+        {phase.kind === 'conflict' && <ConflictNotice message={phase.message} />}
         <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
         <div className="slug-editor">
           <Link2 size={14} />
@@ -429,8 +442,8 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
       {isAuthor && isAuthorOnlyPath(tagPath) && !isCreating && (
         <EditorWhitelist
           editors={editors}
-          onAdd={u => { setEditorIds([...editorIds, u.id]); setEditors([...editors, u]); }}
-          onRemove={id => { setEditorIds(editorIds.filter(i => i !== id)); setEditors(editors.filter(e => e.id !== id)); }}
+          onAdd={u => { setEditorIds([...editorIds, u.id]); setEditors(e => e.status === 'loaded' ? { status: 'loaded', users: [...e.users, u] } : e); }}
+          onRemove={id => { setEditorIds(editorIds.filter(i => i !== id)); setEditors(e => e.status === 'loaded' ? { status: 'loaded', users: e.users.filter(u => u.id !== id) } : e); }}
         />
       )}
       <div className="page-with-infobox">

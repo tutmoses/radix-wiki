@@ -2,7 +2,7 @@
 
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { getSession } from '@/lib/auth';
-import { requireBalance, type BalanceAction } from '@/lib/radix/balance';
+import { checkBalance, balanceRefusal, type BalanceAction } from '@/lib/radix/balance';
 import { json, errors } from 'wiki-formant/http';
 import { routeTags } from '@/lib/wiki';
 import { rateLimit, rateLimitedResponse, type RateLimitOptions } from 'wiki-formant/rate-limit';
@@ -19,8 +19,8 @@ export async function requireAuth(request?: Request, action?: BalanceAction): Pr
     // post without end, and every write purges the whole `wiki` cache tag.
     const limited = overBudget(`write:${session.userId}`, WRITE_LIMIT);
     if (limited) return { error: limited };
-    const check = await requireBalance(session, action);
-    if (!check.ok) return { error: check.response };
+    const check = await checkBalance(session, action);
+    if (check.status !== 'allowed') return { error: balanceRefusal(check, action) };
   }
   return { session };
 }
