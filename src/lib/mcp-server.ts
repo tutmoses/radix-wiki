@@ -187,7 +187,7 @@ function signedIn(request: Request): string {
 async function answer(res: Response): Promise<Record<string, unknown>> {
   const data = await res.json().catch(() => null) as Record<string, unknown> | null;
   if (!res.ok) {
-    throw new McpToolError((data?.error as string) || `Request failed (${res.status})`, res.status === 409
+    throw new McpToolError((data?.error as string) || `Request failed (${res.status})`, res.status === 409 && data?.conflict !== 'taken'
       ? { hint: 'The page changed since you read it. Read it again with get_page and `blocks: true`, reapply your change, and send the new `version` as baseVersion.' }
       : undefined);
   }

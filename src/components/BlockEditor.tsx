@@ -43,7 +43,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
   // This wiki's own nodes, built from its class names and icons. Memoised
   // because a fresh array would tear the editor down and lose the selection.
   const nodes = useMemo(() => [...embedNodes(), TabGroup, TabItem, CodeBlock, HeadingIds], []);
-  const { editor, fileInputRef, isUploading, handleFileChange, triggerUpload } = useWikiEditor({
+  const { editor, fileInputRef, upload, handleFileChange, triggerUpload } = useWikiEditor({
     value,
     onChange,
     placeholder,
@@ -61,9 +61,10 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
         <WikiToolbar editor={editor} prompt={prompt} onUpload={triggerUpload} icons={TOOLBAR_ICONS} classNames={TOOLBAR_CLASSES} />
       )}
       <UrlPromptField prompt={prompt} classNames={PROMPT_CLASSES} />
-      <div className={cn('tiptap-editor tiptap-field', isUploading && 'tiptap-field-disabled')}>
+      <div className={cn('tiptap-editor tiptap-field', upload.status === 'uploading' && 'tiptap-field-disabled')}>
         <EditorContent editor={editor} />
-        {isUploading && <div className="text-center text-text-muted text-small py-2">Uploading image...</div>}
+        {upload.status === 'uploading' && <div className="text-center text-text-muted text-small py-2">Uploading image...</div>}
+        {upload.status === 'failed' && <div role="alert" data-callout="error"><p>{upload.error}</p></div>}
       </div>
     </div>
   );

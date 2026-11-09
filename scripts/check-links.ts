@@ -109,6 +109,7 @@ await withClient(async client => {
     externalChecked: audit.externalChecked,
     embedsChecked: embeds.length,
     brokenExternal,
+    unverifiableExternal: audit.unverifiableExternal,
     brokenInternal: audit.brokenInternal,
     brokenEmbeds,
     unverifiableEmbeds,

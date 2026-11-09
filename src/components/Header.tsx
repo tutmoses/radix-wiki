@@ -279,9 +279,9 @@ export function Header() {
     query: searchQuery,
     setQuery: setSearchQuery,
     items: searchResults,
+    results: search,
     highlight,
     setHighlight,
-    isSearching,
     onKeyDown: onSearchKeyDown,
     clearItems,
     reset: resetSearch,
@@ -376,7 +376,7 @@ export function Header() {
               onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); }}
               onBlur={() => { if (!searchQuery.trim()) setShowSearch(false); }}
               onKeyDown={onSearchKeyDown} {...searchCombobox.inputProps} />
-            {isSearching && <Loader2 className="search-icon-right" size={18} />}
+            {search.status === 'searching' && <Loader2 className="search-icon-right" size={18} />}
             {listOpen && searchResults.length > 0 && (
               <div className="search-results" {...searchCombobox.listProps}>
                 {searchResults.map((page, i) => (
@@ -389,8 +389,11 @@ export function Header() {
                 </button>
               </div>
             )}
-            {listOpen && searchQuery.trim() && !isSearching && searchResults.length === 0 && (
-              <div className="search-empty">No pages found for &ldquo;{searchQuery.trim()}&rdquo;</div>
+            {listOpen && search.status === 'found' && search.items.length === 0 && (
+              <div className="search-empty">No pages found for &ldquo;{search.query}&rdquo;</div>
+            )}
+            {listOpen && search.status === 'failed' && (
+              <div className="search-empty" role="alert">Search did not answer. Press Enter for the full results page.</div>
             )}
           </form>
 

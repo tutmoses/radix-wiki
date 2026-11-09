@@ -351,13 +351,13 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
         ? await sendJson(`/api/wiki${pagePath(tagPath, slug)}`, 'PUT', { title, content, bannerImage, metadata, newSlug, editorIds, verified, baseVersion: page.version, revisionMessage: revisionMessage.trim() || undefined })
         : await sendJson('/api/wiki', 'POST', { title, content, bannerImage, metadata, tagPath, slug: newSlug || slug || undefined });
       const data = await res.json();
-      // Saving stays the phase until the load replaces the editor. An edit that
-      // keeps its slug is refused (409) only for the page moving on; a rename can
-      // also hit a taken slug, which the reader can fix and save again.
+      // Saving stays the phase until the load replaces the editor. The store's
+      // 409 names its reason: a stale or deleted page means reload, a taken slug
+      // is an edit the reader can make and save again.
       if (res.ok) {
         if (data.isFirstContribution) sessionStorage.setItem(CARRIED_TOAST, 'Your first contribution! Welcome to the wiki.');
         window.location.href = pagePath(data.tagPath, data.slug);
-      } else if (res.status === 409 && page && newSlug === page.slug) setPhase({ kind: 'conflict', message: data.error || 'This page changed since it was opened.' });
+      } else if (res.status === 409 && data.conflict !== 'taken') setPhase({ kind: 'conflict', message: data.error || 'This page changed since it was opened.' });
       else setPhase({ kind: 'editing', error: data.error || 'Failed to save.' });
     } catch { setPhase({ kind: 'editing', error: 'Failed to save.' }); }
   };
