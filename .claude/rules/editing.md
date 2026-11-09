@@ -88,6 +88,9 @@ await withClient(async (client) => {
 - **Exit 0 ≠ edit landed.** Verify the specific change through `/api/wiki/<tagPath>/<slug>` (uncached JSON), not the rendered page. To check the render, cache-bust with `?v=` and reload 2–3× to force ISR regeneration.
 - **This is the live production DB** (Supabase). Every write is public the instant it runs.
 
+### Homepage Latest News
+The `#latest-news` list on the homepage (tag path `''`, slug `''`) holds at most 8 items, newest first. An edit that adds one removes one in the same revision: first an item whose deadline has passed, otherwise the oldest dated item.
+
 ### Freshness stamps
 `freshnessBanner` from `wiki-formant/freshness` shows a synthetic "outdated" banner on any page whose `lastVerifiedAt` (falling back to `updatedAt`) is older than `DEFAULT_MAX_AGE_DAYS` (180). When a sweep confirms a page's facts are still current **without** needing an edit, stamp it rather than leaving the banner up:
 
