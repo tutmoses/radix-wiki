@@ -29,6 +29,21 @@ interface RecoverResult {
   recoveredCount: number;
 }
 
+// Each tab's state machine carries its own result or error, so a failure on
+// one never shows on the other.
+type Backup =
+  | { stage: 'idle' }
+  | { stage: 'preparing' }
+  | { stage: 'signing' }
+  | { stage: 'done'; txHash: string }
+  | { stage: 'error'; message: string };
+
+type Recovery =
+  | { stage: 'idle' }
+  | { stage: 'reading' }
+  | { stage: 'done'; pages: RestoredPage[] }
+  | { stage: 'error'; message: string };
+
 interface LedgerDropdownProps {
   onClose: () => void;
   tagPath: string | null;
@@ -41,25 +56,22 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
   const accountAddress = user?.radixAddress ?? null;
 
   const statusUrl = accountAddress ? `/api/ledger/status?address=${accountAddress}` : null;
-  const { data: status, isLoading } = useFetch<LedgerStatus>(statusUrl);
+  const { data: status, status: statusFetch } = useFetch<LedgerStatus>(statusUrl);
 
-  const [stage, setStage] = useState<'idle' | 'preparing' | 'signing' | 'done' | 'error'>('idle');
-  const [txHash, setTxHash] = useState<string | null>(null);
-  const [backupError, setBackupError] = useState<string | null>(null);
-
+  const [backup, setBackup] = useState<Backup>({ stage: 'idle' });
   const [tab, setTab] = useState<'backup' | 'recover'>('backup');
   const [recoverAddress, setRecoverAddress] = useState('');
-  const [recoveredPages, setRecoveredPages] = useState<RestoredPage[] | null>(null);
-  const [recovering, setRecovering] = useState(false);
+  const [recovery, setRecovery] = useState<Recovery>({ stage: 'idle' });
 
   const canBackup = !!tagPath && !!slug;
-  const lastBackupIsThisPage = status?.anchor?.slug === slug;
+  // The status endpoint is edge-cached, so a refetch would still read the
+  // anchor from before this backup: once it is done, the backup is the status.
+  const backedUp = backup.stage === 'done';
+  const lastBackupIsThisPage = backedUp || status?.anchor?.slug === slug;
 
   async function handleBackup() {
     if (!canBackup) return;
-    setStage('preparing');
-    setBackupError(null);
-    setTxHash(null);
+    setBackup({ stage: 'preparing' });
     try {
       const res = await sendJson('/api/ledger/prepare', 'POST', { tagPath, slug });
       if (!res.ok) {
@@ -67,39 +79,34 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
         throw new Error(body.error || `Failed (${res.status})`);
       }
       const { manifest } = await res.json() as PrepareResult;
-      setStage('signing');
+      setBackup({ stage: 'signing' });
       const result = await sendTransaction(manifest);
       const hash = result.transactionIntentHash;
-      setTxHash(hash);
-      setStage('done');
+      setBackup({ stage: 'done', txHash: hash });
       // Persist tx hash to database (fire-and-forget)
       sendJson('/api/ledger/confirm', 'POST', { tagPath, slug, txHash: hash }).catch(() => {});
     } catch (err) {
-      setBackupError(err instanceof Error ? err.message : 'Backup failed');
-      setStage('error');
+      setBackup({ stage: 'error', message: err instanceof Error ? err.message : 'Backup failed' });
     }
   }
 
   async function handleRecover() {
     const address = recoverAddress.trim() || accountAddress;
     if (!address) return;
-    setRecovering(true);
-    setBackupError(null);
-    setRecoveredPages(null);
+    setRecovery({ stage: 'reading' });
     try {
       const res = await fetch(`/api/ledger/recover?address=${encodeURIComponent(address)}`);
       if (!res.ok) throw new Error('Recovery failed');
       const data = await res.json() as RecoverResult;
-      setRecoveredPages(data.pages);
+      setRecovery({ stage: 'done', pages: data.pages });
     } catch (err) {
-      setBackupError(err instanceof Error ? err.message : 'Recovery failed');
-    } finally {
-      setRecovering(false);
+      setRecovery({ stage: 'error', message: err instanceof Error ? err.message : 'Recovery failed' });
     }
   }
 
   const explorerBase = `${DASHBOARD_URL}/transaction/`;
-  const busy = stage === 'preparing' || stage === 'signing';
+  const busy = backup.stage === 'preparing' || backup.stage === 'signing';
+  const recovering = recovery.stage === 'reading';
 
   return (
     <Dropdown onClose={onClose} className="ledger-dropdown">
@@ -116,8 +123,19 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
         <div className="ledger-panel">
           {/* Status */}
           <div className="ledger-status-row">
-            {isLoading ? (
+            {backedUp ? (
+              <>
+                <CheckCircle size={14} className="text-success shrink-0" />
+                <span className="text-small">Last backup: {slug}</span>
+                <span className="text-xs text-text-muted">just now</span>
+              </>
+            ) : statusFetch === 'loading' ? (
               <Loader2 size={14} className="animate-spin text-text-muted" />
+            ) : statusFetch === 'failed' ? (
+              <>
+                <AlertCircle size={14} className="text-error shrink-0" />
+                <span className="text-small">Could not read your account&rsquo;s backup status</span>
+              </>
             ) : status?.anchor ? (
               <>
                 <CheckCircle size={14} className="text-success shrink-0" />
@@ -128,8 +146,8 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
                 <span className="text-xs text-text-muted">
                   {status.hoursSinceAnchor !== null && `${status.hoursSinceAnchor}h ago`}
                 </span>
-                {(txHash || status.backupTxHash) && (
-                  <a href={`${explorerBase}${txHash || status.backupTxHash}`} target="_blank" rel="noopener" className="text-text-muted hover:text-accent shrink-0">
+                {status.backupTxHash && (
+                  <a href={`${explorerBase}${status.backupTxHash}`} target="_blank" rel="noopener" className="text-text-muted hover:text-accent shrink-0">
                     <ExternalLink size={12} />
                   </a>
                 )}
@@ -142,30 +160,30 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
             )}
           </div>
 
-          {lastBackupIsThisPage && status?.anchor && (
+          {lastBackupIsThisPage && (
             <div className="text-xs text-success">This page is already backed up</div>
           )}
 
           {/* Action */}
           {canBackup ? (
-            <button className="ledger-action-btn" onClick={handleBackup} disabled={busy}>
-              {busy ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-              {stage === 'preparing' ? 'Preparing…' :
-               stage === 'signing' ? 'Sign in wallet…' :
-               stage === 'done' ? 'Done!' : `Backup "${slug}" to ledger`}
+            <button className="ledger-action-btn" onClick={handleBackup} disabled={busy || backedUp}>
+              {busy ? <Loader2 size={14} className="animate-spin" /> : backedUp ? <CheckCircle size={14} /> : <Upload size={14} />}
+              {backup.stage === 'preparing' ? 'Preparing…' :
+               backup.stage === 'signing' ? 'Sign in wallet…' :
+               backedUp ? 'Done!' : `Backup "${slug}" to ledger`}
             </button>
           ) : (
             <div className="text-xs text-text-muted">Navigate to a wiki page to back it up.</div>
           )}
 
-          {stage === 'done' && txHash && (
-            <a href={`${explorerBase}${txHash}`} target="_blank" rel="noopener" className="ledger-tx-link">
+          {backup.stage === 'done' && (
+            <a href={`${explorerBase}${backup.txHash}`} target="_blank" rel="noopener" className="ledger-tx-link">
               View transaction <ExternalLink size={12} />
             </a>
           )}
 
-          {backupError && stage === 'error' && (
-            <div className="text-error text-xs">{backupError}</div>
+          {backup.stage === 'error' && (
+            <div className="text-error text-xs">{backup.message}</div>
           )}
 
           <div className="text-xs text-text-muted">
@@ -192,10 +210,10 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
             {recovering ? 'Reading ledger…' : 'Recover pages'}
           </button>
 
-          {recoveredPages !== null && (
-            recoveredPages.length > 0 ? (
+          {recovery.stage === 'done' && (
+            recovery.pages.length > 0 ? (
               <div className="ledger-recovered-list">
-                {recoveredPages.map(p => (
+                {recovery.pages.map(p => (
                   <div key={p.slug} className="ledger-recovered-item">
                     <span className="text-small font-medium truncate">{p.title}</span>
                     <span className="text-xs text-text-muted">{p.tagPath} v{p.version}</span>
@@ -207,8 +225,8 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
             )
           )}
 
-          {backupError && tab === 'recover' && (
-            <div className="text-error text-xs">{backupError}</div>
+          {recovery.stage === 'error' && (
+            <div className="text-error text-xs">{recovery.message}</div>
           )}
         </div>
       )}

@@ -9,7 +9,8 @@ import { ArrowLeft, Save, Trash2, Link2, X } from 'lucide-react';
 import { Breadcrumbs, PageActions } from '@/components/Breadcrumbs';
 import { EmptyState } from '@/components/EmptyState';
 import { Button, Input } from '@/components/ui';
-import { useAuth, useStore } from '@/hooks';
+import { useAuth } from '@/hooks';
+import { CARRIED_TOAST } from '@/components/Toast';
 import { cn, pagePath, sendJson } from '@/lib/utils';
 import { isReservedSlug } from '@/lib/path';
 import { slugifyHeading } from 'wiki-formant/headings';
@@ -218,6 +219,15 @@ function EditorWhitelist({ editors, onAdd, onRemove }: {
 }
 
 // ========== PAGE EDITOR ==========
+// One thing happens at a time, so a save and a delete never overlap. A save
+// refused because the page moved on stays refused: its baseVersion is stale,
+// and only a reload gives the editor the version to build on.
+type Phase =
+  | { kind: 'editing'; error: string | null }
+  | { kind: 'saving' }
+  | { kind: 'deleting' }
+  | { kind: 'conflict'; message: string };
+
 // What the form opens on, and what it is compared against to know it is dirty.
 function initialFields(page: WikiPage | undefined, slug: string) {
   return page
@@ -249,9 +259,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const [slugEdited, setSlugEdited] = useState(false);
   const [editorIds, setEditorIds] = useState<string[]>([]);
   const [editors, setEditors] = useState<UserOption[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [phase, setPhase] = useState<Phase>({ kind: 'editing', error: null });
   const [missingKeys, setMissingKeys] = useState<string[]>([]);
   const [revisionMessage, setRevisionMessage] = useState('');
   const [verified, setVerified] = useState(false);
@@ -290,22 +298,21 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const initialJson = useMemo(() => JSON.stringify(initial), [initial]);
   const dirty = JSON.stringify({ title, content, bannerImage, metadata, editSlug, editorIds }) !== initialJson;
   // A save leaves by a full page load, which would trip the guard it just passed.
-  const confirmLeave = useUnsavedChanges(dirty && !isSaving);
+  const confirmLeave = useUnsavedChanges(dirty && phase.kind !== 'saving');
 
   const save = async () => {
-    if (!title.trim()) { setSaveError('Title is required.'); return; }
+    if (!title.trim()) { setPhase({ kind: 'editing', error: 'Title is required.' }); return; }
     // The empty slug is the category's own hub article, so a new page never takes it.
     const newSlug = slugifyHeading(shownSlug);
-    if (isCreating && !newSlug && !slug) { setSaveError('Add a slug: the title has no letters or digits to make one from.'); return; }
+    if (isCreating && !newSlug && !slug) { setPhase({ kind: 'editing', error: 'Add a slug: the title has no letters or digits to make one from.' }); return; }
     const missing = metadataKeys.filter(k => k.required && !metadata[k.key]?.trim());
     if (missing.length > 0) {
       setMissingKeys(missing.map(k => k.key));
-      setSaveError(`Missing required metadata: ${missing.map(k => k.label).join(', ')}.`);
+      setPhase({ kind: 'editing', error: `Missing required metadata: ${missing.map(k => k.label).join(', ')}.` });
       return;
     }
     setMissingKeys([]);
-    setSaveError(null);
-    setIsSaving(true);
+    setPhase({ kind: 'saving' });
     try {
       // A new page always POSTs: the route gives a slug that is already taken a
       // suffix, where a PUT would have overwritten the page holding it. An edit
@@ -315,26 +322,32 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
         ? await sendJson(`/api/wiki${pagePath(tagPath, slug)}`, 'PUT', { title, content, bannerImage, metadata, newSlug, editorIds, verified, baseVersion: page.version, revisionMessage: revisionMessage.trim() || undefined })
         : await sendJson('/api/wiki', 'POST', { title, content, bannerImage, metadata, tagPath, slug: newSlug || slug || undefined });
       const data = await res.json();
+      // Saving stays the phase until the load replaces the editor. An edit that
+      // keeps its slug is refused (409) only for the page moving on; a rename can
+      // also hit a taken slug, which the reader can fix and save again.
       if (res.ok) {
-        if (data.isFirstContribution) useStore.getState().showToast('Your first contribution! Welcome to the wiki.');
+        if (data.isFirstContribution) sessionStorage.setItem(CARRIED_TOAST, 'Your first contribution! Welcome to the wiki.');
         window.location.href = pagePath(data.tagPath, data.slug);
-      } else { setSaveError(data.error || 'Failed to save.'); setIsSaving(false); }
-    } catch { setSaveError('Failed to save.'); setIsSaving(false); }
+      } else if (res.status === 409 && page && newSlug === page.slug) setPhase({ kind: 'conflict', message: data.error || 'This page changed since it was opened.' });
+      else setPhase({ kind: 'editing', error: data.error || 'Failed to save.' });
+    } catch { setPhase({ kind: 'editing', error: 'Failed to save.' }); }
   };
 
   const handleDelete = async () => {
     if (!page || !confirm('Are you sure you want to delete this page?')) return;
-    setIsDeleting(true);
+    const before = phase;
+    setPhase({ kind: 'deleting' });
     try {
       const r = await fetch(`/api/wiki/${page.tagPath}/${page.slug}`, { method: 'DELETE' });
-      if (r.ok) router.push(`/${page.tagPath}`);
-      else alert('Failed to delete');
-    } catch { alert('Failed to delete'); }
-    finally { setIsDeleting(false); }
+      // Deleting stays the phase until the navigation replaces the editor.
+      if (r.ok) { router.push(`/${page.tagPath}`); return; }
+    } catch { /* reported below */ }
+    alert('Failed to delete');
+    setPhase(before);
   };
 
   const canSave = (isCreating ? !!title.trim() : true) && (gate ? gate.allowed : true);
-  useSaveShortcut(() => { if (canSave && !isSaving) save(); });
+  useSaveShortcut(() => { if (canSave && phase.kind === 'editing') save(); });
 
   const back = <Link href={viewPath}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link>;
   if (page && user && isAuthorOnlyPath(page.tagPath) && !canEditAuthorOnlyPage(page, user.id)) {
@@ -349,6 +362,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   // the edit gate can delete it too.
   const canDelete = !isCreating && (isAuthor || (isSharedPath(tagPath) && gate?.allowed === true));
   const backHref = isCreating ? `/${tagPath}` : viewPath;
+  const isSaving = phase.kind === 'saving';
   const saveLabel = isCreating ? (isSaving ? 'Creating...' : 'Create Page') : (isSaving ? 'Saving...' : 'Save Changes');
 
   const infobox = findInfobox(content) || createBlock('infobox') as import('@/types/blocks').InfoboxBlock;
@@ -365,7 +379,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
       {/* A child of the article, not the header, so it stays stuck for the whole edit. */}
       <div className="editor-bar">
         <Link href={backHref} onClick={e => { if (!confirmLeave()) e.preventDefault(); }} className="row link-muted"><ArrowLeft size={16} /><span>{isCreating ? 'Back to Category' : 'Back to Page'}</span></Link>
-        <Button onClick={save} disabled={isSaving || !canSave} size="sm" title="Save (⌘S)"><Save size={16} />{saveLabel}</Button>
+        <Button onClick={save} disabled={phase.kind !== 'editing' || !canSave} size="sm" title="Save (⌘S)"><Save size={16} />{saveLabel}</Button>
       </div>
       <header className="stack pb-6 border-b border-border">
         {gate && !gate.allowed ? (
@@ -373,7 +387,12 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
         ) : gate === null ? (
           <div data-callout="info"><p>{isCreating ? 'Creating a page in' : 'Editing the page at'} <code>{isCreating ? `/${tagPath}` : viewPath}</code> requires holding <strong>{getXrdRequired(isCreating ? 'create' : 'edit', tagPath).toLocaleString('en-US')} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
         ) : null}
-        {saveError && <div data-callout="error"><p>{saveError}</p></div>}
+        {phase.kind === 'editing' && phase.error && <div data-callout="error"><p>{phase.error}</p></div>}
+        {phase.kind === 'conflict' && (
+          <div data-callout="warning">
+            <p>{phase.message} Your changes were not saved: copy anything you want to keep, then <button type="button" className="link" onClick={() => window.location.reload()}>reload the latest version</button>.</p>
+          </div>
+        )}
         <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
         <div className="slug-editor">
           <Link2 size={14} />
@@ -414,8 +433,8 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
       </div>
       {canDelete && (
         <div className="section-divider">
-          <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isDeleting} className="text-error hover:bg-error/10">
-            <Trash2 size={16} />{isDeleting ? 'Deleting...' : 'Delete Page'}
+          <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isSaving || phase.kind === 'deleting'} className="text-error hover:bg-error/10">
+            <Trash2 size={16} />{phase.kind === 'deleting' ? 'Deleting...' : 'Delete Page'}
           </Button>
         </div>
       )}

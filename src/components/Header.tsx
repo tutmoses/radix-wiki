@@ -45,9 +45,13 @@ function usePageContext() {
 
 function notificationText(n: WikiNotification): string {
   const actor = n.actor.displayName || 'Someone';
-  if (n.type === 'comment_on_page') return `${actor} commented on "${n.page.title}"`;
-  if (n.type === 'comment_reply') return `${actor} replied to your comment on "${n.page.title}"`;
-  return `${actor} edited "${n.page.title}"`;
+  switch (n.type) {
+    case 'comment_on_page': return `${actor} commented on "${n.page.title}"`;
+    case 'comment_reply': return `${actor} replied to your comment on "${n.page.title}"`;
+    case 'page_edited': return `${actor} edited "${n.page.title}"`;
+    // A row written by another deploy can carry a type this one does not know.
+    default: return `New activity from ${actor} on "${n.page.title}"`;
+  }
 }
 
 // The bell carries notifications and nothing else; their settings are /settings.
@@ -158,10 +162,12 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
     : sectionPath ? { tagPath: sectionPath, slug: '', noun: 'section', events: ['page.created', 'page.updated', 'comment.created'] } : null;
   // The same `/api/telegram` client /settings uses, asked only when there is
   // something to watch and someone to watch it with.
-  const { state: telegram, subscribe, unsubscribe } = useTelegram(isAuthenticated && !!target);
+  const { state: telegram, paused, subscribe, unsubscribe } = useTelegram(isAuthenticated && !!target);
   const [watchBusy, setWatchBusy] = useState(false);
 
   const watching = (target && telegram?.subscriptions.find(s => s.tagPath === target.tagPath && s.pageSlug === target.slug)) ?? null;
+  // Paused by the bot's /stop: Watch then resumes every subscription, this one included.
+  const live = !!watching && !paused;
 
   const pageUrl = () => `${window.location.origin}/${tagPath}/${slug}`;
 
@@ -171,8 +177,8 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
     if (!telegram.connected) { onClose(); router.push(`/settings?watch=${encodeURIComponent(pagePath(target.tagPath, target.slug).slice(1))}`); return; }
     setWatchBusy(true);
     try {
-      if (watching) { if (await unsubscribe(watching.id)) showToast(`No longer watching this ${target.noun}`); }
-      else if (await subscribe(target.tagPath, target.slug || null, target.events)) showToast(`Watching this ${target.noun}`);
+      if (live) { if (await unsubscribe(watching.id)) showToast(`No longer watching this ${target.noun}`); }
+      else if (await subscribe(target.tagPath, target.slug || null, target.events)) showToast(paused ? `Watching this ${target.noun}; notifications resumed` : `Watching this ${target.noun}`);
     } finally { setWatchBusy(false); }
   };
 
@@ -182,8 +188,8 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
     <Dropdown onClose={onClose}>
       {isAuthenticated && target && (
         <button className="dropdown-item" onClick={toggleWatch} disabled={watchBusy}>
-          {watching ? <EyeOff size={16} /> : <Eye size={16} />}
-          {watching ? `Unwatch this ${target.noun}` : `Watch this ${target.noun}`}
+          {live ? <EyeOff size={16} /> : <Eye size={16} />}
+          {live ? `Unwatch this ${target.noun}` : watching ? `Resume watching this ${target.noun}` : `Watch this ${target.noun}`}
         </button>
       )}
       {mdxPath && <a href={mdxPath} className="dropdown-item" download onClick={onClose}><FileCode size={16} />Download MDX</a>}
@@ -205,12 +211,12 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
 export function Header() {
   const router = useRouter();
   const { isAuthenticated, user, walletData } = useAuth();
-  const isLoading = useStore(s => s.isLoading);
+  // The session check on load reads as a connection too: the button waits for it.
+  const authBusy = useStore(s => s.auth !== 'idle');
   const logout = useStore(s => s.logout);
   const connect = useStore(s => s.connect);
   // Shared with the rail through wiki-formant's SidebarProvider.
   const { open: sidebarOpen, toggle: toggleSidebar } = useSidebar();
-  const isConnecting = useStore(s => s.isConnecting);
   const fetchNotifications = useStore(s => s.fetchNotifications);
   const unreadCount = useStore(s => s.unreadCount);
   const { hasTools, hasLedger, sectionPath, canExportMdx, isPage, mdxPath, tagPath, slug } = usePageContext();
@@ -256,10 +262,13 @@ export function Header() {
     // Escape shuts the list, and folds the field back to its magnifier once it is empty.
     onEscape: () => { setSearchOpen(false); if (!searchQuery.trim()) setShowSearch(false); },
   });
-  // `searchOpen` is passed because the hook keeps its results when the dropdown
+  // The list shows only while the field does: folding the field by the keyboard
+  // leaves `searchOpen` set, and the list would come back with the field.
+  const listOpen = showSearch && searchOpen;
+  // `listOpen` is passed because the hook keeps its results when the dropdown
   // closes, and an aria-activedescendant pointing into a list that is not
   // rendered is worse than none.
-  const searchCombobox = combobox(undefined, searchOpen);
+  const searchCombobox = combobox(undefined, listOpen);
   const clearSearchResults = useCallback(() => { clearItems(); setSearchOpen(false); }, [clearItems]);
   const searchRef = useClickOutside<HTMLFormElement>(clearSearchResults);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -338,7 +347,7 @@ export function Header() {
               onBlur={() => { if (!searchQuery.trim()) setShowSearch(false); }}
               onKeyDown={onSearchKeyDown} {...searchCombobox.inputProps} />
             {isSearching && <Loader2 className="search-icon-right" size={18} />}
-            {searchOpen && searchResults.length > 0 && (
+            {listOpen && searchResults.length > 0 && (
               <div className="search-results" {...searchCombobox.listProps}>
                 {searchResults.map((page, i) => (
                   <SearchResultRow key={page.url} page={page} query={searchQuery.trim()} active={i === highlight}
@@ -350,7 +359,7 @@ export function Header() {
                 </button>
               </div>
             )}
-            {searchOpen && searchQuery.trim() && !isSearching && searchResults.length === 0 && (
+            {listOpen && searchQuery.trim() && !isSearching && searchResults.length === 0 && (
               <div className="search-empty">No pages found for &ldquo;{searchQuery.trim()}&rdquo;</div>
             )}
           </form>
@@ -390,7 +399,7 @@ export function Header() {
             )}
 
             <div id="radix-connect-btn" className="relative">
-              {isLoading || isConnecting ? (
+              {authBusy ? (
                 <div className="user-pill"><Loader2 size={14} className="animate-spin" /><span className="hidden sm:inline">Connecting...</span></div>
               ) : showAsConnected ? (
                 <>

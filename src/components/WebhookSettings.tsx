@@ -56,6 +56,9 @@ function parseWatchTarget(path = ''): { tagPath: string; slug: string | null; la
 
 const postTelegram = (body: object) => sendJson('/api/telegram', 'POST', body);
 
+/** A connect link's token lives this long (`/api/telegram`), so polling for it stops then. */
+const LINK_TTL = 10 * 60 * 1000;
+
 /**
  * The `/api/telegram` client, shared by /settings and the page-tools watch toggle.
  *
@@ -83,10 +86,10 @@ export function useTelegram(enabled = true) {
     // Declared inside the effect, mirroring useFetch: the load owns its own
     // cancellation rather than settling into a component that has unmounted.
     const load = async () => {
-      await refresh();
-      if (!cancelled) setLoading(false);
+      try { await refresh(); } catch { /* `state` stays null: the section says it could not load */ }
+      finally { if (!cancelled) setLoading(false); }
     };
-    load().catch(() => {});
+    load();
     return () => { cancelled = true; if (pollRef.current) clearInterval(pollRef.current); };
   }, [enabled, refresh]);
 
@@ -95,12 +98,20 @@ export function useTelegram(enabled = true) {
     const link = res.ok ? (await res.json()).deepLink : null;
     if (!link) return;
     setDeepLink(link);
-    pollRef.current = setInterval(async () => {
-      if (!await refresh()) return;
+    // One poll at a time: a second press replaces the first's link and its poll.
+    if (pollRef.current) clearInterval(pollRef.current);
+    const started = Date.now();
+    const poll = setInterval(async () => {
+      const connected = await refresh().catch(() => false);
+      if (pollRef.current !== poll) return;
+      const expired = Date.now() - started > LINK_TTL;
+      if (!connected && !expired) return;
+      clearInterval(poll);
+      pollRef.current = null;
       setDeepLink(null);
-      if (pollRef.current) clearInterval(pollRef.current);
-      showToast('Telegram connected!');
+      showToast(connected ? 'Telegram connected!' : 'The Telegram link expired. Press Connect Telegram for a new one.', connected ? 'success' : 'info');
     }, 3000);
+    pollRef.current = poll;
   };
 
   const subscribe = async (tagPath: string, pageSlug: string | null, events: string[]) => {
@@ -121,11 +132,14 @@ export function useTelegram(enabled = true) {
     return ok;
   };
 
-  return { state, loading, deepLink, connect, subscribe, unsubscribe, disconnect };
+  // The bot's /stop pauses every row at once, and a subscribe resumes them all.
+  const paused = !!state?.subscriptions.some(s => !s.active);
+
+  return { state, loading, paused, deepLink, connect, subscribe, unsubscribe, disconnect };
 }
 
 function TelegramSection({ watch }: { watch?: string }) {
-  const { state, loading, deepLink, connect, subscribe, unsubscribe, disconnect } = useTelegram();
+  const { state, loading, paused, deepLink, connect, subscribe, unsubscribe, disconnect } = useTelegram();
   const [subscribing, setSubscribing] = useState(false);
   const showToast = useStore(s => s.showToast);
 
@@ -139,8 +153,9 @@ function TelegramSection({ watch }: { watch?: string }) {
     const events = context.slug
       ? ['page.updated', 'comment.created']
       : ['page.created', 'page.updated', 'comment.created'];
-    if (await subscribe(context.tagPath, context.slug, events)) showToast(`Subscribed to ${context.label}`);
-    setSubscribing(false);
+    try {
+      if (await subscribe(context.tagPath, context.slug, events)) showToast(paused ? `Subscribed to ${context.label}; notifications resumed` : `Subscribed to ${context.label}`);
+    } finally { setSubscribing(false); }
   };
 
   const handleUnsubscribe = async (id: string) => {
@@ -152,9 +167,10 @@ function TelegramSection({ watch }: { watch?: string }) {
   };
 
   if (loading) return null;
+  if (!state) return <p className="text-small text-text-muted px-3 py-2">Telegram settings could not be loaded. Reload to try again.</p>;
 
-  // Active subscriptions (exclude connection-only records with no scope)
-  const subs = state?.subscriptions.filter(s => s.tagPath !== '') ?? [];
+  // Scoped subscriptions, paused or not (excludes the connection-only record with no scope)
+  const subs = state.subscriptions.filter(s => s.tagPath !== '');
 
   // Check if current context is already subscribed
   const isCurrentSubscribed = context && subs.some(s =>
@@ -165,7 +181,7 @@ function TelegramSection({ watch }: { watch?: string }) {
     <div className="telegram-section">
       <div className="spread px-3 py-2">
         <span className="text-small font-medium">Telegram</span>
-        {state?.connected && (
+        {state.connected && (
           <button onClick={handleDisconnect} className="text-xs text-text-muted hover:text-error cursor-pointer">
             Disconnect
           </button>
@@ -182,17 +198,20 @@ function TelegramSection({ watch }: { watch?: string }) {
             <Loader2 size={12} className="animate-spin" />Waiting for connection...
           </div>
         </div>
-      ) : state?.connected ? (
+      ) : state.connected ? (
         <div className="telegram-subs">
           {/* Subscribe to current context */}
-          {context && !isCurrentSubscribed && (
+          {paused && (
+            <p className="text-xs text-text-muted">Paused from Telegram with /stop. Subscribing to any page or section resumes them all.</p>
+          )}
+          {context && (!isCurrentSubscribed || paused) && (
             <button onClick={handleSubscribe} disabled={subscribing} className="telegram-subscribe-btn">
               <Bell size={14} />
-              <span>{context.slug ? `Subscribe to "${context.label}"` : `Subscribe to ${context.label}`}</span>
+              <span>{isCurrentSubscribed ? 'Resume notifications' : context.slug ? `Subscribe to "${context.label}"` : `Subscribe to ${context.label}`}</span>
               {subscribing && <Loader2 size={12} className="animate-spin" />}
             </button>
           )}
-          {context && isCurrentSubscribed && (
+          {context && isCurrentSubscribed && !paused && (
             <div className="telegram-subscribed">
               <BellOff size={14} />
               <span className="text-small text-text-muted">Subscribed to this {context.slug ? 'page' : 'section'}</span>
@@ -255,9 +274,11 @@ export function WebhookSettings({ watch }: { watch?: string }) {
   const showToast = useStore(s => s.showToast);
 
   const fetchWebhooks = useCallback(async () => {
-    const res = await fetch('/api/webhooks');
-    if (res.ok) setWebhooks(await res.json());
-    setLoading(false);
+    try {
+      const res = await fetch('/api/webhooks');
+      if (res.ok) setWebhooks(await res.json());
+    } catch { /* the list stays as it was */ }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchWebhooks(); }, [fetchWebhooks]);
@@ -272,22 +293,22 @@ export function WebhookSettings({ watch }: { watch?: string }) {
     if (events.length === 0) { setError('Select at least one event'); return; }
     setError('');
     setSubmitting(true);
-
-    const res = await sendJson('/api/webhooks', 'POST', { url, events, tagPathFilter: tagFilter || undefined });
-
-    if (res.ok) {
-      const webhook = await res.json();
-      setNewSecret(webhook.secret);
-      setShowForm(false);
-      setUrl('https://');
-      setEvents(['page.created', 'page.updated']);
-      setTagFilter('');
-      await fetchWebhooks();
-    } else {
-      const data = await res.json();
-      setError(data.error || 'Failed to create');
-    }
-    setSubmitting(false);
+    try {
+      const res = await sendJson('/api/webhooks', 'POST', { url, events, tagPathFilter: tagFilter || undefined });
+      if (res.ok) {
+        const webhook = await res.json();
+        setNewSecret(webhook.secret);
+        setShowForm(false);
+        setUrl('https://');
+        setEvents(['page.created', 'page.updated']);
+        setTagFilter('');
+        await fetchWebhooks();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Failed to create');
+      }
+    } catch { setError('Failed to create: the request did not reach the wiki.'); }
+    finally { setSubmitting(false); }
   };
 
   const handleDelete = async (id: string) => {

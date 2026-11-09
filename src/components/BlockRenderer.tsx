@@ -100,15 +100,15 @@ function listUrl(block: ListBlock): string | null {
 
 function ListBlockView({ block }: { block: ListBlock }) {
   const now = useNow();
-  // A server-resolved list never fetches, and `useFetch(null)` reports isLoading
-  // false, so the skeleton cannot flash over a list that already exists. The
+  // A server-resolved list never fetches, and `useFetch(null)` is idle, not
+  // loading, so the skeleton cannot flash over a list that already exists. The
   // fetch is for a list drawn before the server has resolved it, as the
   // homepage is just after a save.
-  const { data, isLoading } = useFetch<WikiPage[]>(block.items ? null : listUrl(block), {
+  const { data, status } = useFetch<WikiPage[]>(block.items ? null : listUrl(block), {
     transform: d => (Array.isArray(d) ? d : d.items || []),
   });
   const pages = block.items || data || [];
-  if (isLoading && !pages.length) return <div className="recent-pages-grid">{Array.from({ length: 2 }, (_, i) => <div key={i} className="h-32 skeleton" />)}</div>;
+  if (status === 'loading' && !pages.length) return <div className="recent-pages-grid">{Array.from({ length: 2 }, (_, i) => <div key={i} className="h-32 skeleton" />)}</div>;
   if (block.show === 'cards') {
     return pages.length
       ? <div className="recent-pages-grid">{pages.map(p => <PageCard key={p.id} page={p} />)}</div>
@@ -134,9 +134,9 @@ function useResourcePrice(resourceAddress?: string) {
 }
 
 function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
-  const { data, isLoading, error } = useResourcePrice(block.resourceAddress);
+  const { data, status, error } = useResourcePrice(block.resourceAddress);
   if (!block.resourceAddress) return <p className="text-text-muted">No resource address configured</p>;
-  if (isLoading) return <div className="surface p-4 animate-pulse"><div className="h-8 w-32 bg-surface-2 rounded" /></div>;
+  if (status === 'loading') return <div className="surface p-4 animate-pulse"><div className="h-8 w-32 bg-surface-2 rounded" /></div>;
   if (error || !data || typeof data.price !== 'number') return <p className="text-error text-small">{error || 'Price unavailable'}</p>;
   const displayName = data.symbol || data.name || block.resourceAddress.slice(0, 20) + '...';
   const isPositive = (data.change24h ?? 0) >= 0;
@@ -187,10 +187,11 @@ function RssFeedBlockView({ block }: { block: RssFeedBlock }) {
   // Prefer items pre-resolved server-side (rendered as static HTML, no client hydration
   // needed); fall back to a client fetch for editor/preview where they aren't resolved.
   const preResolved = block.resolvedItems as RssFeedItem[] | undefined;
-  const { data, isLoading } = useFetch<RssFeedItem[]>(preResolved ? null : block.url, { transform: d => d.items || [] });
+  const { data, status } = useFetch<RssFeedItem[]>(preResolved ? null : block.url, { transform: d => d.items || [] });
   const items = preResolved || data || [];
 
-  if (!preResolved && isLoading) return <div className="rss-feed"><div className="rss-feed-scroll"><div className="stack-sm">{Array.from({ length: 3 }, (_, i) => <div key={i} className="h-[280px] skeleton rounded-md" />)}</div></div></div>;
+  if (!preResolved && status === 'loading') return <div className="rss-feed"><div className="rss-feed-scroll"><div className="stack-sm">{Array.from({ length: 3 }, (_, i) => <div key={i} className="h-[280px] skeleton rounded-md" />)}</div></div></div>;
+  if (status === 'failed') return <EmptyState title="The feed could not be loaded." />;
   if (!items.length) return <EmptyState title="No feed items found." />;
 
   // Wrapper is the fill target: beside a taller sibling column it stretches, and the

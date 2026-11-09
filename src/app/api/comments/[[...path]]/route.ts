@@ -7,7 +7,7 @@ import { json, errors, handleRoute } from 'wiki-formant/http';
 import { parsePagination, paginatedResponse } from 'wiki-formant/pagination';
 import { requireAuth, CACHE, type RouteContext } from '@/lib/api';
 import { AUTHOR_SELECT, isIdeasPath, pageTag, revalidatePage } from '@/lib/wiki';
-import type { CommentInput } from '@/types';
+import type { CommentInput, NotificationType } from '@/types';
 import { deliverWebhooks } from '@/lib/webhooks';
 
 type PathParams = { path?: string[] };
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     revalidateDiscussion(page);
 
     // Notifications are written after the response, never failing the comment.
-    const notify = (userId: string, type: string) => after(() =>
+    const notify = (userId: string, type: NotificationType) => after(() =>
       prisma.notification.create({ data: { userId, actorId: auth.session.userId, type, pageId, commentId: comment.id } }).catch(() => {}));
     if (page.authorId && page.authorId !== auth.session.userId) notify(page.authorId, 'comment_on_page');
     if (parentComment && parentComment.authorId !== auth.session.userId) notify(parentComment.authorId, 'comment_reply');

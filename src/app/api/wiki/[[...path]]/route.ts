@@ -18,7 +18,7 @@ import { describeBlockIssues, MAX_BLOCK_ROWS } from 'wiki-formant/validation';
 import { blocksToMdx } from '@/lib/mdx';
 import { pageToMarkdown } from '@/lib/markdown';
 import { markdownDocument } from 'wiki-formant/markdown';
-import type { WikiPage, WikiPageInput, PageMetadata } from '@/types';
+import type { WikiPage, WikiPageInput, PageMetadata, NotificationType } from '@/types';
 import type { Block } from '@/types/blocks';
 import { deliverWebhooks } from '@/lib/webhooks';
 import { trackSearch } from '@/lib/track';
@@ -408,7 +408,7 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
 
     if (existing.authorId && !isAuthor) {
       const userId = existing.authorId;
-      after(() => prisma.notification.create({ data: { userId, actorId: auth.session.userId, type: 'page_edited', pageId: existing.id } }).catch(() => {}));
+      after(() => prisma.notification.create({ data: { userId, actorId: auth.session.userId, type: 'page_edited' satisfies NotificationType, pageId: existing.id } }).catch(() => {}));
     }
     const totalRevisions = await prisma.wikiRevision.count({ where: { authorId: auth.session.userId } });
     // A rename expires the old URL and the new one, which may hold a cached 404.

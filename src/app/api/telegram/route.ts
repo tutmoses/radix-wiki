@@ -10,7 +10,7 @@ import { VALID_EVENTS, type WebhookEvent } from '@/lib/webhooks';
 
 const BOT_USERNAME = process.env.TELEGRAM_SUB_BOT_USERNAME;
 
-// GET: return connection status + all subscriptions
+// GET: return connection status + all subscriptions, each with `active` (false once /stop paused it)
 export async function GET(request: NextRequest) {
   return handleRoute(async () => {
     const auth = await requireAuth(request);
@@ -74,6 +74,9 @@ export async function POST(request: NextRequest) {
       if (invalid.length > 0) return errors.badRequest(`Invalid events: ${invalid.join(', ')}`);
     }
 
+    // The bot's /stop pauses every row of the chat and promises that subscribing
+    // from any page resumes them, so a subscription resumes them all.
+    await prisma.telegramLink.updateMany({ where: { userId: auth.session.userId, active: false }, data: { active: true } });
     const sub = await prisma.telegramLink.upsert({
       where: {
         userId_tagPath_pageSlug: {

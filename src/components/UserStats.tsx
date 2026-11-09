@@ -74,9 +74,9 @@ function ScoreRing({ score, points }: { score: number; points: number }) {
 }
 
 export function UserStats({ userId }: { userId: string }) {
-  const { data, isLoading } = useFetch<UserStatsData>(`/api/users/${userId}/stats`);
+  const { data, status } = useFetch<UserStatsData>(`/api/users/${userId}/stats`);
 
-  if (isLoading) {
+  if (status === 'loading') {
     return (
       <section className="section-divider stack-sm">
         <h3 className="text-text-muted">Statistics</h3>

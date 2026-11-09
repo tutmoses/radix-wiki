@@ -66,7 +66,11 @@ export type IdeasPage = WikiPage & {
 };
 
 
-export type WikiNotification = Notification & {
+/** What a notification reports. The column is a plain string, so a row can still carry another value. */
+export type NotificationType = 'comment_on_page' | 'comment_reply' | 'page_edited';
+
+export type WikiNotification = Omit<Notification, 'type'> & {
+  type: NotificationType;
   actor: WikiAuthor;
   page: Pick<WikiPageRow, 'id' | 'title' | 'tagPath' | 'slug'>;
 };

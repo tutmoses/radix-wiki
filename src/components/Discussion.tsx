@@ -107,9 +107,12 @@ function CommentThread({ comment, depth, onReply, onDelete, currentUserId }: {
   );
 }
 
+// A failed first load is its own state, not an empty thread; a failed refetch
+// keeps the thread already on screen.
+type Thread = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; comments: WikiComment[] };
+
 export function Discussion({ pageId }: { pageId: string }) {
-  const [comments, setComments] = useState<WikiComment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [thread, setThread] = useState<Thread>({ kind: 'loading' });
   // Collapsed by default — talk shouldn't compete with the article (Wikipedia keeps it off-page entirely).
   const [expanded, setExpanded] = useState(false);
   const { isAuthenticated, user } = useAuth();
@@ -119,12 +122,13 @@ export function Discussion({ pageId }: { pageId: string }) {
   const fetchComments = useCallback(async (fresh?: boolean) => {
     try {
       const res = await fetch(`/api/comments?pageId=${pageId}${fresh ? `&t=${Date.now()}` : ''}`);
-      if (res.ok) {
-        const data = await res.json();
-        setComments(buildCommentTree(data.items));
-      }
-    } catch (e) { console.error('Failed to fetch comments:', e); }
-    finally { setIsLoading(false); }
+      if (!res.ok) throw new Error(res.statusText);
+      const data = await res.json();
+      setThread({ kind: 'loaded', comments: buildCommentTree(data.items) });
+    } catch (e) {
+      console.error('Failed to fetch comments:', e);
+      setThread(t => t.kind === 'loaded' ? t : { kind: 'failed' });
+    }
   }, [pageId]);
 
   useEffect(() => { fetchComments(); }, [fetchComments]);
@@ -146,7 +150,7 @@ export function Discussion({ pageId }: { pageId: string }) {
   return (
     <section className="section-divider stack">
       <button onClick={() => setExpanded(!expanded)} className="spread w-full text-left">
-        <div className="row"><MessageSquare size={20} className="text-accent" /><h3 id="discussion" className="font-semibold">Discussion</h3><span className="text-text-muted">({countComments(comments)})</span></div>
+        <div className="row"><MessageSquare size={20} className="text-accent" /><h3 id="discussion" className="font-semibold">Discussion</h3>{thread.kind === 'loaded' && <span className="text-text-muted">({countComments(thread.comments)})</span>}</div>
         {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
       </button>
       {expanded && (
@@ -156,8 +160,9 @@ export function Discussion({ pageId }: { pageId: string }) {
               <CommentForm onSubmit={c => handlePost(c)} placeholder="Start a discussion..." />
             </>
           ) : <p className="text-text-muted surface p-4 text-center">Connect your wallet to join the discussion.</p>}
-          {isLoading ? <div className="stack">{[1, 2].map(i => <div key={i} className="h-20 skeleton" />)}</div>
-            : comments.length > 0 ? <div className="stack">{comments.map(c => <CommentThread key={c.id} comment={c} depth={0} onReply={handlePost} onDelete={handleDelete} currentUserId={user?.id} />)}</div>
+          {thread.kind === 'loading' ? <div className="stack">{[1, 2].map(i => <div key={i} className="h-20 skeleton" />)}</div>
+            : thread.kind === 'failed' ? <EmptyState title="The discussion could not be loaded." action={<Button variant="ghost" size="sm" onClick={() => fetchComments(true)}>Try again</Button>} />
+            : thread.comments.length > 0 ? <div className="stack">{thread.comments.map(c => <CommentThread key={c.id} comment={c} depth={0} onReply={handlePost} onDelete={handleDelete} currentUserId={user?.id} />)}</div>
             : <EmptyState title="No comments yet." />}
         </div>
       )}

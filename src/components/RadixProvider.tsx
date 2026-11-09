@@ -18,13 +18,19 @@ const toWalletData = ({ persona, accounts }: RadixWalletData): RadixWalletData =
   accounts: accounts.map(a => ({ address: a.address, label: a.label, appearanceId: a.appearanceId })),
 });
 
+// What the reader is told when the wallet request ends without an answer. A
+// rejection in the wallet is the reader's own choice, so it needs no message.
+const connectFailure = ({ error, message }: { error: string; message?: string }): string | null =>
+  error === 'rejectedByUser' || error === 'canceledByUser' ? null
+  : error === 'ChallengeGeneratorError' ? 'Sign-in could not start: the wiki did not issue a sign-in challenge. Try again in a moment.'
+  : `The Radix Wallet did not connect${message ? ` (${message})` : ''}. Try again.`;
+
 export function RadixProvider({ children }: { children: React.ReactNode }) {
   const rdtRef = useRef<RadixDappToolkitType | null>(null);
   const setSession = useStore(s => s.setSession);
-  const setLoading = useStore(s => s.setLoading);
+  const sessionChecked = useStore(s => s.sessionChecked);
   const setWalletData = useStore(s => s.setWalletData);
-  const setRdtReady = useStore(s => s.setRdtReady);
-  const _setRdtCallbacks = useStore(s => s._setRdtCallbacks);
+  const setWallet = useStore(s => s.setWallet);
 
   const createSession = useCallback(async (
     walletData: RadixWalletData,
@@ -51,8 +57,8 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
       .then(r => r.ok ? r.json() : null)
       .then(session => { if (session) setSession(session); })
       .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [setSession, setLoading]);
+      .finally(sessionChecked);
+  }, [setSession, sessionChecked]);
 
   // Load Radix DApp Toolkit
   useEffect(() => {
@@ -88,8 +94,8 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
 
         // dataRequestControl intercepts wallet responses BEFORE RDT processes them.
         // Auth happens here — fires on sendRequest() responses, NOT cached replays.
-        // We never throw: if auth fails, RDT still proceeds so walletData$ emits
-        // and clears isConnecting. isAuthenticated stays false (no session).
+        // We never throw: if auth fails, RDT still proceeds, the request settles
+        // and ends the connect attempt. isAuthenticated stays false (no session).
         rdt.walletApi.dataRequestControl(async (walletResponse) => {
           try {
             const account = walletResponse.accounts?.[0];
@@ -115,27 +121,30 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
           setWalletData(walletData.accounts.length > 0 ? toWalletData(walletData) : null);
         });
 
-        setRdtReady(true);
-        _setRdtCallbacks(
-          () => rdt.walletApi.sendRequest(),
-          () => rdt.disconnect(),
-          async (manifest: string) => {
+        setWallet({
+          kind: 'ready',
+          connect: async () => {
+            const r = await rdt.walletApi.sendRequest();
+            return r.isErr() ? connectFailure(r.error) : null;
+          },
+          disconnect: () => rdt.disconnect(),
+          sendTransaction: async (manifest: string) => {
             const r = await rdt.walletApi.sendTransaction({ transactionManifest: manifest });
             if (r.isErr()) throw new Error(r.error.message ?? 'Transaction failed');
             return { transactionIntentHash: r.value.transactionIntentHash };
           },
-        );
+        });
       } catch (error) {
         console.error('Failed to initialize Radix DApp Toolkit:', error);
-        setRdtReady(true);
+        setWallet({ kind: 'unavailable' });
       }
     })();
 
     return () => {
       subscription?.unsubscribe();
-      _setRdtCallbacks(null, null, null);
+      setWallet({ kind: 'loading' });
     };
-  }, [setWalletData, setSession, setLoading, setRdtReady, createSession, _setRdtCallbacks]);
+  }, [setWalletData, createSession, setWallet]);
 
   return <>{children}</>;
 }

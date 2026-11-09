@@ -11,30 +11,37 @@ import type { AuthSession, RadixWalletData, WikiNotification } from '@/types';
 
 // ========== FETCH HOOK ==========
 
-export function useFetch<T>(url: string | null | undefined, opts?: { transform?: (data: any) => T; interval?: number }) {
-  const [data, setData] = useState<T | null>(null);
-  const [isLoading, setIsLoading] = useState(!!url);
-  const [error, setError] = useState<string | null>(null);
+/** Every variant carries `data`, so a caller can destructure it; only `loaded` holds any. */
+type Fetched<T> =
+  | { status: 'idle' | 'loading'; data: null; error: null }
+  | { status: 'failed'; data: null; error: string }
+  | { status: 'loaded'; data: T; error: null };
+
+const IDLE = { status: 'idle', data: null, error: null } as const;
+const LOADING = { status: 'loading', data: null, error: null } as const;
+
+/** `interval` polls: a poll leaves the loaded state on screen until its answer replaces it. */
+export function useFetch<T>(url: string | null | undefined, opts?: { transform?: (data: any) => T; interval?: number }): Fetched<T> {
+  const [state, setState] = useState<Fetched<T>>(url ? LOADING : IDLE);
 
   useEffect(() => {
-    if (!url) { setIsLoading(false); return; }
+    if (!url) { setState(IDLE); return; }
     let cancelled = false;
+    setState(LOADING);
     const doFetch = async () => {
       try {
-        setIsLoading(true);
         const res = await fetch(url);
-        if (!res.ok) throw new Error(res.statusText);
+        if (!res.ok) throw new Error(res.statusText || `Failed (${res.status})`);
         const json = await res.json();
-        if (!cancelled) { setData(opts?.transform ? opts.transform(json) : json); setError(null); }
-      } catch (e) { if (!cancelled) setError(e instanceof Error ? e.message : 'Fetch failed'); }
-      finally { if (!cancelled) setIsLoading(false); }
+        if (!cancelled) setState({ status: 'loaded', data: opts?.transform ? opts.transform(json) : json, error: null });
+      } catch (e) { if (!cancelled) setState({ status: 'failed', data: null, error: e instanceof Error ? e.message : 'Fetch failed' }); }
     };
     doFetch();
     const id = opts?.interval ? setInterval(doFetch, opts.interval) : undefined;
     return () => { cancelled = true; if (id) clearInterval(id); };
   }, [url]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { data, isLoading, error };
+  return state;
 }
 
 // ========== PAGE PATH HOOK ==========
@@ -79,26 +86,39 @@ export function usePagePath() {
 
 // ========== STORE ==========
 
+/** The Radix dApp Toolkit: still loading, failed to load, or loaded with the wallet calls it offers. */
+type Wallet =
+  | { kind: 'loading' }
+  | { kind: 'unavailable' }
+  | {
+      kind: 'ready';
+      /** Settles when the wallet answers: null once it has, else what to tell the reader. */
+      connect: () => Promise<string | null>;
+      disconnect: () => void;
+      sendTransaction: (manifest: string) => Promise<{ transactionIntentHash: string }>;
+    };
+
+const WALLET_UNAVAILABLE = 'The Radix wallet toolkit did not load, so the wallet cannot be reached from this page. Reload and try again.';
+
 interface AppStore {
   session: AuthSession | null;
-  isLoading: boolean;
-  isConnecting: boolean;
-  rdtReady: boolean;
+  /** The session check on load, a wallet request in flight, or neither. */
+  auth: 'checking' | 'connecting' | 'idle';
+  wallet: Wallet;
   walletData: RadixWalletData | null;
-  _rdtDisconnect: (() => void) | null;
-  _rdtConnect: (() => void) | null;
-  _rdtSendTransaction: ((manifest: string) => Promise<{ transactionIntentHash: string }>) | null;
-  _pendingConnect: boolean;
+  /** The connect attempt in flight, named by its 60s backstop timer. */
   _connectTimeout: ReturnType<typeof setTimeout> | null;
-  _setRdtCallbacks: (connect: (() => void) | null, disconnect: (() => void) | null, sendTx?: ((manifest: string) => Promise<{ transactionIntentHash: string }>) | null) => void;
+  /** Ends the attempt `timeout` names, and only that one, telling the reader `message` if there is one. */
+  _endConnect: (timeout: ReturnType<typeof setTimeout>, message?: string | null) => void;
+  setWallet: (wallet: Wallet) => void;
   sendTransaction: (manifest: string) => Promise<{ transactionIntentHash: string }>;
-  setRdtReady: (ready: boolean) => void;
   setSession: (session: AuthSession | null) => void;
-  setLoading: (isLoading: boolean) => void;
+  sessionChecked: () => void;
   setWalletData: (walletData: RadixWalletData | null) => void;
   connect: () => void;
   logout: (everywhere?: boolean) => Promise<void>;
-  toast: { message: string; type: 'success' | 'info' } | null;
+  /** `timer` is the toast's own dismissal, cleared when another replaces it. */
+  toast: { message: string; type: 'success' | 'info'; timer: ReturnType<typeof setTimeout> } | null;
   showToast: (message: string, type?: 'success' | 'info') => void;
   dismissToast: () => void;
   /** The article on screen, set by `PageView`, so the header's citation can name it. */
@@ -109,68 +129,72 @@ interface AppStore {
   markNotificationsRead: (ids?: string[]) => Promise<void>;
 }
 
+// The wallet's answer ends the attempt, so a rejection or a failed challenge
+// says so at once rather than leaving "Connecting..." up until the backstop.
+function sendConnect(wallet: Extract<Wallet, { kind: 'ready' }>, timeout: ReturnType<typeof setTimeout>) {
+  wallet.connect()
+    .catch(() => 'The Radix Wallet request failed. Try again.')
+    .then(message => useStore.getState()._endConnect(timeout, message));
+}
+
 export const useStore = create<AppStore>()((set, get) => ({
   session: null,
-  isLoading: true,
-  isConnecting: false,
-  rdtReady: false,
+  auth: 'checking',
+  wallet: { kind: 'loading' },
   walletData: null,
-  _rdtDisconnect: null,
-  _rdtConnect: null,
-  _rdtSendTransaction: null,
-  _pendingConnect: false,
   _connectTimeout: null,
-  _setRdtCallbacks: (connect, disconnect, sendTx) => {
-    set({ _rdtConnect: connect, _rdtDisconnect: disconnect, _rdtSendTransaction: sendTx ?? null });
-    // Flush any connect attempt that happened before RDT was ready
-    if (connect && get()._pendingConnect) {
-      set({ _pendingConnect: false });
-      connect();
-    }
+  _endConnect: (timeout, message) => {
+    if (get()._connectTimeout !== timeout) return;
+    clearTimeout(timeout);
+    set({ auth: 'idle', _connectTimeout: null });
+    if (message) get().showToast(message, 'info');
+  },
+  setWallet: (wallet) => {
+    const { wallet: prev, auth, _connectTimeout } = get();
+    set({ wallet });
+    // A connect clicked while the toolkit loaded was waiting for it.
+    if (prev.kind !== 'loading' || auth !== 'connecting' || !_connectTimeout) return;
+    if (wallet.kind === 'ready') sendConnect(wallet, _connectTimeout);
+    else if (wallet.kind === 'unavailable') get()._endConnect(_connectTimeout, WALLET_UNAVAILABLE);
   },
   sendTransaction: async (manifest) => {
-    const { _rdtSendTransaction } = get();
-    if (!_rdtSendTransaction) throw new Error('Wallet not connected');
-    return _rdtSendTransaction(manifest);
+    const { wallet } = get();
+    if (wallet.kind !== 'ready') throw new Error(wallet.kind === 'unavailable' ? WALLET_UNAVAILABLE : 'Wallet not connected');
+    return wallet.sendTransaction(manifest);
   },
-  setRdtReady: (rdtReady) => set({ rdtReady }),
-  setSession: (session) => set({ session, isLoading: false }),
-  setLoading: (isLoading) => set({ isLoading }),
-  setWalletData: (walletData) => {
-    const { _connectTimeout } = get();
-    if (_connectTimeout) clearTimeout(_connectTimeout);
-    set({ walletData, isConnecting: false, _connectTimeout: null });
-  },
+  setSession: (session) => set({ session }),
+  sessionChecked: () => set(s => s.auth === 'checking' ? { auth: 'idle' } : {}),
+  setWalletData: (walletData) => set({ walletData }),
   connect: () => {
-    const { _rdtConnect, rdtReady, _connectTimeout } = get();
+    const { wallet, _connectTimeout } = get();
+    if (wallet.kind === 'unavailable') { get().showToast(WALLET_UNAVAILABLE, 'info'); return; }
     if (_connectTimeout) clearTimeout(_connectTimeout);
-    const timeout = setTimeout(() => {
-      set({ isConnecting: false, _connectTimeout: null });
-      get().showToast('No response from the Radix Wallet. Make sure the wallet app or Connector extension is reachable, then try again.', 'info');
-    }, 60_000);
-    set({ isConnecting: true, _connectTimeout: timeout });
-    if (_rdtConnect) {
-      _rdtConnect();
-    } else if (!rdtReady) {
-      set({ _pendingConnect: true });
-    }
+    const timeout = setTimeout(() => get()._endConnect(timeout,
+      'No response from the Radix Wallet. Make sure the wallet app or Connector extension is reachable, then try again.'), 60_000);
+    set({ auth: 'connecting', _connectTimeout: timeout });
+    if (wallet.kind === 'ready') sendConnect(wallet, timeout);
   },
   logout: async (everywhere = false) => {
-    const { _rdtDisconnect } = get();
+    const { wallet } = get();
     try {
       await fetch(everywhere ? '/api/auth?everywhere' : '/api/auth', { method: 'DELETE' });
     } catch (error) {
       console.error('Failed to clear server session:', error);
     }
-    _rdtDisconnect?.();
-    set({ session: null, walletData: null, isLoading: false, notifications: [], unreadCount: 0 });
+    if (wallet.kind === 'ready') wallet.disconnect();
+    set({ session: null, walletData: null, notifications: [], unreadCount: 0 });
   },
   toast: null,
   showToast: (message, type = 'success') => {
-    set({ toast: { message, type } });
-    setTimeout(() => set({ toast: null }), 5000);
+    const prev = get().toast;
+    if (prev) clearTimeout(prev.timer);
+    set({ toast: { message, type, timer: setTimeout(() => set({ toast: null }), 5000) } });
   },
-  dismissToast: () => set({ toast: null }),
+  dismissToast: () => {
+    const prev = get().toast;
+    if (prev) clearTimeout(prev.timer);
+    set({ toast: null });
+  },
   pageTitle: null,
   notifications: [],
   unreadCount: 0,
