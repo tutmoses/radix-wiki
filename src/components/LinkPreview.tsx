@@ -26,7 +26,8 @@ const eligible = (a: HTMLAnchorElement): boolean => {
 
 const fetchPreview = async (href: string): Promise<Preview | null> => {
   const res = await fetch(`/api/wiki/preview?path=${encodeURIComponent(href.replace(/^\//, ''))}`);
-  if (!res.ok) return null;
+  // A refusal is not an answer about the page, so it is not returned as one.
+  if (!res.ok) throw new Error(res.statusText || `Failed (${res.status})`);
   const data: Preview = await res.json();
   // `found: false` is a resolved answer, not a card. Returning null tells the
   // controller to cache the miss and never re-ask for this href.

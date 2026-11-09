@@ -12,7 +12,7 @@ import type { AuthSession, RadixWalletData, WikiNotification } from '@/types';
 // ========== FETCH HOOK ==========
 
 /** Every variant carries `data`, so a caller can destructure it; only `loaded` holds any. */
-type Fetched<T> =
+export type Fetched<T> =
   | { status: 'idle' | 'loading'; data: null; error: null }
   | { status: 'failed'; data: null; error: string }
   | { status: 'loaded'; data: T; error: null };
@@ -20,25 +20,40 @@ type Fetched<T> =
 const IDLE = { status: 'idle', data: null, error: null } as const;
 const LOADING = { status: 'loading', data: null, error: null } as const;
 
-/** `interval` polls: a poll leaves the loaded state on screen until its answer replaces it. */
+/**
+ * `interval` polls: a poll leaves the loaded state on screen until its answer
+ * replaces it, and a poll that fails keeps it. Each request is numbered, so one
+ * answering after a newer one has landed is dropped rather than shown over it.
+ */
 export function useFetch<T>(url: string | null | undefined, opts?: { transform?: (data: any) => T; interval?: number }): Fetched<T> {
   const [state, setState] = useState<Fetched<T>>(url ? LOADING : IDLE);
 
   useEffect(() => {
     if (!url) { setState(IDLE); return; }
-    let cancelled = false;
+    let started = 0;
+    // The newest request whose answer is on screen; Infinity once the URL is left.
+    let landed = 0;
+    const land = (attempt: number, next: (s: Fetched<T>) => Fetched<T>) => {
+      if (attempt <= landed) return;
+      landed = attempt;
+      setState(next);
+    };
     setState(LOADING);
     const doFetch = async () => {
+      const attempt = ++started;
       try {
         const res = await fetch(url);
         if (!res.ok) throw new Error(res.statusText || `Failed (${res.status})`);
         const json = await res.json();
-        if (!cancelled) setState({ status: 'loaded', data: opts?.transform ? opts.transform(json) : json, error: null });
-      } catch (e) { if (!cancelled) setState({ status: 'failed', data: null, error: e instanceof Error ? e.message : 'Fetch failed' }); }
+        const data: T = opts?.transform ? opts.transform(json) : json;
+        land(attempt, () => ({ status: 'loaded', data, error: null }));
+      } catch (e) {
+        land(attempt, s => (s.status === 'loaded' ? s : { status: 'failed', data: null, error: e instanceof Error ? e.message : 'Fetch failed' }));
+      }
     };
     doFetch();
     const id = opts?.interval ? setInterval(doFetch, opts.interval) : undefined;
-    return () => { cancelled = true; if (id) clearInterval(id); };
+    return () => { landed = Infinity; if (id) clearInterval(id); };
   }, [url]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return state;
@@ -104,6 +119,18 @@ type Auth =
   | { kind: 'connecting'; timeout: ReturnType<typeof setTimeout> }
   | { kind: 'idle' };
 
+/** The bell's notifications: the first read in flight, a first read that failed, or the list. */
+type Notifications =
+  | { status: 'loading' }
+  | { status: 'failed' }
+  | { status: 'loaded'; items: WikiNotification[]; unread: number };
+
+/**
+ * Numbers each notifications read. A mark-read and a logout bump it too, so a
+ * poll that set out before them cannot land after and put the old state back.
+ */
+let notificationsAttempt = 0;
+
 const WALLET_UNAVAILABLE = 'The Radix wallet toolkit did not load, so the wallet cannot be reached from this page. Reload and try again.';
 
 interface AppStore {
@@ -126,8 +153,7 @@ interface AppStore {
   dismissToast: () => void;
   /** The article on screen, set by `PageView`, so the header's citation can name it. */
   pageTitle: string | null;
-  notifications: WikiNotification[];
-  unreadCount: number;
+  notifications: Notifications;
   fetchNotifications: () => Promise<void>;
   markNotificationsRead: (ids?: string[]) => Promise<void>;
 }
@@ -185,7 +211,8 @@ export const useStore = create<AppStore>()((set, get) => ({
       console.error('Failed to clear server session:', error);
     }
     if (wallet.kind === 'ready') wallet.disconnect();
-    set({ session: null, walletData: null, notifications: [], unreadCount: 0 });
+    notificationsAttempt++;
+    set({ session: null, walletData: null, notifications: { status: 'loading' } });
   },
   toast: null,
   showToast: (message, type = 'success') => {
@@ -199,33 +226,30 @@ export const useStore = create<AppStore>()((set, get) => ({
     set({ toast: null });
   },
   pageTitle: null,
-  notifications: [],
-  unreadCount: 0,
+  notifications: { status: 'loading' },
   fetchNotifications: async () => {
+    const attempt = ++notificationsAttempt;
     try {
       const res = await fetch('/api/notifications?pageSize=20');
-      if (res.ok) {
-        const data = await res.json();
-        set({ notifications: data.items, unreadCount: data.unreadCount });
-      }
-    } catch { /* silent */ }
+      if (!res.ok) throw new Error(res.statusText);
+      const data = await res.json();
+      if (attempt === notificationsAttempt) set({ notifications: { status: 'loaded', items: data.items, unread: data.unreadCount } });
+    } catch {
+      // A failed poll keeps the list on screen; only a first read that fails says so.
+      if (attempt === notificationsAttempt) set(s => (s.notifications.status === 'loaded' ? {} : { notifications: { status: 'failed' } }));
+    }
   },
   markNotificationsRead: async (ids) => {
-    try {
-      await sendJson('/api/notifications', 'PATCH', { ids });
-      if (ids) {
-        // Only the ones still unread lower the count: clicking a read notification marks nothing.
-        set(s => ({
-          notifications: s.notifications.map(n => ids.includes(n.id) ? { ...n, read: true } : n),
-          unreadCount: Math.max(0, s.unreadCount - s.notifications.filter(n => ids.includes(n.id) && !n.read).length),
-        }));
-      } else {
-        set(s => ({
-          notifications: s.notifications.map(n => ({ ...n, read: true })),
-          unreadCount: 0,
-        }));
-      }
-    } catch { /* silent */ }
+    const ok = await sendJson('/api/notifications', 'PATCH', { ids }).then(r => r.ok, () => false);
+    if (!ok) { get().showToast('Your notifications could not be marked read. Try again.', 'info'); return; }
+    notificationsAttempt++;
+    set(({ notifications: n }) => {
+      if (n.status !== 'loaded') return {};
+      const marked = (id: string) => !ids || ids.includes(id);
+      // Only the ones still unread lower the count: clicking a read notification marks nothing.
+      const unread = ids ? Math.max(0, n.unread - n.items.filter(i => marked(i.id) && !i.read).length) : 0;
+      return { notifications: { status: 'loaded', items: n.items.map(i => (marked(i.id) ? { ...i, read: true } : i)), unread } };
+    });
   },
 }));
 

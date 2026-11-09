@@ -4,16 +4,33 @@
 
 import { useState } from 'react';
 import { Upload, Download, CheckCircle, AlertCircle, ExternalLink, Loader2 } from 'lucide-react';
-import { useFetch, useAuth, useStore } from '@/hooks';
+import { useAuth, useStore, type Fetched } from '@/hooks';
 import { Dropdown } from '@/components/ui';
 import type { RestoredPage, LedgerAnchor } from '@/lib/radix/ledger';
 import { DASHBOARD_URL } from '@/lib/radix/config';
 import { sendJson } from '@/lib/utils';
 
-interface LedgerStatus {
+/** `/api/ledger/status`; the page fields are null unless the request names a page. */
+export interface LedgerStatus {
   anchor: LedgerAnchor | null;
   hoursSinceAnchor: number | null;
+  currentPageVersion: string | null;
   backupTxHash: string | null;
+}
+
+/**
+ * Where the page `slug` stands in the account's ledger backup: `unknown` until
+ * the status is read, `current` when the last backup is this page at its
+ * current version, `stale` when it is an older version of it. The anchor names
+ * only the account's last backup, so another page's anchor is `none` for this one.
+ */
+export type BackupStanding = 'unknown' | 'none' | 'stale' | 'current';
+
+export function backupStanding(status: Fetched<LedgerStatus>, slug: string | null): BackupStanding {
+  if (status.status !== 'loaded') return 'unknown';
+  const { anchor, currentPageVersion } = status.data;
+  if (!slug || !anchor || anchor.slug !== slug) return 'none';
+  return anchor.pageVersion === currentPageVersion ? 'current' : 'stale';
 }
 
 interface PrepareResult {
@@ -47,15 +64,15 @@ type Recovery =
 interface LedgerDropdownProps {
   tagPath: string | null;
   slug: string | null;
+  /** The header's read of the status, which also colours its icon. */
+  status: Fetched<LedgerStatus>;
 }
 
-export function LedgerDropdown({ tagPath, slug }: LedgerDropdownProps) {
+export function LedgerDropdown({ tagPath, slug, status: statusFetch }: LedgerDropdownProps) {
   const { user } = useAuth();
   const sendTransaction = useStore(s => s.sendTransaction);
   const accountAddress = user?.radixAddress ?? null;
-
-  const statusUrl = accountAddress ? `/api/ledger/status?address=${accountAddress}` : null;
-  const { data: status, status: statusFetch } = useFetch<LedgerStatus>(statusUrl);
+  const status = statusFetch.data;
 
   const [backup, setBackup] = useState<Backup>({ stage: 'idle' });
   const [tab, setTab] = useState<'backup' | 'recover'>('backup');
@@ -66,7 +83,7 @@ export function LedgerDropdown({ tagPath, slug }: LedgerDropdownProps) {
   // The status endpoint is edge-cached, so a refetch would still read the
   // anchor from before this backup: once it is done, the backup is the status.
   const backedUp = backup.stage === 'done';
-  const lastBackupIsThisPage = backedUp || status?.anchor?.slug === slug;
+  const standing = backedUp ? 'current' : backupStanding(statusFetch, slug);
 
   async function handleBackup() {
     if (!canBackup) return;
@@ -128,9 +145,9 @@ export function LedgerDropdown({ tagPath, slug }: LedgerDropdownProps) {
                 <span className="text-small">Last backup: {slug}</span>
                 <span className="text-xs text-text-muted">just now</span>
               </>
-            ) : statusFetch === 'loading' ? (
+            ) : statusFetch.status === 'loading' ? (
               <Loader2 size={14} className="animate-spin text-text-muted" />
-            ) : statusFetch === 'failed' ? (
+            ) : statusFetch.status === 'failed' ? (
               <>
                 <AlertCircle size={14} className="text-error shrink-0" />
                 <span className="text-small">Could not read your account&rsquo;s backup status</span>
@@ -145,7 +162,8 @@ export function LedgerDropdown({ tagPath, slug }: LedgerDropdownProps) {
                 <span className="text-xs text-text-muted">
                   {status.hoursSinceAnchor !== null && `${status.hoursSinceAnchor}h ago`}
                 </span>
-                {status.backupTxHash && (
+                {/* The page's own backup, so it belongs beside the anchor only when that is this page. */}
+                {standing !== 'none' && status.backupTxHash && (
                   <a href={`${explorerBase}${status.backupTxHash}`} target="_blank" rel="noopener" className="text-text-muted hover:text-accent shrink-0">
                     <ExternalLink size={12} />
                   </a>
@@ -159,9 +177,8 @@ export function LedgerDropdown({ tagPath, slug }: LedgerDropdownProps) {
             )}
           </div>
 
-          {lastBackupIsThisPage && (
-            <div className="text-xs text-success">This page is already backed up</div>
-          )}
+          {standing === 'current' && <div className="text-xs text-success">This page is already backed up</div>}
+          {standing === 'stale' && <div className="text-xs text-warning">An older version of this page is backed up</div>}
 
           {/* Action */}
           {canBackup ? (

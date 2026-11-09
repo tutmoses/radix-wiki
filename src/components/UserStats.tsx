@@ -87,6 +87,15 @@ export function UserStats({ userId }: { userId: string }) {
     );
   }
 
+  if (status === 'failed') {
+    return (
+      <section className="section-divider stack-sm">
+        <h3 className="text-text-muted">Statistics</h3>
+        <p className="text-small text-text-muted">These statistics could not be loaded. Reload to try again.</p>
+      </section>
+    );
+  }
+
   if (!data) return null;
 
   return (

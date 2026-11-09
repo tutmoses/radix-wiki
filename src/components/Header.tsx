@@ -19,10 +19,10 @@ import Highlight from '@/components/Highlight';
 import { Button, Dropdown } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiNotification } from '@/types';
-import type { LedgerAnchor } from '@/lib/radix/ledger';
+import type { WebhookEvent } from '@/lib/webhooks';
 import { useTelegram } from '@/components/WebhookSettings';
 import { EmptyState } from '@/components/EmptyState';
-import { LedgerDropdown } from '@/components/LedgerBackupView';
+import { LedgerDropdown, backupStanding, type BackupStanding, type LedgerStatus } from '@/components/LedgerBackupView';
 
 // Edit and History are not here: they sit beside the breadcrumb (`PageActions`).
 function usePageContext() {
@@ -59,22 +59,32 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
   const now = useNow();
   const router = useRouter();
   const notifications = useStore(s => s.notifications);
+  const fetchNotifications = useStore(s => s.fetchNotifications);
   const markNotificationsRead = useStore(s => s.markNotificationsRead);
-  const unreadCount = useStore(s => s.unreadCount);
+
+  if (notifications.status !== 'loaded') {
+    return (
+      <Dropdown className="notification-dropdown">
+        {notifications.status === 'loading'
+          ? <div className="center p-4"><Loader2 size={16} className="animate-spin text-text-muted" /></div>
+          : <EmptyState title="Your notifications could not be loaded." action={<Button variant="ghost" size="sm" onClick={() => fetchNotifications()}>Try again</Button>} />}
+      </Dropdown>
+    );
+  }
 
   return (
     <Dropdown className="notification-dropdown">
-      {unreadCount > 0 && (
+      {notifications.unread > 0 && (
         <div className="notification-header">
           <span />
           <button onClick={() => markNotificationsRead()} className="notification-mark-read">Mark all read</button>
         </div>
       )}
-      {notifications.length === 0 ? (
+      {notifications.items.length === 0 ? (
         <EmptyState title="No notifications yet." />
       ) : (
         <div className="notification-list">
-          {notifications.map(n => (
+          {notifications.items.map(n => (
             <button key={n.id} className={cn('notification-item', !n.read && 'notification-unread')}
               onClick={() => { markNotificationsRead([n.id]); router.push(pagePath(n.page.tagPath, n.page.slug)); onClose(); }}>
               <UserAvatar seed={n.actor.id} avatarUrl={n.actor.avatarUrl} size="sm" />
@@ -130,10 +140,11 @@ function SearchResultRow({ page, query, active, onSelect, onHover, optionProps }
 }
 
 // Module scope, so the reference is stable: `useTypeahead` runs it from an
-// effect, and an inline arrow would re-search on every render.
+// effect, and an inline arrow would re-search on every render. A refusal (a 429,
+// say) rejects, which the typeahead does not cache as the query's answer.
 async function searchPages(q: string, signal: AbortSignal): Promise<PageSummary[]> {
   const res = await fetch(`/api/wiki?${new URLSearchParams({ q, pageSize: '5' })}`, { signal });
-  if (!res.ok) return [];
+  if (!res.ok) throw new Error(res.statusText || `Failed (${res.status})`);
   return (await res.json()).items || [];
 }
 
@@ -158,8 +169,8 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
   // which also wants `page.created` – without it a blog subscription never
   // delivered an issue.
   const target = isPage && tagPath && slug
-    ? { tagPath, slug, noun: 'page', events: ['page.updated', 'comment.created'] }
-    : sectionPath ? { tagPath: sectionPath, slug: '', noun: 'section', events: ['page.created', 'page.updated', 'comment.created'] } : null;
+    ? { tagPath, slug, noun: 'page', events: ['page.updated', 'comment.created'] satisfies WebhookEvent[] }
+    : sectionPath ? { tagPath: sectionPath, slug: '', noun: 'section', events: ['page.created', 'page.updated', 'comment.created'] satisfies WebhookEvent[] } : null;
   // The same `/api/telegram` client /settings uses, asked only when there is
   // something to watch and someone to watch it with.
   const { telegram, paused, subscribe, unsubscribe } = useTelegram(isAuthenticated && !!target);
@@ -178,8 +189,12 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
     if (!telegram.connected) { onClose(); router.push(`/settings?watch=${encodeURIComponent(pagePath(target.tagPath, target.slug).slice(1))}`); return; }
     setWatchBusy(true);
     try {
-      if (live) { if (await unsubscribe(watching.id)) showToast(`No longer watching this ${target.noun}`); }
-      else if (await subscribe(target.tagPath, target.slug || null, target.events)) showToast(paused ? `Watching this ${target.noun}; notifications resumed` : `Watching this ${target.noun}`);
+      if (live) {
+        if (await unsubscribe(watching.id)) showToast(`No longer watching this ${target.noun}`);
+        else showToast(`This ${target.noun} could not be unwatched. Try again.`, 'info');
+      } else if (await subscribe(target.tagPath, target.slug || null, target.events)) {
+        showToast(paused ? `Watching this ${target.noun}; notifications resumed` : `Watching this ${target.noun}`);
+      } else showToast(`This ${target.noun} could not be watched. Try again.`, 'info');
     } finally { setWatchBusy(false); }
   };
 
@@ -208,6 +223,8 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
     </Dropdown>
   );
 }
+
+const LEDGER_COLOR: Record<BackupStanding, string | null> = { unknown: null, none: 'text-error', stale: 'text-warning', current: 'text-success' };
 
 /** The header menus: at most one is open, so opening one closes the other. */
 type Menu = 'tools' | 'ledger' | 'notifications' | 'account' | null;
@@ -241,24 +258,17 @@ export function Header() {
   // Shared with the rail through wiki-formant's SidebarProvider.
   const { open: sidebarOpen, toggle: toggleSidebar } = useSidebar();
   const fetchNotifications = useStore(s => s.fetchNotifications);
-  const unreadCount = useStore(s => s.unreadCount);
+  const unreadCount = useStore(s => (s.notifications.status === 'loaded' ? s.notifications.unread : 0));
   const { hasTools, hasLedger, sectionPath, canExportMdx, isPage, mdxPath, tagPath, slug } = usePageContext();
   const [showSearch, setShowSearch] = useState(false);
   const { menu, open: openMenu, close: closeMenu, toggle: toggleMenu, ref: actionsRef } = useHeaderMenu();
 
-  // Ledger backup status for icon color
+  // The ledger backup status: the tools item's colour, and the ledger menu's status row.
   const accountAddress = user?.radixAddress ?? null;
   const ledgerStatusUrl = accountAddress && tagPath && slug
     ? `/api/ledger/status?address=${accountAddress}&tagPath=${encodeURIComponent(tagPath)}&slug=${encodeURIComponent(slug)}`
     : accountAddress ? `/api/ledger/status?address=${accountAddress}` : null;
-  const { data: ledgerStatus } = useFetch<{ anchor: LedgerAnchor | null; currentPageVersion: string | null }>(ledgerStatusUrl);
-
-  const ledgerIconColor = (() => {
-    if (!ledgerStatus?.anchor) return 'text-error';
-    if (ledgerStatus.anchor.slug === slug && ledgerStatus.anchor.pageVersion === ledgerStatus.currentPageVersion) return 'text-success';
-    if (ledgerStatus.anchor.slug === slug) return 'text-warning';
-    return 'text-error';
-  })();
+  const ledgerStatus = useFetch<LedgerStatus>(ledgerStatusUrl);
 
   const [searchOpen, setSearchOpen] = useState(false);
   // The search field's state machine is `wiki-formant/react`, shared with the
@@ -400,11 +410,11 @@ export function Header() {
                     onClose={closeMenu}
                     mdxPath={canExportMdx ? mdxPath : null}
                     tagPath={tagPath ?? undefined} slug={slug ?? undefined} isPage={isPage} sectionPath={sectionPath}
-                    ledgerColor={isAuthenticated ? ledgerIconColor : null}
+                    ledgerColor={LEDGER_COLOR[backupStanding(ledgerStatus, slug ?? null)]}
                     onOpenLedger={isAuthenticated && hasLedger ? () => openMenu('ledger') : null}
                   />
                 )}
-                {menu === 'ledger' && <LedgerDropdown tagPath={tagPath ?? null} slug={slug ?? null} />}
+                {menu === 'ledger' && <LedgerDropdown tagPath={tagPath ?? null} slug={slug ?? null} status={ledgerStatus} />}
               </div>
             )}
 

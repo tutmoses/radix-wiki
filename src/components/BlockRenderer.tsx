@@ -109,6 +109,7 @@ function ListBlockView({ block }: { block: ListBlock }) {
   });
   const pages = block.items || data || [];
   if (status === 'loading' && !pages.length) return <div className="recent-pages-grid">{Array.from({ length: 2 }, (_, i) => <div key={i} className="h-32 skeleton" />)}</div>;
+  if (status === 'failed') return <EmptyState title="These pages could not be loaded." />;
   if (block.show === 'cards') {
     return pages.length
       ? <div className="recent-pages-grid">{pages.map(p => <PageCard key={p.id} page={p} />)}</div>
