@@ -36,6 +36,12 @@ interface TelegramState {
   subscriptions: TelegramSub[];
 }
 
+/** The reader's Telegram link: loading, failed to load, or loaded. */
+type Telegram =
+  | { status: 'loading' }
+  | { status: 'failed' }
+  | ({ status: 'ready' } & TelegramState);
+
 const EVENT_OPTIONS = [
   { value: 'page.created', label: 'Page created' },
   { value: 'page.updated', label: 'Page updated' },
@@ -66,30 +72,24 @@ const LINK_TTL = 10 * 60 * 1000;
  * opens for anonymous readers and off-page routes too.
  */
 export function useTelegram(enabled = true) {
-  const [state, setState] = useState<TelegramState | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [telegram, setTelegram] = useState<Telegram>({ status: 'loading' });
   const [deepLink, setDeepLink] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const showToast = useStore(s => s.showToast);
 
-  const refresh = useCallback(async () => {
+  /** Null where the route did not answer; a refresh after the first load keeps what is on screen. */
+  const refresh = useCallback(async (): Promise<TelegramState | null> => {
     const res = await fetch('/api/telegram');
-    if (!res.ok) return false;
+    if (!res.ok) return null;
     const data: TelegramState = await res.json();
-    setState(data);
-    return data.connected;
+    setTelegram({ status: 'ready', ...data });
+    return data;
   }, []);
 
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
-    // Declared inside the effect, mirroring useFetch: the load owns its own
-    // cancellation rather than settling into a component that has unmounted.
-    const load = async () => {
-      try { await refresh(); } catch { /* `state` stays null: the section says it could not load */ }
-      finally { if (!cancelled) setLoading(false); }
-    };
-    load();
+    refresh().catch(() => null).then(data => { if (!cancelled && !data) setTelegram({ status: 'failed' }); });
     return () => { cancelled = true; if (pollRef.current) clearInterval(pollRef.current); };
   }, [enabled, refresh]);
 
@@ -102,7 +102,7 @@ export function useTelegram(enabled = true) {
     if (pollRef.current) clearInterval(pollRef.current);
     const started = Date.now();
     const poll = setInterval(async () => {
-      const connected = await refresh().catch(() => false);
+      const connected = (await refresh().catch(() => null))?.connected ?? false;
       if (pollRef.current !== poll) return;
       const expired = Date.now() - started > LINK_TTL;
       if (!connected && !expired) return;
@@ -128,18 +128,18 @@ export function useTelegram(enabled = true) {
 
   const disconnect = async () => {
     const { ok } = await fetch('/api/telegram', { method: 'DELETE' });
-    if (ok) setState({ connected: false, chatId: null, subscriptions: [] });
+    if (ok) setTelegram({ status: 'ready', connected: false, chatId: null, subscriptions: [] });
     return ok;
   };
 
   // The bot's /stop pauses every row at once, and a subscribe resumes them all.
-  const paused = !!state?.subscriptions.some(s => !s.active);
+  const paused = telegram.status === 'ready' && telegram.subscriptions.some(s => !s.active);
 
-  return { state, loading, paused, deepLink, connect, subscribe, unsubscribe, disconnect };
+  return { telegram, paused, deepLink, connect, subscribe, unsubscribe, disconnect };
 }
 
 function TelegramSection({ watch }: { watch?: string }) {
-  const { state, loading, paused, deepLink, connect, subscribe, unsubscribe, disconnect } = useTelegram();
+  const { telegram: state, paused, deepLink, connect, subscribe, unsubscribe, disconnect } = useTelegram();
   const [subscribing, setSubscribing] = useState(false);
   const showToast = useStore(s => s.showToast);
 
@@ -166,8 +166,8 @@ function TelegramSection({ watch }: { watch?: string }) {
     if (await disconnect()) showToast('Telegram disconnected');
   };
 
-  if (loading) return null;
-  if (!state) return <p className="text-small text-text-muted px-3 py-2">Telegram settings could not be loaded. Reload to try again.</p>;
+  if (state.status === 'loading') return null;
+  if (state.status === 'failed') return <p className="text-small text-text-muted px-3 py-2">Telegram settings could not be loaded. Reload to try again.</p>;
 
   // Scoped subscriptions, paused or not (excludes the connection-only record with no scope)
   const subs = state.subscriptions.filter(s => s.tagPath !== '');
@@ -256,72 +256,87 @@ function TelegramSection({ watch }: { watch?: string }) {
 
 // ===== Webhooks Section =====
 
+/** The reader's webhooks: loading, failed to load, or the list. */
+type WebhookList =
+  | { status: 'loading' }
+  | { status: 'failed' }
+  | { status: 'loaded'; items: Webhook[] };
+
+/** The create form: shut, open (with the last refusal, if any), or its request in flight. */
+type Form =
+  | { kind: 'closed' }
+  | { kind: 'open'; error: string | null }
+  | { kind: 'submitting' };
+
+const DEFAULT_EVENTS = ['page.created', 'page.updated'];
+
+/** The listing shows a secret's tail only; the full one is shown once, on creation. */
+const maskSecret = (w: Webhook): Webhook => ({ ...w, secret: `...${w.secret.slice(-8)}` });
+
 /** `watch` is a page or section path to offer a Telegram subscription for. */
 export function WebhookSettings({ watch }: { watch?: string }) {
-  const [webhooks, setWebhooks] = useState<Webhook[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [list, setList] = useState<WebhookList>({ status: 'loading' });
+  const [form, setForm] = useState<Form>({ kind: 'closed' });
   const [newSecret, setNewSecret] = useState<string | null>(null);
   // `useCopy` from `wiki-formant/react`. The version here did not await the
   // write and showed "Copied" whether or not it succeeded — for a webhook secret
   // shown once, that is the reader pasting nothing and having no way to tell.
   const { copied, copy } = useCopy();
   const [url, setUrl] = useState('https://');
-  const [events, setEvents] = useState<string[]>(['page.created', 'page.updated']);
+  const [events, setEvents] = useState<string[]>(DEFAULT_EVENTS);
   const [tagFilter, setTagFilter] = useState('');
-  const [error, setError] = useState('');
   const showToast = useStore(s => s.showToast);
 
-  const fetchWebhooks = useCallback(async () => {
-    try {
-      const res = await fetch('/api/webhooks');
-      if (res.ok) setWebhooks(await res.json());
-    } catch { /* the list stays as it was */ }
-    finally { setLoading(false); }
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/webhooks')
+      .then(res => (res.ok ? res.json() : Promise.reject()))
+      .then((items: Webhook[]) => { if (!cancelled) setList({ status: 'loaded', items }); })
+      .catch(() => { if (!cancelled) setList({ status: 'failed' }); });
+    return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => { fetchWebhooks(); }, [fetchWebhooks]);
 
   const toggleEvent = (event: string) => {
     setEvents(prev => prev.includes(event) ? prev.filter(e => e !== event) : [...prev, event]);
   };
 
   const handleCreate = async () => {
-    if (!url || url === 'https://') { setError('URL is required'); return; }
-    if (!url.startsWith('https://')) { setError('Must be an HTTPS URL'); return; }
-    if (events.length === 0) { setError('Select at least one event'); return; }
-    setError('');
-    setSubmitting(true);
+    const refuse = (error: string) => setForm({ kind: 'open', error });
+    if (!url || url === 'https://') return refuse('URL is required');
+    if (!url.startsWith('https://')) return refuse('Must be an HTTPS URL');
+    if (events.length === 0) return refuse('Select at least one event');
+    setForm({ kind: 'submitting' });
     try {
       const res = await sendJson('/api/webhooks', 'POST', { url, events, tagPathFilter: tagFilter || undefined });
-      if (res.ok) {
-        const webhook = await res.json();
-        setNewSecret(webhook.secret);
-        setShowForm(false);
-        setUrl('https://');
-        setEvents(['page.created', 'page.updated']);
-        setTagFilter('');
-        await fetchWebhooks();
-      } else {
+      if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error || 'Failed to create');
+        return refuse(data.error || 'Failed to create');
       }
-    } catch { setError('Failed to create: the request did not reach the wiki.'); }
-    finally { setSubmitting(false); }
+      // The route answers with the row it wrote, so the list takes it without a refetch.
+      const webhook: Webhook = await res.json();
+      setNewSecret(webhook.secret);
+      setList(l => (l.status === 'loaded' ? { status: 'loaded', items: [maskSecret(webhook), ...l.items] } : l));
+      setForm({ kind: 'closed' });
+      setUrl('https://');
+      setEvents(DEFAULT_EVENTS);
+      setTagFilter('');
+    } catch { refuse('Failed to create: the request did not reach the wiki.'); }
   };
 
   const handleDelete = async (id: string) => {
-    const res = await fetch(`/api/webhooks/${id}`, { method: 'DELETE' });
-    if (res.ok) {
-      setWebhooks(prev => prev.filter(w => w.id !== id));
-      showToast('Webhook deleted');
-    }
+    const ok = await fetch(`/api/webhooks/${id}`, { method: 'DELETE' }).then(r => r.ok, () => false);
+    if (!ok) { showToast('The webhook could not be deleted. Try again.', 'info'); return; }
+    setList(l => (l.status === 'loaded' ? { status: 'loaded', items: l.items.filter(w => w.id !== id) } : l));
+    showToast('Webhook deleted');
   };
 
   const copySecret = () => {
     if (newSecret) void copy(newSecret);
   };
+
+  const webhooks = list.status === 'loaded' ? list.items : [];
+  const showForm = form.kind !== 'closed';
+  const openForm = () => setForm({ kind: 'open', error: null });
 
   return (
     <div className="webhook-content">
@@ -335,8 +350,10 @@ export function WebhookSettings({ watch }: { watch?: string }) {
         <span className="text-small font-medium">Custom Webhooks</span>
       </div>
 
-      {loading ? (
+      {list.status === 'loading' ? (
         <div className="webhook-empty"><Loader2 size={16} className="animate-spin" /></div>
+      ) : list.status === 'failed' ? (
+        <p className="text-small text-text-muted px-3 py-2">Your webhooks could not be loaded. Reload to try again.</p>
       ) : (
         <>
           {/* Secret reveal banner */}
@@ -355,7 +372,7 @@ export function WebhookSettings({ watch }: { watch?: string }) {
 
           {/* Webhook list */}
           {webhooks.length === 0 && !showForm ? (
-            <EmptyState title="No custom webhooks." action={<Button variant="ghost" size="sm" onClick={() => setShowForm(true)}><Plus size={14} />Add webhook</Button>} />
+            <EmptyState title="No custom webhooks." action={<Button variant="ghost" size="sm" onClick={openForm}><Plus size={14} />Add webhook</Button>} />
           ) : (
             <div className="webhook-list">
               {webhooks.map(w => (
@@ -378,7 +395,7 @@ export function WebhookSettings({ watch }: { watch?: string }) {
           {/* Add button */}
           {webhooks.length > 0 && !showForm && (
             <div className="webhook-actions">
-              <Button variant="ghost" size="sm" onClick={() => setShowForm(true)}><Plus size={14} />Add webhook</Button>
+              <Button variant="ghost" size="sm" onClick={openForm}><Plus size={14} />Add webhook</Button>
             </div>
           )}
 
@@ -404,10 +421,10 @@ export function WebhookSettings({ watch }: { watch?: string }) {
                 <label className="text-small font-medium">Tag path filter <span className="text-text-muted font-normal">(optional)</span></label>
                 <input value={tagFilter} onChange={e => setTagFilter(e.target.value)} className="input text-small" placeholder="e.g. contents/tech" />
               </div>
-              {error && <p className="text-error text-small">{error}</p>}
+              {form.kind === 'open' && form.error && <p className="text-error text-small">{form.error}</p>}
               <div className="row justify-end gap-2">
-                <Button variant="ghost" size="sm" onClick={() => { setShowForm(false); setError(''); }}>Cancel</Button>
-                <Button size="sm" onClick={handleCreate} isLoading={submitting}>Create</Button>
+                <Button variant="ghost" size="sm" onClick={() => setForm({ kind: 'closed' })} disabled={form.kind === 'submitting'}>Cancel</Button>
+                <Button size="sm" onClick={handleCreate} isLoading={form.kind === 'submitting'}>Create</Button>
               </div>
             </div>
           )}

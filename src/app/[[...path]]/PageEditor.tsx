@@ -223,10 +223,22 @@ function EditorWhitelist({ editors, onAdd, onRemove }: {
 // refused because the page moved on stays refused: its baseVersion is stale,
 // and only a reload gives the editor the version to build on.
 type Phase =
-  | { kind: 'editing'; error: string | null }
+  /** `missing` names the required metadata fields the last save was refused for. */
+  | { kind: 'editing'; error: string | null; missing?: string[] }
   | { kind: 'saving' }
   | { kind: 'deleting' }
   | { kind: 'conflict'; message: string };
+
+/**
+ * The $XRD gate, asked before any writing happens rather than met as a 403
+ * after the save. `unknown` is a check that did not answer: the requirement is
+ * stated and the save is still allowed, since the route enforces it anyway.
+ */
+type Gate =
+  | { kind: 'checking' }
+  | { kind: 'unknown' }
+  | { kind: 'allowed' }
+  | { kind: 'refused'; reason: string };
 
 // What the form opens on, and what it is compared against to know it is dirty.
 function initialFields(page: WikiPage | undefined, slug: string) {
@@ -260,20 +272,22 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const [editorIds, setEditorIds] = useState<string[]>([]);
   const [editors, setEditors] = useState<UserOption[]>([]);
   const [phase, setPhase] = useState<Phase>({ kind: 'editing', error: null });
-  const [missingKeys, setMissingKeys] = useState<string[]>([]);
   const [revisionMessage, setRevisionMessage] = useState('');
   const [verified, setVerified] = useState(false);
-  const [gate, setGate] = useState<{ allowed: boolean; balance?: number; required?: number; error?: string } | null>(null);
+  const [gate, setGate] = useState<Gate>({ kind: 'checking' });
   const isAuthor = user && page?.authorId === user.id;
   const metadataKeys = getMetadataKeys(tagPath.split('/'));
 
-  // State the $XRD gate before any writing happens, not as a 403 after save.
   useEffect(() => {
     let cancelled = false;
+    setGate({ kind: 'checking' });
     fetch(`/api/auth/gate?type=${isCreating ? 'create' : 'edit'}&tagPath=${encodeURIComponent(tagPath)}`)
       .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (!cancelled && d) setGate(d); })
-      .catch(() => {});
+      .catch(() => null)
+      .then((d: { allowed: boolean; error?: string } | null) => {
+        if (cancelled) return;
+        setGate(!d ? { kind: 'unknown' } : d.allowed ? { kind: 'allowed' } : { kind: 'refused', reason: d.error || 'Your wallet does not hold enough $XRD to save here.' });
+      });
     return () => { cancelled = true; };
   }, [isCreating, tagPath]);
 
@@ -307,11 +321,9 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
     if (isCreating && !newSlug && !slug) { setPhase({ kind: 'editing', error: 'Add a slug: the title has no letters or digits to make one from.' }); return; }
     const missing = metadataKeys.filter(k => k.required && !metadata[k.key]?.trim());
     if (missing.length > 0) {
-      setMissingKeys(missing.map(k => k.key));
-      setPhase({ kind: 'editing', error: `Missing required metadata: ${missing.map(k => k.label).join(', ')}.` });
+      setPhase({ kind: 'editing', error: `Missing required metadata: ${missing.map(k => k.label).join(', ')}.`, missing: missing.map(k => k.key) });
       return;
     }
-    setMissingKeys([]);
     setPhase({ kind: 'saving' });
     try {
       // A new page always POSTs: the route gives a slug that is already taken a
@@ -335,18 +347,16 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
 
   const handleDelete = async () => {
     if (!page || !confirm('Are you sure you want to delete this page?')) return;
-    const before = phase;
     setPhase({ kind: 'deleting' });
     try {
       const r = await fetch(`/api/wiki/${page.tagPath}/${page.slug}`, { method: 'DELETE' });
       // Deleting stays the phase until the navigation replaces the editor.
       if (r.ok) { router.push(`/${page.tagPath}`); return; }
     } catch { /* reported below */ }
-    alert('Failed to delete');
-    setPhase(before);
+    setPhase({ kind: 'editing', error: 'The page could not be deleted. Try again.' });
   };
 
-  const canSave = (isCreating ? !!title.trim() : true) && (gate ? gate.allowed : true);
+  const canSave = (isCreating ? !!title.trim() : true) && gate.kind !== 'refused';
   useSaveShortcut(() => { if (canSave && phase.kind === 'editing') save(); });
 
   const back = <Link href={viewPath}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link>;
@@ -360,7 +370,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
 
   // On a shared board the card is the board's, not its filer's: whoever passes
   // the edit gate can delete it too.
-  const canDelete = !isCreating && (isAuthor || (isSharedPath(tagPath) && gate?.allowed === true));
+  const canDelete = !isCreating && (isAuthor || (isSharedPath(tagPath) && gate.kind === 'allowed'));
   const backHref = isCreating ? `/${tagPath}` : viewPath;
   const isSaving = phase.kind === 'saving';
   const saveLabel = isCreating ? (isSaving ? 'Creating...' : 'Create Page') : (isSaving ? 'Saving...' : 'Save Changes');
@@ -382,9 +392,9 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
         <Button onClick={save} disabled={phase.kind !== 'editing' || !canSave} size="sm" title="Save (⌘S)"><Save size={16} />{saveLabel}</Button>
       </div>
       <header className="stack pb-6 border-b border-border">
-        {gate && !gate.allowed ? (
-          <div data-callout="warning"><p>{gate.error}</p></div>
-        ) : gate === null ? (
+        {gate.kind === 'refused' ? (
+          <div data-callout="warning"><p>{gate.reason}</p></div>
+        ) : gate.kind !== 'allowed' ? (
           <div data-callout="info"><p>{isCreating ? 'Creating a page in' : 'Editing the page at'} <code>{isCreating ? `/${tagPath}` : viewPath}</code> requires holding <strong>{getXrdRequired(isCreating ? 'create' : 'edit', tagPath).toLocaleString('en-US')} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
         ) : null}
         {phase.kind === 'editing' && phase.error && <div data-callout="error"><p>{phase.error}</p></div>}
@@ -415,7 +425,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
         )}
       </header>
       <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
-      <MetadataFields metadataKeys={metadataKeys} metadata={metadata} onChange={setMetadata} invalidKeys={missingKeys} />
+      <MetadataFields metadataKeys={metadataKeys} metadata={metadata} onChange={setMetadata} invalidKeys={phase.kind === 'editing' ? phase.missing : undefined} />
       {isAuthor && isAuthorOnlyPath(tagPath) && !isCreating && (
         <EditorWhitelist
           editors={editors}

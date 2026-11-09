@@ -13,7 +13,7 @@ import { useAuth, useStore } from '@/hooks';
 
 export default function SettingsView({ watch }: { watch?: string }) {
   const { isAuthenticated } = useAuth();
-  const checking = useStore(s => s.auth === 'checking');
+  const checking = useStore(s => s.auth.kind === 'checking');
   const connect = useStore(s => s.connect);
 
   if (checking) return <div className="h-64 skeleton" />;

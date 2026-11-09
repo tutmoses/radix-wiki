@@ -5,12 +5,14 @@
 import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type HTMLAttributes } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { cn } from '@/lib/utils';
-import { useClickOutside } from 'wiki-formant/react';
 
-// Dropdown
-export function Dropdown({ onClose, children, className, ...props }: HTMLAttributes<HTMLDivElement> & { onClose: () => void }) {
-  const ref = useClickOutside<HTMLDivElement>(onClose);
-  return <div ref={ref} className={cn('dropdown', className)} {...props}>{children}</div>;
+/**
+ * The panel a menu button opens. Closing it is the owner's: a click-outside
+ * here would count the button itself as outside, so pressing it to close the
+ * menu closed it on mousedown and opened it again on click.
+ */
+export function Dropdown({ children, className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn('dropdown', className)} {...props}>{children}</div>;
 }
 
 // Button

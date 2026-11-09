@@ -45,12 +45,11 @@ type Recovery =
   | { stage: 'error'; message: string };
 
 interface LedgerDropdownProps {
-  onClose: () => void;
   tagPath: string | null;
   slug: string | null;
 }
 
-export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) {
+export function LedgerDropdown({ tagPath, slug }: LedgerDropdownProps) {
   const { user } = useAuth();
   const sendTransaction = useStore(s => s.sendTransaction);
   const accountAddress = user?.radixAddress ?? null;
@@ -109,7 +108,7 @@ export function LedgerDropdown({ onClose, tagPath, slug }: LedgerDropdownProps) 
   const recovering = recovery.stage === 'reading';
 
   return (
-    <Dropdown onClose={onClose} className="ledger-dropdown">
+    <Dropdown className="ledger-dropdown">
       <div className="dropdown-tabs">
         <button onClick={() => setTab('backup')} className={`dropdown-tab ${tab === 'backup' ? 'dropdown-tab-active' : ''}`}>
           <Upload size={14} />Backup

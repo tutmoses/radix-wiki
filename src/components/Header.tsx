@@ -63,7 +63,7 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
   const unreadCount = useStore(s => s.unreadCount);
 
   return (
-    <Dropdown onClose={onClose} className="notification-dropdown">
+    <Dropdown className="notification-dropdown">
       {unreadCount > 0 && (
         <div className="notification-header">
           <span />
@@ -94,7 +94,7 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
 /** One menu for the account: who is connected, their profile, their notification settings, the ways out. */
 function AccountMenu({ name, profilePath, onClose, onLogout }: { name: string; profilePath: string | null; onClose: () => void; onLogout: (everywhere?: boolean) => void }) {
   return (
-    <Dropdown onClose={onClose}>
+    <Dropdown>
       <div className="dropdown-header">{name}</div>
       {profilePath && <Link href={profilePath} className="dropdown-item" onClick={onClose}><User size={16} />Profile</Link>}
       <Link href="/settings" className="dropdown-item" onClick={onClose}><Settings size={16} />Notification settings</Link>
@@ -162,17 +162,18 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
     : sectionPath ? { tagPath: sectionPath, slug: '', noun: 'section', events: ['page.created', 'page.updated', 'comment.created'] } : null;
   // The same `/api/telegram` client /settings uses, asked only when there is
   // something to watch and someone to watch it with.
-  const { state: telegram, paused, subscribe, unsubscribe } = useTelegram(isAuthenticated && !!target);
+  const { telegram, paused, subscribe, unsubscribe } = useTelegram(isAuthenticated && !!target);
   const [watchBusy, setWatchBusy] = useState(false);
 
-  const watching = (target && telegram?.subscriptions.find(s => s.tagPath === target.tagPath && s.pageSlug === target.slug)) ?? null;
+  const watching = (target && telegram.status === 'ready' && telegram.subscriptions.find(s => s.tagPath === target.tagPath && s.pageSlug === target.slug)) || null;
   // Paused by the bot's /stop: Watch then resumes every subscription, this one included.
   const live = !!watching && !paused;
 
   const pageUrl = () => `${window.location.origin}/${tagPath}/${slug}`;
 
   const toggleWatch = async () => {
-    if (!target || !telegram || watchBusy) return;
+    if (!target || telegram.status === 'loading' || watchBusy) return;
+    if (telegram.status === 'failed') { showToast('Your Telegram settings could not be loaded. Reload to try again.', 'info'); return; }
     // Telegram is connected on /settings, which then offers this page or section.
     if (!telegram.connected) { onClose(); router.push(`/settings?watch=${encodeURIComponent(pagePath(target.tagPath, target.slug).slice(1))}`); return; }
     setWatchBusy(true);
@@ -185,9 +186,9 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
   const title = isPage && slug ? pageTitle ?? slug.replace(/-/g, ' ') : SITE_NAME;
 
   return (
-    <Dropdown onClose={onClose}>
+    <Dropdown>
       {isAuthenticated && target && (
-        <button className="dropdown-item" onClick={toggleWatch} disabled={watchBusy}>
+        <button className="dropdown-item" onClick={toggleWatch} disabled={watchBusy || telegram.status === 'loading'}>
           {live ? <EyeOff size={16} /> : <Eye size={16} />}
           {live ? `Unwatch this ${target.noun}` : watching ? `Resume watching this ${target.noun}` : `Watch this ${target.noun}`}
         </button>
@@ -200,7 +201,7 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
         </button>
       )}
       {onOpenLedger && (
-        <button className="dropdown-item" onClick={() => { onClose(); onOpenLedger(); }}>
+        <button className="dropdown-item" onClick={onOpenLedger}>
           <Database size={16} className={ledgerColor ?? undefined} />Ledger backup
         </button>
       )}
@@ -208,11 +209,33 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
   );
 }
 
+/** The header menus: at most one is open, so opening one closes the other. */
+type Menu = 'tools' | 'ledger' | 'notifications' | 'account' | null;
+
+/**
+ * One open menu for the header's actions row. A click outside the row or Escape
+ * closes it; the row holds every menu's button, so a button's own click toggles
+ * its menu, and another's switches to that one.
+ */
+function useHeaderMenu() {
+  const [menu, setMenu] = useState<Menu>(null);
+  const close = useCallback(() => setMenu(null), []);
+  const ref = useClickOutside<HTMLDivElement>(close);
+  useEffect(() => {
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [menu, close]);
+  const toggle = (m: Exclude<Menu, null>) => setMenu(cur => (cur === m ? null : m));
+  return { menu, open: setMenu, close, toggle, ref };
+}
+
 export function Header() {
   const router = useRouter();
   const { isAuthenticated, user, walletData } = useAuth();
   // The session check on load reads as a connection too: the button waits for it.
-  const authBusy = useStore(s => s.auth !== 'idle');
+  const authBusy = useStore(s => s.auth.kind !== 'idle');
   const logout = useStore(s => s.logout);
   const connect = useStore(s => s.connect);
   // Shared with the rail through wiki-formant's SidebarProvider.
@@ -221,10 +244,7 @@ export function Header() {
   const unreadCount = useStore(s => s.unreadCount);
   const { hasTools, hasLedger, sectionPath, canExportMdx, isPage, mdxPath, tagPath, slug } = usePageContext();
   const [showSearch, setShowSearch] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showLedger, setShowLedger] = useState(false);
-  const [showTools, setShowTools] = useState(false);
+  const { menu, open: openMenu, close: closeMenu, toggle: toggleMenu, ref: actionsRef } = useHeaderMenu();
 
   // Ledger backup status for icon color
   const accountAddress = user?.radixAddress ?? null;
@@ -317,7 +337,7 @@ export function Header() {
   }
 
   const handleLogout = async (everywhere?: boolean) => {
-    setShowUserMenu(false);
+    closeMenu();
     await logout(everywhere);
   };
 
@@ -364,37 +384,37 @@ export function Header() {
             )}
           </form>
 
-          <div className="header-actions">
+          <div ref={actionsRef} className="header-actions">
             {/* With no script it goes to the results page. Its mousedown keeps focus
                 in the field, so the field's blur does not fold it before the click. */}
-            <a href="/search" onMouseDown={e => e.preventDefault()} onClick={e => { e.preventDefault(); setShowSearch(!showSearch); }}
+            <a href="/search" onMouseDown={e => e.preventDefault()} onClick={e => { e.preventDefault(); closeMenu(); setShowSearch(!showSearch); }}
               className="icon-btn text-inherit" title="Search" aria-label="Search" aria-expanded={showSearch}><Search size={20} /></a>
 
             {hasTools && (
               <div className="relative">
-                <button onClick={() => setShowTools(!showTools)} className="icon-btn" title="Page tools" aria-label="Page tools" aria-expanded={showTools}>
+                <button onClick={() => toggleMenu('tools')} className="icon-btn" title="Page tools" aria-label="Page tools" aria-expanded={menu === 'tools' || menu === 'ledger'}>
                   <MoreVertical size={20} />
                 </button>
-                {showTools && (
+                {menu === 'tools' && (
                   <PageToolsDropdown
-                    onClose={() => setShowTools(false)}
+                    onClose={closeMenu}
                     mdxPath={canExportMdx ? mdxPath : null}
                     tagPath={tagPath ?? undefined} slug={slug ?? undefined} isPage={isPage} sectionPath={sectionPath}
                     ledgerColor={isAuthenticated ? ledgerIconColor : null}
-                    onOpenLedger={isAuthenticated && hasLedger ? () => setShowLedger(true) : null}
+                    onOpenLedger={isAuthenticated && hasLedger ? () => openMenu('ledger') : null}
                   />
                 )}
-                {showLedger && <LedgerDropdown onClose={() => setShowLedger(false)} tagPath={tagPath ?? null} slug={slug ?? null} />}
+                {menu === 'ledger' && <LedgerDropdown tagPath={tagPath ?? null} slug={slug ?? null} />}
               </div>
             )}
 
             {isAuthenticated && (
               <div className="relative">
-                <button onClick={() => setShowNotifications(!showNotifications)} className="icon-btn" title="Notifications" aria-label="Notifications" aria-expanded={showNotifications}>
+                <button onClick={() => toggleMenu('notifications')} className="icon-btn" title="Notifications" aria-label="Notifications" aria-expanded={menu === 'notifications'}>
                   <Bell size={20} />
                   {unreadCount > 0 && <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                 </button>
-                {showNotifications && <NotificationDropdown onClose={() => setShowNotifications(false)} />}
+                {menu === 'notifications' && <NotificationDropdown onClose={closeMenu} />}
               </div>
             )}
 
@@ -403,10 +423,10 @@ export function Header() {
                 <div className="user-pill"><Loader2 size={14} className="animate-spin" /><span className="hidden sm:inline">Connecting...</span></div>
               ) : showAsConnected ? (
                 <>
-                  <button onClick={() => setShowUserMenu(!showUserMenu)} className="icon-btn" title={displayName} aria-expanded={showUserMenu} aria-label="Account menu">
+                  <button onClick={() => toggleMenu('account')} className="icon-btn" title={displayName} aria-expanded={menu === 'account'} aria-label="Account menu">
                     <UserAvatar seed={user?.id || walletData?.accounts?.[0]?.address || ''} size="md" />
                   </button>
-                  {showUserMenu && <AccountMenu name={displayName} profilePath={userProfilePath} onClose={() => setShowUserMenu(false)} onLogout={handleLogout} />}
+                  {menu === 'account' && <AccountMenu name={displayName} profilePath={userProfilePath} onClose={closeMenu} onLogout={handleLogout} />}
                 </>
               ) : (
                 <Button variant="primary" size="sm" onClick={connect}>

@@ -98,16 +98,19 @@ type Wallet =
       sendTransaction: (manifest: string) => Promise<{ transactionIntentHash: string }>;
     };
 
+/** The session check on load, a wallet request in flight (named by its 60s backstop timer), or neither. */
+type Auth =
+  | { kind: 'checking' }
+  | { kind: 'connecting'; timeout: ReturnType<typeof setTimeout> }
+  | { kind: 'idle' };
+
 const WALLET_UNAVAILABLE = 'The Radix wallet toolkit did not load, so the wallet cannot be reached from this page. Reload and try again.';
 
 interface AppStore {
   session: AuthSession | null;
-  /** The session check on load, a wallet request in flight, or neither. */
-  auth: 'checking' | 'connecting' | 'idle';
+  auth: Auth;
   wallet: Wallet;
   walletData: RadixWalletData | null;
-  /** The connect attempt in flight, named by its 60s backstop timer. */
-  _connectTimeout: ReturnType<typeof setTimeout> | null;
   /** Ends the attempt `timeout` names, and only that one, telling the reader `message` if there is one. */
   _endConnect: (timeout: ReturnType<typeof setTimeout>, message?: string | null) => void;
   setWallet: (wallet: Wallet) => void;
@@ -139,23 +142,23 @@ function sendConnect(wallet: Extract<Wallet, { kind: 'ready' }>, timeout: Return
 
 export const useStore = create<AppStore>()((set, get) => ({
   session: null,
-  auth: 'checking',
+  auth: { kind: 'checking' },
   wallet: { kind: 'loading' },
   walletData: null,
-  _connectTimeout: null,
   _endConnect: (timeout, message) => {
-    if (get()._connectTimeout !== timeout) return;
+    const { auth } = get();
+    if (auth.kind !== 'connecting' || auth.timeout !== timeout) return;
     clearTimeout(timeout);
-    set({ auth: 'idle', _connectTimeout: null });
+    set({ auth: { kind: 'idle' } });
     if (message) get().showToast(message, 'info');
   },
   setWallet: (wallet) => {
-    const { wallet: prev, auth, _connectTimeout } = get();
+    const { wallet: prev, auth } = get();
     set({ wallet });
     // A connect clicked while the toolkit loaded was waiting for it.
-    if (prev.kind !== 'loading' || auth !== 'connecting' || !_connectTimeout) return;
-    if (wallet.kind === 'ready') sendConnect(wallet, _connectTimeout);
-    else if (wallet.kind === 'unavailable') get()._endConnect(_connectTimeout, WALLET_UNAVAILABLE);
+    if (prev.kind !== 'loading' || auth.kind !== 'connecting') return;
+    if (wallet.kind === 'ready') sendConnect(wallet, auth.timeout);
+    else if (wallet.kind === 'unavailable') get()._endConnect(auth.timeout, WALLET_UNAVAILABLE);
   },
   sendTransaction: async (manifest) => {
     const { wallet } = get();
@@ -163,15 +166,15 @@ export const useStore = create<AppStore>()((set, get) => ({
     return wallet.sendTransaction(manifest);
   },
   setSession: (session) => set({ session }),
-  sessionChecked: () => set(s => s.auth === 'checking' ? { auth: 'idle' } : {}),
+  sessionChecked: () => set(s => s.auth.kind === 'checking' ? { auth: { kind: 'idle' } } : {}),
   setWalletData: (walletData) => set({ walletData }),
   connect: () => {
-    const { wallet, _connectTimeout } = get();
+    const { wallet, auth } = get();
     if (wallet.kind === 'unavailable') { get().showToast(WALLET_UNAVAILABLE, 'info'); return; }
-    if (_connectTimeout) clearTimeout(_connectTimeout);
+    if (auth.kind === 'connecting') clearTimeout(auth.timeout);
     const timeout = setTimeout(() => get()._endConnect(timeout,
       'No response from the Radix Wallet. Make sure the wallet app or Connector extension is reachable, then try again.'), 60_000);
-    set({ auth: 'connecting', _connectTimeout: timeout });
+    set({ auth: { kind: 'connecting', timeout } });
     if (wallet.kind === 'ready') sendConnect(wallet, timeout);
   },
   logout: async (everywhere = false) => {

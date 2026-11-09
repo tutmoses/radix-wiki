@@ -85,6 +85,7 @@ function PageMeta({ page }: { page: WikiPage }) {
 export function Banner({ src, title, tagPath, editable, onUpload, onRemove, children }: { src?: string | null; title?: string; tagPath?: string; editable?: boolean; onUpload?: (url: string) => void; onRemove?: () => void; children?: ReactNode }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const showToast = useStore(s => s.showToast);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -95,8 +96,8 @@ export function Banner({ src, title, tagPath, editable, onUpload, onRemove, chil
       formData.append('file', file);
       const res = await fetch('/api/upload', { method: 'POST', body: formData });
       if (res.ok) onUpload((await res.json()).url);
-      else alert((await res.json()).error || 'Upload failed');
-    } catch { alert('Upload failed'); }
+      else showToast((await res.json().catch(() => ({}))).error || 'The banner could not be uploaded.', 'info');
+    } catch { showToast('The banner could not be uploaded: the request did not reach the wiki.', 'info'); }
     finally { setIsUploading(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
   };
 
@@ -290,8 +291,8 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   const connect = useStore(s => s.connect);
   const [content, setContent] = useState<Block[]>((page?.content as unknown as Block[]) || []);
   const [bannerImage, setBannerImage] = useState<string | null>(page?.bannerImage || null);
-  const [isSaving, setIsSaving] = useState(false);
-
+  // Editing (with the last save's refusal, if any) or saving: the same phases as PageEditor's.
+  const [save, setSave] = useState<{ kind: 'editing'; error: string | null } | { kind: 'saving' }>({ kind: 'editing', error: null });
 
   useEffect(() => {
     if (page) { setContent((page.content as unknown as Block[]) || []); setBannerImage(page.bannerImage || null); }
@@ -300,14 +301,15 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   if (isEditing && !isAuthenticated) return <AuthRequired backHref="/" />;
 
   const handleSave = async () => {
-    setIsSaving(true);
+    setSave({ kind: 'saving' });
     try {
       const res = await sendJson('/api/wiki', 'PUT', { title: page?.title, content, bannerImage });
-      if (res.ok) router.push('/');
-      else alert((await res.json()).error || 'Failed to save');
-    } catch { alert('Failed to save'); }
-    finally { setIsSaving(false); }
+      // The view may keep this instance across the navigation, so it leaves in the editing phase.
+      if (res.ok) { setSave({ kind: 'editing', error: null }); router.push('/'); return; }
+      setSave({ kind: 'editing', error: (await res.json().catch(() => ({}))).error || 'Failed to save.' });
+    } catch { setSave({ kind: 'editing', error: 'Failed to save: the request did not reach the wiki.' }); }
   };
+  const isSaving = save.kind === 'saving';
 
   if (isEditing) {
     const infobox = findInfobox(content) || createBlock('infobox') as import('@/types/blocks').InfoboxBlock;
@@ -322,6 +324,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
           <Button onClick={handleSave} disabled={isSaving} size="sm"><Save size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
         </div>
         <h1 id="edit-homepage">Edit Homepage</h1>
+        {save.kind === 'editing' && save.error && <div data-callout="error"><p>{save.error}</p></div>}
         <div data-callout="info"><p>Editing the homepage requires holding <strong>{getXrdRequired('edit', '').toLocaleString('en-US')} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
         <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
         <div className="page-with-infobox">
