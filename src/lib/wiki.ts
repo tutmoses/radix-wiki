@@ -14,6 +14,7 @@ import type { WikiAuthor, WikiPage, IdeasPage } from '@/types';
 import type { Block, ListBlock, RssFeedBlock } from '@/types/blocks';
 import { blockLimit, MAX_BLOCK_ROWS } from 'wiki-formant/validation';
 import { today } from 'wiki-formant/blocks';
+import type { ChangeType } from 'wiki-formant/versioning';
 import { leafBlocks } from '@/lib/block-utils';
 import { RECAP_PREFIX } from '@/lib/week-in-review';
 
@@ -258,7 +259,8 @@ export async function loadPageHistory(tagPath: string, slug: string) {
   const authors = await authorsOf(revisions.map(r => r.authorId));
   return {
     currentVersion: page.version,
-    revisions: revisions.map(r => ({ ...r, ...(r.authorId && authors.get(r.authorId) ? { author: authors.get(r.authorId) } : {}) })),
+    // The column is a string, written only by the store's own version bump.
+    revisions: revisions.map(r => ({ ...r, changeType: r.changeType as ChangeType, ...(r.authorId && authors.get(r.authorId) ? { author: authors.get(r.authorId) } : {}) })),
   };
 }
 

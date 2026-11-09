@@ -18,12 +18,13 @@ import { formatDay } from 'wiki-formant/freshness';
 import { BLOCK_META } from '@/lib/block-utils';
 import type { BlockType } from '@/types/blocks';
 import type { HistoryChange } from 'wiki-formant/history';
+import type { ChangeType } from 'wiki-formant/versioning';
 
 interface RevisionData {
   id: string;
   title: string;
   version: string;
-  changeType: string;
+  changeType: ChangeType;
   changes: HistoryChange[];
   message?: string | null;
   createdAt: Date;
@@ -38,11 +39,11 @@ const TYPE_BADGE: Record<string, { label: string; variant: 'danger' | 'warning' 
   patch: { label: 'Patch', variant: 'secondary' },
 };
 
-const TYPE_WEIGHT: Record<string, number> = { patch: 0, minor: 1, major: 2 };
+const TYPE_WEIGHT: Record<ChangeType, number> = { none: 0, patch: 0, minor: 1, major: 2 };
 const authorName = (r: RevisionData) => r.author?.displayName || r.author?.shortAddress || '';
 const REVISION_COMPARATORS = {
   version: (a: RevisionData, b: RevisionData) => a.version.localeCompare(b.version, undefined, { numeric: true }),
-  type: (a: RevisionData, b: RevisionData) => (TYPE_WEIGHT[a.changeType] ?? 0) - (TYPE_WEIGHT[b.changeType] ?? 0),
+  type: (a: RevisionData, b: RevisionData) => TYPE_WEIGHT[a.changeType] - TYPE_WEIGHT[b.changeType],
   changes: (a: RevisionData, b: RevisionData) => a.changes.length - b.changes.length,
   author: (a: RevisionData, b: RevisionData) => authorName(a).localeCompare(authorName(b)),
   date: (a: RevisionData, b: RevisionData) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
@@ -54,7 +55,7 @@ const NO_REVISIONS: RevisionData[] = [];
 // The counted phrasing is `wiki-formant/revisions`, the one the stored revision
 // message already uses. The server has already dropped containers (this view
 // never lists them); an empty set reads off the revision's own change type.
-function ChangeSummary({ changes, changeType }: { changes: HistoryChange[]; changeType: string }) {
+function ChangeSummary({ changes, changeType }: { changes: HistoryChange[]; changeType: ChangeType }) {
   const summary = changes.length
     ? changeSummary({ changes, titleChanged: false })
     : changeType === 'major' ? 'Structural changes' : changeType === 'minor' ? 'Content updated' : changeType === 'patch' ? 'Metadata updated' : 'No changes';

@@ -11,6 +11,7 @@ import { pageUrl, shortenAddress } from '@/lib/utils';
 import { SITE_URL } from '@/lib/site';
 import { isWithin } from '@/lib/tags';
 import { escXml } from 'wiki-formant/feed';
+import type { ChangeType } from 'wiki-formant/versioning';
 
 export type WebhookEvent = 'page.created' | 'page.updated' | 'page.deleted' | 'comment.created';
 
@@ -30,7 +31,7 @@ const BOT_TOKEN = process.env.TELEGRAM_SUB_BOT_TOKEN;
 interface Notification {
   event: WebhookEvent;
   page: { slug: string; title: string; tagPath: string; version: string };
-  revision?: { changeType: string; message?: string | null; version: string } | null;
+  revision?: { changeType: ChangeType; message?: string | null; version: string } | null;
   actor?: { displayName?: string | null; radixAddress: string } | null;
   comment?: { id: string; content: string; parentId?: string | null } | null;
 }

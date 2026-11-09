@@ -11,12 +11,13 @@ import { useStore } from '@/hooks';
 import { tagLabel } from '@/lib/tags';
 import { parsePath } from '@/lib/path';
 import { useCopy } from 'wiki-formant/react';
+import type { WebhookEvent } from '@/lib/webhooks';
 
 interface Webhook {
   id: string;
   url: string;
   secret: string;
-  events: string[];
+  events: WebhookEvent[];
   tagPathFilter: string | null;
   active: boolean;
 }
@@ -24,7 +25,7 @@ interface Webhook {
 interface TelegramSub {
   id: string;
   chatId: string;
-  events: string[];
+  events: WebhookEvent[];
   tagPath: string;
   pageSlug: string;
   active: boolean;
@@ -42,12 +43,19 @@ type Telegram =
   | { status: 'failed' }
   | ({ status: 'ready' } & TelegramState);
 
-const EVENT_OPTIONS = [
+/** A connect link: none asked for, being made, waiting for Start in Telegram (polled until then), or refused. */
+type ConnectLink =
+  | { status: 'none' }
+  | { status: 'requesting' }
+  | { status: 'pending'; deepLink: string }
+  | { status: 'failed'; error: string };
+
+const EVENT_OPTIONS: { value: WebhookEvent; label: string }[] = [
   { value: 'page.created', label: 'Page created' },
   { value: 'page.updated', label: 'Page updated' },
   { value: 'page.deleted', label: 'Page deleted' },
   { value: 'comment.created', label: 'Comment created' },
-] as const;
+];
 
 /** The page or category `/settings?watch=` names, as a subscription target; null where there is none. */
 function parseWatchTarget(path = ''): { tagPath: string; slug: string | null; label: string } | null {
@@ -73,9 +81,16 @@ const LINK_TTL = 10 * 60 * 1000;
  */
 export function useTelegram(enabled = true) {
   const [telegram, setTelegram] = useState<Telegram>({ status: 'loading' });
-  const [deepLink, setDeepLink] = useState<string | null>(null);
+  const [link, setLink] = useState<ConnectLink>({ status: 'none' });
+  // Numbers each connect: a request or poll answers only while its attempt is the newest.
+  const attemptRef = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const showToast = useStore(s => s.showToast);
+
+  const stopPoll = () => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = null;
+  };
 
   /** Null where the route did not answer; a refresh after the first load keeps what is on screen. */
   const refresh = useCallback(async (): Promise<TelegramState | null> => {
@@ -90,44 +105,53 @@ export function useTelegram(enabled = true) {
     if (!enabled) return;
     let cancelled = false;
     refresh().catch(() => null).then(data => { if (!cancelled && !data) setTelegram({ status: 'failed' }); });
-    return () => { cancelled = true; if (pollRef.current) clearInterval(pollRef.current); };
+    return () => { cancelled = true; attemptRef.current++; stopPoll(); };
   }, [enabled, refresh]);
 
+  // One attempt at a time: the button is disabled while a link is being made,
+  // and a later press retires the earlier link and its poll.
   const connect = async () => {
-    const res = await postTelegram({});
-    const link = res.ok ? (await res.json()).deepLink : null;
-    if (!link) return;
-    setDeepLink(link);
-    // One poll at a time: a second press replaces the first's link and its poll.
-    if (pollRef.current) clearInterval(pollRef.current);
-    const started = Date.now();
-    const poll = setInterval(async () => {
-      const connected = (await refresh().catch(() => null))?.connected ?? false;
-      if (pollRef.current !== poll) return;
-      const expired = Date.now() - started > LINK_TTL;
-      if (!connected && !expired) return;
-      clearInterval(poll);
-      pollRef.current = null;
-      setDeepLink(null);
-      showToast(connected ? 'Telegram connected!' : 'The Telegram link expired. Press Connect Telegram for a new one.', connected ? 'success' : 'info');
-    }, 3000);
-    pollRef.current = poll;
+    if (link.status === 'requesting') return;
+    const attempt = ++attemptRef.current;
+    stopPoll();
+    setLink({ status: 'requesting' });
+    try {
+      const res = await postTelegram({});
+      const data = await res.json().catch(() => ({}));
+      if (attempt !== attemptRef.current) return;
+      if (!res.ok || !data.deepLink) { setLink({ status: 'failed', error: data.error || 'A Telegram link could not be made. Try again.' }); return; }
+      setLink({ status: 'pending', deepLink: data.deepLink });
+      const started = Date.now();
+      pollRef.current = setInterval(async () => {
+        const connected = (await refresh().catch(() => null))?.connected ?? false;
+        if (attempt !== attemptRef.current) return;
+        const expired = Date.now() - started > LINK_TTL;
+        if (!connected && !expired) return;
+        attemptRef.current++;
+        stopPoll();
+        setLink({ status: 'none' });
+        showToast(connected ? 'Telegram connected!' : 'The Telegram link expired. Press Connect Telegram for a new one.', connected ? 'success' : 'info');
+      }, 3000);
+    } catch {
+      if (attempt === attemptRef.current) setLink({ status: 'failed', error: 'The request did not reach the wiki. Try again.' });
+    }
   };
 
-  const subscribe = async (tagPath: string, pageSlug: string | null, events: string[]) => {
-    const { ok } = await postTelegram({ tagPath, ...(pageSlug && { pageSlug }), events });
-    if (ok) await refresh();
+  /** Each answers whether the change was made; a dropped request is a no. */
+  const subscribe = async (tagPath: string, pageSlug: string | null, events: WebhookEvent[]) => {
+    const ok = await postTelegram({ tagPath, ...(pageSlug && { pageSlug }), events }).then(r => r.ok, () => false);
+    if (ok) await refresh().catch(() => null);
     return ok;
   };
 
   const unsubscribe = async (id: string) => {
-    const { ok } = await fetch(`/api/telegram?id=${id}`, { method: 'DELETE' });
-    if (ok) await refresh();
+    const ok = await fetch(`/api/telegram?id=${id}`, { method: 'DELETE' }).then(r => r.ok, () => false);
+    if (ok) await refresh().catch(() => null);
     return ok;
   };
 
   const disconnect = async () => {
-    const { ok } = await fetch('/api/telegram', { method: 'DELETE' });
+    const ok = await fetch('/api/telegram', { method: 'DELETE' }).then(r => r.ok, () => false);
     if (ok) setTelegram({ status: 'ready', connected: false, chatId: null, subscriptions: [] });
     return ok;
   };
@@ -135,11 +159,11 @@ export function useTelegram(enabled = true) {
   // The bot's /stop pauses every row at once, and a subscribe resumes them all.
   const paused = telegram.status === 'ready' && telegram.subscriptions.some(s => !s.active);
 
-  return { telegram, paused, deepLink, connect, subscribe, unsubscribe, disconnect };
+  return { telegram, paused, link, connect, subscribe, unsubscribe, disconnect };
 }
 
 function TelegramSection({ watch }: { watch?: string }) {
-  const { telegram: state, paused, deepLink, connect, subscribe, unsubscribe, disconnect } = useTelegram();
+  const { telegram: state, paused, link, connect, subscribe, unsubscribe, disconnect } = useTelegram();
   const [subscribing, setSubscribing] = useState(false);
   const showToast = useStore(s => s.showToast);
 
@@ -150,20 +174,23 @@ function TelegramSection({ watch }: { watch?: string }) {
     setSubscribing(true);
     // A section subscriber wants the new pages most of all; without
     // `page.created` a subscription to `blog` never delivered an issue.
-    const events = context.slug
+    const events: WebhookEvent[] = context.slug
       ? ['page.updated', 'comment.created']
       : ['page.created', 'page.updated', 'comment.created'];
     try {
       if (await subscribe(context.tagPath, context.slug, events)) showToast(paused ? `Subscribed to ${context.label}; notifications resumed` : `Subscribed to ${context.label}`);
+      else showToast(`Could not subscribe to ${context.label}. Try again.`, 'info');
     } finally { setSubscribing(false); }
   };
 
   const handleUnsubscribe = async (id: string) => {
     if (await unsubscribe(id)) showToast('Unsubscribed');
+    else showToast('Could not unsubscribe. Try again.', 'info');
   };
 
   const handleDisconnect = async () => {
     if (await disconnect()) showToast('Telegram disconnected');
+    else showToast('Telegram could not be disconnected. Try again.', 'info');
   };
 
   if (state.status === 'loading') return null;
@@ -188,10 +215,10 @@ function TelegramSection({ watch }: { watch?: string }) {
         )}
       </div>
 
-      {deepLink ? (
+      {link.status === 'pending' ? (
         <div className="telegram-pending">
           <p className="text-small text-text-muted">Click the link below, then press Start in Telegram:</p>
-          <a href={deepLink} target="_blank" rel="noopener noreferrer" className="telegram-deep-link">
+          <a href={link.deepLink} target="_blank" rel="noopener noreferrer" className="telegram-deep-link">
             <ExternalLink size={14} />Open in Telegram
           </a>
           <div className="row justify-center gap-1 text-xs text-text-muted">
@@ -247,7 +274,8 @@ function TelegramSection({ watch }: { watch?: string }) {
         </div>
       ) : (
         <div className="telegram-connect">
-          <Button variant="ghost" size="sm" onClick={connect}>Connect Telegram</Button>
+          <Button variant="ghost" size="sm" onClick={connect} isLoading={link.status === 'requesting'}>Connect Telegram</Button>
+          {link.status === 'failed' && <p className="text-error text-small">{link.error}</p>}
         </div>
       )}
     </div>
@@ -268,7 +296,7 @@ type Form =
   | { kind: 'open'; error: string | null }
   | { kind: 'submitting' };
 
-const DEFAULT_EVENTS = ['page.created', 'page.updated'];
+const DEFAULT_EVENTS: WebhookEvent[] = ['page.created', 'page.updated'];
 
 /** The listing shows a secret's tail only; the full one is shown once, on creation. */
 const maskSecret = (w: Webhook): Webhook => ({ ...w, secret: `...${w.secret.slice(-8)}` });
@@ -283,7 +311,7 @@ export function WebhookSettings({ watch }: { watch?: string }) {
   // shown once, that is the reader pasting nothing and having no way to tell.
   const { copied, copy } = useCopy();
   const [url, setUrl] = useState('https://');
-  const [events, setEvents] = useState<string[]>(DEFAULT_EVENTS);
+  const [events, setEvents] = useState<WebhookEvent[]>(DEFAULT_EVENTS);
   const [tagFilter, setTagFilter] = useState('');
   const showToast = useStore(s => s.showToast);
 
@@ -296,7 +324,7 @@ export function WebhookSettings({ watch }: { watch?: string }) {
     return () => { cancelled = true; };
   }, []);
 
-  const toggleEvent = (event: string) => {
+  const toggleEvent = (event: WebhookEvent) => {
     setEvents(prev => prev.includes(event) ? prev.filter(e => e !== event) : [...prev, event]);
   };
 
