@@ -7,7 +7,7 @@
 // padding; `--rail-gap`, between rows; `--rail-section`, between sections), and
 // this fails on any vertical spacing in the rail that is not one of them.
 //
-//   npm run lint:rail
+//   node scripts/check-rail.mjs      # npm run lint runs it too
 //
 // It reads the rows' rules in globals.css (the SIDEBAR section, less the frame
 // `.wiki-sidebar` and its scroller, which the package lays out) and every string

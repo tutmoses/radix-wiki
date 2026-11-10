@@ -16,22 +16,14 @@ function radixEngine() {
   let b = paras(L, 150, 'The Radix Engine is the execution environment for every Scrypto smart contract – purpose-built for DeFi, where tokens and NFTs are native assets rather than balances in a mapping.', 93, { size: 14, lh: 21, fill: C.text2 });
   b += sectionLabel(L, 227, 'FOUR LAYERS, TOP TO BOTTOM');
   const layers = [
-    { n: 1, name: 'Application', tag: 'topmost', desc: 'Your Scrypto blueprints, packages, and components execute here.' },
-    { n: 2, name: 'System', tag: '', desc: 'Objects, the resource model, and modules – Metadata · Royalty · Role Assignment.' },
-    { n: 3, name: 'VM', tag: '', desc: 'Runs blueprint code in two VMs: Scrypto (WebAssembly) and Native.' },
-    { n: 4, name: 'Kernel', tag: 'lowest', desc: 'Substates, actors, ownership transfer, and execution costing.' },
+    { name: 'Application', tag: 'topmost', desc: 'Your Scrypto blueprints, packages, and components execute here.' },
+    { name: 'System', desc: 'Objects, the resource model, and modules – Metadata · Royalty · Role Assignment.' },
+    { name: 'VM', desc: 'Runs blueprint code in two VMs: Scrypto (WebAssembly) and Native.' },
+    { name: 'Kernel', tag: 'lowest', desc: 'Substates, actors, ownership transfer, and execution costing.' },
   ];
-  const y0 = 245, h = 62, gap = 10;
-  layers.forEach((ly, i) => {
-    const y = y0 + i * (h + gap);
-    b += card(L, y, w, h);
-    b += `<rect x="${L}" y="${y}" width="3" height="${h}" fill="${C.getaway}"/>`;
-    b += numChip(L + 34, y + h / 2, ly.n, C.getaway);
-    b += t(L + 62, y + 27, ly.name, { size: 16, w: 700, fill: C.text });
-    b += t(L + 62, y + 47, ly.desc, { size: 13, w: 400, fill: C.text2 });
-    if (ly.tag) b += t(R - 16, y + 27, ly.tag, { size: 11, w: 700, fill: C.muted, anchor: 'end', ls: '0.08em' });
-  });
-  const kb = y0 + layers.length * (h + gap);
+  const y0 = 245;
+  b += stepCards(layers, y0);
+  const kb = y0 + layers.length * (62 + 10);
   b += t(W / 2, kb + 2, 'runs on', { size: 11, w: 700, fill: C.muted, anchor: 'middle', ls: '0.1em' });
   b += `<path d="M${W / 2 - 6},${kb + 10} L${W / 2},${kb + 18} L${W / 2 + 6},${kb + 10}" fill="none" stroke="${C.muted}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
   const cy = kb + 26, ch = 60;
@@ -127,7 +119,6 @@ function developerPath() {
 // Boxes-and-connectors org chart grounded in radix.wiki's own pages
 // (ecosystem/radix-foundation, ecosystem/rdx-works, ecosystem/radix-accountability-council,
 // ideas/radix-network-dao-charter) and cross-checked against the Radix blog/knowledge base.
-// Org-chart-specific drawing helpers live here (not in the shared kit) so caper's copy stays identical.
 function line(x1, y1, x2, y2, col = C.hair, o = {}) {
   const { w = 1, dash = '' } = o;
   return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="${w}"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`;
@@ -446,7 +437,8 @@ function hyperscaleLegLocal() {
 }
 
 // ============================ render ========================================
-const GRAPHICS = [
+// scripts/seed-infographics.mjs embeds these through `svgOf`, so the page carries what this file draws.
+export const GRAPHICS = [
   { file: '01-radix-engine', build: radixEngine },
   { file: '02-org-structure', build: radixOrgChart },
   { file: '03-developer-path', build: developerPath },
@@ -457,7 +449,10 @@ const GRAPHICS = [
   { file: '08-hyperscale-leg-local', build: hyperscaleLegLocal },
 ];
 
-await renderPngs(GRAPHICS.map((g) => {
-  const { W, H, title, tag, note, body } = g.build();
-  return { file: g.file, W, H, svg: frame(W, H, title, tag, note, body) };
-}), ASSETS);
+/** The finished SVG of one graphic, with the dimensions `renderPngs` takes. */
+export function svgOf(file) {
+  const { W, H, title, tag, note, body } = GRAPHICS.find((g) => g.file === file).build();
+  return { file, W, H, svg: frame(W, H, title, tag, note, body) };
+}
+
+if (import.meta.main) await renderPngs(GRAPHICS.map((g) => svgOf(g.file)), ASSETS);

@@ -17,16 +17,13 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import {
-  isLockedPage, argOf, fmt as fmtOr, compact as compactOr, delta, withClient, embedFigure, readPage,
+  isLockedPage, argOf, fmt as fmtOr, compact as compactOr, delta, gapDays, withClient, embedFigure, readPage,
 } from './wiki-utils.ts';
 import { C, MONO, t, wrap, paras, card, sectionLabel, frame, figureBlock, renderPngs } from '../brand-assets/kit.mjs';
-
-process.loadEnvFile(new URL('../.env', import.meta.url));
+import { WEEKLY_PAGE } from '../src/lib/week-in-review.ts';
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(REPO, 'brand-assets/wir');
-const SNAP_TAG = 'contents/tech/operations';
-const SNAP_SLUG = 'network-weekly';
 const MARKER = 'wir-ledger';
 const EN = '–';
 
@@ -89,8 +86,8 @@ function statCard(x, y, w, label, value, wow, sub) {
 function wirFigure(snap, prior, series, dev, devPrior) {
   // 760 is the width figureBlock displays at; a 920 canvas shrinks every label by a fifth.
   const W = 760, L = 48, R = W - 48, w = R - L;
-  const gapDays = prior ? Math.round((new Date(snap.week) - new Date(prior.week)) / 86400000) : 0;
-  const d = (now, was, o = {}) => delta(now, was, { ...o, gapDays });
+  const days = gapDays(snap.week, prior?.week);
+  const d = (now, was, o = {}) => delta(now, was, { ...o, gapDays: days });
   const oci = snap.ociswap || {};
   let b = '';
 
@@ -101,7 +98,7 @@ function wirFigure(snap, prior, series, dev, devPrior) {
   b += statCard(L, y0, cw, 'STAKED XRD', compact(snap.totalStake),
     d(snap.totalStake, prior?.totalStake), supplyShare);
   // Not a validator count: the active set is capped at 100, so that card printed a constant.
-  const move = biggestStakeMove(snap, prior, gapDays);
+  const move = biggestStakeMove(snap, prior, days);
   const netMove = prior ? snap.totalStake - prior.totalStake : null;
   b += move
     ? statCard(L + cw + gap, y0, cw, 'BIGGEST STAKE MOVE', `${signed(move.diff)} XRD`, '',
@@ -238,7 +235,7 @@ function wirFigure(snap, prior, series, dev, devPrior) {
 async function loadState(client) {
   // WIR_STATE_FILE overrides the DB read for layout testing (same idea as SNAPSHOT_ORIGIN).
   if (process.env.WIR_STATE_FILE) return JSON.parse(fs.readFileSync(process.env.WIR_STATE_FILE, 'utf8'));
-  return (await readPage(client, SNAP_TAG, SNAP_SLUG))?.metadata?.state ?? null;
+  return (await readPage(client, WEEKLY_PAGE.tagPath, WEEKLY_PAGE.slug))?.metadata?.state ?? null;
 }
 
 async function render(client) {

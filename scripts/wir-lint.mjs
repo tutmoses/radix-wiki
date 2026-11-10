@@ -15,12 +15,11 @@
 
 import fs from 'node:fs';
 import { safeLinkHref } from 'wiki-formant/validation';
+import { plainText } from 'wiki-formant/text';
 import { argOf, withClient } from './wiki-utils.ts';
-
-process.loadEnvFile(new URL('../.env', import.meta.url));
+import { RECAP_PREFIX } from '../src/lib/week-in-review.ts';
 
 const TAG = 'blog';
-const RECAP_LIKE = 'week-in-review-%';
 
 const args = process.argv.slice(2);
 
@@ -53,7 +52,6 @@ const RUBRICS = [
 
 // ---------------------------------------------------------------- extraction
 
-const stripTags = (h) => h.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const words = (s) => (s ? s.split(/\s+/).filter(Boolean).length : 0);
 
 /**
@@ -108,8 +106,8 @@ function analyse(blocks) {
   const outboundUniq = [...new Set(outbound)];
   const telegram = outbound.filter((h) => /(^|\/\/)(t\.me|telegram\.)/i.test(h));
 
-  const h2 = [...html.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/gi)].map((m) => stripTags(m[1]));
-  const h3 = [...html.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/gi)].map((m) => stripTags(m[1]));
+  const h2 = [...html.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/gi)].map((m) => plainText(m[1]));
+  const h3 = [...html.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/gi)].map((m) => plainText(m[1]));
 
   const types = new Set();
   for (const b of blocks || []) {
@@ -121,7 +119,7 @@ function analyse(blocks) {
   return {
     html, json, internal, outbound: outboundUniq, telegramCount: telegram.length, outboundTotal: outbound.length,
     h2, h3, types, badLinks,
-    wordCount: words(stripTags(html)),
+    wordCount: words(plainText(html)),
     figures: (html.match(/data-graphic=|<svg|<img /gi) || []).length,
     quotes: (html.match(/<blockquote/gi) || []).length,
   };
@@ -188,10 +186,10 @@ function lint(name, blocks) {
   // --- budgets: a rubric that outgrows its box stops being a rubric.
   const sections = [...a.html.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>([\s\S]*?)(?=<h2|$)/gi)];
   for (const [, head, body] of sections) {
-    const label = stripTags(head);
+    const label = plainText(head);
     const rubric = RUBRICS.find((r) => r.match.test(`<h2>${label}</h2>`));
-    if (rubric && words(stripTags(body)) > RULES.rubricBudget) {
-      warn.push(`rubric over budget: "${label}" ${words(stripTags(body))}w > ${RULES.rubricBudget}w`);
+    if (rubric && words(plainText(body)) > RULES.rubricBudget) {
+      warn.push(`rubric over budget: "${label}" ${words(plainText(body))}w > ${RULES.rubricBudget}w`);
     }
   }
 
@@ -226,7 +224,7 @@ await withClient(async (client) => {
     process.exit(1);
   }
   const { rows } = all
-    ? await client.query(`SELECT slug, content FROM "WikiPage" WHERE "siteId" = '' AND "tagPath" = $1 AND slug LIKE $2 ORDER BY slug DESC`, [TAG, RECAP_LIKE])
+    ? await client.query(`SELECT slug, content FROM "WikiPage" WHERE "siteId" = '' AND "tagPath" = $1 AND slug LIKE $2 ORDER BY slug DESC`, [TAG, `${RECAP_PREFIX}%`])
     : await client.query(`SELECT slug, content FROM "WikiPage" WHERE "siteId" = '' AND "tagPath" = $1 AND slug = $2`, [TAG, slug]);
   if (!rows.length) { console.error(`No recap found${slug ? ` for ${slug}` : ''}.`); process.exit(2); }
   let failures = 0;

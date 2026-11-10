@@ -36,5 +36,4 @@ export default {
   },
   sceneClass: WikiScene,
   context: { data },
-  cleanup: () => data.disconnect(),
 };

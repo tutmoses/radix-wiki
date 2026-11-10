@@ -13,35 +13,25 @@
 // Nothing here touches the database.
 
 import fs from 'node:fs';
-import { uid, argOf, weekKey, fmt, compact, withClient, readPage } from './wiki-utils.ts';
+import { uid, content, infobox, argOf, weekKey, weekStart, gapDays, fmt, compact, delta, withClient, readPage } from './wiki-utils.ts';
+import { WEEKLY_PAGE } from '../src/lib/week-in-review.ts';
 
-process.loadEnvFile(new URL('../.env', import.meta.url));
-
-const SNAP_TAG = 'contents/tech/operations';
-const SNAP_SLUG = 'network-weekly';
 const TODO = 'TODO';
-
-/** Week-over-week change, only when the two readings are close enough to compare. */
-function wow(now, was, gapDays) {
-  if (!isFinite(now) || !isFinite(was) || !was || gapDays > 10) return '';
-  const pc = ((now - was) / Math.abs(was)) * 100;
-  if (Math.abs(pc) < 0.05) return 'no change';
-  return `${pc > 0 ? '+' : '−'}${Math.abs(pc).toFixed(1)}%`;
-}
-
-const content = (text) => ({ id: uid(), type: 'content', text });
 
 await withClient(async (client) => {
   const week = weekKey(argOf('--week'));
-  const since = new Date(new Date(`${week}T00:00:00Z`).getTime() - 6 * 86400000).toISOString().slice(0, 10);
+  const since = weekStart(week);
 
-  const state = (await readPage(client, SNAP_TAG, SNAP_SLUG))?.metadata?.state ?? {};
+  const state = (await readPage(client, WEEKLY_PAGE.tagPath, WEEKLY_PAGE.slug))?.metadata?.state ?? {};
   const snaps = state.snapshots || [];
   const i = snaps.findIndex((s) => s.week === week);
   const snap = i >= 0 ? snaps[i] : null;
   const prior = i > 0 ? snaps[i - 1] : null;
-  const gap = snap && prior ? Math.round((new Date(snap.week) - new Date(prior.week)) / 86400000) : 99;
-  const dev = (state.dev || []).find((d) => d.week === week) || null;
+  const wow = (now, was) => delta(now, was, { gapDays: gapDays(week, prior?.week) });
+  const devs = state.dev || [];
+  const d = devs.findIndex((x) => x.week === week);
+  const dev = d >= 0 ? devs[d] : null;
+  const devPrior = d > 0 ? devs[d - 1] : null;
 
   // Pages that actually changed in the window. These are the internal links the
   // recap was failing to carry, and they are already sitting in the database.
@@ -57,14 +47,11 @@ await withClient(async (client) => {
   const blocks = [];
 
   // --- infobox: exactly two rows (the rail drops to display:block under 17rem)
-  blocks.push({
-    id: uid(), type: 'infobox',
-    blocks: [content(
-      `<table><tbody>` +
-      `<tr><th>Week of</th><td>${since} to ${week}</td></tr>` +
-      `<tr><th>Top story</th><td>${TODO}: one sentence.</td></tr>` +
-      `</tbody></table>`)],
-  });
+  blocks.push(infobox(
+    `<table><tbody>` +
+    `<tr><th>Week of</th><td>${since} to ${week}</td></tr>` +
+    `<tr><th>Top story</th><td>${TODO}: one sentence.</td></tr>` +
+    `</tbody></table>`));
 
   // --- the essay
   blocks.push(content(`<p>${TODO}: the cold open. One scene, then the throughline for the week.</p>`));
@@ -100,12 +87,12 @@ await withClient(async (client) => {
       `<p>Read live from the Radix Gateway at epoch ${fmt(snap.epoch)}, state version ${fmt(snap.stateVersion)}, on ${week}.</p>` +
       `<table><tbody>` +
       `<tr><th>Reading</th><th>Value</th><th>Week on week</th></tr>` +
-      row('Staked XRD', `${compact(snap.totalStake)} XRD`, wow(snap.totalStake, prior?.totalStake, gap)) +
+      row('Staked XRD', `${compact(snap.totalStake)} XRD`, wow(snap.totalStake, prior?.totalStake)) +
       row('Share of supply', snap.xrdSupply ? `${((snap.totalStake / snap.xrdSupply) * 100).toFixed(1)}%` : '—', '') +
-      row('Validators holding a third of stake', `${snap.nakamoto}`, wow(snap.nakamoto, prior?.nakamoto, gap)) +
-      row('Top ten share', `${snap.top10Share}%`, wow(snap.top10Share, prior?.top10Share, gap)) +
-      row('Ociswap seven-day volume', `${compact(oci.volume7dXrd)} XRD`, wow(oci.volume7dXrd, prior?.ociswap?.volume7dXrd, gap)) +
-      (dev ? row('Commits across tracked repositories', fmt(dev.commits), wow(dev.commits, null, gap)) : '') +
+      row('Validators holding a third of stake', `${snap.nakamoto}`, wow(snap.nakamoto, prior?.nakamoto)) +
+      row('Top ten share', `${snap.top10Share}%`, wow(snap.top10Share, prior?.top10Share)) +
+      row('Ociswap seven-day volume', `${compact(oci.volume7dXrd)} XRD`, wow(oci.volume7dXrd, prior?.ociswap?.volume7dXrd)) +
+      (dev ? row('Commits across tracked repositories', fmt(dev.commits), delta(dev.commits, devPrior?.commits, { gapDays: gapDays(week, devPrior?.week) })) : '') +
       `</tbody></table>` +
       `<p>${TODO}: spend at least one of these numbers in the prose above.</p>`));
   } else {

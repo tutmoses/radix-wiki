@@ -23,17 +23,13 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { bump } from 'wiki-formant/versioning';
 import {
-  uid, AUTHOR_ID, isLockedPage, esc, meta, argOf, weekKey, fmt, compact, delta, withClient, readPage, storeFor, writeRevision,
+  content, infobox, AUTHOR_ID, isLockedPage, esc, meta, argOf, weekKey, weekStart, gapDays, fmt, compact, delta, withClient, readPage, storeFor, writeRevision,
 } from './wiki-utils.ts';
+import { WEEKLY_PAGE } from '../src/lib/week-in-review.ts';
 
-process.loadEnvFile(new URL('../.env', import.meta.url));
-
-const TAG = 'contents/tech/operations';
-const SLUG = 'network-weekly';
+const { tagPath: TAG, slug: SLUG } = WEEKLY_PAGE;
 const TITLE = 'The Network, Week by Week';
-const ORIGIN = process.env.SNAPSHOT_ORIGIN || 'https://radix.wiki';
 
 const [mode, ...rest] = process.argv.slice(2);
 const DRY = process.argv.includes('--dry-run');
@@ -65,34 +61,34 @@ function render(state) {
   }).join('');
 
   const blocks = [
-    { id: uid(), type: 'infobox', blocks: [{ id: uid(), type: 'content', text:
+    infobox(
       `<table><tbody>` +
       `<tr><th>Weeks recorded</th><td>${(state.snapshots || []).length}</td></tr>` +
       (latest ? `<tr><th>Latest reading</th><td>${esc(latest.week)}</td></tr>` +
                 `<tr><th>Epoch</th><td>${fmt(latest.epoch)}</td></tr>` +
                 `<tr><th>Validators holding a third</th><td>${latest.nakamoto ?? '—'}</td></tr>` : '') +
-      `</tbody></table>` }] },
-    { id: uid(), type: 'content', text:
+      `</tbody></table>`),
+    content(
       `<p>One reading of the Radix ledger a week, taken through the Radix Gateway and kept ` +
       `so that each week can be compared with the one before it. Stake and supply are in XRD. ` +
       `Swap figures cover Ociswap only, which is one venue among several and not the whole of ` +
       `Radix trading. Every row records the epoch it was read at, because a number without ` +
-      `a position on the ledger cannot be checked later.</p>` },
-    { id: uid(), type: 'content', text:
+      `a position on the ledger cannot be checked later.</p>`),
+    content(
       `<h2>The last ${snaps.length} week${snaps.length === 1 ? '' : 's'}</h2>` +
       (rows
         ? `<table><tbody><tr><th>Week ending</th><th>Epoch</th><th>Staked XRD</th>` +
           `<th>Active / registered</th><th>Third of stake</th><th>Ociswap 7d (XRD)</th><th>Swaps</th></tr>${rows}</tbody></table>`
-        : '<p>No readings yet.</p>') },
+        : '<p>No readings yet.</p>')),
   ];
 
   const ann = (state.announcements || []).slice(-10).reverse();
   if (ann.length) {
-    blocks.push({ id: uid(), type: 'content', text:
+    blocks.push(content(
       `<h2>How the weekly recap was received</h2>` +
       `<table><tbody><tr><th>Week</th><th>Impressions</th><th>Likes</th><th>Replies</th></tr>` +
       ann.map((a) => `<tr><td>${esc(a.week)}</td><td>${fmt(a.impressions)}</td><td>${fmt(a.likes)}</td><td>${fmt(a.replies)}</td></tr>`).join('') +
-      `</tbody></table>` });
+      `</tbody></table>`));
   }
   return blocks;
 }
@@ -107,21 +103,20 @@ const cap = (state) => ({
 const load = (client) => readPage(client, TAG, SLUG);
 
 async function persist(client, page, state, message) {
-  const content = render(state);
+  const blocks = render(state);
 
   if (!page) {
     console.log(`  ${DRY ? '[dry] ' : ''}${SLUG}  page created (v1.0.0)`);
     if (DRY) return;
     await storeFor(client).save({
-      tagPath: TAG, slug: SLUG, title: TITLE, content, authorId: AUTHOR_ID, message,
+      tagPath: TAG, slug: SLUG, title: TITLE, content: blocks, authorId: AUTHOR_ID, message,
       metadata: { excerpt: 'A weekly reading of the Radix ledger, kept so each week can be compared with the last.', state },
     });
     return;
   }
 
-  console.log(`  ${DRY ? '[dry] ' : ''}${SLUG}  v${page.version} -> v${bump(page.version, 'minor')}`);
-  if (DRY) return;
-  await writeRevision(client, page, content, { change: 'minor', message, metadata: { ...meta(page), state } });
+  const version = await writeRevision(client, page, blocks, { change: 'minor', message, metadata: { ...meta(page), state }, dry: DRY });
+  console.log(`  ${DRY ? '[dry] ' : ''}${SLUG}  v${page.version} -> v${version}`);
 }
 
 // ---------------------------------------------------------------- repositories
@@ -197,21 +192,13 @@ async function repoWeek({ repo, label }, since, until) {
   }
 }
 
-async function languages() {
-  const out = {};
-  for (const { repo, label } of REPOS) {
-    try { out[label] = await gh(`/repos/${repo}/languages`); } catch { /* optional */ }
-  }
-  return out;
-}
-
 /** The repository reading writes metadata only: the visible blocks are the ledger's,
  *  so re-rendering them here would churn every block id for a change they don't show. */
 async function captureDev(client, page) {
   const state = meta(page).state ?? {};
   const week = weekKey(argOf('--week'));
   const until = week;
-  const since = new Date(new Date(`${week}T00:00:00Z`).getTime() - 6 * 86400000).toISOString().slice(0, 10);
+  const since = weekStart(week);
   console.log(`Capturing ${since} .. ${until}`);
 
   const repos = [];
@@ -235,7 +222,6 @@ async function captureDev(client, page) {
     statsFrom: ok.reduce((s, r) => s + (r.statsFrom || 0), 0),
     contributors: [...new Set(ok.flatMap((r) => r.authors))].length,
     repos,
-    languages: await languages(),
   };
 
   // Replace within the same week rather than append, so a re-run is idempotent.
@@ -272,18 +258,19 @@ await withClient(async (client) => {
     // while it regenerates: on 2026-09-13 that stored a reading 45 hours old under a correct-
     // looking epoch. `capturedAt` is stamped by the route, so refuse anything older than ten
     // minutes and ask again once the regeneration has landed.
+    const origin = process.env.SNAPSHOT_ORIGIN || 'https://radix.wiki';
     let reading;
     for (let attempt = 1; ; attempt++) {
-      const res = await fetch(`${ORIGIN}/api/charts/snapshot`, { headers: { accept: 'application/json' } });
+      const res = await fetch(`${origin}/api/charts/snapshot`, { headers: { accept: 'application/json' } });
       if (res.status === 404) {
         throw new Error(
-          `no snapshot route at ${ORIGIN} (404).\n` +
+          `no snapshot route at ${origin} (404).\n` +
           `  The route ships with the app, so a 404 on radix.wiki means it is not deployed yet.\n` +
           `  Against a local dev server instead:\n` +
           `    SNAPSHOT_ORIGIN=http://localhost:3000 node scripts/network-snapshot.mjs capture`,
         );
       }
-      if (!res.ok) throw new Error(`snapshot route ${res.status} at ${ORIGIN}`);
+      if (!res.ok) throw new Error(`snapshot route ${res.status} at ${origin}`);
       reading = await res.json();
       const ageMin = (Date.now() - new Date(reading.capturedAt)) / 60000;
       if (ageMin <= 10) break;
@@ -317,7 +304,7 @@ await withClient(async (client) => {
     const entry = { week, ...reading };
     if (at >= 0) snapshots[at] = entry; else snapshots.push(entry);
 
-    const gap = prior ? Math.round((new Date(week) - new Date(prior.week)) / 86400000) : 0;
+    const gap = gapDays(week, prior?.week);
     console.log(`  week ${week}  epoch ${fmt(reading.epoch)}  state version ${fmt(reading.stateVersion)}`);
     console.log(`  staked ${compact(reading.totalStake)} XRD ${delta(reading.totalStake, prior?.totalStake, { gapDays: gap })}`);
     console.log(`  validators ${reading.active} active / ${reading.registered} registered ` +
@@ -336,19 +323,6 @@ await withClient(async (client) => {
     else if (gap > 10) console.log(`  prior reading is ${gap} days old: too stale to compare.`);
 
     await persist(client, page, cap({ ...state, snapshots }), `Ledger reading for the week ending ${week}`);
-
-  } else if (mode === 'drop') {
-    // Repair, for a reading that should never have been stored. The 2026-09-06 run recorded
-    // zero validators and zero stake because the Gateway answered /status while refusing
-    // /state; the guard above stops that recurring, and this removes the one that landed.
-    const week = rest.find((a) => !a.startsWith('--'));
-    if (!week) throw new Error('drop requires <week>, e.g. 2026-09-06');
-    const page = await load(client);
-    if (!page) throw new Error(`${TAG}/${SLUG} not found`);
-    const state = meta(page).state ?? {};
-    const snapshots = (state.snapshots || []).filter((s) => s.week !== week);
-    if (snapshots.length === (state.snapshots || []).length) { console.log(`  no reading for ${week}`); return; }
-    await persist(client, page, cap({ ...state, snapshots }), `Remove the unreadable ${week} reading: the Gateway refused state reads and zero was recorded as a measurement`);
 
   } else if (mode === 'capture-dev') {
     const page = await load(client);

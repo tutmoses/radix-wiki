@@ -20,7 +20,8 @@ import { join } from "node:path";
 export const meta = {
   name: "first-blueprint",
   title: "Your First Blueprint – radix.wiki",
-  out: "radixwiki-first-blueprint.mp4",
+  server: false,
+  size: "1920x1080",
   page: "/developers/getting-started/02-first-blueprint",
 };
 

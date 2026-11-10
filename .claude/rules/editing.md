@@ -7,7 +7,7 @@ How a script creates or edits a page in radix.wiki's production database.
 To create pages programmatically (bypassing API auth), write `scripts/seed-<name>.ts` with a `pages` array and pass it to `insertPages(pages, defaultTagPath, revisionMessage)` from `scripts/wiki-utils.ts`. It checks existence per page (idempotent), honours `LOCKED_PAGES`, and writes each page and its first revision through the store. The scripts that stay are `wiki-utils.ts` (this wiki's helpers over `wiki-formant/scripts`) and `seed-infographics.mjs` (the deploy the infographics routine calls every time); every other `seed-*` is deleted once its page is verified.
 
 ```javascript
-import { uid, insertPages } from './wiki-utils.ts';
+import { content, infobox, insertPages } from './wiki-utils.ts';
 
 const pages = [
   {
@@ -16,16 +16,16 @@ const pages = [
     title: 'Page Title',
     metadata: { excerpt: 'One-sentence excerpt (≤160 chars).' },
     content: [
-      { id: uid(), type: 'infobox', blocks: [{ id: uid(), type: 'content', text: '<table>...</table>' }] },
-      { id: uid(), type: 'content', text: '<h2>Introduction</h2><p>...</p>' },
-      { id: uid(), type: 'content', text: '<h2>External Links</h2><ul><li>...</li></ul>' },
+      infobox('<table>...</table>'),
+      content('<h2>Introduction</h2><p>...</p>'),
+      content('<h2>External Links</h2><ul><li>...</li></ul>'),
     ],
   },
 ];
 await insertPages(pages, 'contents/tech/core-concepts', 'Initial page');
 ```
 
-- **Block IDs:** every block and nested block gets `uid()`. `'content'` carries an HTML string in `text`; `'infobox'` carries `blocks: AtomicBlock[]`.
+- **Block IDs:** every block and nested block gets `uid()`; `content(html)` and `infobox(table)` assign them. `'content'` carries an HTML string in `text`; `'infobox'` carries `blocks: AtomicBlock[]`.
 - **Columns:** `WikiPage` has no `excerpt` column; the excerpt lives at `metadata.excerpt` (the `/blog.xml` feed reads it).
 - **Tag paths** must exist in `TAG_HIERARCHY`.
 - **Author:** `AUTHOR_ID` from `wiki-utils.ts` (Hydrate); its `writeRevision` signs every revision with it.

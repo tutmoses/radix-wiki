@@ -16,11 +16,8 @@
 // three times (sweeps 202 and 224 found it weeks later) because every anchor in a
 // stale nav still resolves 200.
 
-import { bump } from 'wiki-formant/versioning';
-import { uid, AUTHOR_ID, isLockedPage, esc, meta, withClient, readPage, storeFor, writeRevision } from './wiki-utils.ts';
+import { uid, infobox, AUTHOR_ID, isLockedPage, esc, meta, withClient, readPage, storeFor, writeRevision } from './wiki-utils.ts';
 import { RECAP_PREFIX, SERIES_SLUG, issueLabel, scoreline } from '../src/lib/week-in-review.ts';
-
-process.loadEnvFile(new URL('../.env', import.meta.url));
 
 const TAG = 'blog';
 const INDEX_TITLE = 'Radix Week in Review';
@@ -171,7 +168,7 @@ function renderIndex(state, recaps) {
   const recapHeads = ['#', 'Week', 'Title', 'What it was about', 'Links (wiki / out)'];
 
   return [
-    { id: uid(), type: 'infobox', blocks: [{ id: uid(), type: 'content', text:
+    infobox(
       `<table><tbody>` +
       `<tr><th>Latest</th><td>${recaps.length ? esc(issueLabel(recaps.length)) : '\u2014'}</td></tr>` +
       `<tr><th>Recaps</th><td>${recaps.length}</td></tr>` +
@@ -181,7 +178,7 @@ function renderIndex(state, recaps) {
       (state.scoring ? `<tr><th>Scoring</th><td>${html(state.scoring)}</td></tr>` : '') +
       `<tr><th>Tracking since</th><td>${html(since)}</td></tr>` +
       `<tr><th>Feed</th><td><a href="${FEED_PATH}" rel="noopener">RSS</a></td></tr>` +
-      `</tbody></table>` }] },
+      `</tbody></table>`),
     { id: uid(), type: 'content', text:
       `<p>Every week the Radix Week in Review records what the ecosystem said would happen, ` +
       `with a date by which it should have happened and the check that will settle it. ` +
@@ -288,13 +285,7 @@ async function sync(client, stateOverride) {
       action = footer >= 0 ? 'nav added (above legacy footer)' : 'nav added';
     }
 
-    // The index counts each recap's links straight out of its content, and
-    // loadRecaps read that content before this loop rewrote it. Hand the new
-    // blocks forward or the index renders last run's counts and needs a second
-    // pass to settle.
-    r.content = blocks;
-
-    const version = bump(r.version, 'patch');
+    const version = await writeRevision(client, r, blocks, { change: 'patch', message: 'Rebuild the series navigation from the published recaps', dry: DRY });
     console.log(`  ${DRY ? '[dry] ' : ''}${r.slug}  v${r.version} -> v${version}  ${action}`);
     if (DRY) {
       const plain = (h) => h.replace(/<\/(p|h\d|li)>/g, ' ').replace(/<[^>]+>/g, '').replace(/&middot;/g, '\u00b7')
@@ -302,9 +293,12 @@ async function sync(client, stateOverride) {
       if (at >= 0) console.log(`        was: ${plain(r.content[at].text)}`);
       console.log(`        now: ${plain(html)}`);
     }
-    if (!DRY) {
-      await writeRevision(client, r, blocks, { change: 'patch', message: 'Rebuild the series navigation from the published recaps' });
-    }
+
+    // The index counts each recap's links straight out of its content, and
+    // loadRecaps read that content before this loop rewrote it. Hand the new
+    // blocks forward or the index renders last run's counts and needs a second
+    // pass to settle.
+    r.content = blocks;
     wrote++;
   }
 
@@ -330,13 +324,10 @@ async function sync(client, stateOverride) {
       console.log(`  ${SERIES_SLUG}  no change`);
       ok++;
     } else {
-      const version = bump(existing.version, 'minor');
+      const version = await writeRevision(client, existing, keepIds(content, existing.content), {
+        change: 'minor', message: 'Update the series index and prediction ledger', metadata: { ...meta(existing), state }, dry: DRY,
+      });
       console.log(`  ${DRY ? '[dry] ' : ''}${SERIES_SLUG}  v${existing.version} -> v${version}  index rebuilt`);
-      if (!DRY) {
-        await writeRevision(client, existing, keepIds(content, existing.content), {
-          change: 'minor', message: 'Update the series index and prediction ledger', metadata: { ...meta(existing), state },
-        });
-      }
       wrote++;
     }
   }

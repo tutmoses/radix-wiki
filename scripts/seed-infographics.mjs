@@ -1,17 +1,11 @@
-// scripts/seed-infographics.mjs – embed radix.wiki infographics (brand-assets/NN-*.svg)
-// into their wiki pages as a responsive <figure> content block.
+// scripts/seed-infographics.mjs – embed radix.wiki infographics (drawn by
+// brand-assets/generate-infographics.mjs) into their wiki pages as a responsive <figure> content block.
 //
 // Idempotent: keyed on data-graphic="<marker>" (re-run replaces in place). Writes
 // one revisions row per changed page. Skips locked pages. Run: node scripts/seed-infographics.mjs
-import { readFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { isLockedPage, withClient, embedFigure, readPage } from './wiki-utils.ts';
 import { figureBlock } from '../brand-assets/kit.mjs';
-try { process.loadEnvFile(); } catch {} // the .env in the working directory, if there is one
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const REPO = resolve(__dirname, '..');
+import { svgOf } from '../brand-assets/generate-infographics.mjs';
 
 const SPECS = [
   {
@@ -70,8 +64,7 @@ const SPECS = [
 // The strip/wrap transform is kit.figureBlock — this script used to carry its own
 // copy, which is how the border colour here and the kit's could have drifted apart.
 function figureHtml(s) {
-  const svg = readFileSync(resolve(REPO, `brand-assets/${s.file}.svg`), 'utf8').trim();
-  const figure = figureBlock(svg, {
+  const figure = figureBlock(svgOf(s.file).svg.trim(), {
     marker: s.marker,
     label: `radix.wiki infographic – ${s.heading}`,
     caption: s.caption,

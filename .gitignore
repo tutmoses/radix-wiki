@@ -28,6 +28,7 @@ data/tweet-queue.json
 # Regenerable renders — node brand-assets/generate-infographics.mjs
 # and node scripts/wir-figure.mjs render --week <week>
 brand-assets/0*.png
+brand-assets/0*.svg
 brand-assets/wir/
 
 # Radix source checkouts cloned on demand by the radix skill

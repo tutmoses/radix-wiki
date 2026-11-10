@@ -16,16 +16,12 @@ const csp = contentSecurityPolicy({
   'connect-src': ["'self'", 'https://*.radixdlt.com', 'https://api.ociswap.com'],
   'frame-src': ['https:'],
   'worker-src': ["'self'", 'blob:'],
-  'manifest-src': ["'self'"],
 });
 
 export default withWikiDefaults({
-  compress: true,
-
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '*.public.blob.vercel-storage.com' },
-      { protocol: 'https', hostname: '*.blob.vercel-storage.com' },
     ],
     // As miow's: three widths per kind, and a month in the optimizer's cache.
     // Every distinct width a srcset names is its own transformation and cache write.

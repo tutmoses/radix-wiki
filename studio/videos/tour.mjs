@@ -8,7 +8,7 @@
 //  the article is the one named by TOUR_PAGE, or the latest changed
 //  (studio/data.mjs).
 // ═══════════════════════════════════════════════════════════════════════════
-export const meta = { name: "tour", title: "radix.wiki: a tour", out: "radixwiki-tour.mp4" };
+export const meta = { name: "tour", title: "radix.wiki: a tour" };
 
 // An article link the hover cards cover: internal, two segments or more, not an app route (src/components/LinkPreview.tsx).
 const CARDED = ".prose-content a[href^='/']:not([href^='/charts']):not([href^='/search']):not([href^='/leaderboard'])";

@@ -6,10 +6,10 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { assertLinkShapes, content, readPage, storeFor, uid, withClient, writeRevision as revision, type RevisionOptions, type ScriptClient } from 'wiki-formant/scripts';
+import { assertLinkShapes, content, infobox, readPage, storeFor, uid, withClient, writeRevision as revision, type RevisionOptions, type ScriptClient } from 'wiki-formant/scripts';
 import type { WikiPageRow } from 'wiki-formant/store';
 
-export { assertLinkShapes, content, readPage, storeFor, uid, withClient };
+export { content, infobox, readPage, storeFor, uid, withClient };
 
 export const AUTHOR_ID = 'cmk5t48vx0000005zc5se4dqz';
 const ROOT = resolve(import.meta.dirname, '..');
@@ -30,6 +30,14 @@ export function weekKey(iso?: string): string {
   sunday.setUTCDate(d.getUTCDate() - d.getUTCDay());
   return sunday.toISOString().slice(0, 10);
 }
+
+/** The first day of the seven that end on `week`, a `weekKey`. */
+export const weekStart = (week: string): string =>
+  new Date(Date.parse(`${week}T00:00:00Z`) - 6 * 86400000).toISOString().slice(0, 10);
+
+/** Days from the `was` week to the `now` week: what `delta` weighs against `staleDays`. 0 with no `was`. */
+export const gapDays = (now: string, was?: string | null): number =>
+  was ? Math.round((Date.parse(now) - Date.parse(was)) / 86400000) : 0;
 
 /** `blank` is what an absent reading prints: a dash in prose, nothing at all in an SVG figure. */
 export const fmt = (n: number | null | undefined, digits = 0, blank = '—'): string =>
