@@ -88,7 +88,6 @@ export default withWikiDefaults({
   async rewrites() {
     return {
       beforeFiles: [
-        { source: '/og', destination: '/api/og' },
         // Must precede the .md rule below, which would otherwise swallow
         // /AGENTS.md into the wiki API and 404. The agent API reference is a
         // real document, not a wiki page rendered as markdown.

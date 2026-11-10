@@ -18,12 +18,12 @@
 
 import type { Block, AtomicBlock } from '@/types/blocks';
 import { pageUrl } from '@/lib/utils';
-import { describe } from 'wiki-formant/metadata';
+import { cardUrl, describe } from 'wiki-formant/metadata';
 import { openingText } from 'wiki-formant/text';
 import { eventWhen, splitEvents, today } from 'wiki-formant/blocks';
 import { hoursRows } from 'wiki-formant/hours';
 import { SITE_URL } from '@/lib/site';
-import { ogImageUrl } from '@/lib/og';
+import { CARD } from '@/lib/og';
 import { absolutise as absolutiseFrom, clampWords, escXml, type FeedItem } from 'wiki-formant/feed';
 import { leafBlocks } from '@/lib/block-utils';
 import { prisma } from '@/lib/prisma/client';
@@ -102,7 +102,7 @@ export function feedItem(
     url: pageUrl('blog', p.slug),
     description,
     date: p.date,
-    image: ogImageUrl({ title: p.title, description, tagPath: 'blog', banner: (p.metadata as { banner?: string } | null)?.banner }),
+    image: cardUrl(CARD, { title: p.title, description, tagPath: 'blog', banner: (p.metadata as { banner?: string } | null)?.banner }),
     html: blocksToFeedHtml(p.content),
     ...over,
   };

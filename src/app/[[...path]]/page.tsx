@@ -18,7 +18,7 @@ import { NowProvider } from '@/lib/now';
 // `wiki-formant/react-server`'s JsonLd, which escapes an authored `</script>`.
 import { JsonLd } from 'wiki-formant/react-server';
 import { chartsHeadline } from '@/lib/radix/headline';
-import { articleLd, citationsFromReferences, collectionLd, describe, documentTitle, faqPageLd, questionPairs } from 'wiki-formant/metadata';
+import { articleLd, cardUrl, citationsFromReferences, collectionLd, describe, documentTitle, faqPageLd, questionPairs } from 'wiki-formant/metadata';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { STATIC_PAGES } from '@/lib/static-pages';
 import { prisma } from '@/lib/prisma/client';
@@ -38,7 +38,7 @@ import TokenDetailView from '@/components/charts/TokenDetailView';
 import { pageDescription, pageUrl } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_REFS, SITE_URL, WIKI_LICENSE } from '@/lib/site';
-import { ogMetadata, ogImageUrl } from '@/lib/og';
+import { CARD, ogMetadata } from '@/lib/og';
 import { articleType, aboutEntity, articleLearningProps } from '@/lib/entity-ld';
 import { getTokenDetail, getTopTokens } from '@/lib/radix/tokens';
 import { getEditorScores, publicScore } from '@/lib/scoring';
@@ -265,7 +265,7 @@ function pageLd(page: WikiPage, url: string) {
   const description = pageDescription(page);
   // Google recommends an image on every article; pages without a banner get the
   // same generated card the OG tags already use, rather than no image at all.
-  const image = page.bannerImage || ogImageUrl({ title: page.title, tagPath: page.tagPath });
+  const image = page.bannerImage || cardUrl(CARD, { title: page.title, tagPath: page.tagPath });
   const about = aboutEntity(page.tagPath, page.title, page.metadata, { description, image });
   // References blocks are usually top-level, but infobox/columns can nest them.
   const references = Array.isArray(page.content)
