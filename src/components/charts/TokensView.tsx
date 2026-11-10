@@ -7,8 +7,8 @@ import { TokensTable } from './TokensTable';
 import { tokenRows } from './rows';
 
 export default async function TokensView() {
-  const tokens = await getTopTokens();
-  const rows = await tokenRows(tokens);
+  const tokens = await getTopTokens().catch(() => null);
+  const rows = tokens && await tokenRows(tokens);
 
   return (
     <div className="stack">
@@ -21,7 +21,7 @@ export default async function TokensView() {
           <h1 id="tokens">Tokens</h1>
         </div>
         <p className="text-text-muted">
-          {tokens.length} of OciSwap's {TOP_TOKENS_LIMIT} highest-ranked tokens traded in the last 24 hours, sorted by volume. Prices and volume from OciSwap.
+          {tokens ? `${tokens.length} of OciSwap's ${TOP_TOKENS_LIMIT} highest-ranked tokens traded in the last 24 hours, sorted by volume.` : `OciSwap's ${TOP_TOKENS_LIMIT} highest-ranked tokens that traded in the last 24 hours, sorted by volume.`} Prices and volume from OciSwap.
         </p>
       </div>
       <TokensTable tokens={rows} />

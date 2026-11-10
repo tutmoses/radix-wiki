@@ -75,11 +75,13 @@ const NOINDEX_ROBOTS = { index: false, follow: true, googleBot: { index: false, 
 /**
  * A token has a page when the wiki lists it: OciSwap's traded tokens, which the
  * tables link, and those an article documents. Any other `resource_` address is
- * a 404, where each one used to render, and keep, a page of its own.
+ * a 404, where each one used to render, and keep, a page of its own. While
+ * OciSwap does not answer, the list is unknown rather than empty, so the page
+ * renders and the ledger alone decides whether the resource exists.
  */
 async function isListedToken(address: string) {
-  const [top, assets] = await Promise.all([getTopTokens().catch(() => []), getAssetPages().catch(() => ({}))]);
-  return address in assets || top.some(t => t.address === address);
+  const [top, assets] = await Promise.all([getTopTokens().catch(() => null), getAssetPages().catch(() => ({}))]);
+  return address in assets || !top || top.some(t => t.address === address);
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

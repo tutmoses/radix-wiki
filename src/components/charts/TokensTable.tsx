@@ -52,6 +52,12 @@ const COLUMNS: Column<TokenRow>[] = [
   { k: 'volume24h', label: 'OciSwap vol. 24h', className: 'text-right hidden-mobile', num: t => t.volume24h ?? 0, cell: t => formatUsd(t.volume24h) },
 ];
 
-export function TokensTable({ tokens, limit }: { tokens: TokenRow[]; limit?: number }) {
-  return <DataTable rows={tokens} columns={COLUMNS} defaultKey="volume24h" rowKey={t => t.address} limit={limit} empty="OciSwap did not answer, so there are no prices to show. Try again in a minute." />;
+/** `tokens` is null when OciSwap did not answer, which is not the same as no token trading. */
+export function TokensTable({ tokens, limit }: { tokens: TokenRow[] | null; limit?: number }) {
+  return (
+    <DataTable
+      rows={tokens ?? []} columns={COLUMNS} defaultKey="volume24h" rowKey={t => t.address} limit={limit}
+      empty={tokens ? 'No token traded on OciSwap in the last 24 hours.' : 'OciSwap did not answer, so there are no prices to show. Try again in a minute.'}
+    />
+  );
 }

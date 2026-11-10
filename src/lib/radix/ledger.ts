@@ -73,6 +73,11 @@ interface MetadataItem {
   value: { typed: { type: string; value: string } };
 }
 
+/**
+ * Every string metadata entry on the account. A Gateway that does not answer
+ * throws `GatewayUnavailableError`: read as an empty map, it said "No backup on
+ * your account yet" and "No wiki backup found" of an account that holds one.
+ */
 async function fetchAllMetadata(address: string): Promise<Map<string, string>> {
   const items = await paginatedGatewayFetch<[string, string]>(
     '/state/entity/page/metadata/',
@@ -81,7 +86,7 @@ async function fetchAllMetadata(address: string): Promise<Map<string, string>> {
       .filter(item => item.value?.typed?.type === 'String')
       .map(item => [item.key, item.value.typed.value] as [string, string]),
     'ledger',
-  ).catch(() => [] as [string, string][]); // an unreadable anchor reads as absent, as it did before
+  );
   return new Map(items);
 }
 

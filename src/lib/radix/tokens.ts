@@ -95,7 +95,11 @@ export const TOP_TOKENS_LIMIT = 100;
 
 async function _fetchTopTokens(): Promise<TokenSummary[]> {
   const data = await ociswap<OciTokenList>(`/tokens?limit=${TOP_TOKENS_LIMIT}`, 'top-tokens');
-  const items: unknown[] = Array.isArray(data?.data) ? data.data : Array.isArray(data?.tokens) ? data.tokens : Array.isArray(data) ? data : [];
+  const items = Array.isArray(data?.data) ? data.data : Array.isArray(data?.tokens) ? data.tokens : Array.isArray(data) ? data : null;
+  // Thrown rather than returned, so the cache keeps no failure and no caller reads
+  // "OciSwap did not answer" as "no token traded": an empty list 404'd every
+  // traded token's page and told /charts/tokens "0 of 100 traded".
+  if (!items) throw new Error('OciSwap did not answer /tokens');
   return items
     .map(parseOciToken)
     // A quoted price with no trading behind it is a stale artifact, not a price. This
@@ -108,15 +112,8 @@ async function _fetchTopTokens(): Promise<TokenSummary[]> {
  *  live prices for itself. */
 const TOKEN_REVALIDATE = 900;
 
-// Cache successful results only: don't poison the cache with [] on transient failures.
-const _getTopTokensCached = unstable_cache(_fetchTopTokens, ['radix-top-tokens-v5'], { revalidate: TOKEN_REVALIDATE, tags: ['charts'] });
-
-export const getTopTokens = cache(async (): Promise<TokenSummary[]> => {
-  const cached = await _getTopTokensCached();
-  if (cached.length > 0) return cached;
-  // Cache returned empty (likely a previous failure): retry once outside the cache.
-  return _fetchTopTokens();
-});
+/** The traded tokens; rejects when OciSwap does not answer, so a caller says so rather than showing none. */
+export const getTopTokens = cache(unstable_cache(_fetchTopTokens, ['radix-top-tokens-v6'], { revalidate: TOKEN_REVALIDATE, tags: ['charts'] }));
 
 const SHOWN_METADATA = new Set(['name', 'symbol', 'icon_url', 'description', 'info_url']);
 

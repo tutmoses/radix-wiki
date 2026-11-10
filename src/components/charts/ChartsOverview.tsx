@@ -82,7 +82,7 @@ export default async function ChartsOverview() {
   // reads, so they are fetched apart from the ledger and still render alone.
   const [stats, tokens, days, weeks, dex, recap, xrdPage, events] = await Promise.all([
     getNetworkStats().catch(() => null),
-    getTopTokens(),
+    getTopTokens().catch(() => null),
     getLedgerDays().catch(() => []),
     getWeeklySnapshots().catch(() => []),
     getDexStats(),
@@ -90,8 +90,8 @@ export default async function ChartsOverview() {
     getPageByAsset(XRD_ADDRESS).catch(() => null),
     getNetworkEvents().catch(() => []),
   ]);
-  const xrd = tokens.find(t => t.address === XRD_ADDRESS);
-  const [tokenTable, validatorTable] = await Promise.all([tokenRows(tokens), stats ? validatorRows(stats) : null]);
+  const xrd = tokens?.find(t => t.address === XRD_ADDRESS);
+  const [tokenTable, validatorTable] = await Promise.all([tokens && tokenRows(tokens), stats ? validatorRows(stats) : null]);
 
   return (
     <div className="stack">

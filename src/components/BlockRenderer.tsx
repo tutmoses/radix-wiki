@@ -119,12 +119,17 @@ function ListBlockView({ block }: { block: ListBlock }) {
   return <PageRefsView refs={refs} link={Link} empty="No pages found." />;
 }
 
-type PriceData = { price: number; change24h?: number; symbol?: string; name?: string };
+/** `price` is null for a token OciSwap knows but quotes no price for, which used to show as $0. */
+type PriceData = { price: number | null; change24h?: number; symbol?: string; name?: string };
 
 function transformPrice(json: any): PriceData {
   const priceNow = parseFloat(json.price?.usd?.now) || 0;
   const price24h = parseFloat(json.price?.usd?.['24h']) || 0;
-  return { price: priceNow, change24h: price24h > 0 ? ((priceNow - price24h) / price24h) * 100 : undefined, symbol: json.symbol, name: json.name };
+  return {
+    price: priceNow > 0 ? priceNow : null,
+    change24h: priceNow > 0 && price24h > 0 ? ((priceNow - price24h) / price24h) * 100 : undefined,
+    symbol: json.symbol, name: json.name,
+  };
 }
 
 function useResourcePrice(resourceAddress?: string) {
@@ -137,8 +142,9 @@ function useResourcePrice(resourceAddress?: string) {
 function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
   const { data, status, error } = useResourcePrice(block.resourceAddress);
   if (!block.resourceAddress) return <p className="text-text-muted">No resource address configured</p>;
-  if (status === 'loading') return <div className="surface p-4 animate-pulse"><div className="h-8 w-32 bg-surface-2 rounded" /></div>;
-  if (error || !data || typeof data.price !== 'number') return <p className="text-error text-small">{error || 'Price unavailable'}</p>;
+  if (status === 'failed') return <p className="text-error text-small">The price could not be read: {error}</p>;
+  if (status !== 'loaded') return <div className="surface p-4 animate-pulse"><div className="h-8 w-32 bg-surface-2 rounded" /></div>;
+  if (data.price === null) return <p className="text-text-muted text-small">Not traded on OciSwap</p>;
   const displayName = data.symbol || data.name || block.resourceAddress.slice(0, 20) + '...';
   const isPositive = (data.change24h ?? 0) >= 0;
   const priceStr = formatPriceSubscript(data.price);

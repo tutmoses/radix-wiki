@@ -112,7 +112,7 @@ export function LedgerDropdown({ tagPath, slug, status: statusFetch }: LedgerDro
     setRecovery({ stage: 'reading' });
     try {
       const res = await fetch(`/api/ledger/recover?address=${encodeURIComponent(address)}`);
-      if (!res.ok) throw new Error('Recovery failed');
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Recovery failed');
       const data = await res.json() as RecoverResult;
       setRecovery({ stage: 'done', pages: data.pages });
     } catch (err) {

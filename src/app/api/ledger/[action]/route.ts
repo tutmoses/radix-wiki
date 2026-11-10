@@ -2,10 +2,10 @@
 
 import { prisma } from '@/lib/prisma/client';
 import { store, toWikiPage, authorsOf } from '@/lib/wiki';
-import { handleRoute, json, errors } from 'wiki-formant/http';
+import { handleRoute, json, errors, HttpError } from 'wiki-formant/http';
 import { requireAuth, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { buildPageBackupManifest, pageChunkKey, readAnchorFromLedger, readLedgerBackup } from '@/lib/radix/ledger';
-import { postGateway } from '@/lib/radix/gateway';
+import { GatewayUnavailableError, postGateway } from '@/lib/radix/gateway';
 import { blocksToMdx } from '@/lib/mdx';
 import type { NextRequest } from 'next/server';
 
@@ -28,6 +28,16 @@ async function prepare(radixAddress: string, { tagPath, slug }: Body) {
   });
 }
 
+/** An account's backup as the ledger holds it; a Gateway that does not answer is a 503 that says so, never "no backup". */
+async function readAccount<T>(read: (address: string) => Promise<T>, address: string): Promise<T> {
+  try {
+    return await read(address);
+  } catch (err) {
+    if (err instanceof GatewayUnavailableError) throw new HttpError(503, 'The Radix Gateway did not answer, so the account\'s backup could not be read. Try again shortly.');
+    throw err;
+  }
+}
+
 type CommittedDetails = { transaction?: { transaction_status?: string; affected_global_entities?: string[]; manifest_instructions?: string } };
 
 async function confirm(radixAddress: string, { tagPath, slug, txHash }: Body) {
@@ -48,7 +58,7 @@ async function confirm(radixAddress: string, { tagPath, slug, txHash }: Body) {
   if (!tx.manifest_instructions?.includes(`"${pageChunkKey(slug, 0)}"`)) {
     return errors.badRequest('txHash is not a backup of this page');
   }
-  const { pages } = await readLedgerBackup(radixAddress);
+  const { pages } = await readAccount(readLedgerBackup, radixAddress);
   if (!pages.some(p => p.slug === slug && p.tagPath === tagPath)) {
     return errors.badRequest('Your account does not hold a backup of this page');
   }
@@ -61,7 +71,7 @@ async function confirm(radixAddress: string, { tagPath, slug, txHash }: Body) {
 }
 
 async function status(address: string, params: URLSearchParams) {
-  const anchor = await readAnchorFromLedger(address);
+  const anchor = await readAccount(readAnchorFromLedger, address);
   const hours = anchor ? (Date.now() - new Date(anchor.timestamp).getTime()) / 3_600_000 : null;
 
   // Current page version + backup tx hash, when the caller names a page.
@@ -73,7 +83,7 @@ async function status(address: string, params: URLSearchParams) {
 
   return cachedJson({
     anchor,
-    hoursSinceAnchor: hours ? Math.round(hours * 10) / 10 : null,
+    hoursSinceAnchor: hours === null ? null : Math.round(hours * 10) / 10,
     currentPageVersion: page?.version ?? null,
     backupTxHash: (page?.metadata.backupTx as string | undefined) ?? null,
   }, CACHE.short);
@@ -88,7 +98,7 @@ export async function GET(request: NextRequest, { params }: Ctx) {
     if (!address) return errors.badRequest('address query parameter required');
     if (action === 'status') return status(address, request.nextUrl.searchParams);
 
-    const { anchor, pages } = await readLedgerBackup(address);
+    const { anchor, pages } = await readAccount(readLedgerBackup, address);
     return json({ anchor, pages, recoveredCount: pages.length });
   }, action === 'status' ? 'Failed to read ledger status' : 'Failed to recover from ledger');
 }
