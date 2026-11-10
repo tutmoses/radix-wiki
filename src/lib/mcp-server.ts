@@ -9,7 +9,7 @@
 // validation) are `wiki-formant/mcp`, shared with the other wikis.
 
 import { prisma } from '@/lib/prisma/client';
-import { categoryLabel, pageUrl, pagePath } from '@/lib/utils';
+import { categoryLabel, mustReload, pageUrl, pagePath } from '@/lib/utils';
 import { isoDate } from 'wiki-formant/freshness';
 import { SIBLING_WIKI, SITE_NAME, SITE_URL, X } from '@/lib/site';
 import { followNote } from 'wiki-formant/social';
@@ -187,7 +187,7 @@ function signedIn(request: Request): string {
 async function answer(res: Response): Promise<Record<string, unknown>> {
   const data = await res.json().catch(() => null) as Record<string, unknown> | null;
   if (!res.ok) {
-    throw new McpToolError((data?.error as string) || `Request failed (${res.status})`, res.status === 409 && data?.conflict !== 'taken'
+    throw new McpToolError((data?.error as string) || `Request failed (${res.status})`, mustReload(res.status, data)
       ? { hint: 'The page changed since you read it. Read it again with get_page and `blocks: true`, reapply your change, and send the new `version` as baseVersion.' }
       : undefined);
   }

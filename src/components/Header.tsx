@@ -9,7 +9,7 @@ import { Search, Menu, X, Loader2, LogOut, User, FileCode, Bell, Database, MoreV
 import { focusShown, useCopy, useSearchShortcut, useSidebar, useTypeahead, useClickOutside } from 'wiki-formant/react';
 import type { ComboboxOptionProps } from 'wiki-formant/combobox';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useStore, useAuth, usePagePath, useFetch } from '@/hooks';
+import { SESSION_UNREADABLE, useStore, useAuth, usePagePath, useFetch } from '@/hooks';
 import { cn, shortenAddress, pagePath } from '@/lib/utils';
 import { SITE_NAME } from '@/lib/site';
 import { AGO, useNow } from '@/lib/now';
@@ -442,7 +442,7 @@ export function Header() {
                   {menu === 'account' && <AccountMenu name={displayName} profilePath={userProfilePath} onClose={closeMenu} onLogout={handleLogout} />}
                 </>
               ) : (
-                <Button variant="primary" size="sm" onClick={connect}>
+                <Button variant="primary" size="sm" onClick={connect} title={authStatus === 'unreadable' ? SESSION_UNREADABLE : undefined}>
                   <span className="hidden sm:inline">Connect Wallet</span>
                   <span className="sm:hidden">Connect</span>
                 </Button>

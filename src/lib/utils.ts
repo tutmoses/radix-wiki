@@ -6,6 +6,7 @@ import { openingText } from 'wiki-formant/text';
 import { describe } from 'wiki-formant/metadata';
 import { hashStr, seededRandom } from 'wiki-formant/seeded';
 import { SITE_URL } from '@/lib/site';
+import type { ConflictReason } from 'wiki-formant/store';
 
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
@@ -47,6 +48,16 @@ export function pageUrl(tagPath: string, slug: string): string {
 /** A JSON body sent from the browser to one of the wiki's own routes. */
 export const sendJson = (url: string, method: 'POST' | 'PUT' | 'PATCH', body: unknown) =>
   fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+/**
+ * A refused save that only a reload fixes: the store's 409 for a page that moved
+ * on (`stale`) or went (`deleted`), read from the reason its body names. `taken`
+ * is fixed in place by picking another slug. Both editors and the MCP write
+ * tools read a refusal through this, so none of them guesses it.
+ */
+const RELOAD_REASONS: readonly ConflictReason[] = ['stale', 'deleted'];
+export const mustReload = (status: number, body: { conflict?: unknown } | null | undefined): boolean =>
+  status === 409 && RELOAD_REASONS.includes(body?.conflict as ConflictReason);
 
 // ========== CONTENT SNIPPET ==========
 

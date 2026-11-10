@@ -51,13 +51,13 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
     setSession(await response.json());
   }, [setSession]);
 
-  // Check existing session on mount (fast, no heavy imports)
+  // Check existing session on mount (fast, no heavy imports). The route answers
+  // null for no session; a refusal or a dropped request is a check that failed.
   useEffect(() => {
     fetch('/api/auth')
-      .then(r => r.ok ? r.json() : null)
-      .then(session => { if (session) setSession(session); })
-      .catch(() => {})
-      .finally(sessionChecked);
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(r.statusText))))
+      .then(session => { if (session) setSession(session); return true; }, () => false)
+      .then(sessionChecked);
   }, [setSession, sessionChecked]);
 
   // Load Radix DApp Toolkit

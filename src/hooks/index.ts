@@ -113,9 +113,13 @@ type Wallet =
       sendTransaction: (manifest: string) => Promise<{ transactionIntentHash: string }>;
     };
 
-/** The session check on load, a wallet request in flight (named by its 60s backstop timer), or neither. */
+/**
+ * The session check on load, a check that did not answer, a wallet request in
+ * flight (named by its 60s backstop timer), or none of these.
+ */
 type Auth =
   | { kind: 'checking' }
+  | { kind: 'unreadable' }
   | { kind: 'connecting'; timeout: ReturnType<typeof setTimeout> }
   | { kind: 'idle' };
 
@@ -143,7 +147,8 @@ interface AppStore {
   setWallet: (wallet: Wallet) => void;
   sendTransaction: (manifest: string) => Promise<{ transactionIntentHash: string }>;
   setSession: (session: AuthSession | null) => void;
-  sessionChecked: () => void;
+  /** `answered` is false when the session check failed, which is not the same as no session. */
+  sessionChecked: (answered: boolean) => void;
   setWalletData: (walletData: RadixWalletData | null) => void;
   connect: () => void;
   logout: (everywhere?: boolean) => Promise<void>;
@@ -192,7 +197,7 @@ export const useStore = create<AppStore>()((set, get) => ({
     return wallet.sendTransaction(manifest);
   },
   setSession: (session) => set({ session }),
-  sessionChecked: () => set(s => s.auth.kind === 'checking' ? { auth: { kind: 'idle' } } : {}),
+  sessionChecked: (answered) => set(s => s.auth.kind === 'checking' ? { auth: { kind: answered ? 'idle' : 'unreadable' } } : {}),
   setWalletData: (walletData) => set({ walletData }),
   connect: () => {
     const { wallet, auth } = get();
@@ -256,13 +261,17 @@ export const useStore = create<AppStore>()((set, get) => ({
 // ========== AUTH HOOK ==========
 
 /**
- * Where the reader stands: the session check on load, a wallet request in
- * flight, signed out, or signed in. A live session wins over a request still
- * settling, so the account shows as soon as the proof is accepted. `checking`
- * is not `signed-out`: a gate that waits for it does not tell a signed-in
- * reader to connect while their session is read.
+ * Where the reader stands: the session check on load, a check that did not
+ * answer, a wallet request in flight, signed out, or signed in. A live session
+ * wins over a request still settling, so the account shows as soon as the proof
+ * is accepted. Neither `checking` nor `unreadable` is `signed-out`: a gate does
+ * not tell a signed-in reader to connect while their session is read, and says
+ * so when it could not be.
  */
-export type AuthStatus = 'checking' | 'connecting' | 'signed-out' | 'signed-in';
+export type AuthStatus = 'checking' | 'unreadable' | 'connecting' | 'signed-out' | 'signed-in';
+
+/** What a gate says when the session check did not answer: connecting again still works. */
+export const SESSION_UNREADABLE = 'Your session could not be read just now. Reload to try again, or connect your wallet.';
 
 export const useAuth = () => {
   const session = useStore(s => s.session);

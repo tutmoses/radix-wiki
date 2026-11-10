@@ -9,7 +9,7 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { EmptyState } from '@/components/EmptyState';
 import { WebhookSettings } from '@/components/WebhookSettings';
 import { Button } from '@/components/ui';
-import { useAuth, useStore } from '@/hooks';
+import { SESSION_UNREADABLE, useAuth, useStore } from '@/hooks';
 
 export default function SettingsView({ watch }: { watch?: string }) {
   const { status } = useAuth();
@@ -20,7 +20,7 @@ export default function SettingsView({ watch }: { watch?: string }) {
     return (
       <EmptyState
         as="h1" title="Notification settings"
-        description="Connect your Radix wallet to manage Telegram and webhook notifications."
+        description={status === 'unreadable' ? SESSION_UNREADABLE : 'Connect your Radix wallet to manage Telegram and webhook notifications.'}
         action={<Button onClick={connect} isLoading={status === 'connecting'}>Connect Wallet</Button>}
       />
     );

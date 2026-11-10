@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { Button, Input } from '@/components/ui';
 import { useAuth } from '@/hooks';
 import { CARRIED_TOAST } from '@/components/Toast';
-import { cn, pagePath, sendJson } from '@/lib/utils';
+import { cn, mustReload, pagePath, sendJson } from '@/lib/utils';
 import { isReservedSlug } from '@/lib/path';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { findInfobox } from '@/components/BlockRenderer';
@@ -256,6 +256,13 @@ type Gate =
   | { kind: 'allowed' }
   | { kind: 'refused'; reason: string };
 
+/**
+ * The slug field: following the title, as New Page opens when it has no slug,
+ * or what was typed (or the slug the page already has). Typing is what stops
+ * it following.
+ */
+type SlugField = { kind: 'title' } | { kind: 'typed'; value: string };
+
 // What the form opens on, and what it is compared against to know it is dirty.
 function initialFields(page: WikiPage | undefined, slug: string) {
   return page
@@ -264,10 +271,10 @@ function initialFields(page: WikiPage | undefined, slug: string) {
         content: page.content as unknown as Block[],
         bannerImage: page.bannerImage || null,
         metadata: (page.metadata as PageMetadata) || {},
-        editSlug: page.slug,
+        slug: { kind: 'typed', value: page.slug } as SlugField,
         editorIds: page.editorIds,
       }
-    : { title: '', content: [createBlock('content')], bannerImage: null, metadata: {} as PageMetadata, editSlug: slug, editorIds: [] as string[] };
+    : { title: '', content: [createBlock('content')], bannerImage: null, metadata: {} as PageMetadata, slug: (slug ? { kind: 'typed', value: slug } : { kind: 'title' }) as SlugField, editorIds: [] as string[] };
 }
 
 export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string; slug: string }) {
@@ -282,9 +289,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const [content, setContent] = useState<Block[]>([]);
   const [bannerImage, setBannerImage] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<PageMetadata>({});
-  const [editSlug, setEditSlug] = useState(slug);
-  // New Page opens with no slug, and the slug follows the title until it is edited.
-  const [slugEdited, setSlugEdited] = useState(false);
+  const [slugField, setSlugField] = useState<SlugField>({ kind: 'title' });
   const [editorIds, setEditorIds] = useState<string[]>([]);
   const [editors, setEditors] = useState<Editors>({ status: 'loaded', users: [] });
   const [phase, setPhase] = useState<Phase>({ kind: 'editing', error: null });
@@ -312,7 +317,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
     setContent(initial.content);
     setBannerImage(initial.bannerImage);
     setMetadata(initial.metadata);
-    setEditSlug(initial.editSlug);
+    setSlugField(initial.slug);
     setEditorIds(initial.editorIds);
     if (initial.editorIds.length === 0) { setEditors({ status: 'loaded', users: [] }); return; }
     let cancelled = false;
@@ -324,10 +329,10 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
     return () => { cancelled = true; };
   }, [initial]);
 
-  const shownSlug = isCreating && !slug && !slugEdited ? slugifyHeading(title) : editSlug;
+  const shownSlug = slugField.kind === 'title' ? slugifyHeading(title) : slugField.value;
 
   const initialJson = useMemo(() => JSON.stringify(initial), [initial]);
-  const dirty = JSON.stringify({ title, content, bannerImage, metadata, editSlug, editorIds }) !== initialJson;
+  const dirty = JSON.stringify({ title, content, bannerImage, metadata, slug: slugField, editorIds }) !== initialJson;
   // A save leaves by a full page load, which would trip the guard it just passed.
   const confirmLeave = useUnsavedChanges(dirty && phase.kind !== 'saving');
 
@@ -351,13 +356,12 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
         ? await sendJson(`/api/wiki${pagePath(tagPath, slug)}`, 'PUT', { title, content, bannerImage, metadata, newSlug, editorIds, verified, baseVersion: page.version, revisionMessage: revisionMessage.trim() || undefined })
         : await sendJson('/api/wiki', 'POST', { title, content, bannerImage, metadata, tagPath, slug: newSlug || slug || undefined });
       const data = await res.json();
-      // Saving stays the phase until the load replaces the editor. The store's
-      // 409 names its reason: a stale or deleted page means reload, a taken slug
-      // is an edit the reader can make and save again.
+      // Saving stays the phase until the load replaces the editor. A taken slug
+      // is an edit the reader can make and save again; only a reload fixes the rest.
       if (res.ok) {
         if (data.isFirstContribution) sessionStorage.setItem(CARRIED_TOAST, 'Your first contribution! Welcome to the wiki.');
         window.location.href = pagePath(data.tagPath, data.slug);
-      } else if (res.status === 409 && data.conflict !== 'taken') setPhase({ kind: 'conflict', message: data.error || 'This page changed since it was opened.' });
+      } else if (mustReload(res.status, data)) setPhase({ kind: 'conflict', message: data.error || 'This page changed since it was opened.' });
       else setPhase({ kind: 'editing', error: data.error || 'Failed to save.' });
     } catch { setPhase({ kind: 'editing', error: 'Failed to save.' }); }
   };
@@ -421,7 +425,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
           <Link2 size={14} />
           {isHub ? <span>/{tagPath}</span> : <>
             <span>/{tagPath}/</span>
-            <input type="text" value={shownSlug} onChange={e => { setSlugEdited(true); setEditSlug(e.target.value.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-')); }} onBlur={() => setEditSlug(slugifyHeading(shownSlug))} placeholder="page-slug" />
+            <input type="text" value={shownSlug} onChange={e => setSlugField({ kind: 'typed', value: e.target.value.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-') })} onBlur={() => setSlugField(s => (s.kind === 'typed' ? { kind: 'typed', value: slugifyHeading(s.value) } : s))} placeholder="page-slug" />
           </>}
         </div>
         {/* A reserved slug gets a suffix on create and is refused on rename; say so before the save. */}

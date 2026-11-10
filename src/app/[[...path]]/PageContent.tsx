@@ -14,8 +14,8 @@ import { Breadcrumbs, PageActions } from '@/components/Breadcrumbs';
 import { EmptyState } from '@/components/EmptyState';
 import { LinkPreview } from '@/components/LinkPreview';
 import { Button, Card } from '@/components/ui';
-import { useAuth, useStore, type AuthStatus } from '@/hooks';
-import { categoryLabel, cn, generateBannerSvg, pagePath, sendJson } from '@/lib/utils';
+import { SESSION_UNREADABLE, useAuth, useStore, type AuthStatus } from '@/hooks';
+import { categoryLabel, cn, generateBannerSvg, mustReload, pagePath, sendJson } from '@/lib/utils';
 import { describe } from 'wiki-formant/metadata';
 import { openingText } from 'wiki-formant/text';
 import { slugifyHeading } from 'wiki-formant/headings';
@@ -283,7 +283,7 @@ function AuthRequired({ status, backHref }: { status: Exclude<AuthStatus, 'signe
   return (
     <EmptyState
       as="h1" title="Connect your wallet to edit"
-      description="Editing needs a connected Radix wallet holding the $XRD minimum for this page."
+      description={status === 'unreadable' ? SESSION_UNREADABLE : 'Editing needs a connected Radix wallet holding the $XRD minimum for this page.'}
       action={<div className="row justify-center"><Button onClick={connect} isLoading={status === 'connecting'}>Connect Wallet</Button><Link href={backHref}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link></div>}
     />
   );
@@ -337,10 +337,10 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
       const res = await sendJson('/api/wiki', 'PUT', { title: page?.title, content, bannerImage, baseVersion: page?.version });
       // The view may keep this instance across the navigation, so it leaves in the editing phase.
       if (res.ok) { setSave({ kind: 'editing', error: null }); router.push('/'); return; }
-      const { error } = await res.json().catch(() => ({}));
-      setSave(res.status === 409
-        ? { kind: 'conflict', message: error || 'The homepage changed since it was opened.' }
-        : { kind: 'editing', error: error || 'Failed to save.' });
+      const body = await res.json().catch(() => null);
+      setSave(mustReload(res.status, body)
+        ? { kind: 'conflict', message: body?.error || 'The homepage changed since it was opened.' }
+        : { kind: 'editing', error: body?.error || 'Failed to save.' });
     } catch { setSave({ kind: 'editing', error: 'Failed to save: the request did not reach the wiki.' }); }
   }
   const isSaving = save.kind === 'saving';
