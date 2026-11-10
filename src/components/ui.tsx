@@ -16,16 +16,15 @@ export function Dropdown({ children, className, ...props }: HTMLAttributes<HTMLD
 }
 
 // Button
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
+type ButtonVariant = 'primary' | 'secondary' | 'ghost';
+type ButtonSize = 'sm' | 'md' | 'lg';
 
 const btnStyles: Record<ButtonVariant, string> = {
   primary: 'btn-primary',
   secondary: 'bg-surface-2 border-border hover:brightness-110',
   ghost: 'hover:bg-surface-2',
-  danger: 'bg-error/80 text-text hover:bg-error',
 };
-const btnSizes: Record<ButtonSize, string> = { sm: 'px-3 py-1.5', md: '', lg: 'px-6 py-3', icon: 'p-2' };
+const btnSizes: Record<ButtonSize, string> = { sm: 'px-3 py-1.5', md: '', lg: 'px-6 py-3' };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -42,28 +41,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 );
 Button.displayName = 'Button';
 
-// Input
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
-  hint?: string;
+export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+  return <input className={cn('input', className)} {...props} />;
 }
-
-export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, hint, id, ...props }, ref) => (
-    <div className="stack-sm">
-      {label && <label htmlFor={id || props.name} className="font-medium">{label}</label>}
-      <input ref={ref} id={id || props.name} className={cn('input', className)} {...props} />
-      {hint && <small>{hint}</small>}
-    </div>
-  )
-);
-Input.displayName = 'Input';
-
-// Card
-export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { interactive?: boolean }>(
-  ({ className, interactive, ...props }, ref) => <div ref={ref} className={cn(interactive ? 'surface-interactive' : 'bg-surface-0 border border-border-muted rounded-lg', 'p-6', className)} {...props} />
-);
-Card.displayName = 'Card';
 
 // Badge - with static class mappings for Tailwind JIT
 type BadgeVariant = 'default' | 'secondary' | 'info' | 'success' | 'warning' | 'danger';

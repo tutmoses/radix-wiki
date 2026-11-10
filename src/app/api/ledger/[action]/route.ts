@@ -1,7 +1,7 @@
 // src/app/api/ledger/[action]/route.ts — On-chain wiki backup: prepare, confirm, status, recover
 
 import { prisma } from '@/lib/prisma/client';
-import { store, toWikiPage, authorsOf } from '@/lib/wiki';
+import { store, withAuthor } from '@/lib/wiki';
 import { handleRoute, json, errors, HttpError } from 'wiki-formant/http';
 import { requireAuth, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { buildPageBackupManifest, pageChunkKey, readAnchorFromLedger, readLedgerBackup } from '@/lib/radix/ledger';
@@ -17,7 +17,7 @@ async function prepare(radixAddress: string, { tagPath, slug }: Body) {
 
   const row = await store.get(tagPath, slug);
   if (!row) return errors.notFound('Page not found');
-  const page = toWikiPage(row, await authorsOf([row.authorId]));
+  const page = await withAuthor(row);
 
   const mdx = blocksToMdx(page);
   return json({

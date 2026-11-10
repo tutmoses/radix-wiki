@@ -16,6 +16,7 @@ import { useFetch } from '@/hooks';
 import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock } from '@/lib/block-utils';
 import { resolveMapUrl } from 'wiki-formant/maps';
 import { ACTIVITY_METRICS } from '@/lib/radix/metrics';
+import { DAILY_RANGES } from '@/components/charts/format';
 import { Button, TipJarQr } from '@/components/ui';
 import { embedNodes } from 'wiki-formant/tiptap';
 import { TabGroup, TabItem, CodeBlock, HeadingIds } from '@/lib/tiptap/extensions';
@@ -48,7 +49,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
     onChange,
     placeholder,
     nodes,
-    proseClass: 'prose prose-invert',
+    proseClass: '',
     uploadImage,
   });
   // The link field opens on the link the cursor is in, and emptying it unlinks.
@@ -113,7 +114,7 @@ function NetworkChartEdit({ block, onUpdate }: EditProps<NetworkChartBlock>) {
           {ACTIVITY_METRICS.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
         </select>
       </Field>
-      <Choice label="Default range" value={block.range || '1y'} options={rangeOptions(['30d', '90d', '1y', 'all'])} onChange={range => onUpdate({ ...block, range: range as NetworkChartBlock['range'] })} />
+      <Choice label="Default range" value={block.range || '1y'} options={rangeOptions(DAILY_RANGES)} onChange={range => onUpdate({ ...block, range: range as NetworkChartBlock['range'] })} />
       <small className="text-text-muted">The same daily series as /charts, updated once a day</small>
     </div>
   );

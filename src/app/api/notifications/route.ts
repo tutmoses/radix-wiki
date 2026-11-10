@@ -49,20 +49,12 @@ export async function PATCH(request: NextRequest) {
     const auth = await requireAuth(request);
     if ('error' in auth) return auth.error;
 
-    const body = await request.json();
-    const { ids } = body as { ids?: string[] };
-
-    if (ids?.length) {
-      await prisma.notification.updateMany({
-        where: { id: { in: ids }, userId: auth.session.userId },
-        data: { read: true },
-      });
-    } else {
-      await prisma.notification.updateMany({
-        where: { userId: auth.session.userId, read: false },
-        data: { read: true },
-      });
-    }
+    const { ids } = await request.json() as { ids?: string[] };
+    // The ids named, or every unread one.
+    await prisma.notification.updateMany({
+      where: { userId: auth.session.userId, ...(ids?.length ? { id: { in: ids } } : { read: false }) },
+      data: { read: true },
+    });
 
     return json({ success: true });
   }, 'Failed to update notifications');

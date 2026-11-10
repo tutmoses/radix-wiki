@@ -62,10 +62,16 @@ export function toWikiPage<R extends Omit<WikiPageRow, 'content'> & { content?: 
   };
 }
 
-const withAuthors = async <R extends Omit<WikiPageRow, 'content'> & { content?: unknown; snippet?: string }>(rows: R[]) => {
+export type StoredRow = Parameters<typeof toWikiPage>[0];
+
+/** Stored rows as pages, each with its author. */
+export async function withAuthors(rows: StoredRow[]): Promise<WikiPage[]> {
   const authors = await authorsOf(rows.map(r => r.authorId));
   return rows.map(r => toWikiPage(r, authors));
-};
+}
+
+/** A stored row as a page with its author. */
+export const withAuthor = async (row: StoredRow): Promise<WikiPage> => toWikiPage(row, await authorsOf([row.authorId]));
 
 /** A day, matching the catch-all page's `revalidate`: a page takes the shortest
  *  revalidate of any cache it reads, so a minute here re-rendered every article each
@@ -115,7 +121,7 @@ export function cached<T extends (...args: any[]) => Promise<any>>(key: string, 
 export const getPage = cached('getPage',
   async (tagPath: string, slug: string): Promise<WikiPage | null> => {
     const row = await store.get(tagPath, slug);
-    return row && toWikiPage(row, await authorsOf([row.authorId]));
+    return row && withAuthor(row);
   },
   (tagPath, slug) => [pageTag(tagPath, slug)],
 );

@@ -19,7 +19,6 @@ import {
   wikiReadChecks,
   rowParity,
   editReadChecks,
-  openapiWriteParity,
   rolaOriginCheck,
 } from 'wiki-formant/conformance';
 import serverManifest from '../server.json';
@@ -94,10 +93,6 @@ const FIXTURE = 'ecosystem/radix-blue-balls';
   // This server's edit fields, which it keeps in metadata and edit_page takes as fields.
   const withBlocks = payload(await call('get_page', { path: FIXTURE, blocks: true })) as { bannerImage?: unknown; editorIds?: unknown };
   check('get_page(blocks) edit fields', typeof withBlocks === 'object' && !!withBlocks && 'bannerImage' in withBlocks && Array.isArray(withBlocks.editorIds), `bannerImage=${JSON.stringify(withBlocks?.bannerImage)}, editorIds=${JSON.stringify(withBlocks?.editorIds)}`);
-
-  // Every field a REST write accepts, the matching tool must take: an edit_page
-  // without baseVersion silently overwrote whatever landed in between.
-  await openapiWriteParity(t, [['/api/wiki', 'post', 'create_page'], ['/api/wiki/{path}', 'put', 'edit_page'], ['/api/wiki/{path}/history', 'post', 'restore_revision']], `${BASE}/openapi.json`);
 
   const ideas = payload(await call('get_ideas_board')) as { columns?: unknown[]; totalCards?: number };
   check('get_ideas_board', Array.isArray(ideas?.columns), `${ideas?.totalCards} cards in ${ideas?.columns?.length} columns`);

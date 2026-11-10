@@ -17,7 +17,7 @@ import { MCP_RATE_LIMIT, MCP_RATE_LIMIT_TEXT } from 'wiki-formant/rate-limit';
 import { buildLlmsTxt } from '@/lib/llms';
 import { boardColumn, getMetadataKeys, UNPLACED_COLUMN } from '@/lib/tags';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
-import { getLedgerDayRows } from '@/lib/radix/activity';
+import { getLedgerDayRows, parseDayRange } from '@/lib/radix/activity';
 import { trackMcpCall } from '@/lib/track';
 import { uploadImage } from '@/lib/upload';
 import { McpToolError, readArgs, type McpServerConfig, type McpPrompt, type McpResource, type ToolContext } from 'wiki-formant/mcp';
@@ -144,14 +144,9 @@ async function get_ideas_board(raw: Record<string, unknown>) {
     return true;
   });
 
-  const shape = (c: typeof cards[number]) => ({
-    title: c.title, workingGroup: c.workingGroup, category: c.category,
-    priority: c.priority, assignee: c.assignee, url: c.url, updatedAt: c.updatedAt,
-  });
-
   const columns = [...statusOptions, null].map(opt => {
     const items = cards.filter(c => c.column === opt);
-    return { status: opt === null ? UNPLACED_COLUMN : categoryLabel(opt), count: items.length, cards: items.map(shape) };
+    return { status: opt === null ? UNPLACED_COLUMN : categoryLabel(opt), count: items.length, cards: items.map(({ column, ...card }) => card) };
   }).filter((c, i) => i < statusOptions.length || c.count > 0);
 
   return { board: 'ideas', url: `${SITE_URL}/ideas`, totalCards: cards.length, columns };
@@ -252,13 +247,11 @@ async function upload_image(raw: Record<string, unknown>, request: Request) {
   return { url };
 }
 
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
-
 async function get_network_activity(raw: Record<string, unknown>) {
   const args = readArgs(raw);
-  const from = args.str('from');
-  const to = args.str('to');
-  if ((from && !ISO_DAY.test(from)) || (to && !ISO_DAY.test(to))) throw new McpToolError('`from` and `to` are dates, YYYY-MM-DD.');
+  const range = parseDayRange(args.str('from'), args.str('to'));
+  if (!range) throw new McpToolError('`from` and `to` are dates, YYYY-MM-DD.');
+  const { from, to } = range;
   const all = await getLedgerDayRows(undefined, to);
   // Thirty days by default: three years of rows is a CSV download, not a tool answer.
   const rows = from ? all.filter(r => r.date >= from) : all.slice(-30);

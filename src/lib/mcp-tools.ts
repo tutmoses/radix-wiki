@@ -204,7 +204,7 @@ export const TOOLS: McpToolSpec[] = [
         metadata: { type: 'object', description: 'Replacement metadata object: the whole `metadata` get_page returns with `blocks: true`, revised' },
         bannerImage: { type: 'string', description: 'Banner image URL; an empty string removes it' },
         newSlug: { type: 'string', description: 'Move the page to this slug (an article only)' },
-        editorIds: { type: 'array', description: 'User ids who may co-edit an author-only page. Applied only when the author sends it.' },
+        editorIds: { type: 'array', items: { type: 'string' }, description: 'User ids who may co-edit an author-only page. Applied only when the author sends it.' },
         verified: { type: 'boolean', description: 'True when you checked the page\'s facts against its sources: stamps lastVerifiedAt. Send it alone to stamp without an edit.' },
       },
       required: ['tagPath', 'slug', 'baseVersion'],
@@ -265,3 +265,6 @@ export const TOOLS: McpToolSpec[] = [
   },
   feedbackTool(trackFeedback, NOUN),
 ];
+
+/** A tool's arguments, which the OpenAPI spec reuses as the body of the REST write the tool forwards to. */
+export const toolInput = (name: string): ToolSchema => TOOLS.find(t => t.name === name)!.inputSchema;

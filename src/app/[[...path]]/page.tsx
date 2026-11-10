@@ -22,7 +22,8 @@ import { articleLd, cardUrl, citationsFromReferences, collectionLd, describe, do
 import { hasCodeBlocksInContent } from '@/lib/block-utils';
 import { STATIC_PAGES } from '@/lib/static-pages';
 import { prisma } from '@/lib/prisma/client';
-import { PageView, HomepageView, CategoryView, PageSkeleton, HistoryView, type RelatedPages } from './PageContent';
+import { PageView, HomepageView, CategoryView, HistoryView, type RelatedPages } from './PageContent';
+import { PageSkeleton } from '@/components/AuthRequired';
 import dynamic from 'next/dynamic';
 
 const IdeasView = dynamic(() => import('./IdeasView'), { loading: () => <PageSkeleton /> });

@@ -1,5 +1,7 @@
 // src/lib/radix/gateway.ts – Shared Radix Gateway fetch helpers (raw HTTP).
 
+import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { GATEWAY_URL } from './config';
 
 const TIMEOUT_MS = 10_000;
@@ -52,30 +54,28 @@ export class GatewayUnavailableError extends Error {
   }
 }
 
-/** Single POST to the Radix Gateway. Returns parsed JSON, or null on failure. */
-export async function postGateway<T>(
-  path: string,
-  body: Record<string, unknown>,
-  label: string,
-): Promise<T | null> {
+/** A chart read cached for `revalidate` seconds under the `charts` tag, and once per render. */
+export const chartsCache = <T extends (...args: any[]) => Promise<unknown>>(key: string, revalidate: number, fn: T): T =>
+  cache(unstable_cache(fn, [key], { revalidate, tags: ['charts'] }));
+
+/** Single uncached fetch. Returns parsed JSON, or null on failure. */
+export async function fetchJson<T>(url: string, init: RequestInit, label: string): Promise<T | null> {
   try {
-    const res = await fetch(`${GATEWAY_URL}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
+    const res = await fetch(url, { ...init, cache: 'no-store', signal: AbortSignal.timeout(TIMEOUT_MS) });
     if (!res.ok) {
-      console.error(`[${label}] Gateway ${res.status}: ${await res.text().catch(() => '')}`);
+      console.error(`[${label}] ${url} ${res.status}: ${await res.text().catch(() => '')}`);
       return null;
     }
     return await res.json() as T;
   } catch (err) {
-    console.error(`[${label}] Gateway error:`, err);
+    console.error(`[${label}] ${url} error:`, err);
     return null;
   }
 }
+
+/** Single POST to the Radix Gateway. Returns parsed JSON, or null on failure. */
+export const postGateway = <T>(path: string, body: Record<string, unknown>, label: string) =>
+  fetchJson<T>(`${GATEWAY_URL}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, label);
 
 /**
  * Paginated POST to Radix Gateway. Accumulates results across pages.

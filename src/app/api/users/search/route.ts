@@ -3,19 +3,12 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
 import { json, handleRoute } from 'wiki-formant/http';
+import { AUTHOR_SELECT, authorsOf } from '@/lib/wiki';
 
 export async function GET(request: NextRequest) {
   return handleRoute(async () => {
     const ids = request.nextUrl.searchParams.get('ids');
-    if (ids) {
-      const idList = ids.split(',').filter(Boolean).slice(0, 50);
-      if (!idList.length) return json([]);
-      const users = await prisma.user.findMany({
-        where: { id: { in: idList } },
-        select: { id: true, displayName: true, shortAddress: true, avatarUrl: true },
-      });
-      return json(users);
-    }
+    if (ids) return json([...(await authorsOf(ids.split(',').filter(Boolean).slice(0, 50))).values()]);
 
     const q = request.nextUrl.searchParams.get('q')?.trim();
     if (!q || q.length < 2) return json([]);
@@ -29,7 +22,7 @@ export async function GET(request: NextRequest) {
           { radixAddress: q.toLowerCase() },
         ],
       },
-      select: { id: true, displayName: true, shortAddress: true, avatarUrl: true },
+      ...AUTHOR_SELECT,
       take: 10,
     });
 

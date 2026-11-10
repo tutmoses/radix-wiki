@@ -50,6 +50,8 @@ interface EditorScore {
   displayName: string | null;
   radixAddress: string;
   avatarUrl: string | null;
+  /** ISO string: the cache hands back JSON, so a Date would not survive a hit. */
+  createdAt: string;
   /** The wiki page about this contributor (community bio or ecosystem project),
    *  linked by the page's `metadata.subjectUserId` pointer. */
   subjectPage: { tagPath: string; slug: string } | null;
@@ -59,6 +61,9 @@ interface EditorScore {
   comments: number;
   points: number;
 }
+
+/** Whole days since `createdAt`. */
+export const ageDays = (createdAt: Date | string) => Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000);
 
 export const getEditorScores = unstable_cache(
   async (): Promise<EditorScore[]> => {
@@ -96,14 +101,14 @@ export const getEditorScores = unstable_cache(
       const edits = Number(u.edit_slots);
       const contributions = Number(u.unique_pages);
       const comments = Number(u.comment_slots);
-      const ageDays = Math.floor((Date.now() - new Date(u.created_at).getTime()) / 86_400_000);
-      const points = totalPoints({ pages, edits, contributions, comments, ageDays });
+      const points = totalPoints({ pages, edits, contributions, comments, ageDays: ageDays(u.created_at) });
 
       return {
         id: u.id,
         displayName: u.display_name,
         radixAddress: u.radix_address,
         avatarUrl: u.avatar_url,
+        createdAt: new Date(u.created_at).toISOString(),
         // An empty slug is a valid subject page (category hub), so presence is
         // keyed on tag_path rather than slug truthiness.
         subjectPage: u.subject_tag_path !== null ? { tagPath: u.subject_tag_path, slug: u.subject_slug ?? '' } : null,

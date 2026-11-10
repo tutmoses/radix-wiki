@@ -187,6 +187,15 @@ export const ACTIVITY_COLUMNS: (keyof LedgerDayRow)[] = [
   'date', 'transactions', 'activeAccounts', 'newAccounts', 'newComponents', 'newResources', 'nftsMinted', 'feesXrd', 'burnedXrd', 'royaltiesXrd',
 ];
 
+/** A UTC day as the API, the CSV and the MCP tool name it. */
+export const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** `from` and `to` with an empty one dropped, or null when either is not a YYYY-MM-DD day. */
+export function parseDayRange(from?: string | null, to?: string | null): { from?: string; to?: string } | null {
+  const range = { from: from || undefined, to: to || undefined };
+  return [range.from, range.to].every(d => !d || ISO_DAY.test(d)) ? range : null;
+}
+
 /** Stored days from `from` to `to` (inclusive, YYYY-MM-DD, either optional), oldest first. */
 export async function getLedgerDayRows(from?: string, to?: string): Promise<LedgerDayRow[]> {
   return (await getLedgerDays())

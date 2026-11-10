@@ -7,8 +7,8 @@
 
 import { unstable_cache } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
-
-export const WEEKLY_PAGE = { tagPath: 'contents/tech/operations', slug: 'network-weekly' } as const;
+import { WEEKLY_PAGE } from '@/lib/week-in-review';
+import { ISO_DAY } from './activity';
 
 type Snapshot = {
   week: string;
@@ -34,7 +34,7 @@ export const getWeeklySnapshots = unstable_cache(
   async (): Promise<WeeklyPoint[]> => {
     const page = await prisma.wikiPage.findUnique({ where: { siteId_tagPath_slug: { siteId: '', ...WEEKLY_PAGE } }, select: { metadata: true } });
     const snapshots = ((page?.metadata as { state?: { snapshots?: Snapshot[] } } | null)?.state?.snapshots ?? [])
-      .filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s.week))
+      .filter(s => ISO_DAY.test(s.week))
       .sort((a, b) => a.week.localeCompare(b.week));
     return snapshots.map(s => ({
       time: Date.parse(`${s.week}T00:00:00Z`) / 1000,

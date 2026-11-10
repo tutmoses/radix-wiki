@@ -2,7 +2,8 @@
 // and the on-chain ledger backup). The `.md` twin of a page is NOT this — it
 // is real markdown with no component tags, from src/lib/markdown.ts.
 
-import { pagePath } from '@/lib/utils';
+import { pagePath, pageUrl } from '@/lib/utils';
+import { frontmatter } from 'wiki-formant/markdown';
 import { atomicToMarkdown } from '@/lib/markdown';
 import type { Block, AtomicBlock, ColumnsBlock, InfoboxBlock } from '@/types/blocks';
 
@@ -60,30 +61,21 @@ interface PageData {
 export function blocksToMdx(page: PageData): string {
   const blocks = Array.isArray(page.content) ? page.content as Block[] : [];
 
-  // Not `wiki-formant/markdown`'s frontmatter: the ledger restore in
-  // @/lib/radix/ledger reads `path` and `version` back out of this header.
-  const frontmatter: Record<string, string | undefined> = {
+  // The ledger restore in @/lib/radix/ledger reads `path` and `version` back out of this header.
+  const header = frontmatter({
     title: page.title,
-    path: pagePath(page.tagPath ?? '', page.slug ?? ''),
-  };
-  if (page.bannerImage) frontmatter.bannerImage = page.bannerImage;
-  if (page.version) frontmatter.version = page.version;
-  if (page.author) {
-    frontmatter.author = page.author.displayName || page.author.shortAddress;
-  }
-  if (page.createdAt) {
-    frontmatter.createdAt = new Date(page.createdAt).toISOString();
-  }
-  if (page.updatedAt) {
-    frontmatter.updatedAt = new Date(page.updatedAt).toISOString();
-  }
-
-  const frontmatterLines = Object.entries(frontmatter)
-    .filter(([, v]) => v !== undefined)
-    .map(([k, v]) => `${k}: "${v!.replace(/"/g, '\\"')}"`)
-    .join('\n');
+    url: pageUrl(page.tagPath ?? '', page.slug ?? ''),
+    extra: {
+      path: pagePath(page.tagPath ?? '', page.slug ?? ''),
+      bannerImage: page.bannerImage ?? undefined,
+      version: page.version,
+      author: page.author ? page.author.displayName || page.author.shortAddress : undefined,
+      createdAt: page.createdAt && new Date(page.createdAt).toISOString(),
+      updatedAt: page.updatedAt && new Date(page.updatedAt).toISOString(),
+    },
+  });
 
   const content = blocks.map(convertBlock).filter(Boolean).join('\n\n');
 
-  return `---\n${frontmatterLines}\n---\n\n# ${page.title}\n\n${content}`;
+  return `${header}\n\n# ${page.title}\n\n${content}`;
 }

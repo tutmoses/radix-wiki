@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { formatDay } from 'wiki-formant/freshness';
 import { useFetch } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
+import { StatCard } from '@/components/charts/StatGrid';
 
 interface UserStatsData {
   userId: string;
@@ -29,16 +30,6 @@ interface UserStatsData {
     comments: number;
     tenure: number;
   };
-}
-
-function StatItem({ icon: Icon, label, value }: { icon: typeof FileText; label: string; value: number | string }) {
-  return (
-    <div className="stat-card">
-      <Icon size={20} className="text-accent" />
-      <span className="stat-value">{value}</span>
-      <span className="text-small text-text-muted">{label}</span>
-    </div>
-  );
 }
 
 function ScoreRing({ score, points }: { score: number; points: number }) {
@@ -76,22 +67,17 @@ function ScoreRing({ score, points }: { score: number; points: number }) {
 export function UserStats({ userId }: { userId: string }) {
   const { data, status } = useFetch<UserStatsData>(`/api/users/${userId}/stats`);
 
-  if (status === 'loading') {
+  if (status === 'loading' || status === 'failed') {
     return (
       <section className="section-divider stack-sm">
         <h3 className="text-text-muted">Statistics</h3>
-        <div className="stat-grid">
-          {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-24 skeleton" />)}
-        </div>
-      </section>
-    );
-  }
-
-  if (status === 'failed') {
-    return (
-      <section className="section-divider stack-sm">
-        <h3 className="text-text-muted">Statistics</h3>
-        <p className="text-small text-text-muted">These statistics could not be loaded. Reload to try again.</p>
+        {status === 'loading' ? (
+          <div className="stat-grid">
+            {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-24 skeleton" />)}
+          </div>
+        ) : (
+          <p className="text-small text-text-muted">These statistics could not be loaded. Reload to try again.</p>
+        )}
       </section>
     );
   }
@@ -106,10 +92,10 @@ export function UserStats({ userId }: { userId: string }) {
       <h3 id="contribution-points" className="text-text-muted">Contribution Points</h3>
       <div className="stat-grid">
         <ScoreRing score={data.score} points={data.points} />
-        <StatItem icon={FileText} label="Pages" value={data.stats.pages} />
-        <StatItem icon={Users} label="Contributions" value={data.stats.uniqueContributions} />
-        <StatItem icon={Edit3} label="Edits" value={data.stats.edits} />
-        <StatItem icon={Calendar} label="Member Since" value={formatDay(data.memberSince, { month: 'short', year: 'numeric' })} />
+        <StatCard icon={<FileText size={20} className="text-accent" />} label="Pages" value={data.stats.pages} />
+        <StatCard icon={<Users size={20} className="text-accent" />} label="Contributions" value={data.stats.uniqueContributions} />
+        <StatCard icon={<Edit3 size={20} className="text-accent" />} label="Edits" value={data.stats.edits} />
+        <StatCard icon={<Calendar size={20} className="text-accent" />} label="Member Since" value={formatDay(data.memberSince, { month: 'short', year: 'numeric' })} />
       </div>
     </section>
   );

@@ -105,7 +105,7 @@
 
   a { @apply text-accent no-underline hover:text-accent-hover; }
   code { @apply text-[0.9em] px-1.5 py-0.5 bg-surface-2 rounded; }
-  pre { @apply text-base border border-border-muted rounded-lg p-4 overflow-x-auto; background-color: var(--color-code-bg); code { @apply p-0 bg-transparent; } }
+  pre { @apply text-base border border-border-muted rounded-lg p-4 overflow-x-auto whitespace-pre-wrap break-words; background-color: var(--color-code-bg); code { @apply p-0 bg-transparent; } }
   blockquote { @apply border-l-4 border-accent pl-4 py-1 italic text-text-muted; }
 
   table { @apply w-full border-collapse rounded-lg overflow-hidden; }
@@ -144,7 +144,6 @@
 
   input, textarea, select { font: inherit; color: inherit; }
   hr { @apply border-0 border-t border-border-muted; }
-  pre { @apply whitespace-pre-wrap break-words; }
 
   /* Tiptap editor */
   .tiptap-editor .tiptap {
@@ -196,7 +195,7 @@
   .katex { @apply text-text; }
 
   /* rehype-pretty-code blocks */
-  [data-rehype-pretty-code-figure] { @apply my-4; pre { @apply border border-border-muted rounded-lg p-4; background-color: var(--color-code-bg); } code { @apply p-0 bg-transparent; } }
+  [data-rehype-pretty-code-figure] { @apply my-4; code { @apply p-0 bg-transparent; } }
 
   /* ===== CALLOUTS / ADMONITIONS ===== */
   [data-callout] {
@@ -298,7 +297,8 @@
 
   /* ===== SURFACES ===== */
   .surface { @apply bg-surface-1 border border-border-muted rounded-lg; }
-  .surface-interactive { @apply bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5 hover:shadow; }
+  /* A card that is a link: it lifts and takes the accent on hover. */
+  .search-page-result, .page-card, .path-step-link { @apply bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5 hover:shadow; }
 
   /* ===== FORM CONTROLS ===== */
   /* <Button> composes these with its size; a button rendered outside React's <Button>, such as
@@ -399,7 +399,7 @@
   .search-mark { @apply bg-accent/25 text-text rounded-sm px-0.5; }
   .search-result-all { @apply text-center text-small text-accent font-medium border-t border-border-muted hover:text-accent-hover; }
   .search-empty { @apply absolute top-full left-0 right-0 mt-2 bg-surface-1 border border-border rounded-lg shadow p-4 text-center text-text-muted z-50; }
-  .search-page-result { @apply block p-3 bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5 hover:shadow; }
+  .search-page-result { @apply block p-3; }
 
   /* ===== SIDEBAR ===== */
   /* The rail's layout — a sticky column from wiki-formant's 1024px breakpoint,
@@ -410,7 +410,7 @@
 
      Every row in the rail sits on one vertical rhythm, three tokens: a row's
      own padding, the gap between rows, and the space between sections.
-     `npm run lint:rail` fails on any other vertical spacing in the rail. */
+     `npm run lint` fails on any other vertical spacing in the rail. */
   .wiki-sidebar { @apply bg-surface-0; --rail-top: var(--header-height); --rail-row: 0.125rem; --rail-gap: 0.0625rem; --rail-section: 1.25rem; }
   .wiki-sidebar__scroll { @apply pb-24 gap-(--rail-section); }
     .sidebar-label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3 py-(--rail-row); }
@@ -452,10 +452,10 @@
   .banner-empty { @apply relative w-full aspect-[4/1] max-h-48 overflow-hidden bg-surface-1 rounded-lg border-2 border-dashed border-border-muted bg-surface-1/50; }
   .banner-upload-btn { @apply w-full h-full flex items-center justify-center text-text-muted hover:text-text hover:bg-surface-2/50 transition-colors; }
   .banner-actions { @apply absolute top-2 right-2 flex items-center gap-2 z-10; }
-  .banner-action-btn { @apply p-2 rounded transition-colors cursor-pointer inline-flex items-center justify-center hover:bg-surface-2 bg-surface-0/80 backdrop-blur-sm; }
+  .banner-action-btn { @apply bg-surface-0/80 backdrop-blur-sm; }
 
   /* ===== PAGE CARD ===== */
-  .page-card { @apply bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5 hover:shadow h-full overflow-hidden; }
+  .page-card { @apply h-full overflow-hidden; }
   .page-card-thumb { @apply aspect-[4/1] overflow-hidden relative; }
 
   .page-card-body { @apply flex flex-col gap-2 p-4; }
@@ -515,7 +515,7 @@
     content: ''; @apply absolute left-7 w-px bg-border-muted;
     top: calc(100% - 0.5rem); height: 1rem;
   }
-  .path-step-link { @apply flex items-center gap-4 p-3 pr-4 bg-surface-1 border border-border-muted rounded-lg transition-all hover:border-accent hover:-translate-y-0.5 hover:shadow; }
+  .path-step-link { @apply flex items-center gap-4 p-3 pr-4; }
   .path-step-num { @apply shrink-0 grid place-items-center w-8 h-8 rounded-full border border-accent bg-surface-0 font-mono text-small font-bold text-accent; }
   .path-step-main { @apply flex flex-col gap-0.5 min-w-0 flex-1; }
   /* The count rides the title line rather than its own column: as a column it
@@ -651,8 +651,8 @@
   /* ===== METADATA FIELDS ===== */
   .metadata-panel { @apply flex flex-col gap-2 p-4 rounded-lg bg-surface-1 border border-border; }
   .metadata-grid { @apply grid grid-cols-1 md:grid-cols-2 gap-4; }
-  /* A `WikiLine`: base.css gives it its outline and its placeholder, which reads as an input's here. */
-  .rich-input { @apply w-full py-2 px-4 bg-surface-0 border border-border rounded transition-all focus:border-accent focus:ring-2 focus:ring-accent-muted min-h-9 [&::before]:text-text-muted [&_a]:text-accent [&_a]:underline; }
+  /* A `WikiLine` beside `.input`: base.css gives it its outline and its placeholder, which reads as an input's here. */
+  .rich-input { @apply min-h-9 [&::before]:text-text-muted [&_a]:text-accent [&_a]:underline; }
 
   /* ===== SLUG EDITOR ===== */
   .slug-editor { @apply flex items-center gap-2 text-small text-text-muted py-1; }
@@ -685,9 +685,7 @@
 
   /* ===== BOARD / IDEAS PIPELINE ===== */
 
-  .status-tabs { @apply flex items-center gap-0 border-b border-border-muted overflow-x-auto; }
-  .status-tabs::-webkit-scrollbar { display: none; }
-  .status-tabs { scrollbar-width: none; }
+  .status-tabs { @apply flex items-center gap-0 border-b border-border-muted overflow-x-auto; scrollbar-width: none; &::-webkit-scrollbar { display: none; } }
   .status-tab { @apply px-3 py-2 text-small font-medium text-text-muted cursor-pointer transition-colors hover:text-text -mb-px border-b-2 border-transparent whitespace-nowrap shrink-0; }
   .board-columns { @apply grid gap-3 pb-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6; }
   .board-column { @apply flex flex-col rounded-lg bg-surface-1/40; }

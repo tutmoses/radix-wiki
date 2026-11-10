@@ -5,7 +5,7 @@ import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma/client';
 import { json, errors, handleRoute } from 'wiki-formant/http';
 import { parsePagination, paginatedResponse } from 'wiki-formant/pagination';
-import { requireAuth, CACHE, type RouteContext } from '@/lib/api';
+import { requireAuth, cachedJson, CACHE, type RouteContext } from '@/lib/api';
 import { AUTHOR_SELECT, isIdeasPath, pageTag, revalidatePage } from '@/lib/wiki';
 import type { CommentInput, NotificationType } from '@/types';
 import { deliverWebhooks } from '@/lib/webhooks';
@@ -38,9 +38,7 @@ export async function GET(request: NextRequest) {
       prisma.comment.count({ where }),
     ]);
 
-    const res = json(paginatedResponse(comments, total, page, pageSize));
-    res.headers.set('Cache-Control', CACHE.medium['Cache-Control']);
-    return res;
+    return cachedJson(paginatedResponse(comments, total, page, pageSize), CACHE.medium);
   }, 'Failed to fetch comments');
 }
 

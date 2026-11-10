@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type ComponentProps } from 'react';
 import Link from 'next/link';
 import { MessageSquare, LayoutGrid, List } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
@@ -16,11 +16,7 @@ import { boardColumn, findTagByPath, getMetadataKeys, UNPLACED_COLUMN, type Sort
 import { NewPageControl, SortToggle } from './PageContent';
 import type { WikiPage, PageMetadata, IdeasPage } from '@/types';
 import { EmptyState } from '@/components/EmptyState';
-
-function parseAssignee(raw?: string): { name: string; address: string } | null {
-  if (!raw) return null;
-  try { const p = JSON.parse(raw); return p.name ? p : null; } catch { return raw ? { name: raw, address: '' } : null; }
-}
+import { parseAssignee } from './assignee';
 
 function AssigneeChip({ raw }: { raw?: string }) {
   const assignee = parseAssignee(raw);
@@ -33,41 +29,38 @@ function AssigneeChip({ raw }: { raw?: string }) {
   );
 }
 
-/** Derive a semantic color token from the emoji prefix in a tags.ts option string */
-const EMOJI_COLOR: Record<string, string> = {
-  '\u{1F534}': 'accent',   // 🔴
-  '\u{1F7E0}': 'danger',   // 🟠
-  '\u{1F7E1}': 'warning',  // 🟡
-  '\u{1F535}': 'info',     // 🔵
-  '\u{1F7E3}': 'purple',   // 🟣
-  '\u{1F7E2}': 'success',  // 🟢
+/** The colour token and badge an option takes from the emoji prefix of its tags.ts string. */
+type Tone = { color: string; variant: ComponentProps<typeof Badge>['variant'] };
+const DEFAULT_TONE: Tone = { color: 'default', variant: 'default' };
+const EMOJI_TONE: Record<string, Tone> = {
+  '\u{1F534}': { color: 'accent', variant: 'default' },     // 🔴
+  '\u{1F7E0}': { color: 'danger', variant: 'danger' },      // 🟠
+  '\u{1F7E1}': { color: 'warning', variant: 'warning' },    // 🟡
+  '\u{1F535}': { color: 'info', variant: 'info' },          // 🔵
+  '\u{1F7E3}': { color: 'purple', variant: 'secondary' },   // 🟣
+  '\u{1F7E2}': { color: 'success', variant: 'success' },    // 🟢
 };
 
-function emojiColor(raw: string): string {
-  const cp = String.fromCodePoint(raw.codePointAt(0)!);
-  return EMOJI_COLOR[cp] ?? 'default';
-}
-
-type ColorToken = string;
-interface StatusOption { raw: string; label: string; color: ColorToken }
+type StatusOption = { raw: string; label: string } & Tone;
 
 function parseSelectOptions(options: string[]): StatusOption[] {
-  return options.map(raw => ({ raw, label: categoryLabel(raw), color: emojiColor(raw) }));
+  return options.map(raw => ({ raw, label: categoryLabel(raw), ...(EMOJI_TONE[String.fromCodePoint(raw.codePointAt(0)!)] ?? DEFAULT_TONE) }));
 }
 
-const BADGE_VARIANT: Record<string, string> = {
-  accent: 'default', danger: 'danger', warning: 'warning',
-  info: 'info', purple: 'secondary', success: 'success', default: 'default',
-};
+/** A metadata value as a badge in its option's colour. */
+function OptionBadge({ options, value }: { options: StatusOption[]; value?: string }) {
+  if (!value) return null;
+  const label = categoryLabel(value);
+  return <Badge variant={options.find(o => o.label === label)?.variant}>{label}</Badge>;
+}
 
 function BoardCard({ page, priorityOptions }: { page: WikiPage; priorityOptions: StatusOption[] }) {
   const meta = (page.metadata as PageMetadata) || {};
-  const prio = priorityOptions.find(o => o.label === categoryLabel(meta.priority));
   return (
     <Link href={`/${page.tagPath}/${page.slug}`} className="board-card">
       <span className="board-card-title">{page.title}</span>
       <div className="board-card-meta">
-        {meta.priority && <Badge variant={(BADGE_VARIANT[prio?.color ?? 'default'] ?? 'default') as 'default'}>{categoryLabel(meta.priority)}</Badge>}
+        <OptionBadge options={priorityOptions} value={meta.priority} />
         {meta.category && <Badge variant="secondary">{categoryLabel(meta.category)}</Badge>}
         <AssigneeChip raw={meta.assignee} />
       </div>
@@ -75,17 +68,15 @@ function BoardCard({ page, priorityOptions }: { page: WikiPage; priorityOptions:
   );
 }
 
-function IdeasListView({ pages, categoryFilter, statusFilter, statusOptions, priorityOptions }: {
-  pages: IdeasPage[]; categoryFilter: string; statusFilter: string;
+function IdeasListView({ pages, statusFilter, statusOptions, priorityOptions }: {
+  pages: IdeasPage[]; statusFilter: string;
   statusOptions: StatusOption[]; priorityOptions: StatusOption[];
 }) {
   const now = useNow();
-  const filtered = useMemo(() => {
-    let result = pages;
-    if (categoryFilter) result = result.filter(p => categoryLabel((p.metadata as PageMetadata)?.category) === categoryFilter);
-    if (statusFilter) result = result.filter(p => categoryLabel((p.metadata as PageMetadata)?.status) === statusFilter);
-    return result;
-  }, [pages, categoryFilter, statusFilter]);
+  const filtered = useMemo(
+    () => (statusFilter ? pages.filter(p => categoryLabel((p.metadata as PageMetadata)?.status) === statusFilter) : pages),
+    [pages, statusFilter],
+  );
 
   if (filtered.length === 0) return <EmptyState title="No ideas yet." />;
 
@@ -93,16 +84,14 @@ function IdeasListView({ pages, categoryFilter, statusFilter, statusOptions, pri
     <div className="ideas-list">
       {filtered.map(p => {
         const meta = (p.metadata as PageMetadata) || {};
-        const st = statusOptions.find(o => o.label === categoryLabel(meta.status));
-        const pr = priorityOptions.find(o => o.label === categoryLabel(meta.priority));
         return (
           <Link key={p.id} href={`/${p.tagPath}/${p.slug}`} className="ideas-row">
             <div className="ideas-row-main">
               <span className="ideas-row-title">{p.title}</span>
               <div className="ideas-row-badges">
-                {meta.status && <Badge variant={(BADGE_VARIANT[st?.color ?? 'default'] ?? 'default') as 'default'}>{categoryLabel(meta.status)}</Badge>}
+                <OptionBadge options={statusOptions} value={meta.status} />
                 {meta.category && <Badge variant="secondary">{categoryLabel(meta.category)}</Badge>}
-                {meta.priority && <Badge variant={(BADGE_VARIANT[pr?.color ?? 'default'] ?? 'default') as 'default'}>{categoryLabel(meta.priority)}</Badge>}
+                <OptionBadge options={priorityOptions} value={meta.priority} />
               </div>
             </div>
             <div className="ideas-row-meta">
@@ -135,21 +124,22 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
   const statusOptions = useMemo(() => parseSelectOptions(metaKeys.find(k => k.key === 'status')?.options ?? []), [metaKeys]);
   const priorityOptions = useMemo(() => parseSelectOptions(metaKeys.find(k => k.key === 'priority')?.options ?? []), [metaKeys]);
 
-  const sorted = useMemo(() => sortPages(pages, sort), [pages, sort]);
+  // The category filter both views apply; the list adds its status filter.
+  const filtered = useMemo(() => {
+    const sorted = sortPages(pages, sort);
+    return categoryFilter ? sorted.filter(p => categoryLabel((p.metadata as PageMetadata)?.category) === categoryFilter) : sorted;
+  }, [pages, sort, categoryFilter]);
 
   const columns = useMemo(() => {
-    const filtered = categoryFilter
-      ? sorted.filter(p => categoryLabel((p.metadata as PageMetadata)?.category) === categoryFilter)
-      : sorted;
     // A card whose status the board does not offer gets a column of its own, as
     // get_ideas_board gives it, rather than appearing in none.
     const raws = statusOptions.map(o => o.raw);
     const unplaced = filtered.filter(p => boardColumn(p.metadata, raws) === null);
     return [
       ...statusOptions.map(opt => ({ ...opt, items: filtered.filter(p => boardColumn(p.metadata, raws) === opt.raw) })),
-      ...(unplaced.length ? [{ raw: '', label: UNPLACED_COLUMN, color: 'default', items: unplaced }] : []),
+      ...(unplaced.length ? [{ raw: '', label: UNPLACED_COLUMN, ...DEFAULT_TONE, items: unplaced }] : []),
     ];
-  }, [sorted, categoryFilter, statusOptions]);
+  }, [filtered, statusOptions]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -196,7 +186,7 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
             ))}
           </div>
           {categoryTabs}
-          <IdeasListView pages={sorted} categoryFilter={categoryFilter} statusFilter={statusFilter} statusOptions={statusOptions} priorityOptions={priorityOptions} />
+          <IdeasListView pages={filtered} statusFilter={statusFilter} statusOptions={statusOptions} priorityOptions={priorityOptions} />
         </div>
       ) : (
         <div className="ideas-panel">

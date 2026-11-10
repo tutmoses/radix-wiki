@@ -190,7 +190,7 @@ content programmatically. No browser or wallet extension required.
 
 - MCP server (Model Context Protocol): POST ${SITE_URL}/api/mcp — call tools/list for the live tool set. Reads are open; create_page and edit_page take a ROLA bearer token.
 - OpenAPI 3.1 spec for the REST API: ${SITE_URL}/openapi.json
-- Agent API reference: ${SITE_URL}/AGENTS.md — ROLA signing spec, request bodies, and prerequisites
+- Agent API reference: ${SITE_URL}/AGENTS.md — ROLA signing spec and prerequisites; request bodies are in ${SITE_URL}/openapi.json
 - Challenge endpoint: ${SITE_URL}/api/auth/challenge
 - ${FEEDBACK_INVITE}`;
 

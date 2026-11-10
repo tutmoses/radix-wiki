@@ -10,6 +10,7 @@ import { Button, Badge } from '@/components/ui';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { useAuth } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
+import { EmptyState } from '@/components/EmptyState';
 import { changeSummary } from 'wiki-formant/revisions';
 import { SortHeader, restoreViaPost, useRevisionRestore, useTableSort } from 'wiki-formant/react';
 import { RevisionChanges } from 'wiki-formant/react-server';
@@ -31,7 +32,7 @@ interface RevisionData {
   author?: { id: string; displayName?: string | null; shortAddress: string; avatarUrl?: string | null };
 }
 
-type HistoryData = { currentVersion: string; revisions: RevisionData[] } | null;
+type HistoryData = { currentVersion: string; revisions: RevisionData[] };
 
 const TYPE_BADGE: Record<string, { label: string; variant: 'danger' | 'warning' | 'secondary' }> = {
   major: { label: 'Major', variant: 'danger' },
@@ -50,17 +51,13 @@ const REVISION_COMPARATORS = {
 };
 // Authors read A–Z first; everything else opens newest or largest first.
 const firstDirection = (key: string): 'asc' | 'desc' => (key === 'author' ? 'asc' : 'desc');
-const NO_REVISIONS: RevisionData[] = [];
 
 // The counted phrasing is `wiki-formant/revisions`, the one the stored revision
 // message already uses. The server has already dropped containers (this view
 // never lists them); an empty set reads off the revision's own change type.
-function ChangeSummary({ changes, changeType }: { changes: HistoryChange[]; changeType: ChangeType }) {
-  const summary = changes.length
-    ? changeSummary({ changes, titleChanged: false })
-    : changeType === 'major' ? 'Structural changes' : changeType === 'minor' ? 'Content updated' : changeType === 'patch' ? 'Metadata updated' : 'No changes';
-  return <span className="text-xs text-text-muted">{summary}</span>;
-}
+const summarize = (changes: HistoryChange[], changeType: ChangeType) => changes.length
+  ? changeSummary({ changes, titleChanged: false })
+  : changeType === 'major' ? 'Structural changes' : changeType === 'minor' ? 'Content updated' : changeType === 'patch' ? 'Metadata updated' : 'No changes';
 
 // Editor labels, except that a content block is 'Text' where it is being read
 // rather than inserted. An unknown type is a block this build no longer has.
@@ -79,7 +76,7 @@ export default function HistoryView({ data, tagPath, slug, isHomepage }: { data:
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const { sorted, headerProps } = useTableSort<RevisionData, keyof typeof REVISION_COMPARATORS>(data?.revisions ?? NO_REVISIONS, { defaultKey: 'date', comparators: REVISION_COMPARATORS, defaultDirection: firstDirection });
+  const { sorted, headerProps } = useTableSort<RevisionData, keyof typeof REVISION_COMPARATORS>(data.revisions, { defaultKey: 'date', comparators: REVISION_COMPARATORS, defaultDirection: firstDirection });
 
   const apiBase = isHomepage ? '/api/wiki' : `/api/wiki${pagePath(tagPath, slug)}`;
   const viewPath = isHomepage ? '/' : pagePath(tagPath, slug);
@@ -87,15 +84,6 @@ export default function HistoryView({ data, tagPath, slug, isHomepage }: { data:
   const { restore, busyId, error: restoreError } = useRevisionRestore<string>(restoreViaPost(`${apiBase}/history`), {
     onRestored: () => router.push(viewPath),
   });
-
-  if (!data) {
-    return (
-      <div className="stack">
-        {!isHomepage && <Breadcrumbs path={[...tagPath.split('/'), slug].filter(Boolean)} suffix="History" />}
-        <div className="surface p-12 text-center"><p className="text-error">Page not found</p></div>
-      </div>
-    );
-  }
 
   return (
     <div className="stack">
@@ -124,6 +112,7 @@ export default function HistoryView({ data, tagPath, slug, isHomepage }: { data:
                 const isCurrent = rev.id === data.revisions[0]?.id;
                 const type = TYPE_BADGE[rev.changeType] ?? TYPE_BADGE.patch!;
                 const { changes } = rev;
+                const summary = summarize(changes, rev.changeType);
                 const isExpanded = expandedId === rev.id;
                 return (
                   <Fragment key={rev.id}>
@@ -135,7 +124,7 @@ export default function HistoryView({ data, tagPath, slug, isHomepage }: { data:
                       <td className="py-2 px-3"><Badge variant={type.variant}>{type.label}</Badge></td>
                       <td className="py-2 px-3">
                         <div className="row gap-3">
-                          <ChangeSummary changes={changes} changeType={rev.changeType} />
+                          <span className="text-xs text-text-muted">{summary}</span>
                           {changes.length > 0 && (
                             <button type="button" onClick={() => setExpandedId(isExpanded ? null : rev.id)} className="text-accent hover:text-accent-hover"
                               aria-label={`Changes in v${rev.version}`} aria-expanded={isExpanded}>
@@ -143,6 +132,8 @@ export default function HistoryView({ data, tagPath, slug, isHomepage }: { data:
                             </button>
                           )}
                         </div>
+                        {/* The editor's own summary; one left blank was stored as the counted one above. */}
+                        {rev.message && rev.message !== summary && <div className="text-xs text-text-muted mt-1">{rev.message}</div>}
                       </td>
                       <td className="py-2 px-3 truncate max-w-32">
                         {rev.author ? (
@@ -169,7 +160,7 @@ export default function HistoryView({ data, tagPath, slug, isHomepage }: { data:
           </table>
         </div>
       ) : (
-        <div className="surface p-12 text-center"><p className="text-text-muted">No revision history available.</p></div>
+        <EmptyState title="No revision history available." />
       )}
     </div>
   );

@@ -1,8 +1,9 @@
 // src/components/charts/ValidatorsView.tsx – /charts/validators
 
 import Link from 'next/link';
-import { ArrowLeft, CalendarClock, Coins, Crown, Percent, Scale, Server, TrendingUp } from 'lucide-react';
+import { CalendarClock, Coins, Crown, Percent, Scale, Server, TrendingUp } from 'lucide-react';
 import { getNetworkStats, type NetworkStats } from '@/lib/radix/network';
+import { PageHeading } from '@/components/PageHeading';
 import { ValidatorsTable } from './ValidatorsTable';
 import LedgerUnavailable from './LedgerUnavailable';
 import StatGrid, { type Stat } from './StatGrid';
@@ -27,23 +28,14 @@ export default async function ValidatorsView() {
 
   return (
     <div className="stack">
-      <div className="stack-sm">
-        <Link href="/charts" className="charts-section-link">
-          <ArrowLeft size={14} /> Charts
-        </Link>
-        <div className="row">
-          <Server size={24} className="text-accent" />
-          <h1 id="validators">Validators</h1>
-        </div>
-        {stats && (
-          <p className="text-text-muted">
-            {stats.staking.active} of the {stats.staking.registered} registered validators are validating this epoch. Click any column to sort.
-            Staker APR is an estimate: the network&apos;s scheduled emission of about 300 million $XRD a year shared over the active stake, less the
-            validator&apos;s fee. A validator that misses a single proposal in an epoch earns nothing for that epoch (see <Link href="/contents/tech/core-concepts/network-emissions">Network Emissions</Link>),
-            so a 7-day uptime below 99.9% is shown in amber. Not advice: a fee can rise, and a pending rise shows under the fee with its date.
-          </p>
-        )}
-      </div>
+      <PageHeading icon={Server} id="validators" title="Validators" back={{ href: '/charts', label: 'Charts' }} description={stats && (
+        <>
+          {stats.staking.active} of the {stats.staking.registered} registered validators are validating this epoch. Click any column to sort.
+          Staker APR is an estimate: the network&apos;s scheduled emission of about 300 million $XRD a year shared over the active stake, less the
+          validator&apos;s fee. A validator that misses a single proposal in an epoch earns nothing for that epoch (see <Link href="/contents/tech/core-concepts/network-emissions">Network Emissions</Link>),
+          so a 7-day uptime below 99.9% is shown in amber. Not advice: a fee can rise, and a pending rise shows under the fee with its date.
+        </>
+      )} />
       {stats ? (
         <>
           <StatGrid stats={stakingCards(stats)} />

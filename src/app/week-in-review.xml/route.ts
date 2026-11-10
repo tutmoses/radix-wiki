@@ -5,13 +5,9 @@
 // is recaps only, full text, numbered, with the scored prediction record in the
 // channel description so the one number the series owns travels with every copy.
 
-import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
-import { feedResponse } from 'wiki-formant/feed';
-import { tagged } from '@/lib/api';
-import { pageTag } from '@/lib/wiki';
-import { feedItem, getRecaps } from '@/lib/feed';
+import { SITE_URL } from '@/lib/site';
+import { blogFeed, feedItem, getRecaps } from '@/lib/feed';
 import { SERIES_SLUG, issueLabel } from '@/lib/week-in-review';
-import { licenseNote } from 'wiki-formant/license';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,12 +24,10 @@ export async function GET(request: Request) {
       categories: ['Radix Week in Review'],
     }));
 
-  // Every blog save expires the blog's tag, which purges this at the CDN.
-  return tagged(feedResponse(request, {
+  return blogFeed(request, {
     title: 'Radix Week in Review',
     link: `${SITE_URL}/blog/${SERIES_SLUG}`,
     description: `The week in the Radix ecosystem, read against the ledger. ${scoreline}`,
-    copyright: licenseNote(WIKI_LICENSE),
     self: `${SITE_URL}/week-in-review.xml`,
-  }, items), pageTag('blog'));
+  }, items);
 }

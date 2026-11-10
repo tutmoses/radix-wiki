@@ -1,8 +1,7 @@
 // src/lib/radix/tokens.ts – Token data via OciSwap + Gateway
 
 import { cache } from 'react';
-import { unstable_cache } from 'next/cache';
-import { chunks, GatewayUnavailableError, num, postGateway, readMetadata, type GatewayEntity, type GatewayMetadata } from './gateway';
+import { chartsCache, chunks, fetchJson, GatewayUnavailableError, num, postGateway, readMetadata, type GatewayEntity, type GatewayMetadata } from './gateway';
 import { DASHBOARD_URL, OCISWAP_API } from './config';
 
 export interface TokenSummary {
@@ -47,19 +46,7 @@ export interface TokenDetail extends TokenSummary {
 }
 
 /** Single GET against the OciSwap public API. Returns parsed JSON, or null. */
-async function ociswap<T>(path: string, label: string): Promise<T | null> {
-  try {
-    const res = await fetch(`${OCISWAP_API}${path}`, { cache: 'no-store', signal: AbortSignal.timeout(10_000) });
-    if (!res.ok) {
-      console.error(`[${label}] OciSwap ${res.status}`);
-      return null;
-    }
-    return await res.json() as T;
-  } catch (err) {
-    console.error(`[${label}] error`, err);
-    return null;
-  }
-}
+const ociswap = <T>(path: string, label: string) => fetchJson<T>(`${OCISWAP_API}${path}`, {}, label);
 
 // OciSwap's token objects carry no TVL. /charts sorted its token table by a `tvl` field
 // that was empty on every row until September 2026.
@@ -113,7 +100,7 @@ async function _fetchTopTokens(): Promise<TokenSummary[]> {
 const TOKEN_REVALIDATE = 900;
 
 /** The traded tokens; rejects when OciSwap does not answer, so a caller says so rather than showing none. */
-export const getTopTokens = cache(unstable_cache(_fetchTopTokens, ['radix-top-tokens-v6'], { revalidate: TOKEN_REVALIDATE, tags: ['charts'] }));
+export const getTopTokens = chartsCache('radix-top-tokens-v6', TOKEN_REVALIDATE, _fetchTopTokens);
 
 const SHOWN_METADATA = new Set(['name', 'symbol', 'icon_url', 'description', 'info_url']);
 
@@ -216,9 +203,7 @@ async function _getTokenDetailRaw(address: string): Promise<TokenDetail | null> 
   };
 }
 
-export const getTokenDetail = cache(
-  unstable_cache(_getTokenDetailRaw, ['radix-token-detail-v3'], { revalidate: TOKEN_REVALIDATE, tags: ['charts'] }),
-);
+export const getTokenDetail = chartsCache('radix-token-detail-v3', TOKEN_REVALIDATE, _getTokenDetailRaw);
 
 interface TokenHolder {
   address: string;
@@ -271,9 +256,7 @@ async function _fetchTokenHolders(address: string): Promise<TokenHolders> {
   };
 }
 
-export const getTokenHolders = cache(
-  unstable_cache(_fetchTokenHolders, ['radix-token-holders-v3'], { revalidate: TOKEN_REVALIDATE, tags: ['charts'] }),
-);
+export const getTokenHolders = chartsCache('radix-token-holders-v3', TOKEN_REVALIDATE, _fetchTokenHolders);
 
 interface DexStats {
   /** Ociswap only: CaviarNine, DefiPlaza, Surge and Astrolescent are not in these figures. */
@@ -309,7 +292,7 @@ async function _fetchDexStats(): Promise<DexStats> {
   };
 }
 
-const _getDexStatsCached = unstable_cache(_fetchDexStats, ['radix-dex-stats-v2'], { revalidate: 300, tags: ['charts'] });
+const _getDexStatsCached = chartsCache('radix-dex-stats-v2', 300, _fetchDexStats);
 
 /** Ociswap's week, or null when it did not answer: the weekly snapshot records that week without it. */
 export const getDexStats = cache((): Promise<DexStats | null> => _getDexStatsCached().catch(() => null));

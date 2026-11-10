@@ -14,7 +14,8 @@ import { HoldersTable, type HolderRow } from './HoldersTable';
 import { CopyAddress } from './CopyAddress';
 import { EntityIcon } from './EntityIcon';
 import { formatUsd, formatPercent, formatAmount, formatPriceSubscript } from './format';
-import { cn, pagePath, shortenAddress } from '@/lib/utils';
+import { Change } from './StatGrid';
+import { pagePath, shortenAddress } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
 
 interface WikiPageRef {
@@ -129,9 +130,6 @@ export default async function TokenDetailView({ address, wikiPage }: { address: 
   const rows = holders ? await holderRows(holders, token.totalSupply) : null;
   const top10 = holders && token.totalSupply ? holders.top.slice(0, 10).reduce((sum, h) => sum + h.amount, 0) / token.totalSupply : undefined;
 
-  const change = token.change24h;
-  const positive = (change ?? 0) >= 0;
-
   return (
     <div className="stack">
       <Link href="/charts/tokens" className="charts-section-link"><ArrowLeft size={14} /> Tokens</Link>
@@ -162,11 +160,7 @@ export default async function TokenDetailView({ address, wikiPage }: { address: 
             {token.price > 0 ? (
               <>
                 <span className="stat-value">${formatPriceSubscript(token.price)}</span>
-                {change !== undefined && (
-                  <span className={cn('text-small font-medium', positive ? 'text-success' : 'text-error')}>
-                    {positive ? '↑' : '↓'} {formatPercent(Math.abs(change))} in 24h
-                  </span>
-                )}
+                {token.change24h !== undefined && <Change percent={token.change24h} digits={2} label="in 24h" className="text-small" />}
               </>
             ) : (
               <span className="text-small text-text-muted">Not traded on OciSwap</span>

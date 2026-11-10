@@ -119,15 +119,7 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const subId = searchParams.get('id');
 
-    if (subId) {
-      await prisma.telegramLink.deleteMany({
-        where: { id: subId, userId: auth.session.userId },
-      });
-    } else {
-      await prisma.telegramLink.deleteMany({
-        where: { userId: auth.session.userId },
-      });
-    }
+    await prisma.telegramLink.deleteMany({ where: { userId: auth.session.userId, ...(subId ? { id: subId } : {}) } });
 
     return json({ success: true });
   }, 'Failed to delete Telegram subscription');

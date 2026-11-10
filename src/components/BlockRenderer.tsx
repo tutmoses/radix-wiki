@@ -39,7 +39,8 @@ import { TokenChart } from '@/components/charts/TokenChart';
 import { TimeChart } from 'wiki-formant/chart';
 import { eventMarkers, type NetworkEvent } from '@/lib/radix/events';
 import { activityLabel } from '@/lib/radix/metrics';
-import { formatPriceSubscript } from '@/components/charts/format';
+import { DAILY_RANGES, formatPriceSubscript } from '@/components/charts/format';
+import { Change } from '@/components/charts/StatGrid';
 // The rendered-article passes are `wiki-formant/dom`, run by the hooks that
 // wrap them, shared with caper.
 import { useArticlePasses, useCopy } from 'wiki-formant/react';
@@ -146,7 +147,6 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
   if (status !== 'loaded') return <div className="surface p-4 animate-pulse"><div className="h-8 w-32 bg-surface-2 rounded" /></div>;
   if (data.price === null) return <p className="text-text-muted text-small">Not traded on OciSwap</p>;
   const displayName = data.symbol || data.name || block.resourceAddress.slice(0, 20) + '...';
-  const isPositive = (data.change24h ?? 0) >= 0;
   const priceStr = formatPriceSubscript(data.price);
   return (
     <div className="stack-sm">
@@ -155,7 +155,7 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
           <span className="text-small text-text-muted">${displayName}</span>
           <span className="text-h3 font-semibold">${priceStr}</span>
         </div>
-        {block.showChange && typeof data.change24h === 'number' && <span className={cn('font-medium', isPositive ? 'text-success' : 'text-error')}>{isPositive ? '↑' : '↓'} {Math.abs(data.change24h).toFixed(2)}%</span>}
+        {block.showChange && typeof data.change24h === 'number' && <Change percent={data.change24h} digits={2} />}
       </div>
       {block.showChart && <TokenChart resourceAddress={block.resourceAddress!} defaultTimeframe={block.chartTimeframe || '30d'} />}
       <Link href={`/charts/tokens/${block.resourceAddress}`} className="charts-section-link">View full chart →</Link>
@@ -185,8 +185,6 @@ function NetworkChartBlockView({ block }: { block: NetworkChartBlock }) {
     </div>
   );
 }
-
-const DAILY_RANGES = ['30d', '90d', '1y', 'all'] as const;
 
 interface RssFeedItem { title: string; link: string; image?: string; source: string; date?: string; description?: string; }
 

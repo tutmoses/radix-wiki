@@ -1,6 +1,11 @@
 // src/components/charts/format.ts — Numeric formatters shared by chart views
 
-import { stepDecimals } from 'wiki-formant/chart';
+import { stepDecimals, type ChartRange } from 'wiki-formant/chart';
+
+/** The ranges a chart of the daily series offers. */
+export const DAILY_RANGES: readonly ChartRange[] = ['30d', '90d', '1y', 'all'];
+
+export const longDay = (time: number) => new Date(time * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 export function formatCompact(n: number, opts: { prefix?: string; suffix?: string } = {}): string {
   if (!isFinite(n) || n === 0) return `${opts.prefix ?? ''}0${opts.suffix ?? ''}`;

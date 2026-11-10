@@ -5,25 +5,16 @@
 
 'use client';
 
+import { AuthRequired } from '@/components/AuthRequired';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
-import { EmptyState } from '@/components/EmptyState';
 import { WebhookSettings } from '@/components/WebhookSettings';
-import { Button } from '@/components/ui';
-import { SESSION_UNREADABLE, useAuth, useStore } from '@/hooks';
+import { useAuth } from '@/hooks';
 
 export default function SettingsView({ watch }: { watch?: string }) {
   const { status } = useAuth();
-  const connect = useStore(s => s.connect);
 
-  if (status === 'checking') return <div className="h-64 skeleton" />;
   if (status !== 'signed-in') {
-    return (
-      <EmptyState
-        as="h1" title="Notification settings"
-        description={status === 'unreadable' ? SESSION_UNREADABLE : 'Connect your Radix wallet to manage Telegram and webhook notifications.'}
-        action={<Button onClick={connect} isLoading={status === 'connecting'}>Connect Wallet</Button>}
-      />
-    );
+    return <AuthRequired status={status} title="Notification settings" reason="Connect your Radix wallet to manage Telegram and webhook notifications." />;
   }
 
   return (

@@ -1,10 +1,8 @@
 // src/lib/radix/validators.ts – Validator directory via Radix Gateway
 
-import { cache } from 'react';
-import { unstable_cache } from 'next/cache';
 import { isoDate } from 'wiki-formant/freshness';
 import {
-  chunks, entityDetailsAt, GatewayUnavailableError, num, paginatedGatewayFetch, postGateway, readMetadata,
+  chartsCache, chunks, entityDetailsAt, GatewayUnavailableError, num, paginatedGatewayFetch, postGateway, readMetadata,
   type GatewayPage, type LedgerState,
 } from './gateway';
 
@@ -122,7 +120,7 @@ async function getUptimes(addresses: string[], ledger: LedgerState): Promise<Map
   return uptimes;
 }
 
-const _getValidatorSet = unstable_cache(
+export const getValidatorSet = chartsCache('radix-validators-v4', 300,
   async (): Promise<ValidatorSet> => {
     let ledger: LedgerState = {};
     const parsed = await paginatedGatewayFetch<Parsed, ValidatorPage>(
@@ -163,11 +161,7 @@ const _getValidatorSet = unstable_cache(
     });
     return { validators: validators.sort((a, b) => b.totalStake - a.totalStake), epoch, stateVersion };
   },
-  ['radix-validators-v4'],
-  { revalidate: 300, tags: ['charts'] },
 );
-
-export const getValidatorSet = cache(_getValidatorSet);
 
 /** What the directory adds up to. Every consumer counts from this, so /charts and the weekly snapshot cannot disagree. */
 export interface StakingSummary {

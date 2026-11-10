@@ -6,19 +6,16 @@
 
 import { errors } from 'wiki-formant/http';
 import { cachedJson, CACHE } from '@/lib/api';
-import { ACTIVITY_COLUMNS, getLedgerDayRows } from '@/lib/radix/activity';
+import { ACTIVITY_COLUMNS, getLedgerDayRows, parseDayRange } from '@/lib/radix/activity';
 import { getNetworkEvents } from '@/lib/wiki';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 
-const DAY = /^\d{4}-\d{2}-\d{2}$/;
-
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
-  const from = params.get('from') ?? undefined;
-  const to = params.get('to') ?? undefined;
-  if ((from && !DAY.test(from)) || (to && !DAY.test(to))) return errors.badRequest('from and to are dates, YYYY-MM-DD');
+  const range = parseDayRange(params.get('from'), params.get('to'));
+  if (!range) return errors.badRequest('from and to are dates, YYYY-MM-DD');
 
-  const [rows, events] = await Promise.all([getLedgerDayRows(from, to), getNetworkEvents().catch(() => [])]);
+  const [rows, events] = await Promise.all([getLedgerDayRows(range.from, range.to), getNetworkEvents().catch(() => [])]);
   if (params.get('format') === 'csv') {
     const lines = [ACTIVITY_COLUMNS.join(','), ...rows.map(r => ACTIVITY_COLUMNS.map(c => r[c]).join(','))];
     return new Response(`${lines.join('\n')}\n`, {

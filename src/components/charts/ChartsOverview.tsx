@@ -1,28 +1,38 @@
 // src/components/charts/ChartsOverview.tsx – /charts dashboard
 
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowRight, ArrowLeftRight, BarChart3, CircleDollarSign, Layers, Lock, Newspaper, Server } from 'lucide-react';
 import { JsonLd } from 'wiki-formant/react-server';
 import { getNetworkStats, type NetworkStats } from '@/lib/radix/network';
 import { getDexStats, getTopTokens, type TokenSummary } from '@/lib/radix/tokens';
 import { getLedgerDays, type LedgerDayPoint } from '@/lib/radix/activity';
-import { getWeeklySnapshots, WEEKLY_PAGE } from '@/lib/radix/weekly';
+import { getWeeklySnapshots, type WeeklyPoint } from '@/lib/radix/weekly';
+import { WEEKLY_PAGE } from '@/lib/week-in-review';
 import { eventMarkers } from '@/lib/radix/events';
+import { ACTIVITY_METRICS } from '@/lib/radix/metrics';
 import { XRD_ADDRESS } from '@/lib/radix/config';
 import { getLatestRecap, getNetworkEvents, getPageByAsset } from '@/lib/wiki';
 import { pagePath } from '@/lib/utils';
 import { SITE_REFS, SITE_URL, WIKI_LICENSE } from '@/lib/site';
-import { ActivityChart } from './ActivityChart';
-import { StakingChart } from './StakingChart';
+import { PageHeading } from '@/components/PageHeading';
+import { MetricChart, type Metric } from './MetricChart';
 import { TokenChart } from './TokenChart';
 import { ValidatorsTable } from './ValidatorsTable';
 import { TokensTable } from './TokensTable';
 import LedgerUnavailable from './LedgerUnavailable';
 import StatGrid, { type Stat } from './StatGrid';
 import { tokenRows, validatorRows } from './rows';
-import { formatXrd, formatCompact, formatPercent, formatPriceSubscript } from './format';
+import { formatXrd, formatCompact, formatPercent, formatPriceSubscript, longDay } from './format';
 
 const DATA_URL = `${SITE_URL}/api/charts/activity`;
+
+const STAKING_METRICS: Metric<Exclude<keyof WeeklyPoint, 'time'>>[] = [
+  { key: 'totalStake', label: 'Total stake ($XRD)' },
+  { key: 'stakedShare', label: 'Share of supply staked', percent: true },
+  { key: 'top10Share', label: 'Stake held by the largest 10', percent: true },
+  { key: 'nakamoto', label: 'Validators holding a third' },
+];
 
 const shortDay = (time: number) => new Date(time * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 
@@ -77,6 +87,18 @@ function datasetLd(days: LedgerDayPoint[]) {
   };
 }
 
+function Section({ id, title, link, children }: { id: string; title: string; link?: ReactNode; children: ReactNode }) {
+  const heading = <h2 id={id} className="charts-section-title">{title}</h2>;
+  return (
+    <section className="stack-sm">
+      {link ? <div className="spread">{heading}{link}</div> : heading}
+      {children}
+    </section>
+  );
+}
+
+const viewAll = (href: string) => <Link href={href} className="charts-section-link">View all <ArrowRight size={14} /></Link>;
+
 export default async function ChartsOverview() {
   // Token prices come from OciSwap and survive a Gateway that will not answer state
   // reads, so they are fetched apart from the ledger and still render alone.
@@ -92,18 +114,12 @@ export default async function ChartsOverview() {
   ]);
   const xrd = tokens?.find(t => t.address === XRD_ADDRESS);
   const [tokenTable, validatorTable] = await Promise.all([tokens && tokenRows(tokens), stats ? validatorRows(stats) : null]);
+  const first = days[0], last = days.at(-1);
 
   return (
     <div className="stack">
       {days.length > 0 && <JsonLd data={datasetLd(days)} />}
-      <div className="stack-sm">
-        <div className="row">
-          <BarChart3 size={24} className="text-accent" />
-          <h1 id="charts">Charts</h1>
-        </div>
-        <p className="text-text-muted">
-          Live Radix network statistics, validator directory, and ecosystem token data.
-        </p>
+      <PageHeading icon={BarChart3} id="charts" title="Charts" description="Live Radix network statistics, validator directory, and ecosystem token data.">
         {recap && (
           <Link href={pagePath(recap.tagPath, recap.slug)} className="charts-recap">
             <Newspaper size={16} className="text-accent shrink-0" />
@@ -111,75 +127,83 @@ export default async function ChartsOverview() {
             <ArrowRight size={14} className="shrink-0" />
           </Link>
         )}
-      </div>
+      </PageHeading>
 
       {stats || xrd ? <StatGrid stats={statCards(stats, xrd, days)} /> : null}
       {!stats && <LedgerUnavailable what="Live network data" />}
 
-      {days.length > 0 && (
-        <section className="stack-sm">
-          <h2 id="network-activity" className="charts-section-title">Network activity</h2>
-          <ActivityChart days={days} dataUrl={DATA_URL} events={events} />
-        </section>
+      {first && last && (
+        <Section id="network-activity" title="Network activity">
+          <MetricChart
+            points={days}
+            metrics={ACTIVITY_METRICS}
+            param="m"
+            period="day"
+            compare={{ points: 30, label: 'the 30 days before' }}
+            events={events}
+            caption={<>
+              Daily figures from {longDay(first.time)} to {longDay(last.time)}, in UTC days. A week or month point is the total of its days, so the week in progress counts only the days so far, and an account active on three days of a week counts three times. Counts cover the transactions
+              people submit, not the ones the network makes for itself each round. An active account is one whose balance
+              changed.
+              {' '}<a href={`${DATA_URL}?format=csv`} download>Download CSV</a> · <a href={DATA_URL}>JSON</a>
+            </>}
+          />
+        </Section>
       )}
 
       {xrd && (
-        <section className="stack-sm">
-          <div className="spread">
-            <h2 id="xrd-price" className="charts-section-title">$XRD price</h2>
-            <span className="row text-small">
-              {xrdPage && <Link href={pagePath(xrdPage.tagPath, xrdPage.slug)} className="charts-section-link">{xrdPage.title}</Link>}
-              <Link href={`/charts/tokens/${XRD_ADDRESS}`} className="charts-section-link">Holders and supply <ArrowRight size={14} /></Link>
-            </span>
-          </div>
+        <Section id="xrd-price" title="$XRD price" link={
+          <span className="row text-small">
+            {xrdPage && <Link href={pagePath(xrdPage.tagPath, xrdPage.slug)} className="charts-section-link">{xrdPage.title}</Link>}
+            <Link href={`/charts/tokens/${XRD_ADDRESS}`} className="charts-section-link">Holders and supply <ArrowRight size={14} /></Link>
+          </span>
+        }>
           <TokenChart resourceAddress={XRD_ADDRESS} defaultTimeframe="1y" height={300} markers={eventMarkers(events)} />
           {xrd.marketCap !== undefined && (
             <p className="text-small text-text-muted">
               Market cap ${formatCompact(xrd.marketCap)} at OciSwap&apos;s price, which is the price of its own pools; other venues quote their own.
             </p>
           )}
-        </section>
+        </Section>
       )}
 
       {weeks.length > 1 && (
-        <section className="stack-sm">
-          <h2 id="staking" className="charts-section-title">Staking, week by week</h2>
-          <StakingChart weeks={weeks} recordHref={pagePath(WEEKLY_PAGE.tagPath, WEEKLY_PAGE.slug)} events={events} />
-        </section>
+        <Section id="staking" title="Staking, week by week">
+          <MetricChart
+            points={weeks}
+            metrics={STAKING_METRICS}
+            param="w"
+            period="week"
+            compare={{ points: 1, label: 'the week before' }}
+            aggregate="last"
+            events={events}
+            caption={<>
+              One reading a week, kept on the <Link href={pagePath(WEEKLY_PAGE.tagPath, WEEKLY_PAGE.slug)}>Network Weekly</Link> page since 16 August 2026; the
+              network was halted in the week of 6 September, so that week has none.
+            </>}
+          />
+        </Section>
       )}
 
       {dex && (
-        <section className="stack-sm">
-          <h2 id="dex" className="charts-section-title">OciSwap this week</h2>
+        <Section id="dex" title="OciSwap this week">
           <StatGrid stats={[
             { icon: ArrowLeftRight, value: isFinite(dex.volume7dXrd) ? formatXrd(dex.volume7dXrd) : '—', label: 'Volume, last 7 days' },
             { icon: BarChart3, value: dex.swaps7d.toLocaleString('en-US'), label: 'Swaps, last 7 days' },
             { icon: Lock, value: formatXrd(dex.tvlXrd), label: 'Value locked' },
             { icon: Layers, value: dex.newPools7d.toLocaleString('en-US'), label: 'Pools opened, last 7 days' },
           ]} />
-        </section>
+        </Section>
       )}
 
-      <section className="stack-sm">
-        <div className="spread">
-          <h2 id="top-tokens" className="charts-section-title">Top tokens</h2>
-          <Link href="/charts/tokens" className="charts-section-link">
-            View all <ArrowRight size={14} />
-          </Link>
-        </div>
+      <Section id="top-tokens" title="Top tokens" link={viewAll('/charts/tokens')}>
         <TokensTable tokens={tokenTable} limit={10} />
-      </section>
+      </Section>
 
       {validatorTable && (
-        <section className="stack-sm">
-          <div className="spread">
-            <h2 id="top-validators" className="charts-section-title">Top validators</h2>
-            <Link href="/charts/validators" className="charts-section-link">
-              View all <ArrowRight size={14} />
-            </Link>
-          </div>
+        <Section id="top-validators" title="Top validators" link={viewAll('/charts/validators')}>
           <ValidatorsTable validators={validatorTable} limit={10} />
-        </section>
+        </Section>
       )}
 
       <p className="text-text-muted text-small">

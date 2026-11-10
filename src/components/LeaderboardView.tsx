@@ -6,6 +6,7 @@ import { useMemo } from 'react';
 import { Trophy, FileText, Edit3, MessageSquare, Star } from 'lucide-react';
 import { UserAvatar } from '@/components/UserAvatar';
 import { DataTable, type Column } from '@/components/charts/DataTable';
+import { PageHeading } from '@/components/PageHeading';
 import Link from 'next/link';
 import type { LeaderboardEntry } from '@/lib/scoring';
 
@@ -49,13 +50,7 @@ export default function LeaderboardView({ entries }: { entries: LeaderboardEntry
 
   return (
     <div className="stack">
-      <div className="stack-sm">
-        <div className="row">
-          <Trophy size={24} className="text-accent" />
-          <h1 id="leaderboard">Leaderboard</h1>
-        </div>
-        <p className="text-text-muted">Top contributors ranked by points.</p>
-      </div>
+      <PageHeading icon={Trophy} id="leaderboard" title="Leaderboard" description="Top contributors ranked by points." />
 
       <DataTable
         rows={ranked} columns={COLUMNS} defaultKey="points" numbered={false}

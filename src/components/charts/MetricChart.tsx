@@ -11,14 +11,14 @@ import Link from 'next/link';
 import { TimeChart, formatChartValue, stepDecimals, type ChartAggregate, type ChartRange, type ChartStep, type ChartView } from 'wiki-formant/chart';
 import { cn } from '@/lib/utils';
 import { eventMarkers, type NetworkEvent } from '@/lib/radix/events';
+import { DAILY_RANGES, longDay } from './format';
+import { Change } from './StatGrid';
 
 export type Metric<K extends string> = { key: K; label: string; percent?: boolean };
 type Point<K extends string> = { time: number } & Record<K, number | null>;
 
-const RANGES: ChartRange[] = ['30d', '90d', '1y', 'all'];
 const STEPS: ChartStep[] = ['day', 'week', 'month'];
 
-const longDay = (time: number) => new Date(time * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 const shortDay = (time: number) => new Date(time * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 // The query string as an external store. Nothing subscribes: the page writes it with
@@ -37,7 +37,7 @@ function writeQuery(patch: Record<string, string | null>) {
 
 export function MetricChart<K extends string>({ points, metrics, param, period, compare, aggregate = 'sum', range: defaultRange = '1y', events, caption }: {
   points: Point<K>[];
-  metrics: Metric<K>[];
+  metrics: readonly Metric<K>[];
   /** The query key for the metric; the range and step take `<param>-range` and `<param>-step`. */
   param: string;
   /** What one point is, for the headline: a day's figure or a week's reading. */
@@ -59,7 +59,7 @@ export function MetricChart<K extends string>({ points, metrics, param, period, 
     const m = q.get(param), r = q.get(`${param}-range`) as ChartRange | null, s = q.get(`${param}-step`) as ChartStep | null;
     return {
       metric: metrics.find(x => x.key === m)?.key,
-      range: r && RANGES.includes(r) ? r : defaultRange,
+      range: r && DAILY_RANGES.includes(r) ? r : defaultRange,
       ...(s && STEPS.includes(s) && { step: s }),
     };
   }, [search, param, metrics, defaultRange]);
@@ -118,9 +118,7 @@ export function MetricChart<K extends string>({ points, metrics, param, period, 
             {current.label}, {period === 'week' ? 'week of ' : ''}{longDay(headline.last.time)}
           </span>
           {headline.change !== undefined && !current.percent && (
-            <span className={cn('text-small font-medium', headline.change >= 0 ? 'text-success' : 'text-error')}>
-              {headline.change >= 0 ? '↑' : '↓'} {Math.abs(headline.change).toFixed(1)}% vs {compare.label}
-            </span>
+            <Change percent={headline.change} label={`vs ${compare.label}`} className="text-small" />
           )}
           {headline.high !== headline.last && (
             <span className="text-small text-text-muted">All-time high {format(headline.high.value)} on {shortDay(headline.high.time)}</span>
@@ -133,7 +131,7 @@ export function MetricChart<K extends string>({ points, metrics, param, period, 
         key={query ? 'client' : 'server'}
         series={series}
         label={current.label}
-        ranges={RANGES}
+        ranges={DAILY_RANGES}
         range={query?.range ?? defaultRange}
         step={query?.step}
         onView={onView}

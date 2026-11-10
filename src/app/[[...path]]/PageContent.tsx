@@ -11,24 +11,24 @@ import { ArrowLeft, ArrowRight, Save, Plus, Upload, X, Image as ImageIcon, Arrow
 import { BlockRenderer, findInfobox, infoboxHasContent, InfoboxSidebar, PageThumb } from '@/components/BlockRenderer';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Breadcrumbs, PageActions } from '@/components/Breadcrumbs';
-import { EmptyState } from '@/components/EmptyState';
 import { LinkPreview } from '@/components/LinkPreview';
-import { Button, Card } from '@/components/ui';
-import { SESSION_UNREADABLE, useAuth, useStore, type AuthStatus } from '@/hooks';
+import { AuthRequired } from '@/components/AuthRequired';
+import { Button } from '@/components/ui';
+import { useAuth, useStore } from '@/hooks';
 import { categoryLabel, cn, generateBannerSvg, mustReload, pagePath, sendJson } from '@/lib/utils';
 import { describe } from 'wiki-formant/metadata';
 import { openingText } from 'wiki-formant/text';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
 import { AGO, useNow } from '@/lib/now';
-import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder, type TagNode } from '@/lib/tags';
+import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder } from '@/lib/tags';
 import { categoryHref, type Control, type FacetControlGroup, type FacetFilters, type SharedFacet } from '@/lib/taxonomy';
 import { createBlock } from '@/lib/block-utils';
 import { formatDay, freshnessBanner, relativeTime } from 'wiki-formant/freshness';
 import { Cite, FacetBar, FacetSummary, RelatedPages as SeeAlso } from 'wiki-formant/react-server';
 import { useSaveShortcut, useUnsavedChanges } from 'wiki-formant/react';
 import type { WikiPage } from '@/types';
-import type { Block } from '@/types/blocks';
+import type { Block, InfoboxBlock } from '@/types/blocks';
 
 const LazyPageEditor = dynamic(() => import('./PageEditor'), {
   ssr: false,
@@ -45,16 +45,21 @@ export { HistoryView };
 const Discussion = dynamic(() => import('@/components/Discussion').then(m => m.Discussion), { ssr: false });
 const UserStats = dynamic(() => import('@/components/UserStats').then(m => m.UserStats));
 
-export const BlockEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.BlockEditor), { ssr: false, loading: () => <div className="h-64 skeleton" /> });
-export const InfoboxEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.InfoboxEditor), { ssr: false, loading: () => <div className="h-32 skeleton" /> });
+const BlockEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.BlockEditor), { ssr: false, loading: () => <div className="h-64 skeleton" /> });
+const InfoboxEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.InfoboxEditor), { ssr: false, loading: () => <div className="h-32 skeleton" /> });
 
-export function PageSkeleton() {
+/** An article's blocks, its infobox edited apart in the rail beside them; both editors run it. */
+export function ArticleBlocksEditor({ content, onChange }: { content: Block[]; onChange: (content: Block[]) => void }) {
+  const infobox = findInfobox(content) || createBlock('infobox') as InfoboxBlock;
+  const mainBlocks = content.filter(b => b.type !== 'infobox');
   return (
-    <div className="stack">
-      <div className="h-8 w-48 skeleton rounded" />
-      <div className="h-48 skeleton" />
-      <div className="h-6 w-3/4 skeleton rounded" />
-      <div className="h-6 w-1/2 skeleton rounded" />
+    <div className="page-with-infobox">
+      <div className="page-main-content">
+        <BlockEditor content={mainBlocks} onChange={blocks => onChange([...blocks, infobox])} />
+      </div>
+      <aside className="infobox-editor">
+        <InfoboxEditor block={infobox} onChange={block => onChange([...mainBlocks, block])} />
+      </aside>
     </div>
   );
 }
@@ -88,18 +93,15 @@ export function Banner({ src, title, tagPath, editable, onUpload, onRemove, chil
   const [isUploading, setIsUploading] = useState(false);
   const showToast = useStore(s => s.showToast);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !onUpload) return;
     setIsUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
-      if (res.ok) onUpload((await res.json()).url);
-      else showToast((await res.json().catch(() => ({}))).error || 'The banner could not be uploaded.', 'info');
-    } catch { showToast('The banner could not be uploaded: the request did not reach the wiki.', 'info'); }
-    finally { setIsUploading(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
+    // Imported on use: the module carries Tiptap, which a reader never loads.
+    import('wiki-formant/editor')
+      .then(({ uploadImageTo }) => uploadImageTo('/api/upload')(file))
+      .then(onUpload, (err: Error) => showToast(err.message, 'info'))
+      .finally(() => { setIsUploading(false); if (fileInputRef.current) fileInputRef.current.value = ''; });
   };
 
   const FileInput = <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />;
@@ -135,8 +137,8 @@ export function Banner({ src, title, tagPath, editable, onUpload, onRemove, chil
       {editable && (
         <div className="banner-actions">
           {FileInput}
-          <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="banner-action-btn" title="Change banner"><Upload size={16} /></button>
-          {onRemove && src && <button onClick={onRemove} className="banner-action-btn text-error hover:text-error" title="Remove banner"><X size={16} /></button>}
+          <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="icon-btn banner-action-btn" title="Change banner"><Upload size={16} /></button>
+          {onRemove && src && <button onClick={onRemove} className="icon-btn banner-action-btn text-error hover:text-error" title="Remove banner"><X size={16} /></button>}
         </div>
       )}
     </div>
@@ -249,16 +251,15 @@ function CategoryHero({ description, mainArticle }: { description?: string; main
  * two controls that change it. The sentence and its Clear link are
  * `wiki-formant/react-server`'s, shared with the other wikis.
  */
-function ResultsBar({ tag, tagPath, total, shown, sort, filters, letter, clearHref, hasRail, filtersOpen, onToggleFilters }: {
-  tag: TagNode | null; tagPath: string; total: number; shown: number; sort: SortOrder;
+function ResultsBar({ name, tagPath, total, shown, sort, filters, letter, clearHref, hasRail, filtersOpen, onToggleFilters }: {
+  name: string; tagPath: string; total: number; shown: number; sort: SortOrder;
   filters: FacetFilters; letter?: string; clearHref?: string; hasRail: boolean; filtersOpen: boolean; onToggleFilters: () => void;
 }) {
-  const categoryName = categoryLabel(tag?.name ?? '') || tagPath.split('/').at(-1) || 'this section';
   const narrowed = Object.keys(filters).length + (letter ? 1 : 0);
   return (
     <div className="results-bar">
       <FacetSummary
-        shown={shown} total={total} name={categoryName} link={Link}
+        shown={shown} total={total} name={name} link={Link}
         clearHref={clearHref}
       />
       <div className="row">
@@ -273,21 +274,8 @@ function ResultsBar({ tag, tagPath, total, shown, sort, filters, letter, clearHr
   );
 }
 
-/**
- * An edit URL opened without a session. While the session is still being read
- * it waits rather than asking a reader who is signed in to connect.
- */
-function AuthRequired({ status, backHref }: { status: Exclude<AuthStatus, 'signed-in'>; backHref: string }) {
-  const connect = useStore(s => s.connect);
-  if (status === 'checking') return <PageSkeleton />;
-  return (
-    <EmptyState
-      as="h1" title="Connect your wallet to edit"
-      description={status === 'unreadable' ? SESSION_UNREADABLE : 'Editing needs a connected Radix wallet holding the $XRD minimum for this page.'}
-      action={<div className="row justify-center"><Button onClick={connect} isLoading={status === 'connecting'}>Connect Wallet</Button><Link href={backHref}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link></div>}
-    />
-  );
-}
+/** What an edit URL opened without a session says. */
+const EDIT_AUTH = { title: 'Connect your wallet to edit', reason: 'Editing needs a connected Radix wallet holding the $XRD minimum for this page.' };
 
 // ========== SAVE PHASE ==========
 /**
@@ -327,7 +315,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   const confirmLeave = useUnsavedChanges(isEditing && dirty && save.kind !== 'saving');
   useSaveShortcut(() => { if (isEditing && save.kind === 'editing') handleSave(); });
 
-  if (isEditing && status !== 'signed-in') return <AuthRequired status={status} backHref="/" />;
+  if (isEditing && status !== 'signed-in') return <AuthRequired status={status} {...EDIT_AUTH} backHref="/" />;
 
   async function handleSave() {
     setSave({ kind: 'saving' });
@@ -347,11 +335,6 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   const canSave = save.kind === 'editing';
 
   if (isEditing) {
-    const infobox = findInfobox(content) || createBlock('infobox') as import('@/types/blocks').InfoboxBlock;
-    const mainBlocks = content.filter(b => b.type !== 'infobox');
-    const updateMainBlocks = (blocks: Block[]) => setContent([...blocks, infobox]);
-    const updateInfobox = (block: Block) => setContent([...content.filter(b => b.type !== 'infobox'), block]);
-
     return (
       <div className="stack">
         <div className="spread">
@@ -363,14 +346,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
         {save.kind === 'conflict' && <ConflictNotice message={save.message} />}
         <div data-callout="info"><p>Editing the homepage requires holding <strong>{getXrdRequired('edit', '').toLocaleString('en-US')} XRD</strong> in your connected wallet. {XRD_NOT_A_FEE}</p></div>
         <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
-        <div className="page-with-infobox">
-          <div className="page-main-content">
-            <BlockEditor content={mainBlocks} onChange={updateMainBlocks} />
-          </div>
-          <aside className="infobox-editor">
-            <InfoboxEditor block={infobox} onChange={updateInfobox} />
-          </aside>
-        </div>
+        <ArticleBlocksEditor content={content} onChange={setContent} />
         <div className="spread">
           <Link href="/" onClick={e => { if (!confirmLeave()) e.preventDefault(); }}><Button variant="ghost">Cancel</Button></Link>
           <Button onClick={handleSave} disabled={!canSave}><Save size={18} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
@@ -423,13 +399,13 @@ export function NewPageControl({ tagPath, noun = 'Page' }: { tagPath: string; no
 }
 
 /** The pages in a category: count bar, grid, filter rail. Stands alone, or runs under the category's hub article. */
-function CategoryListing({ tagPath, pages, sort, total, facetGroups, filters, letters, letter, clearHref, heading }: {
-  tagPath: string[]; pages: WikiPage[]; sort: SortOrder; total: number;
+function CategoryListing({ name, tagPath, pages, sort, total, facetGroups, filters, letters, letter, clearHref, heading }: {
+  /** The category's name, as the results bar says it. */
+  name: string; tagPath: string[]; pages: WikiPage[]; sort: SortOrder; total: number;
   facetGroups: FacetControlGroup[]; filters: FacetFilters; letters: Control[]; letter?: string; clearHref?: string; heading?: ReactNode;
 }) {
   const [showFilters, setShowFilters] = useState(false);
   const pathStr = tagPath.join('/');
-  const tag = findTagByPath(tagPath);
   const hasRail = facetGroups.length > 0 || letters.length > 0;
 
   return (
@@ -440,9 +416,9 @@ function CategoryListing({ tagPath, pages, sort, total, facetGroups, filters, le
           to end on — on /ecosystem, 140 projects nested under "How a status is
           decided". Named for screen readers and outline parsers only; the bar
           below already says it on screen. */}
-      <h2 className="sr-only">{categoryLabel(tag?.name ?? '') || tagPath.at(-1) || 'Pages'}</h2>
+      <h2 className="sr-only">{name}</h2>
       <ResultsBar
-        tag={tag} tagPath={pathStr} total={total} shown={pages.length} sort={sort} filters={filters} letter={letter} clearHref={clearHref}
+        name={name} tagPath={pathStr} total={total} shown={pages.length} sort={sort} filters={filters} letter={letter} clearHref={clearHref}
         hasRail={hasRail} filtersOpen={showFilters} onToggleFilters={() => setShowFilters(v => !v)}
       />
       <div className={cn(hasRail && 'category-with-rail')}>
@@ -453,7 +429,7 @@ function CategoryListing({ tagPath, pages, sort, total, facetGroups, filters, le
             <div className="category-grid">
               {pages.map(p => (
                 <Link key={p.id} href={pagePath(p.tagPath, p.slug)}>
-                  <Card interactive className="h-full overflow-hidden p-0!">
+                  <div className="page-card">
                     <PageThumb page={p} />
                     <div className="page-card-body">
                       <div className="spread">
@@ -462,7 +438,7 @@ function CategoryListing({ tagPath, pages, sort, total, facetGroups, filters, le
                       </div>
                       {(() => { const snippet = (p.metadata as Record<string, string> | null)?.excerpt || p.snippet || describe(openingText(p.content)); return snippet && <p className="text-text-muted text-small line-clamp-2">{snippet}</p>; })()}
                     </div>
-                  </Card>
+                  </div>
                 </Link>
               ))}
             </div>
@@ -502,15 +478,18 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
 }) {
   const pathStr = tagPath.join('/');
   const tag = findTagByPath(tagPath);
+  const title = tag?.name || tagPath.at(-1) || '';
   const controlItems = <><SubscribeRow tagPath={pathStr} /><NewPageControl tagPath={pathStr} /></>;
   // The page title already names the category and the results bar names what the
   // listing holds, so neither draws a visible heading — the outline they need is
   // carried by the section cards' own h2 and the listing's sr-only one.
   // A hub's title sits in its banner, so its controls ride above whichever comes first.
   const hubControls = <div className="row-lg justify-end empty:hidden">{controlItems}</div>;
-  const listing = total > 0 && (
+  // A category with no pages of its own and no subcategories still needs to
+  // say so, and to offer the create control.
+  const listing = (total > 0 || (!hub && subcategories.length === 0)) && (
     <CategoryListing
-      tagPath={tagPath} pages={pages} sort={sort} total={total}
+      name={categoryLabel(tag?.name ?? '') || tagPath.at(-1) || 'this section'} tagPath={tagPath} pages={pages} sort={sort} total={total}
       facetGroups={facetGroups} filters={filters} letters={letters} letter={letter} clearHref={clearHref}
       heading={hub && hubControls}
     />
@@ -542,19 +521,12 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
     <div className="stack">
       <Breadcrumbs path={tagPath} />
       <div className="spread">
-        <h1 id={slugifyHeading(tag?.name || tagPath[tagPath.length - 1] || '')}>{tag?.name || tagPath[tagPath.length - 1]}</h1>
+        <h1 id={slugifyHeading(title)}>{title}</h1>
         <div className="row-lg">{controlItems}</div>
       </div>
       <CategoryHero description={tag?.description} mainArticle={mainArticle} />
       {sections}
-      {/* A category with no pages of its own and no subcategories still needs to
-          say so, and to offer the create control. */}
-      {listing || (subcategories.length === 0 && (
-        <CategoryListing
-          tagPath={tagPath} pages={pages} sort={sort} total={total}
-          facetGroups={facetGroups} filters={filters} letters={letters} letter={letter} clearHref={clearHref}
-        />
-      ))}
+      {listing}
     </div>
   );
 }
@@ -653,7 +625,8 @@ export function PageView({ page, tagPath, slug, isEditMode, related = { pages: [
 
   const viewPath = pagePath(tagPath, slug);
 
-  if (isEditMode && status !== 'signed-in') return <AuthRequired status={status} backHref={viewPath} />;
-  if (!page) return <LazyPageEditor tagPath={tagPath} slug={slug} />;
-  return isEditMode ? <LazyPageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} related={related} series={series} nowMs={nowMs} />;
+  if (isEditMode && status !== 'signed-in') return <AuthRequired status={status} {...EDIT_AUTH} backHref={viewPath} />;
+  // Keyed, so another page, or a new version of this one, opens a fresh form.
+  if (!page || isEditMode) return <LazyPageEditor key={page ? `${page.id}@${page.version}` : viewPath} page={page ?? undefined} tagPath={tagPath} slug={slug} />;
+  return <PageViewContent page={page} related={related} series={series} nowMs={nowMs} />;
 }

@@ -6,18 +6,19 @@ import { getSession, createSession, destroySession, verifySignedChallenge } from
 import { json, errors, handleRoute } from 'wiki-formant/http';
 import type { SignedChallenge, RadixAccount, RadixPersona } from '@/types';
 
+/** A session as the session check and the sign-in both answer it. */
+const sessionJson = (s: { userId: string; radixAddress: string; personaAddress?: string | null; displayName?: string | null; expiresAt: Date }) => ({
+  userId: s.userId,
+  radixAddress: s.radixAddress,
+  personaAddress: s.personaAddress,
+  displayName: s.displayName,
+  expiresAt: s.expiresAt.toISOString(),
+});
+
 export async function GET() {
   return handleRoute(async () => {
     const session = await getSession();
-    if (!session) return json(null);
-
-    return json({
-      userId: session.userId,
-      radixAddress: session.radixAddress,
-      personaAddress: session.personaAddress,
-      displayName: session.displayName,
-      expiresAt: session.expiresAt.toISOString(),
-    });
+    return json(session && sessionJson(session));
   }, 'Session check error');
 }
 
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const token = await createSession(
+    const { token, expiresAt } = await createSession(
       user.id,
       user.radixAddress,
       user.personaAddress || undefined,
@@ -86,11 +87,7 @@ export async function POST(request: NextRequest) {
     const fromBrowser = request.headers.has('sec-fetch-site');
 
     return json({
-      userId: user.id,
-      radixAddress: user.radixAddress,
-      personaAddress: user.personaAddress,
-      displayName: user.displayName,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      ...sessionJson({ ...user, userId: user.id, expiresAt }),
       ...(fromBrowser ? {} : { token }),
       isNewUser,
     });

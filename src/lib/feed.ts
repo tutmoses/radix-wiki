@@ -8,9 +8,10 @@
 // apostrophe escapes numerically.
 //
 // What stays here is the walk — a switch over this repo's block union, where a
-// new block type is a compile error until it is handled — and the two rules
+// new block type is a compile error until it is handled — and the rules
 // /blog.xml, /week-in-review.xml and /api/announce had each written for
-// themselves: what a blog row is as an item, and how a recap is numbered.
+// themselves: which blog rows, in what order, as items, under which channel,
+// and how a recap is numbered.
 //
 // One behaviour changes in adopting it. `lastBuildDate` now comes from the
 // newest item rather than `new Date()`, which this file stamped on every
@@ -22,15 +23,19 @@ import { cardUrl, describe } from 'wiki-formant/metadata';
 import { openingText } from 'wiki-formant/text';
 import { eventWhen, splitEvents, today } from 'wiki-formant/blocks';
 import { hoursRows } from 'wiki-formant/hours';
-import { SITE_URL } from '@/lib/site';
+import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { CARD } from '@/lib/og';
-import { absolutise as absolutiseFrom, clampWords, escXml, type FeedItem } from 'wiki-formant/feed';
+import { absolutise as absolutiseFrom, clampWords, escXml, feedResponse, type FeedChannel, type FeedItem } from 'wiki-formant/feed';
+import { licenseNote } from 'wiki-formant/license';
+import type { Prisma } from '@prisma/client';
+import { tagged } from '@/lib/api';
+import { pageTag } from '@/lib/wiki';
 import { leafBlocks } from '@/lib/block-utils';
 import { prisma } from '@/lib/prisma/client';
 import { RECAP_PREFIX, SERIES_SLUG, scoreline, type LedgerState } from '@/lib/week-in-review';
 
 /** Blog posts carry a `metadata.date` ("2026-08-02" or "2026/03/15"); fall back to the row's createdAt. */
-export function publishedAt(metadata: unknown, createdAt: Date): Date {
+function publishedAt(metadata: unknown, createdAt: Date): Date {
   const raw = (metadata as Record<string, string> | null)?.date?.replace(/\//g, '-');
   const parsed = raw ? new Date(raw) : null;
   return parsed && !isNaN(parsed.getTime()) ? parsed : createdAt;
@@ -108,23 +113,32 @@ export function feedItem(
   };
 }
 
+/** A blog feed's response. Every blog save expires the blog's tag, which purges it at the CDN. */
+export const blogFeed = (request: Request, channel: Omit<FeedChannel, 'copyright'>, items: readonly FeedItem[]) =>
+  tagged(feedResponse(request, { ...channel, copyright: licenseNote(WIKI_LICENSE) }, items), pageTag('blog'));
+
+/** The blog posts `where` picks, oldest first, each dated as it was published. */
+export async function datedPosts(where: Prisma.WikiPageWhereInput = {}) {
+  const posts = await prisma.wikiPage.findMany({
+    where: { ...where, tagPath: 'blog' },
+    select: { slug: true, title: true, content: true, metadata: true, createdAt: true },
+  });
+  return posts
+    .map(p => ({ ...p, date: publishedAt(p.metadata, p.createdAt) }))
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+}
+
 /** Every recap oldest first, each carrying its issue number — the chronological
  *  rank among its siblings, so #1 is the oldest; scripts/week-in-review.mjs
  *  agrees — and the series' running record. /week-in-review.xml and
  *  /api/announce both read the series through this. */
 export async function getRecaps() {
   const [recaps, index] = await Promise.all([
-    prisma.wikiPage.findMany({
-      where: { tagPath: 'blog', slug: { startsWith: RECAP_PREFIX } },
-      select: { slug: true, title: true, content: true, metadata: true, createdAt: true },
-    }),
+    datedPosts({ slug: { startsWith: RECAP_PREFIX } }),
     prisma.wikiPage.findFirst({ where: { tagPath: 'blog', slug: SERIES_SLUG }, select: { metadata: true } }),
   ]);
   return {
-    recaps: recaps
-      .map(p => ({ ...p, date: publishedAt(p.metadata, p.createdAt) }))
-      .sort((a, b) => a.date.getTime() - b.date.getTime())
-      .map((p, i) => ({ ...p, issue: i + 1 })),
+    recaps: recaps.map((p, i) => ({ ...p, issue: i + 1 })),
     scoreline: scoreline((index?.metadata as { state?: LedgerState } | null)?.state),
   };
 }

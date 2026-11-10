@@ -1,9 +1,8 @@
 // src/lib/radix/network.ts – Network-level stats via Radix Gateway
 
 import { cache } from 'react';
-import { unstable_cache } from 'next/cache';
 import { XRD_ADDRESS } from './config';
-import { entityDetailsAt, GatewayUnavailableError, num, postGateway, type GatewayPage } from './gateway';
+import { chartsCache, entityDetailsAt, GatewayUnavailableError, num, postGateway, type GatewayPage } from './gateway';
 import { getValidatorSet, summarizeStaking, type StakingSummary, type ValidatorSet } from './validators';
 
 /** The validator directory, what it adds up to, and the $XRD supply, all read at one state version. */
@@ -33,7 +32,7 @@ export const getLedgerStatus = cache(async (): Promise<LedgerStatus | null> => {
   };
 });
 
-const _getNetworkStats = unstable_cache(
+export const getNetworkStats = chartsCache('radix-network-stats-v5', 300,
   async (): Promise<NetworkStats> => {
     const set = await getValidatorSet();
     // Read at the directory's state version, so the epoch and state version /charts prints
@@ -44,8 +43,4 @@ const _getNetworkStats = unstable_cache(
     if (xrdSupply <= 0) throw new GatewayUnavailableError('/state/entity/details', 'xrd-entity');
     return { ...set, staking: summarizeStaking(set.validators), xrdSupply };
   },
-  ['radix-network-stats-v5'],
-  { revalidate: 300, tags: ['charts'] },
 );
-
-export const getNetworkStats = cache(_getNetworkStats);

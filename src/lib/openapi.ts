@@ -2,20 +2,40 @@
 //
 // MCP covers MCP-speaking agents; this spec is for everything else — agent
 // frameworks that auto-generate tools from OpenAPI. It describes the same
-// /api/wiki handlers the MCP write tools forward to, so semantics can't drift:
-// when a handler changes shape, update this document in the same change.
+// /api/wiki handlers the MCP write tools forward to, and their request bodies
+// are those tools' own schemas, so a field one takes the other documents.
+// When a handler's answer changes shape, update this document in the same change.
 //
 // A module rather than a route body so anything that needs to quote the spec
 // reads the object, the way acuiq2's does.
 
 import { openApiLicense } from 'wiki-formant/license';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
-import { SERVER_INFO } from '@/lib/mcp-tools';
+import { SERVER_INFO, toolInput } from '@/lib/mcp-tools';
 import { BLOCK_SCHEMA } from '@/lib/block-utils';
 import { SHARED_PATHS, xrdGates } from '@/lib/tags';
 import { UPLOAD } from '@/lib/api';
 
 const rolaAuth = [{ rolaBearer: [] as string[] }];
+
+const jsonBody = (schema: object) => ({ required: true, content: { 'application/json': { schema } } });
+const jsonRes = (description: string, schema: object) => ({ description, content: { 'application/json': { schema } } });
+const PAGE = { $ref: '#/components/schemas/Page' };
+const UNAUTH = { description: 'Missing or invalid bearer token' };
+const NOT_FOUND = { description: 'No page at this path' };
+
+/** A write tool's arguments as its REST body, less the fields the REST path carries. */
+function toolBody(tool: string, inPath: string[] = []) {
+  const { properties, required } = toolInput(tool);
+  const kept = (k: string) => !inPath.includes(k);
+  return jsonBody({
+    type: 'object',
+    required: required?.filter(kept),
+    properties: Object.fromEntries(Object.entries(properties).filter(([k]) => kept(k))
+      // The block schema once, under components, rather than inlined in each body.
+      .map(([k, v]) => [k, v.items === BLOCK_SCHEMA ? { ...v, items: { $ref: '#/components/schemas/Block' } } : v])),
+  });
+}
 
 const pathParam = {
   name: 'path',
@@ -85,17 +105,10 @@ export const SPEC = {
         summary: 'Request a ROLA challenge',
         description: '32-byte hex challenge, 5-minute expiry, one-time use.',
         responses: {
-          '200': {
-            description: 'Challenge issued',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: { challenge: { type: 'string' }, expiresAt: { type: 'string', format: 'date-time' } },
-                },
-              },
-            },
-          },
+          '200': jsonRes('Challenge issued', {
+            type: 'object',
+            properties: { challenge: { type: 'string' }, expiresAt: { type: 'string', format: 'date-time' } },
+          }),
         },
       },
     },
@@ -104,58 +117,44 @@ export const SPEC = {
         summary: 'Verify a signed challenge and create a session',
         description:
           'Sign the blake2b-256 hash of `R` (ASCII) + the challenge (hex-decoded) + one byte holding the length of the dAppDefinitionAddress + that address (UTF-8) + the origin (UTF-8), with Ed25519 (curve25519), and hex-encode the signature. The public key must be an on-ledger `owner_keys` entry for the account.',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['accounts', 'signedChallenge'],
-                properties: {
-                  accounts: {
-                    type: 'array',
-                    items: { type: 'object', required: ['address'], properties: { address: { type: 'string' }, label: { type: 'string' } } },
-                  },
-                  signedChallenge: {
-                    type: 'object',
-                    required: ['challenge', 'address', 'proof'],
-                    properties: {
-                      challenge: { type: 'string' },
-                      address: { type: 'string' },
-                      proof: {
-                        type: 'object',
-                        required: ['publicKey', 'signature', 'curve'],
-                        properties: {
-                          publicKey: { type: 'string', description: 'Hex Ed25519 public key' },
-                          signature: { type: 'string', description: 'Hex Ed25519 signature' },
-                          curve: { type: 'string', enum: ['curve25519', 'secp256k1'] },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
+        requestBody: jsonBody({
+          type: 'object',
+          required: ['accounts', 'signedChallenge'],
+          properties: {
+            accounts: {
+              type: 'array',
+              items: { type: 'object', required: ['address'], properties: { address: { type: 'string' }, label: { type: 'string' } } },
             },
-          },
-        },
-        responses: {
-          '200': {
-            description: 'Session created (7-day expiry)',
-            content: {
-              'application/json': {
-                schema: {
+            signedChallenge: {
+              type: 'object',
+              required: ['challenge', 'address', 'proof'],
+              properties: {
+                challenge: { type: 'string' },
+                address: { type: 'string' },
+                proof: {
                   type: 'object',
+                  required: ['publicKey', 'signature', 'curve'],
                   properties: {
-                    token: { type: 'string', description: 'JWT for `Authorization: Bearer`. Omitted for a browser request (one carrying `Sec-Fetch-Site`), which is authenticated by the httpOnly session cookie instead.' },
-                    userId: { type: 'string' },
-                    radixAddress: { type: 'string' },
-                    expiresAt: { type: 'string', format: 'date-time' },
-                    isNewUser: { type: 'boolean' },
+                    publicKey: { type: 'string', description: 'Hex Ed25519 public key' },
+                    signature: { type: 'string', description: 'Hex Ed25519 signature' },
+                    curve: { type: 'string', enum: ['curve25519', 'secp256k1'] },
                   },
                 },
               },
             },
           },
+        }),
+        responses: {
+          '200': jsonRes('Session created (7-day expiry)', {
+            type: 'object',
+            properties: {
+              token: { type: 'string', description: 'JWT for `Authorization: Bearer`. Omitted for a browser request (one carrying `Sec-Fetch-Site`), which is authenticated by the httpOnly session cookie instead.' },
+              userId: { type: 'string' },
+              radixAddress: { type: 'string' },
+              expiresAt: { type: 'string', format: 'date-time' },
+              isNewUser: { type: 'boolean' },
+            },
+          }),
           '401': { description: 'Signature verification failed' },
         },
       },
@@ -171,7 +170,7 @@ export const SPEC = {
           { name: 'pageSize', in: 'query', schema: { type: 'integer', default: 20 } },
         ],
         responses: {
-          '200': { description: 'Paginated results: page rows for listings, each with a one-line `snippet` in place of its blocks (read a page whole at /api/wiki/{path}); with `q`, summary rows (title, url, tagPath, slug, snippet, updatedAt) identical to MCP search_wiki', content: { 'application/json': { schema: { $ref: '#/components/schemas/PaginatedPages' } } } },
+          '200': jsonRes('Paginated results: page rows for listings, each with a one-line `snippet` in place of its blocks (read a page whole at /api/wiki/{path}); with `q`, summary rows (title, url, tagPath, slug, snippet, updatedAt) identical to MCP search_wiki', { $ref: '#/components/schemas/PaginatedPages' }),
         },
       },
       post: {
@@ -179,29 +178,11 @@ export const SPEC = {
         description:
           `Needs a wallet holding at least ${xrdGates('create')}, a balance check that spends nothing. Some tag paths are author-only; required metadata keys vary by tag path (errors name any missing). Slug derives from the title when omitted.`,
         security: rolaAuth,
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['title', 'tagPath', 'content'],
-                properties: {
-                  title: { type: 'string' },
-                  tagPath: { type: 'string', description: 'Valid tag path (see GET /api/mcp get_categories, or llms.txt)' },
-                  content: { type: 'array', items: { $ref: '#/components/schemas/Block' } },
-                  metadata: { type: 'object', additionalProperties: true, description: 'Include `excerpt` (≤160 chars)' },
-                  slug: { type: 'string' },
-                  bannerImage: { type: 'string', format: 'uri' },
-                },
-              },
-            },
-          },
-        },
+        requestBody: toolBody('create_page'),
         responses: {
-          '201': { description: 'Page created', content: { 'application/json': { schema: { $ref: '#/components/schemas/Page' } } } },
+          '201': jsonRes('Page created', PAGE),
           '400': { description: 'Invalid blocks, tag path, or missing required metadata' },
-          '401': { description: 'Missing or invalid bearer token' },
+          '401': UNAUTH,
           '403': { description: 'Balance-gated or author-only path' },
         },
       },
@@ -215,11 +196,11 @@ export const SPEC = {
           '200': {
             description: 'The page',
             content: {
-              'application/json': { schema: { $ref: '#/components/schemas/Page' } },
+              'application/json': { schema: PAGE },
               'text/markdown': { schema: { type: 'string' } },
             },
           },
-          '404': { description: 'No page at this path' },
+          '404': NOT_FOUND,
         },
       },
       put: {
@@ -228,33 +209,13 @@ export const SPEC = {
           `\`content\` replaces the whole block array (fetch first, send the full revised array, not a patch); omit it to change only title or metadata. Version bump, block diff, and the revision entry are computed server-side. Needs a wallet holding at least ${xrdGates('edit')}. Locked and author-only pages are rejected.`,
         security: rolaAuth,
         parameters: [pathParam],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  title: { type: 'string' },
-                  content: { type: 'array', items: { $ref: '#/components/schemas/Block' } },
-                  metadata: { type: 'object', additionalProperties: true },
-                  bannerImage: { type: 'string', format: 'uri' },
-                  newSlug: { type: 'string', description: 'Move the page to this slug (an article only; a hub article and the homepage keep theirs)' },
-                  editorIds: { type: 'array', items: { type: 'string' }, description: 'User ids who may co-edit an author-only page. Applied only when the author sends it.' },
-                  baseVersion: { type: 'string', description: 'The `version` the edit started from. A save after the page moved on is refused with 409 rather than overwriting the edit in between.' },
-                  revisionMessage: { type: 'string', description: 'What changed and why — always send one' },
-                  verified: { type: 'boolean', description: 'True when the page\'s facts were checked against its sources: stamps lastVerifiedAt, which retires the freshness banner. Send it alone to stamp without an edit.' },
-                },
-              },
-            },
-          },
-        },
+        requestBody: toolBody('edit_page', ['tagPath', 'slug']),
         responses: {
-          '200': { description: 'Page updated', content: { 'application/json': { schema: { $ref: '#/components/schemas/Page' } } } },
+          '200': jsonRes('Page updated', PAGE),
           '400': { description: 'Invalid block structure or missing required metadata' },
-          '401': { description: 'Missing or invalid bearer token' },
+          '401': UNAUTH,
           '403': { description: 'Locked page or author-only category' },
-          '404': { description: 'No page at this path' },
+          '404': NOT_FOUND,
           '409': { description: 'The page moved on since `baseVersion`: fetch it again and reapply the edit' },
         },
       },
@@ -266,7 +227,7 @@ export const SPEC = {
         responses: {
           '200': { description: 'Deleted' },
           '403': { description: 'Not the author off a shared board, under the edit balance, or page is locked' },
-          '404': { description: 'No page at this path' },
+          '404': NOT_FOUND,
         },
       },
     },
@@ -275,18 +236,11 @@ export const SPEC = {
         summary: 'Revision history for a page',
         parameters: [pathParam],
         responses: {
-          '200': {
-            description: 'Newest-first revisions with block-level diffs',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: { currentVersion: { type: 'string' }, revisions: { type: 'array', items: { type: 'object', additionalProperties: true } } },
-                },
-              },
-            },
-          },
-          '404': { description: 'No page at this path' },
+          '200': jsonRes('Newest-first revisions with block-level diffs', {
+            type: 'object',
+            properties: { currentVersion: { type: 'string' }, revisions: { type: 'array', items: { type: 'object', additionalProperties: true } } },
+          }),
+          '404': NOT_FOUND,
         },
       },
       post: {
@@ -294,23 +248,12 @@ export const SPEC = {
         description: 'Makes an earlier revision the current page, as a new revision. The same gates as an edit: balance, locked pages, author-only categories.',
         security: rolaAuth,
         parameters: [pathParam],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['revisionId'],
-                properties: { revisionId: { type: 'string', description: 'A revision `id` from GET /api/wiki/{path}/history' } },
-              },
-            },
-          },
-        },
+        requestBody: toolBody('restore_revision', ['path']),
         responses: {
-          '200': { description: 'Restored', content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' }, version: { type: 'string' } } } } } },
-          '401': { description: 'Missing or invalid bearer token' },
+          '200': jsonRes('Restored', { type: 'object', properties: { success: { type: 'boolean' }, version: { type: 'string' } } }),
+          '401': UNAUTH,
           '403': { description: 'Locked page or author-only category' },
-          '404': { description: 'No page at this path' },
+          '404': NOT_FOUND,
         },
       },
     },
@@ -324,9 +267,9 @@ export const SPEC = {
           content: { 'multipart/form-data': { schema: { type: 'object', required: ['file'], properties: { file: { type: 'string', format: 'binary' } } } } },
         },
         responses: {
-          '200': { description: 'Stored', content: { 'application/json': { schema: { type: 'object', properties: { url: { type: 'string', format: 'uri' } } } } } },
+          '200': jsonRes('Stored', { type: 'object', properties: { url: { type: 'string', format: 'uri' } } }),
           '400': { description: 'No file, too large, or not an accepted image' },
-          '401': { description: 'Missing or invalid bearer token' },
+          '401': UNAUTH,
           '429': { description: 'Too many uploads' },
         },
       },
@@ -340,19 +283,12 @@ export const SPEC = {
       post: {
         summary: 'Post a comment',
         security: rolaAuth,
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['pageId', 'content'],
-                properties: { pageId: { type: 'string' }, content: { type: 'string', maxLength: 5000 }, parentId: { type: 'string', description: 'The comment this replies to' } },
-              },
-            },
-          },
-        },
-        responses: { '201': { description: 'Comment created' }, '401': { description: 'Missing or invalid bearer token' } },
+        requestBody: jsonBody({
+          type: 'object',
+          required: ['pageId', 'content'],
+          properties: { pageId: { type: 'string' }, content: { type: 'string', maxLength: 5000 }, parentId: { type: 'string', description: 'The comment this replies to' } },
+        }),
+        responses: { '201': { description: 'Comment created' }, '401': UNAUTH },
       },
     },
     '/api/leaderboard': {
@@ -373,10 +309,7 @@ export const SPEC = {
         summary: 'MCP server (JSON-RPC 2.0, Streamable HTTP)',
         description:
           'Model Context Protocol endpoint — the preferred interface for MCP-speaking agents. Call `tools/list` for the live tool set. Server card: /api/mcp/server-card.',
-        requestBody: {
-          required: true,
-          content: { 'application/json': { schema: { type: 'object', description: 'JSON-RPC 2.0 request or batch' } } },
-        },
+        requestBody: jsonBody({ type: 'object', description: 'JSON-RPC 2.0 request or batch' }),
         responses: { '200': { description: 'JSON-RPC 2.0 response' } },
       },
     },

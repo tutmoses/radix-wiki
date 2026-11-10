@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo, type KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save, Trash2, Link2, X } from 'lucide-react';
@@ -14,24 +14,19 @@ import { CARRIED_TOAST } from '@/components/Toast';
 import { cn, mustReload, pagePath, sendJson } from '@/lib/utils';
 import { isReservedSlug } from '@/lib/path';
 import { slugifyHeading } from 'wiki-formant/headings';
-import { findInfobox } from '@/components/BlockRenderer';
 import { isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, XRD_NOT_A_FEE, type MetadataKeyDefinition } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
-import { Banner, BlockEditor, ConflictNotice, InfoboxEditor, type SavePhase } from './PageContent';
+import { ArticleBlocksEditor, Banner, ConflictNotice, type SavePhase } from './PageContent';
 import type { WikiPage, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
 import { useSaveShortcut, useTypeahead, useUnsavedChanges, useClickOutside } from 'wiki-formant/react';
 import { WikiLine } from 'wiki-formant/editor';
+import { parseAssignee } from './assignee';
 
 // ========== METADATA FIELDS ==========
 // A text value is stored HTML: the infobox writes one carrying markup as prose,
 // through the sanitiser's prose set, so a link, bold and italic all survive it.
 const TEXT_MARKS = ['bold', 'italic', 'link'] as const;
-
-function parseAssignee(raw: string): string {
-  if (!raw) return '';
-  try { return JSON.parse(raw).name || raw; } catch { return raw; }
-}
 
 type UserOption = { id: string; displayName: string | null; shortAddress: string };
 
@@ -162,40 +157,22 @@ function MetadataFields({ metadataKeys, metadata, onChange, invalidKeys = [] }: 
                 onChange={v => updateField(key, v)}
                 placeholder={label}
                 marks={TEXT_MARKS}
-                className="rich-input"
-              />
-            ) : type === 'url' ? (
-              <Input
-                type="url"
-                value={metadata[key] || ''}
-                onChange={e => updateField(key, e.target.value)}
-                placeholder={label}
-              />
-            ) : type === 'date' ? (
-              <Input
-                type="date"
-                value={metadata[key] || ''}
-                onChange={e => updateField(key, e.target.value)}
-              />
-            ) : type === 'resource_address' ? (
-              <Input
-                value={metadata[key] || ''}
-                onChange={e => updateField(key, e.target.value)}
-                placeholder="resource_rdx1..."
-                className="font-mono"
+                className="input rich-input"
               />
             ) : type === 'user' ? (
               <UserSearch
-                initial={parseAssignee(metadata[key] || '')}
+                initial={parseAssignee(metadata[key])?.name ?? metadata[key] ?? ''}
                 placeholder="Search users..."
                 onPick={u => { const name = u.displayName || u.shortAddress; updateField(key, JSON.stringify({ id: u.id, name, address: u.shortAddress })); return name; }}
                 onClear={() => updateField(key, '')}
               />
             ) : (
               <Input
+                type={type === 'url' || type === 'date' ? type : undefined}
                 value={metadata[key] || ''}
                 onChange={e => updateField(key, e.target.value)}
-                placeholder={label}
+                placeholder={type === 'resource_address' ? 'resource_rdx1...' : type === 'date' ? undefined : label}
+                className={type === 'resource_address' ? 'font-mono' : undefined}
               />
             )}
             {invalidKeys.includes(key) && !metadata[key]?.trim() && <span className="text-error text-xs">Required</span>}
@@ -270,20 +247,23 @@ type Gate =
  */
 type SlugField = { kind: 'title' } | { kind: 'typed'; value: string };
 
+type Fields = { title: string; content: Block[]; bannerImage: string | null; metadata: PageMetadata; slug: SlugField; editorIds: string[] };
+
 // What the form opens on, and what it is compared against to know it is dirty.
-function initialFields(page: WikiPage | undefined, slug: string) {
+function initialFields(page: WikiPage | undefined, slug: string): Fields {
   return page
     ? {
         title: page.title,
         content: page.content as unknown as Block[],
         bannerImage: page.bannerImage || null,
         metadata: (page.metadata as PageMetadata) || {},
-        slug: { kind: 'typed', value: page.slug } as SlugField,
+        slug: { kind: 'typed', value: page.slug },
         editorIds: page.editorIds,
       }
-    : { title: '', content: [createBlock('content')], bannerImage: null, metadata: {} as PageMetadata, slug: (slug ? { kind: 'typed', value: slug } : { kind: 'title' }) as SlugField, editorIds: [] as string[] };
+    : { title: '', content: [createBlock('content')], bannerImage: null, metadata: {}, slug: slug ? { kind: 'typed', value: slug } : { kind: 'title' }, editorIds: [] };
 }
 
+/** Keyed by its page where it is rendered, so it opens on `page` once and never resyncs. */
 export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; tagPath: string; slug: string }) {
   const router = useRouter();
   const { user } = useAuth();
@@ -292,13 +272,11 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   // A category's hub article lives at the empty slug and is reached by its
   // category's own URL, so there is no slug to edit and no rename to offer.
   const isHub = !isCreating && !slug;
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState<Block[]>([]);
-  const [bannerImage, setBannerImage] = useState<string | null>(null);
-  const [metadata, setMetadata] = useState<PageMetadata>({});
-  const [slugField, setSlugField] = useState<SlugField>({ kind: 'title' });
-  const [editorIds, setEditorIds] = useState<string[]>([]);
-  const [editors, setEditors] = useState<Editors>({ status: 'loaded', users: [] });
+  const [initial] = useState(() => initialFields(page, slug));
+  const [fields, setFields] = useState(initial);
+  const { title, content, bannerImage, metadata, slug: slugField, editorIds } = fields;
+  const patch = (p: Partial<Fields>) => setFields(f => ({ ...f, ...p }));
+  const [editors, setEditors] = useState<Editors>(initial.editorIds.length ? { status: 'loading' } : { status: 'loaded', users: [] });
   const [phase, setPhase] = useState<Phase>({ kind: 'editing', error: null });
   const [revisionMessage, setRevisionMessage] = useState('');
   const [verified, setVerified] = useState(false);
@@ -318,17 +296,9 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
     return () => { cancelled = true; };
   }, [isCreating, tagPath]);
 
-  const initial = useMemo(() => initialFields(page, slug), [page, slug]);
   useEffect(() => {
-    setTitle(initial.title);
-    setContent(initial.content);
-    setBannerImage(initial.bannerImage);
-    setMetadata(initial.metadata);
-    setSlugField(initial.slug);
-    setEditorIds(initial.editorIds);
-    if (initial.editorIds.length === 0) { setEditors({ status: 'loaded', users: [] }); return; }
+    if (initial.editorIds.length === 0) return;
     let cancelled = false;
-    setEditors({ status: 'loading' });
     fetch(`/api/users/search?ids=${initial.editorIds.join(',')}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(r.statusText))))
       .then((users: UserOption[]): Editors => ({ status: 'loaded', users }), (): Editors => ({ status: 'failed' }))
@@ -338,8 +308,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
 
   const shownSlug = slugField.kind === 'title' ? slugifyHeading(title) : slugField.value;
 
-  const initialJson = useMemo(() => JSON.stringify(initial), [initial]);
-  const dirty = JSON.stringify({ title, content, bannerImage, metadata, slug: slugField, editorIds }) !== initialJson;
+  const dirty = fields !== initial && JSON.stringify(fields) !== JSON.stringify(initial);
   // A save leaves by a full page load, which would trip the guard it just passed.
   const confirmLeave = useUnsavedChanges(dirty && phase.kind !== 'saving');
 
@@ -403,11 +372,6 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const isSaving = phase.kind === 'saving';
   const saveLabel = isCreating ? (isSaving ? 'Creating...' : 'Create Page') : (isSaving ? 'Saving...' : 'Save Changes');
 
-  const infobox = findInfobox(content) || createBlock('infobox') as import('@/types/blocks').InfoboxBlock;
-  const mainBlocks = content.filter(b => b.type !== 'infobox');
-  const updateMainBlocks = (blocks: Block[]) => setContent([...blocks, infobox]);
-  const updateInfobox = (block: Block) => setContent([...content.filter(b => b.type !== 'infobox'), block]);
-
   return (
     <article className="stack page-editor">
       <Breadcrumbs
@@ -427,12 +391,12 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
         ) : null}
         {phase.kind === 'editing' && phase.error && <div data-callout="error"><p>{phase.error}</p></div>}
         {phase.kind === 'conflict' && <ConflictNotice message={phase.message} />}
-        <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
+        <input type="text" value={title} onChange={e => patch({ title: e.target.value })} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
         <div className="slug-editor">
           <Link2 size={14} />
           {isHub ? <span>/{tagPath}</span> : <>
             <span>/{tagPath}/</span>
-            <input type="text" value={shownSlug} onChange={e => setSlugField({ kind: 'typed', value: e.target.value.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-') })} onBlur={() => setSlugField(s => (s.kind === 'typed' ? { kind: 'typed', value: slugifyHeading(s.value) } : s))} placeholder="page-slug" />
+            <input type="text" value={shownSlug} onChange={e => patch({ slug: { kind: 'typed', value: e.target.value.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-') } })} onBlur={() => setFields(f => (f.slug.kind === 'typed' ? { ...f, slug: { kind: 'typed', value: slugifyHeading(f.slug.value) } } : f))} placeholder="page-slug" />
           </>}
         </div>
         {/* A reserved slug gets a suffix on create and is refused on rename; say so before the save. */}
@@ -448,23 +412,16 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
           </>
         )}
       </header>
-      <Banner src={bannerImage} editable onUpload={setBannerImage} onRemove={() => setBannerImage(null)} />
-      <MetadataFields metadataKeys={metadataKeys} metadata={metadata} onChange={setMetadata} invalidKeys={phase.kind === 'editing' ? phase.missing : undefined} />
+      <Banner src={bannerImage} editable onUpload={url => patch({ bannerImage: url })} onRemove={() => patch({ bannerImage: null })} />
+      <MetadataFields metadataKeys={metadataKeys} metadata={metadata} onChange={m => patch({ metadata: m })} invalidKeys={phase.kind === 'editing' ? phase.missing : undefined} />
       {isAuthor && isAuthorOnlyPath(tagPath) && !isCreating && (
         <EditorWhitelist
           editors={editors}
-          onAdd={u => { setEditorIds([...editorIds, u.id]); setEditors(e => e.status === 'loaded' ? { status: 'loaded', users: [...e.users, u] } : e); }}
-          onRemove={id => { setEditorIds(editorIds.filter(i => i !== id)); setEditors(e => e.status === 'loaded' ? { status: 'loaded', users: e.users.filter(u => u.id !== id) } : e); }}
+          onAdd={u => { patch({ editorIds: [...editorIds, u.id] }); setEditors(e => e.status === 'loaded' ? { status: 'loaded', users: [...e.users, u] } : e); }}
+          onRemove={id => { patch({ editorIds: editorIds.filter(i => i !== id) }); setEditors(e => e.status === 'loaded' ? { status: 'loaded', users: e.users.filter(u => u.id !== id) } : e); }}
         />
       )}
-      <div className="page-with-infobox">
-        <div className="page-main-content">
-          <BlockEditor content={mainBlocks} onChange={updateMainBlocks} />
-        </div>
-        <aside className="infobox-editor">
-          <InfoboxEditor block={infobox} onChange={updateInfobox} />
-        </aside>
-      </div>
+      <ArticleBlocksEditor content={content} onChange={c => patch({ content: c })} />
       {canDelete && (
         <div className="section-divider">
           <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isSaving || phase.kind === 'deleting'} className="text-error hover:bg-error/10">

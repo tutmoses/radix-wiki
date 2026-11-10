@@ -1,12 +1,16 @@
 // src/lib/week-in-review.ts — the series' shared vocabulary.
 //
-// The recap slugs, the issue numbering and the scored prediction record are read
-// by the app (feed, page furniture) and written by scripts/week-in-review.mjs,
-// which imports them from here. It used to mirror them, and nothing checked that
+// The recap slugs, the issue numbering, the scored prediction record and the
+// Network Weekly page the figures come from are read by the app (feed, page
+// furniture, /charts) and by the scripts that write them, which import them from
+// here, so this module stays free of Prisma. It used to mirror them, and nothing checked that
 // the copies agreed.
 
 export const SERIES_SLUG = 'week-in-review';
 export const RECAP_PREFIX = 'week-in-review-';
+
+/** The Network Weekly page, whose `metadata.state.snapshots` holds the weekly network readings. */
+export const WEEKLY_PAGE = { tagPath: 'contents/tech/operations', slug: 'network-weekly' } as const;
 
 type PredictionStatus = 'open' | 'hit' | 'miss' | 'void';
 

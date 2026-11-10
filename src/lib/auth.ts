@@ -54,7 +54,7 @@ async function verifyToken(token: string): Promise<AuthSession | null> {
   };
 }
 
-export async function createSession(userId: string, radixAddress: string, personaAddress?: string, displayName?: string): Promise<string> {
+export async function createSession(userId: string, radixAddress: string, personaAddress?: string, displayName?: string): Promise<{ token: string; expiresAt: Date }> {
   const token = await signSession({ userId, radixAddress, personaAddress, displayName }, secret, SESSION_SEC);
   const expiresAt = new Date(Date.now() + SESSION_SEC * 1000);
   await prisma.session.create({ data: { userId, token, expiresAt } });
@@ -65,7 +65,7 @@ export async function createSession(userId: string, radixAddress: string, person
     expires: expiresAt,
     path: '/',
   });
-  return token;
+  return { token, expiresAt };
 }
 
 /** The cookie's session, else the request's Bearer token: agents send the same token as a header. */

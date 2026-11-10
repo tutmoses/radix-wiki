@@ -12,13 +12,13 @@ import { requireAuth, cachedJson, tagged, CACHE, overBudget, IP_LIMITS, type Rou
 import { clientKey } from 'wiki-formant/rate-limit';
 import { toListing } from 'wiki-formant/store';
 import { isReservedSlug, parsePath } from '@/lib/path';
-import { store, toWikiPage, authorsOf, deletePage, searchPages, resolveBlockData, loadPageHistory, getCategoryPages, revalidatePage, pageTag, routeTags, CORPUS_TAG } from '@/lib/wiki';
+import { store, toWikiPage, withAuthor, withAuthors, deletePage, searchPages, resolveBlockData, loadPageHistory, getCategoryPages, revalidatePage, pageTag, routeTags, CORPUS_TAG, type StoredRow } from '@/lib/wiki';
 import { blockIssues, validateBlocks } from '@/lib/block-utils';
 import { describeBlockIssues, MAX_BLOCK_ROWS } from 'wiki-formant/validation';
 import { blocksToMdx } from '@/lib/mdx';
 import { pageToMarkdown } from '@/lib/markdown';
 import { markdownDocument } from 'wiki-formant/markdown';
-import type { WikiPage, WikiPageInput, PageMetadata, NotificationType } from '@/types';
+import type { AuthSession, WikiPage, WikiPageInput, PageMetadata, NotificationType } from '@/types';
 import type { Block } from '@/types/blocks';
 import { deliverWebhooks } from '@/lib/webhooks';
 import { trackSearch } from '@/lib/track';
@@ -33,9 +33,35 @@ type PathParams = { path?: string[] };
  */
 const LISTING = { ...CACHE.short, ...routeTags(CORPUS_TAG) };
 
-/** A stored page with its author, as every write answers. */
-async function withAuthor(row: Parameters<typeof toWikiPage>[0]): Promise<WikiPage> {
-  return toWikiPage(row, await authorsOf([row.authorId]));
+/**
+ * A markdown twin's headers and, when the client's copy is current, the 304
+ * to answer with instead. The 304 carries the headers the 200 would, as RFC
+ * 9110 requires.
+ */
+function twinHeaders(request: NextRequest, etagParts: Parameters<typeof corpusEtag>[0], lastModified: string | undefined, tag: string) {
+  const etag = corpusEtag(etagParts);
+  const headers = markdownHeaders(lastModified, { etag, noindex: true, extra: { ...CACHE.medium, ...VARY_ACCEPT, ...routeTags(tag) } });
+  return { headers, unchanged: notModified(request, etag, lastModified ?? null, headers) };
+}
+
+const LOCKED_VERB = { edit: 'edited', restore: 'modified', delete: 'deleted' } as const;
+
+/** The refusal a write to a locked page, or to someone else's author-only page, gets; null when the write may go ahead. */
+function writeRefusal(row: StoredRow, userId: string, verb: keyof typeof LOCKED_VERB): Response | null {
+  if (isAuthorOnlyPath(row.tagPath) && !canEditAuthorOnlyPage(toWikiPage(row), userId)) {
+    return errors.forbidden(`You can only ${verb} your own pages in this category`);
+  }
+  if (isLockedPage(row.tagPath, row.slug)) return errors.forbidden(`This page is locked and cannot be ${LOCKED_VERB[verb]}`);
+  return null;
+}
+
+/**
+ * What a create and an edit share once saved: the webhook, and whether this
+ * was the editor's first revision anywhere.
+ */
+async function announce(event: 'page.created' | 'page.updated', page: WikiPage, revision: Parameters<typeof deliverWebhooks>[2], session: AuthSession) {
+  if (revision) deliverWebhooks(event, page, revision, { displayName: page.author?.displayName ?? null, radixAddress: session.radixAddress });
+  return (await prisma.wikiRevision.count({ where: { authorId: session.userId } })) === 1;
 }
 
 /**
@@ -116,9 +142,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
         // The author's chosen order, not the database's: getPagesByIds already
         // orders its server-resolved twin this way, and a list block that
         // hydrates on the client must not reshuffle itself.
-        const rows = await store.byIds(ids);
-        const authors = await authorsOf(rows.map(r => r.authorId));
-        return json(rows.map(r => toWikiPage(r, authors)));
+        return json(await withAuthors(await store.byIds(ids)));
       }
 
       const { page, pageSize } = parsePagination(searchParams);
@@ -153,8 +177,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
         prisma.wikiPage.findMany({ where, orderBy, skip: (page - 1) * pageSize, take: pageSize }),
         prisma.wikiPage.count({ where }),
       ]);
-      const authors = await authorsOf(rows.map(r => r.authorId));
-      const pages = rows.map(r => toWikiPage({ ...toListing(r), metadata: (r.metadata ?? {}) as Record<string, unknown> }, authors));
+      const pages = await withAuthors(rows.map(r => ({ ...toListing(r), metadata: (r.metadata ?? {}) as Record<string, unknown> })));
 
       return cachedJson(paginatedResponse(pages, total, page, pageSize), LISTING);
     }
@@ -208,10 +231,7 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
         const at = new Date(p.updatedAt);
         return !d || at > d ? at : d;
       }, null);
-      const lastModified = updated?.toUTCString();
-      const etag = corpusEtag([parsed.tagPath, pages.length, updated]);
-      const headers = markdownHeaders(lastModified, { etag, noindex: true, extra: { ...CACHE.medium, ...VARY_ACCEPT, ...routeTags(pageTag(parsed.tagPath)) } });
-      const unchanged = notModified(request, etag, lastModified ?? null, headers);
+      const { headers, unchanged } = twinHeaders(request, [parsed.tagPath, pages.length, updated], updated?.toUTCString(), pageTag(parsed.tagPath));
       if (unchanged) return unchanged;
 
       const link = (title: string, url: string) => `- [${title.replace(/[[\]]/g, '\\$&')}](${url})`;
@@ -247,13 +267,8 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
       // page costs a 304 instead of a block resolve and a markdown render. The
       // twin is the most recrawled URL a page has and it was the one surface
       // here serving no ETag at all — it only ever 304'd where the edge
-      // happened to synthesise a Last-Modified for it. The 304 carries the
-      // same headers the 200 would, Cache-Control and Vary included, as RFC
-      // 9110 requires.
-      const lastModified = page.updatedAt.toUTCString();
-      const etag = corpusEtag([page.tagPath, page.slug, page.version, page.updatedAt]);
-      const headers = markdownHeaders(lastModified, { etag, noindex: true, extra: { ...CACHE.medium, ...VARY_ACCEPT, ...routeTags(pageTag(page.tagPath, page.slug)) } });
-      const unchanged = notModified(request, etag, lastModified, headers);
+      // happened to synthesise a Last-Modified for it.
+      const { headers, unchanged } = twinHeaders(request, [page.tagPath, page.slug, page.version, page.updatedAt], page.updatedAt.toUTCString(), pageTag(page.tagPath, page.slug));
       if (unchanged) return unchanged;
       const md = pageToMarkdown({
         title: page.title,
@@ -283,13 +298,8 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
       const page = await store.get(parsed.tagPath, parsed.slug);
       if (!page) return errors.notFound('Page not found');
 
-      if (isAuthorOnlyPath(page.tagPath) && !canEditAuthorOnlyPage(toWikiPage(page), auth.session.userId)) {
-        return errors.forbidden('You can only restore your own pages in this category');
-      }
-
-      if (isLockedPage(page.tagPath, parsed.slug)) {
-        return errors.forbidden('This page is locked and cannot be modified');
-      }
+      const refusal = writeRefusal(page, auth.session.userId, 'restore');
+      if (refusal) return refusal;
 
       const { revisionId } = await request.json();
       if (!revisionId) return errors.badRequest('Revision ID required');
@@ -329,10 +339,9 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
     });
     const page = await withAuthor(row);
 
-    const priorRevisions = await prisma.wikiRevision.count({ where: { authorId: auth.session.userId } });
     revalidatePage(tagPath, slug);
-    deliverWebhooks('page.created', page, { changeType: 'major', message: 'Initial version', version: page.version }, { displayName: page.author?.displayName ?? null, radixAddress: auth.session.radixAddress });
-    return json({ ...page, isFirstContribution: priorRevisions === 1 }, 201);
+    const isFirstContribution = await announce('page.created', page, { changeType: 'major', message: 'Initial version', version: page.version }, auth.session);
+    return json({ ...page, isFirstContribution }, 201);
   }, 'Failed to create');
 }
 
@@ -371,20 +380,14 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
     }
 
     if (!existing) return errors.notFound('Page not found');
-    const current = toWikiPage(existing);
 
     // Only an article moves: the homepage and a hub article are their path's empty slug.
     const slugUpdate = parsed.type === 'page' && newSlug && newSlug !== existing.slug ? slugifyHeading(newSlug) : undefined;
     // A rename has no suffix to fall back on, so a reserved slug is refused outright.
     if (slugUpdate && isReservedSlug(existing.tagPath, slugUpdate)) return errors.badRequest('That slug belongs to a view or a subcategory of this section');
 
-    if (parsed.type !== 'homepage' && isAuthorOnlyPath(existing.tagPath) && !canEditAuthorOnlyPage(current, auth.session.userId)) {
-      return errors.forbidden('You can only edit your own pages in this category');
-    }
-
-    if (isLockedPage(existing.tagPath, existing.slug)) {
-      return errors.forbidden('This page is locked and cannot be edited');
-    }
+    const refusal = writeRefusal(existing, auth.session.userId, 'edit');
+    if (refusal) return refusal;
 
     if (metadata !== undefined) {
       const metaError = metadataError(existing.tagPath, metadata);
@@ -410,13 +413,10 @@ export async function PUT(request: NextRequest, context: RouteContext<PathParams
       const userId = existing.authorId;
       after(() => prisma.notification.create({ data: { userId, actorId: auth.session.userId, type: 'page_edited' satisfies NotificationType, pageId: existing.id } }).catch(() => {}));
     }
-    const totalRevisions = await prisma.wikiRevision.count({ where: { authorId: auth.session.userId } });
     // A rename expires the old URL and the new one, which may hold a cached 404.
     revalidatePage(existing.tagPath, existing.slug, page.slug);
-    if (result.changeType !== 'none') {
-      deliverWebhooks('page.updated', page, { changeType: result.changeType, message: revisionMessage ?? null, version: page.version }, { displayName: page.author?.displayName ?? null, radixAddress: auth.session.radixAddress });
-    }
-    return json({ ...page, isFirstContribution: totalRevisions === 1 });
+    const isFirstContribution = await announce('page.updated', page, result.changeType === 'none' ? null : { changeType: result.changeType, message: revisionMessage ?? null, version: page.version }, auth.session);
+    return json({ ...page, isFirstContribution });
   }, 'Failed to update');
 }
 
@@ -432,7 +432,8 @@ export async function DELETE(request: NextRequest, context: RouteContext<PathPar
 
     const existing = await store.get(parsed.tagPath, parsed.slug);
     if (!existing) return errors.notFound('Page not found');
-    if (isLockedPage(existing.tagPath, existing.slug)) return errors.forbidden('This page is locked and cannot be deleted');
+    const refusal = writeRefusal(existing, auth.session.userId, 'delete');
+    if (refusal) return refusal;
 
     // Authors delete their own pages. On a shared board the card belongs to the
     // board, so anyone who clears the bar to edit it may also delete it.
