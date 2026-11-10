@@ -255,15 +255,26 @@ export const useStore = create<AppStore>()((set, get) => ({
 
 // ========== AUTH HOOK ==========
 
+/**
+ * Where the reader stands: the session check on load, a wallet request in
+ * flight, signed out, or signed in. A live session wins over a request still
+ * settling, so the account shows as soon as the proof is accepted. `checking`
+ * is not `signed-out`: a gate that waits for it does not tell a signed-in
+ * reader to connect while their session is read.
+ */
+export type AuthStatus = 'checking' | 'connecting' | 'signed-out' | 'signed-in';
+
 export const useAuth = () => {
   const session = useStore(s => s.session);
   const walletData = useStore(s => s.walletData);
+  const pending = useStore(s => s.auth.kind);
   const isAuthenticated = !!session && new Date(session.expiresAt) > new Date();
+  const status: AuthStatus = isAuthenticated ? 'signed-in' : pending === 'idle' ? 'signed-out' : pending;
   const user = useMemo(() => session ? {
     id: session.userId,
     radixAddress: session.radixAddress,
     personaAddress: session.personaAddress,
     displayName: session.displayName,
   } : null, [session]);
-  return useMemo(() => ({ user, isAuthenticated, walletData }), [user, isAuthenticated, walletData]);
+  return useMemo(() => ({ user, status, isAuthenticated, walletData }), [user, status, isAuthenticated, walletData]);
 };

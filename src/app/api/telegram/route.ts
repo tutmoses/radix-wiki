@@ -28,7 +28,8 @@ export async function GET(request: NextRequest) {
   }, 'Failed to get Telegram subscriptions');
 }
 
-// POST: connect (generate deep link) or add subscription
+// POST: an empty body asks for a connect link; a body naming `tagPath` adds a
+// subscription, which needs the chat a connect link binds.
 export async function POST(request: NextRequest) {
   return handleRoute(async () => {
     const auth = await requireAuth(request);
@@ -49,6 +50,12 @@ export async function POST(request: NextRequest) {
       where: { userId: auth.session.userId },
       select: { chatId: true },
     });
+
+    // A subscription before a chat exists is refused, not answered with a connect
+    // link: the caller asked to watch something and must not read a 201 as done.
+    if (!existing && tagPath) {
+      return json({ error: 'Telegram is not connected. POST an empty body for a connect link, then press Start in Telegram.', conflict: 'not-connected' }, 409);
+    }
 
     // Not connected yet — generate deep link
     if (!existing) {

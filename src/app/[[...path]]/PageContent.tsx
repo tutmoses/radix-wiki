@@ -14,7 +14,7 @@ import { Breadcrumbs, PageActions } from '@/components/Breadcrumbs';
 import { EmptyState } from '@/components/EmptyState';
 import { LinkPreview } from '@/components/LinkPreview';
 import { Button, Card } from '@/components/ui';
-import { useAuth, useStore } from '@/hooks';
+import { useAuth, useStore, type AuthStatus } from '@/hooks';
 import { categoryLabel, cn, generateBannerSvg, pagePath, sendJson } from '@/lib/utils';
 import { describe } from 'wiki-formant/metadata';
 import { openingText } from 'wiki-formant/text';
@@ -26,6 +26,7 @@ import { categoryHref, type Control, type FacetControlGroup, type FacetFilters, 
 import { createBlock } from '@/lib/block-utils';
 import { formatDay, freshnessBanner, relativeTime } from 'wiki-formant/freshness';
 import { Cite, FacetBar, FacetSummary, RelatedPages as SeeAlso } from 'wiki-formant/react-server';
+import { useSaveShortcut, useUnsavedChanges } from 'wiki-formant/react';
 import type { WikiPage } from '@/types';
 import type { Block } from '@/types/blocks';
 
@@ -272,14 +273,18 @@ function ResultsBar({ tag, tagPath, total, shown, sort, filters, letter, clearHr
   );
 }
 
-/** An edit URL opened without a session. */
-function AuthRequired({ backHref }: { backHref: string }) {
+/**
+ * An edit URL opened without a session. While the session is still being read
+ * it waits rather than asking a reader who is signed in to connect.
+ */
+function AuthRequired({ status, backHref }: { status: Exclude<AuthStatus, 'signed-in'>; backHref: string }) {
   const connect = useStore(s => s.connect);
+  if (status === 'checking') return <PageSkeleton />;
   return (
     <EmptyState
       as="h1" title="Connect your wallet to edit"
       description="Editing needs a connected Radix wallet holding the $XRD minimum for this page."
-      action={<div className="row justify-center"><Button onClick={connect}>Connect Wallet</Button><Link href={backHref}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link></div>}
+      action={<div className="row justify-center"><Button onClick={connect} isLoading={status === 'connecting'}>Connect Wallet</Button><Link href={backHref}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link></div>}
     />
   );
 }
@@ -307,7 +312,7 @@ export function ConflictNotice({ message }: { message: string }) {
 // ========== HOMEPAGE VIEW ==========
 export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEditing: boolean }) {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { status, isAuthenticated } = useAuth();
   const connect = useStore(s => s.connect);
   const [content, setContent] = useState<Block[]>((page?.content as unknown as Block[]) || []);
   const [bannerImage, setBannerImage] = useState<string | null>(page?.bannerImage || null);
@@ -317,9 +322,14 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
     if (page) { setContent((page.content as unknown as Block[]) || []); setBannerImage(page.bannerImage || null); }
   }, [page]);
 
-  if (isEditing && !isAuthenticated) return <AuthRequired backHref="/" />;
+  // Unsaved work is guarded as the article editor guards it, a refused save included.
+  const dirty = JSON.stringify({ content, bannerImage }) !== JSON.stringify({ content: page?.content || [], bannerImage: page?.bannerImage || null });
+  const confirmLeave = useUnsavedChanges(isEditing && dirty && save.kind !== 'saving');
+  useSaveShortcut(() => { if (isEditing && save.kind === 'editing') handleSave(); });
 
-  const handleSave = async () => {
+  if (isEditing && status !== 'signed-in') return <AuthRequired status={status} backHref="/" />;
+
+  async function handleSave() {
     setSave({ kind: 'saving' });
     try {
       // The version it opened, so a save made meanwhile (a routine's, say) is a
@@ -332,7 +342,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
         ? { kind: 'conflict', message: error || 'The homepage changed since it was opened.' }
         : { kind: 'editing', error: error || 'Failed to save.' });
     } catch { setSave({ kind: 'editing', error: 'Failed to save: the request did not reach the wiki.' }); }
-  };
+  }
   const isSaving = save.kind === 'saving';
   const canSave = save.kind === 'editing';
 
@@ -345,8 +355,8 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
     return (
       <div className="stack">
         <div className="spread">
-          <Link href="/" className="row link-muted"><ArrowLeft size={16} /><span>Back to Homepage</span></Link>
-          <Button onClick={handleSave} disabled={!canSave} size="sm"><Save size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
+          <Link href="/" onClick={e => { if (!confirmLeave()) e.preventDefault(); }} className="row link-muted"><ArrowLeft size={16} /><span>Back to Homepage</span></Link>
+          <Button onClick={handleSave} disabled={!canSave} size="sm" title="Save (⌘S)"><Save size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
         </div>
         <h1 id="edit-homepage">Edit Homepage</h1>
         {save.kind === 'editing' && save.error && <div data-callout="error"><p>{save.error}</p></div>}
@@ -362,7 +372,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
           </aside>
         </div>
         <div className="spread">
-          <Link href="/"><Button variant="ghost">Cancel</Button></Link>
+          <Link href="/" onClick={e => { if (!confirmLeave()) e.preventDefault(); }}><Button variant="ghost">Cancel</Button></Link>
           <Button onClick={handleSave} disabled={!canSave}><Save size={18} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
         </div>
       </div>
@@ -633,7 +643,7 @@ function PageViewContent({ page, related, series, sections, listing, nowMs }: { 
 
 // ========== PAGE VIEW WRAPPER ==========
 export function PageView({ page, tagPath, slug, isEditMode, related = { pages: [], sharedFacet: null }, series = null, nowMs }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; related?: RelatedPages; series?: PageRef | null; nowMs: number }) {
-  const { isAuthenticated } = useAuth();
+  const { status } = useAuth();
   // The header sits outside this tree and cites the page it is on; it knows
   // only the URL, and a slug is not a title.
   useEffect(() => {
@@ -643,7 +653,7 @@ export function PageView({ page, tagPath, slug, isEditMode, related = { pages: [
 
   const viewPath = pagePath(tagPath, slug);
 
-  if (isEditMode && !isAuthenticated) return <AuthRequired backHref={viewPath} />;
+  if (isEditMode && status !== 'signed-in') return <AuthRequired status={status} backHref={viewPath} />;
   if (!page) return <LazyPageEditor tagPath={tagPath} slug={slug} />;
   return isEditMode ? <LazyPageEditor page={page} tagPath={tagPath} slug={slug} /> : <PageViewContent page={page} related={related} series={series} nowMs={nowMs} />;
 }

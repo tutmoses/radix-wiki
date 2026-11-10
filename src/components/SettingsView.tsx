@@ -12,17 +12,16 @@ import { Button } from '@/components/ui';
 import { useAuth, useStore } from '@/hooks';
 
 export default function SettingsView({ watch }: { watch?: string }) {
-  const { isAuthenticated } = useAuth();
-  const checking = useStore(s => s.auth.kind === 'checking');
+  const { status } = useAuth();
   const connect = useStore(s => s.connect);
 
-  if (checking) return <div className="h-64 skeleton" />;
-  if (!isAuthenticated) {
+  if (status === 'checking') return <div className="h-64 skeleton" />;
+  if (status !== 'signed-in') {
     return (
       <EmptyState
         as="h1" title="Notification settings"
         description="Connect your Radix wallet to manage Telegram and webhook notifications."
-        action={<Button onClick={connect}>Connect Wallet</Button>}
+        action={<Button onClick={connect} isLoading={status === 'connecting'}>Connect Wallet</Button>}
       />
     );
   }

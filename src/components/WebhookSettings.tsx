@@ -137,10 +137,14 @@ export function useTelegram(enabled = true) {
     }
   };
 
-  /** Each answers whether the change was made; a dropped request is a no. */
+  /**
+   * Each answers whether the change was made; a dropped request is a no. Either
+   * way the state is read again: a refusal can mean the chat was disconnected
+   * elsewhere, and Watch then offers to connect.
+   */
   const subscribe = async (tagPath: string, pageSlug: string | null, events: WebhookEvent[]) => {
     const ok = await postTelegram({ tagPath, ...(pageSlug && { pageSlug }), events }).then(r => r.ok, () => false);
-    if (ok) await refresh().catch(() => null);
+    await refresh().catch(() => null);
     return ok;
   };
 

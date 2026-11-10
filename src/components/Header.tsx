@@ -226,6 +226,13 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
 
 const LEDGER_COLOR: Record<BackupStanding, string | null> = { unknown: null, none: 'text-error', stale: 'text-warning', current: 'text-success' };
 
+/**
+ * The header's search field: folded to its magnifier, shown, or shown with its
+ * result list. The list cannot outlive the field, so a field folded and shown
+ * again opens without the last query's list.
+ */
+type SearchField = 'folded' | 'open' | 'listing';
+
 /** The header menus: at most one is open, so opening one closes the other. */
 type Menu = 'tools' | 'ledger' | 'notifications' | 'account' | null;
 
@@ -250,9 +257,7 @@ function useHeaderMenu() {
 
 export function Header() {
   const router = useRouter();
-  const { isAuthenticated, user, walletData } = useAuth();
-  // The session check on load reads as a connection too: the button waits for it.
-  const authBusy = useStore(s => s.auth.kind !== 'idle');
+  const { status: authStatus, isAuthenticated, user, walletData } = useAuth();
   const logout = useStore(s => s.logout);
   const connect = useStore(s => s.connect);
   // Shared with the rail through wiki-formant's SidebarProvider.
@@ -260,7 +265,7 @@ export function Header() {
   const fetchNotifications = useStore(s => s.fetchNotifications);
   const unreadCount = useStore(s => (s.notifications.status === 'loaded' ? s.notifications.unread : 0));
   const { hasTools, hasLedger, sectionPath, canExportMdx, isPage, mdxPath, tagPath, slug } = usePageContext();
-  const [showSearch, setShowSearch] = useState(false);
+  const [field, setField] = useState<SearchField>('folded');
   const { menu, open: openMenu, close: closeMenu, toggle: toggleMenu, ref: actionsRef } = useHeaderMenu();
 
   // The ledger backup status: the tools item's colour, and the ledger menu's status row.
@@ -270,7 +275,6 @@ export function Header() {
     : accountAddress ? `/api/ledger/status?address=${accountAddress}` : null;
   const ledgerStatus = useFetch<LedgerStatus>(ledgerStatusUrl);
 
-  const [searchOpen, setSearchOpen] = useState(false);
   // The search field's state machine is `wiki-formant/react`, shared with the
   // other wikis. This surface had no keyboard navigation at all and no guard
   // against an older response landing after a newer one — on a wiki whose
@@ -290,16 +294,14 @@ export function Header() {
     fetch: searchPages,
     onPick: page => handleSearchSelect(page),
     // Escape shuts the list, and folds the field back to its magnifier once it is empty.
-    onEscape: () => { setSearchOpen(false); if (!searchQuery.trim()) setShowSearch(false); },
+    onEscape: () => setField(searchQuery.trim() ? 'open' : 'folded'),
   });
-  // The list shows only while the field does: folding the field by the keyboard
-  // leaves `searchOpen` set, and the list would come back with the field.
-  const listOpen = showSearch && searchOpen;
+  const listOpen = field === 'listing';
   // `listOpen` is passed because the hook keeps its results when the dropdown
   // closes, and an aria-activedescendant pointing into a list that is not
   // rendered is worse than none.
   const searchCombobox = combobox(undefined, listOpen);
-  const clearSearchResults = useCallback(() => { clearItems(); setSearchOpen(false); }, [clearItems]);
+  const clearSearchResults = useCallback(() => { clearItems(); setField(f => (f === 'listing' ? 'open' : f)); }, [clearItems]);
   const searchRef = useClickOutside<HTMLFormElement>(clearSearchResults);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -307,22 +309,20 @@ export function Header() {
     const trimmed = searchQuery.trim();
     if (!trimmed) return;
     clearItems();
-    setSearchOpen(false);
-    setShowSearch(false);
+    setField('folded');
     router.push(`/search?q=${encodeURIComponent(trimmed)}`);
   }, [searchQuery, router, clearItems]);
 
   // "/" focuses search from anywhere (Wikipedia-style), unless already typing.
   // The one field is hidden until the magnifier reveals it.
   useSearchShortcut(() => {
-    if (!focusShown(searchInputRef.current)) setShowSearch(true);
+    if (!focusShown(searchInputRef.current)) setField(f => (f === 'folded' ? 'open' : f));
   });
 
   const displayName = user?.displayName || walletData?.persona?.label ||
     (walletData?.accounts?.[0]?.address ? shortenAddress(walletData.accounts[0].address) : null) ||
     (user?.radixAddress ? shortenAddress(user.radixAddress) : 'Connected');
 
-  const showAsConnected = isAuthenticated;
   const userProfilePath = user ? `/leaderboard#u-${user.id}` : null;
 
   useEffect(() => {
@@ -334,15 +334,15 @@ export function Header() {
     return () => { clearInterval(interval); window.removeEventListener('focus', onFocus); };
   }, [isAuthenticated, fetchNotifications]);
 
+  const fieldShown = field !== 'folded';
   useEffect(() => {
-    if (showSearch && searchInputRef.current) searchInputRef.current.focus();
-  }, [showSearch]);
+    if (fieldShown) searchInputRef.current?.focus();
+  }, [fieldShown]);
 
   // A declaration, not a const: `onPick` above is wired before this point.
   function handleSearchSelect(page: PageSummary) {
     resetSearch();
-    setSearchOpen(false);
-    setShowSearch(false);
+    setField('folded');
     router.push(pagePath(page.tagPath, page.slug));
   }
 
@@ -369,12 +369,12 @@ export function Header() {
               was the broken half — it nested `.search-empty` (itself absolutely
               placed) inside `.search-results`, which is `overflow-hidden`, so
               "No pages found" was clipped to a bordered 2px strip. */}
-          <form ref={searchRef} className={cn('header-search', showSearch && 'header-search-open')}
+          <form ref={searchRef} className={cn('header-search', fieldShown && 'header-search-open')}
             onSubmit={e => { e.preventDefault(); goToSearchPage(); }}>
             <Search className="search-icon-left" size={18} />
             <input ref={searchInputRef} type="search" placeholder="Search the wiki..." className="input pl-10" value={searchQuery}
-              onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); }}
-              onBlur={() => { if (!searchQuery.trim()) setShowSearch(false); }}
+              onChange={e => { setSearchQuery(e.target.value); setField('listing'); }}
+              onBlur={() => { if (!searchQuery.trim()) setField('folded'); }}
               onKeyDown={onSearchKeyDown} {...searchCombobox.inputProps} />
             {search.status === 'searching' && <Loader2 className="search-icon-right" size={18} />}
             {listOpen && searchResults.length > 0 && (
@@ -400,8 +400,8 @@ export function Header() {
           <div ref={actionsRef} className="header-actions">
             {/* With no script it goes to the results page. Its mousedown keeps focus
                 in the field, so the field's blur does not fold it before the click. */}
-            <a href="/search" onMouseDown={e => e.preventDefault()} onClick={e => { e.preventDefault(); closeMenu(); setShowSearch(!showSearch); }}
-              className="icon-btn text-inherit" title="Search" aria-label="Search" aria-expanded={showSearch}><Search size={20} /></a>
+            <a href="/search" onMouseDown={e => e.preventDefault()} onClick={e => { e.preventDefault(); closeMenu(); setField(fieldShown ? 'folded' : 'open'); }}
+              className="icon-btn text-inherit" title="Search" aria-label="Search" aria-expanded={fieldShown}><Search size={20} /></a>
 
             {hasTools && (
               <div className="relative">
@@ -432,9 +432,9 @@ export function Header() {
             )}
 
             <div id="radix-connect-btn" className="relative">
-              {authBusy ? (
+              {authStatus === 'checking' || authStatus === 'connecting' ? (
                 <div className="user-pill"><Loader2 size={14} className="animate-spin" /><span className="hidden sm:inline">Connecting...</span></div>
-              ) : showAsConnected ? (
+              ) : authStatus === 'signed-in' ? (
                 <>
                   <button onClick={() => toggleMenu('account')} className="icon-btn" title={displayName} aria-expanded={menu === 'account'} aria-label="Account menu">
                     <UserAvatar seed={user?.id || walletData?.accounts?.[0]?.address || ''} size="md" />
