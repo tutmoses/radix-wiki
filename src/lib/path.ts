@@ -25,8 +25,9 @@ interface ParsedPath {
 
 /**
  * The wiki half is `wiki-formant/tree`'s `parseWikiPath`; what stays here is
- * this wiki's static pages, its /charts tree, and the API's refusal of /edit.
- * A category's `/history` and `/mdx` address its hub article, the empty slug.
+ * this wiki's static pages, its /charts tree, the API's refusal of /edit and
+ * the pages' of /mdx: the export lives at the API address alone. A category's
+ * `/history` and `/mdx` address its hub article, the empty slug.
  */
 export function parsePath(segments: string[] = [], mode: 'client' | 'api' = 'client'): ParsedPath {
   const base: ParsedPath = { type: 'homepage', tagPath: '', slug: '', suffix: null };
@@ -47,7 +48,7 @@ export function parsePath(segments: string[] = [], mode: 'client' | 'api' = 'cli
 
   const parsed = parseWikiPath(TREE, segments, { modes: SUFFIXES });
   const suffix = parsed.mode;
-  if (parsed.type === 'invalid' || (mode === 'api' && suffix === 'edit')) return { ...base, type: 'invalid' };
+  if (parsed.type === 'invalid' || suffix === (mode === 'api' ? 'edit' : 'mdx')) return { ...base, type: 'invalid' };
   const { tagPath, slug } = parsed;
   if (parsed.type === 'home') return { ...base, type: suffix ?? 'homepage', suffix };
   // The client opens a category's editor on the category page itself.

@@ -2,7 +2,7 @@
 
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { parsePath } from '@/lib/path';
 import { getHomepage, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getPageByAsset, getSiblingPages, getAssetPages } from '@/lib/wiki';
 import { getMaintenanceQueues } from '@/lib/maintenance';
@@ -155,9 +155,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
-  // Edit, history, and mdx variants shouldn't be indexed (they produce near-duplicate content)
-  if (parsed.type === 'edit' || parsed.type === 'history' || parsed.type === 'mdx') {
-    const label = parsed.type === 'edit' ? 'Edit' : parsed.type === 'history' ? 'Revision history' : 'MDX export';
+  // Edit and history variants shouldn't be indexed (they produce near-duplicate content)
+  if (parsed.type === 'edit' || parsed.type === 'history') {
+    const label = parsed.type === 'edit' ? 'Edit' : 'Revision history';
     return {
       // The layout's template adds the site name; carrying it here doubled it.
       title: label,
@@ -364,11 +364,6 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
   // the whole wiki; check `next build` still reports this route as SSG.
 
   if (parsed.type === 'invalid') notFound();
-
-  // The page-level /mdx URL is an export, not a page — send it to the API route
-  // instead of rendering a duplicate article at a noindex URL. A category's /mdx
-  // is its hub article's (empty slug), not the homepage's.
-  if (parsed.type === 'mdx') redirect(`/api/wiki/${[parsed.tagPath, parsed.slug, 'mdx'].filter(Boolean).join('/')}`);
 
   if (parsed.type === 'search') return <SearchView query={str((await searchParams).q) ?? ''} />;
   if (parsed.type === 'maintenance') return <MaintenanceView queues={await getMaintenanceQueues()} />;

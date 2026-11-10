@@ -6,6 +6,9 @@ import { trackAiBot } from 'wiki-formant/crawlers';
 // for a bot: it pulls in Prisma, which a static import would load for every
 // request the proxy sees.
 export function proxy(request: NextRequest, event: NextFetchEvent) {
+  // /agents-md is only the /AGENTS.md rewrite's target (next.config.ts), so
+  // asked for by name it does not exist.
+  if (request.nextUrl.pathname === '/agents-md') return new NextResponse('Not Found', { status: 404 });
   trackAiBot(request, event, () => import('@/lib/track'));
   return NextResponse.next();
 }

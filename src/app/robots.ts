@@ -3,17 +3,11 @@ import { SITE_URL } from '@/lib/site';
 import { crawlerRules } from 'wiki-formant/crawlers';
 
 export default function robots(): MetadataRoute.Robots {
-  // `/api/wiki/*/mdx$` is the markdown twin of a page, and it has to out-specify the
-  // `/*/*/mdx$` disallow below, which matches it too (`*` spans `/`). Precedence is by
-  // pattern length, and `/api/wiki/` beat that disallow by a single character — a
-  // one-char margin deciding whether agents can read the twins at all. Naming the twin
-  // route outright settles it at 16 characters against 9.
-  //
   // /api/mcp, /llms.txt, /openapi.json and /.well-known/ are
   // `AGENT_SURFACE_PATHS`, which `crawlerRules` allows in every group without
   // being told. This list is what this origin serves beyond them.
-  const aiAllow = ['/', '/api/wiki/', '/api/wiki/*/mdx$'];
-  // The /edit, /history and /mdx VIEWS of a wiki page should not be indexed.
+  const aiAllow = ['/', '/api/wiki/'];
+  // The /edit and /history VIEWS of a wiki page should not be indexed.
   //
   // Two properties of robots.txt matching decide the shape of these patterns: a
   // rule is a *prefix* match unless it ends in `$`, and `*` spans `/`. The old
@@ -31,7 +25,7 @@ export default function robots(): MetadataRoute.Robots {
   // `/*/*/history$` catches /ecosystem/allnodes/history and /contents/history/
   // flexathon/history while leaving the two-segment hub alone. No reliance on
   // longest-match Allow precedence, which not every crawler implements.
-  const views = ['edit', 'history', 'mdx'];
+  const views = ['edit', 'history'];
   const pageVariantDisallow = views.flatMap(v => [`/*/*/${v}$`, `/${v}$`]);
   // The aiAllow entries win over `/api/` by longest-match precedence, which is
   // what keeps /api/mcp and /api/wiki/ reachable for agents.
