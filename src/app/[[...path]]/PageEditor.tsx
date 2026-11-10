@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save, Trash2, Link2, X } from 'lucide-react';
@@ -78,6 +78,13 @@ function UserSearch({ initial = '', placeholder, exclude, onPick, onClear }: {
   useEffect(() => { setQuery(initial); }, [initial, setQuery]);
   const ref = useClickOutside<HTMLDivElement>(useCallback(() => setOpen(false), []));
   const aria = combobox(undefined, open && items.length > 0);
+  // The hook keeps its rows while the list is shut, and searches the picked name
+  // again; keys reach it only while the list shows, so Enter never picks a row
+  // nobody can see. An arrow in a shut box opens it.
+  const onKeys = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (open) onKeyDown(e);
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); setOpen(true); }
+  };
 
   return (
     <div ref={ref} className="relative">
@@ -85,7 +92,7 @@ function UserSearch({ initial = '', placeholder, exclude, onPick, onClear }: {
         value={query}
         onChange={e => { setQuery(e.target.value); setOpen(true); if (!e.target.value) onClear?.(); }}
         onFocus={() => setOpen(true)}
-        onKeyDown={onKeyDown}
+        onKeyDown={onKeys}
         placeholder={placeholder}
         {...aria.inputProps}
       />
