@@ -12,7 +12,7 @@ import { categoryLabel, cn } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { AGO, useNow } from '@/lib/now';
 import { relativeTime } from 'wiki-formant/freshness';
-import { findTagByPath, getMetadataKeys, type SortOrder } from '@/lib/tags';
+import { boardColumn, findTagByPath, getMetadataKeys, UNPLACED_COLUMN, type SortOrder } from '@/lib/tags';
 import { NewPageControl, SortToggle } from './PageContent';
 import type { WikiPage, PageMetadata, IdeasPage } from '@/types';
 import { EmptyState } from '@/components/EmptyState';
@@ -141,10 +141,14 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
     const filtered = categoryFilter
       ? sorted.filter(p => categoryLabel((p.metadata as PageMetadata)?.category) === categoryFilter)
       : sorted;
-    return statusOptions.map(opt => ({
-      ...opt,
-      items: filtered.filter(p => categoryLabel((p.metadata as PageMetadata)?.status) === opt.label),
-    }));
+    // A card whose status the board does not offer gets a column of its own, as
+    // get_ideas_board gives it, rather than appearing in none.
+    const raws = statusOptions.map(o => o.raw);
+    const unplaced = filtered.filter(p => boardColumn(p.metadata, raws) === null);
+    return [
+      ...statusOptions.map(opt => ({ ...opt, items: filtered.filter(p => boardColumn(p.metadata, raws) === opt.raw) })),
+      ...(unplaced.length ? [{ raw: '', label: UNPLACED_COLUMN, color: 'default', items: unplaced }] : []),
+    ];
   }, [sorted, categoryFilter, statusOptions]);
 
   const categories = useMemo(() => {

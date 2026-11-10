@@ -15,7 +15,7 @@ import { SIBLING_WIKI, SITE_NAME, SITE_URL, X } from '@/lib/site';
 import { followNote } from 'wiki-formant/social';
 import { MCP_RATE_LIMIT, MCP_RATE_LIMIT_TEXT } from 'wiki-formant/rate-limit';
 import { buildLlmsTxt } from '@/lib/llms';
-import { getMetadataKeys } from '@/lib/tags';
+import { boardColumn, getMetadataKeys, UNPLACED_COLUMN } from '@/lib/tags';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 import { getLedgerDayRows } from '@/lib/radix/activity';
 import { trackMcpCall } from '@/lib/track';
@@ -124,6 +124,7 @@ async function get_ideas_board(raw: Record<string, unknown>) {
 
   const catFilter = category ? categoryLabel(category).toLowerCase() : null;
   const wgFilter = workingGroup ? workingGroup.toLowerCase() : null;
+  const statusOptions = getMetadataKeys(['ideas']).find(k => k.key === 'status')?.options ?? [];
 
   const cards = pages.map(p => {
     const m = (p.metadata ?? {}) as Record<string, string>;
@@ -131,7 +132,7 @@ async function get_ideas_board(raw: Record<string, unknown>) {
       title: p.title,
       url: pageUrl(p.tagPath, p.slug),
       workingGroup: workingGroupFromTitle(p.title),
-      rawStatus: m.status ?? '',
+      column: boardColumn(m, statusOptions),
       priority: categoryLabel(m.priority) || null,
       category: categoryLabel(m.category) || null,
       assignee: assigneeName(m.assignee),
@@ -143,19 +144,15 @@ async function get_ideas_board(raw: Record<string, unknown>) {
     return true;
   });
 
-  const statusOptions = getMetadataKeys(['ideas']).find(k => k.key === 'status')?.options ?? [];
-  const known = new Set(statusOptions);
   const shape = (c: typeof cards[number]) => ({
     title: c.title, workingGroup: c.workingGroup, category: c.category,
     priority: c.priority, assignee: c.assignee, url: c.url, updatedAt: c.updatedAt,
   });
 
-  const columns = statusOptions.map(opt => {
-    const items = cards.filter(c => c.rawStatus === opt);
-    return { status: categoryLabel(opt), count: items.length, cards: items.map(shape) };
-  });
-  const orphans = cards.filter(c => !known.has(c.rawStatus));
-  if (orphans.length) columns.push({ status: 'Uncategorized', count: orphans.length, cards: orphans.map(shape) });
+  const columns = [...statusOptions, null].map(opt => {
+    const items = cards.filter(c => c.column === opt);
+    return { status: opt === null ? UNPLACED_COLUMN : categoryLabel(opt), count: items.length, cards: items.map(shape) };
+  }).filter((c, i) => i < statusOptions.length || c.count > 0);
 
   return { board: 'ideas', url: `${SITE_URL}/ideas`, totalCards: cards.length, columns };
 }

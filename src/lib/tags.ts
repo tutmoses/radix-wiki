@@ -177,6 +177,20 @@ const isUnder = (paths: Set<string>, tagPath: string): boolean =>
 /** Pages here belong to the board, not to their author — any editor can delete them. */
 export const isSharedPath = (tagPath: string): boolean => isUnder(SHARED_PATHS, tagPath);
 
+/**
+ * The status option a board card sits under, matched by label so an option
+ * whose decoration changed still matches; null for a status the board does not
+ * offer. The Ideas board and get_ideas_board both place cards by this, so a card
+ * cannot sit on one and be missing from the other.
+ */
+export const boardColumn = (metadata: unknown, options: readonly string[]): string | null => {
+  const status = categoryLabel((metadata as Record<string, string> | null)?.status);
+  return (status && options.find(o => categoryLabel(o) === status)) || null;
+};
+
+/** Where `boardColumn` puts a card it cannot place. */
+export const UNPLACED_COLUMN = 'Uncategorized';
+
 export const TAG_TREE = createTree<TagNode>(TAG_HIERARCHY, { globalKeys: GLOBAL_METADATA_KEYS });
 
 interface TagPathContext {
