@@ -344,8 +344,8 @@
   .breadcrumbs .separator { @apply text-text-muted; }
   .breadcrumb-link { @apply capitalize text-text-muted no-underline hover:text-accent; }
   .breadcrumb-current { @apply capitalize text-text; }
-  /* Edit and History, right of the trail: the one home for both. A <nav>, so a
-     banner's overlay draws it the way it draws the trail beside it. */
+  /* Edit, right of the trail. A <nav>, so a banner's overlay draws it the way
+     it draws the trail beside it. */
   .page-actions { @apply flex items-center gap-1 text-small; }
   /* An icon each, named by its label; over a banner the text's shadow does not
      reach an SVG, so the icon casts its own. */

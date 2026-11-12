@@ -158,6 +158,8 @@ interface AppStore {
   dismissToast: () => void;
   /** The article on screen, set by `PageView`, so the header's citation can name it. */
   pageTitle: string | null;
+  /** The history of the revisioned page on screen, set by its view through `useHistoryLink`. */
+  historyHref: string | null;
   notifications: Notifications;
   fetchNotifications: () => Promise<void>;
   markNotificationsRead: (ids?: string[]) => Promise<void>;
@@ -231,6 +233,7 @@ export const useStore = create<AppStore>()((set, get) => ({
     set({ toast: null });
   },
   pageTitle: null,
+  historyHref: null,
   notifications: { status: 'loading' },
   fetchNotifications: async () => {
     const attempt = ++notificationsAttempt;
@@ -257,6 +260,18 @@ export const useStore = create<AppStore>()((set, get) => ({
     });
   },
 }));
+
+/**
+ * Puts History in the header for as long as the calling view is on screen. The
+ * header sits outside the view and knows only the URL, which cannot tell a
+ * page from one being created, or a category with a hub article from one without.
+ */
+export function useHistoryLink(href: string | null) {
+  useEffect(() => {
+    useStore.setState({ historyHref: href });
+    return () => useStore.setState({ historyHref: null });
+  }, [href]);
+}
 
 // ========== AUTH HOOK ==========
 

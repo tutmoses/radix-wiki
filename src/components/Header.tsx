@@ -5,7 +5,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Search, Menu, X, Loader2, LogOut, User, FileCode, Bell, Database, MoreVertical, Quote, Check, Eye, EyeOff, Settings } from 'lucide-react';
+import { Search, Menu, X, Loader2, LogOut, User, FileCode, Bell, Database, MoreVertical, Quote, Check, Eye, EyeOff, Settings, History } from 'lucide-react';
 import { focusShown, useCopy, useSearchShortcut, useSidebar, useTypeahead, useClickOutside } from 'wiki-formant/react';
 import type { ComboboxOptionProps } from 'wiki-formant/combobox';
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -24,7 +24,8 @@ import { useTelegram } from '@/components/WebhookSettings';
 import { EmptyState } from '@/components/EmptyState';
 import { LedgerDropdown, backupStanding, type BackupStanding, type LedgerStatus } from '@/components/LedgerBackupView';
 
-// Edit and History are not here: they sit beside the breadcrumb (`PageActions`).
+// Edit is not here: it sits beside the breadcrumb (`PageActions`). History is
+// the view's to offer (`useHistoryLink`).
 function usePageContext() {
   const { isHomepage, isPage, sectionPath, isEdit, isHistory, tagPath, slug } = usePagePath();
   const { isAuthenticated } = useAuth();
@@ -150,8 +151,8 @@ async function searchPages(q: string, signal: AbortSignal): Promise<PageSummary[
 
 // ===== Page tools =====
 // One home for page-scoped actions (Wikipedia's Tools menu): watch, export,
-// cite, ledger backup – instead of a row of header icons. History and Edit sit
-// beside the breadcrumb.
+// cite, ledger backup – instead of a row of header icons. History has its own
+// icon beside it; Edit sits beside the breadcrumb.
 function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPath, ledgerColor, onOpenLedger }: {
   onClose: () => void; mdxPath: string | null;
   tagPath?: string; slug?: string; isPage: boolean;
@@ -264,6 +265,7 @@ export function Header() {
   const { open: sidebarOpen, toggle: toggleSidebar } = useSidebar();
   const fetchNotifications = useStore(s => s.fetchNotifications);
   const unreadCount = useStore(s => (s.notifications.status === 'loaded' ? s.notifications.unread : 0));
+  const historyHref = useStore(s => s.historyHref);
   const { hasTools, hasLedger, sectionPath, canExportMdx, isPage, mdxPath, tagPath, slug } = usePageContext();
   const [field, setField] = useState<SearchField>('folded');
   const { menu, open: openMenu, close: closeMenu, toggle: toggleMenu, ref: actionsRef } = useHeaderMenu();
@@ -402,6 +404,10 @@ export function Header() {
                 in the field, so the field's blur does not fold it before the click. */}
             <a href="/search" onMouseDown={e => e.preventDefault()} onClick={e => { e.preventDefault(); closeMenu(); setField(fieldShown ? 'folded' : 'open'); }}
               className="icon-btn text-inherit" title="Search" aria-label="Search" aria-expanded={fieldShown}><Search size={20} /></a>
+
+            {historyHref && (
+              <Link href={historyHref} prefetch={false} onClick={closeMenu} className="icon-btn text-inherit" title="History" aria-label="History"><History size={20} /></Link>
+            )}
 
             {hasTools && (
               <div className="relative">

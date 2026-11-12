@@ -14,7 +14,7 @@ import { Breadcrumbs, PageActions } from '@/components/Breadcrumbs';
 import { LinkPreview } from '@/components/LinkPreview';
 import { AuthRequired } from '@/components/AuthRequired';
 import { Button } from '@/components/ui';
-import { useAuth, useStore } from '@/hooks';
+import { useAuth, useHistoryLink, useStore } from '@/hooks';
 import { categoryLabel, cn, generateBannerSvg, mustReload, pagePath, sendJson } from '@/lib/utils';
 import { describe } from 'wiki-formant/metadata';
 import { openingText } from 'wiki-formant/text';
@@ -302,6 +302,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   const router = useRouter();
   const { status, isAuthenticated } = useAuth();
   const connect = useStore(s => s.connect);
+  useHistoryLink(isEditing ? null : '/history');
   const [content, setContent] = useState<Block[]>((page?.content as unknown as Block[]) || []);
   const [bannerImage, setBannerImage] = useState<string | null>(page?.bannerImage || null);
   const [save, setSave] = useState<SavePhase>({ kind: 'editing', error: null });
@@ -371,7 +372,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
   return (
     <div className="stack">
       <Banner src={bannerImage} title="Homepage">
-        <PageActions className="justify-end" historyHref="/history" editHref={isAuthenticated ? '/edit' : undefined} />
+        <PageActions className="justify-end" editHref={isAuthenticated ? '/edit' : undefined} />
         <h1 className="sr-only">Radix ($XRD) – The Radix DLT Crypto Wiki</h1>
       </Banner>
       {infobox && infoboxHasContent(infobox) ? (
@@ -553,6 +554,7 @@ function PageViewContent({ page, related, series, sections, listing, nowMs }: { 
   const sectionName = categoryLabel(findTagByPath(page.tagPath.split('/'))?.name ?? '') || page.tagPath;
   const mainBlocks = [...(fresh ? [fresh] : []), ...blocks.filter(b => b.type !== 'infobox')];
   const viewPath = pagePath(page.tagPath, page.slug);
+  useHistoryLink(`${viewPath}/history`);
 
   // Everything after the prose. On a hub it moves below the listing, so the page
   // reads article → the pages in it → provenance and discussion.
@@ -595,7 +597,7 @@ function PageViewContent({ page, related, series, sections, listing, nowMs }: { 
       <Banner src={page.bannerImage} title={page.title} tagPath={page.tagPath}>
         <Breadcrumbs
           path={[...page.tagPath.split('/'), page.slug].filter(Boolean)} leafTitle={page.title}
-          actions={<PageActions historyHref={`${viewPath}/history`} editHref={isAuthenticated ? `${viewPath}/edit` : undefined} />}
+          actions={<PageActions editHref={isAuthenticated ? `${viewPath}/edit` : undefined} />}
         />
         <h1 id={slugifyHeading(page.title)} className="m-0!">{page.title}</h1>
       </Banner>

@@ -6,10 +6,10 @@ import { useState, useEffect, useRef, useCallback, type KeyboardEvent } from 're
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save, Trash2, Link2, X } from 'lucide-react';
-import { Breadcrumbs, PageActions } from '@/components/Breadcrumbs';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { EmptyState } from '@/components/EmptyState';
 import { Button, Input } from '@/components/ui';
-import { useAuth } from '@/hooks';
+import { useAuth, useHistoryLink } from '@/hooks';
 import { CARRIED_TOAST } from '@/components/Toast';
 import { cn, mustReload, pagePath, sendJson } from '@/lib/utils';
 import { isReservedSlug } from '@/lib/path';
@@ -269,6 +269,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const { user } = useAuth();
   const isCreating = !page;
   const viewPath = pagePath(tagPath, slug);
+  useHistoryLink(isCreating ? null : `${viewPath}/history`);
   // A category's hub article lives at the empty slug and is reached by its
   // category's own URL, so there is no slug to edit and no rename to offer.
   const isHub = !isCreating && !slug;
@@ -376,7 +377,6 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
     <article className="stack page-editor">
       <Breadcrumbs
         path={[...tagPath.split('/'), slug].filter(Boolean)} suffix={isCreating ? 'Create' : 'Edit'}
-        actions={!isCreating && <PageActions historyHref={`${viewPath}/history`} />}
       />
       {/* A child of the article, not the header, so it stays stuck for the whole edit. */}
       <div className="editor-bar">

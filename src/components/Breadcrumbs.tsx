@@ -11,7 +11,7 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { History as HistoryIcon, Pencil } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { Breadcrumbs as SharedBreadcrumbs, BreadcrumbsRow } from 'wiki-formant/react-server';
 import { findTagByPath } from '@/lib/tags';
 import { SITE_URL } from '@/lib/site';
@@ -53,16 +53,14 @@ export function Breadcrumbs({ path, leafTitle, suffix, actions }: BreadcrumbsPro
 }
 
 /**
- * History and Edit, beside the trail. The one home for both: they used to be a
- * header pencil, a foot link, a Tools item and the meta line's revision count.
- * Each is passed only where its control applies, so the caller keeps the rule.
+ * Edit, beside the trail; History is the header's (`useHistoryLink`). Passed
+ * only where editing applies, so the caller keeps the rule.
  */
-export function PageActions({ editHref, historyHref, className }: { editHref?: string; historyHref?: string; className?: string }) {
-  if (!editHref && !historyHref) return null;
+export function PageActions({ editHref, className }: { editHref?: string; className?: string }) {
+  if (!editHref) return null;
   return (
     <nav className={className ? `page-actions ${className}` : 'page-actions'} aria-label="Page actions">
-      {historyHref && <Link href={historyHref} prefetch={false} className="page-action" aria-label="History" title="History"><HistoryIcon size={16} aria-hidden /></Link>}
-      {editHref && <Link href={editHref} prefetch={false} className="page-action" aria-label="Edit" title="Edit"><Pencil size={16} aria-hidden /></Link>}
+      <Link href={editHref} prefetch={false} className="page-action" aria-label="Edit" title="Edit"><Pencil size={16} aria-hidden /></Link>
     </nav>
   );
 }
