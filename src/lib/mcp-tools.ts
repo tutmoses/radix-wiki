@@ -27,7 +27,8 @@ import { TAG_TREE, SHARED_PATHS, getMetadataKeys, xrdGates } from '@/lib/tags';
 import { categoryLabel } from '@/lib/utils';
 import { BLOCK_SCHEMA } from '@/lib/block-utils';
 import { REQUEST_BODY_MAX, UPLOAD } from '@/lib/api';
-import { trackFeedback } from '@/lib/track';
+import { trackFeedback, trackSearch } from '@/lib/track';
+import { MCP_SURFACE } from 'wiki-formant/analytics';
 import { generateChallenge, CHALLENGE_TTL_SEC, SESSION_SEC } from '@/lib/auth';
 import { RADIX_CONFIG } from '@/lib/radix/config';
 
@@ -69,6 +70,7 @@ export const TOOLS: McpToolSpec[] = [
     tree: TAG_TREE,
     noun: NOUN,
     corpusTitle: 'Radix Wiki — Full Content',
+    onSearch: (request, query, results) => trackSearch(request.headers, query, results, MCP_SURFACE),
     label: node => categoryLabel(node.name),
     corpus: corpusSections,
     // edit_page takes the banner and co-editors as fields, though they are stored in metadata.
