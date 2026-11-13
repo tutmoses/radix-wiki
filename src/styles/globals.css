@@ -445,7 +445,6 @@
 
   /* ===== PAGE CARD ===== */
   .page-card { @apply h-full overflow-hidden; }
-  .page-card-thumb { @apply aspect-[4/1] overflow-hidden relative; > .banner-art { @apply absolute inset-0; } }
 
   .page-card-body { @apply flex flex-col gap-2 p-4; }
   .page-card-title { @apply font-medium transition-colors truncate; .group:hover & { @apply text-accent; } }

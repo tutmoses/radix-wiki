@@ -7,7 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, FileText, Copy, Check, AlertTriangle, Megaphone, CalendarClock, type LucideIcon } from 'lucide-react';
 import { bannerPalette, cn, pagePath, tipAddress } from '@/lib/utils';
-import { BannerArt } from 'wiki-formant/banner';
+import { CardBanner } from 'wiki-formant/banner';
 import { AGO, useNow } from '@/lib/now';
 import { formatDay, relativeTime } from 'wiki-formant/freshness';
 import { findTagByPath } from '@/lib/tags';
@@ -52,16 +52,14 @@ import { OCISWAP_API } from '@/lib/radix/config';
 import { EmptyState } from '@/components/EmptyState';
 
 // ========== PAGE CARD ==========
-/** A page card's banner: the page's own image, or its generated one. */
+/** A page card's banner: the page's own image, or the art its page is headed with. */
 export function PageThumb({ page }: { page: Pick<WikiPage, 'title' | 'tagPath' | 'bannerImage'> }) {
   return (
-    <div className="page-card-thumb" style={page.bannerImage ? undefined : bannerPalette(page.tagPath)}>
-      {page.bannerImage ? (
-        <Image src={page.bannerImage} alt={page.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
-      ) : (
-        <BannerArt seed={page.title + page.tagPath} />
-      )}
-    </div>
+    <CardBanner
+      seed={page.title + page.tagPath}
+      style={page.bannerImage ? undefined : bannerPalette(page.tagPath)}
+      picture={page.bannerImage && <Image src={page.bannerImage} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />}
+    />
   );
 }
 
