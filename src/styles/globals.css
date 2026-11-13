@@ -451,10 +451,10 @@
   .page-card-snippet { @apply text-text-muted line-clamp-2 text-small; }
   .page-card-meta { @apply flex items-center gap-2 flex-wrap mt-auto pt-1; }
 
-    .page-ref { @apply flex items-baseline justify-between gap-3 min-w-0 px-4 py-2.5 hover:bg-surface-2 transition-colors; &:hover .page-ref-title { @apply text-accent; } }
-  .page-ref-title { @apply min-w-0 truncate font-medium transition-colors; }
-  .page-ref-time { @apply shrink-0 text-small text-text-muted; }
-  .page-refs-empty { @apply text-text-muted; }
+  /* A page-refs row is wiki-formant/base.css's, on the --ui-* tokens mapped
+     above: the same flex line, hover and muted date this file restated. Only
+     the weight is radix-wiki's, so a row reads as a card's title does. */
+  .page-ref-title { @apply font-medium; }
 
   /* ===== EMPTY STATE ===== */
   /* `EmptyState`. The padding and centring are wiki-formant/base.css's
