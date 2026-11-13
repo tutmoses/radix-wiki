@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { create } from 'zustand';
 import { parsePath } from '@/lib/path';
-import { sendJson } from '@/lib/utils';
+import { pagePath, sendJson } from '@/lib/utils';
 import type { AuthSession, RadixWalletData, WikiNotification } from '@/types';
 
 // ========== FETCH HOOK ==========
@@ -93,7 +93,7 @@ export function usePagePath() {
     sectionPath: type === 'category' && !suffix ? tagPath : null,
     isEdit: suffix === 'edit',
     isHistory: suffix === 'history',
-    viewPath: isPage ? `/${tagPath}/${slug}` : '/',
+    viewPath: isPage ? pagePath(tagPath, slug) : '/',
     tagPath: isPage ? tagPath : null,
     slug: isPage ? slug : null,
   };

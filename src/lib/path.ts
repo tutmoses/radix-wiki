@@ -3,7 +3,7 @@
 
 import { parseWikiPath, isReservedSlug as reservedIn } from 'wiki-formant/tree';
 import { TAG_TREE as TREE } from '@/lib/tags';
-import { STATIC_PATH_TYPES } from '@/lib/static-pages';
+import { ROOT_ARTICLES, STATIC_PATH_TYPES } from '@/lib/static-pages';
 
 const SUFFIXES = ['edit', 'history', 'mdx'] as const;
 type Suffix = typeof SUFFIXES[number];
@@ -32,6 +32,10 @@ interface ParsedPath {
 export function parsePath(segments: string[] = [], mode: 'client' | 'api' = 'client'): ParsedPath {
   const base: ParsedPath = { type: 'homepage', tagPath: '', slug: '', suffix: null };
   if (segments.length === 0) return base;
+
+  // A root article's short address reads as its full path, suffixes and all.
+  const root = ROOT_ARTICLES.get(segments[0]!);
+  if (root) segments = [...root.split('/'), ...segments.slice(1)];
 
   // Static pages, including the two-segment /charts pair — one lookup over the
   // same table that gives each of them its metadata and its sitemap row.

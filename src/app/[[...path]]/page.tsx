@@ -163,7 +163,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: label,
       description: `${label} view on RADIX Wiki.`,
       robots: NOINDEX_ROBOTS,
-      alternates: { canonical: `${SITE_URL}/${parsed.tagPath}/${parsed.slug}`.replace(/\/+$/, '') || SITE_URL },
+      alternates: { canonical: pageUrl(parsed.tagPath, parsed.slug).replace(/\/+$/, '') },
     };
   }
 
@@ -179,7 +179,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: 'New page',
       description: 'Create a new page on RADIX Wiki.',
       robots: NOINDEX_ROBOTS,
-      alternates: { canonical: `${SITE_URL}/${parsed.tagPath}/${parsed.slug}` },
+      alternates: { canonical: pageUrl(parsed.tagPath, parsed.slug) },
     };
   }
 

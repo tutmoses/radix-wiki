@@ -11,8 +11,8 @@ export function Footer() {
     <footer className="footer">
       <nav className="footer-links" aria-label="Footer">
         <a href="/llms.txt">llms.txt</a>
-        <Link href="/contents/resources/legal/terms-of-use">Terms</Link>
-        <Link href="/contents/resources/legal/privacy-policy">Privacy</Link>
+        <Link href="/terms">Terms</Link>
+        <Link href="/privacy">Privacy</Link>
         <a {...followLinkProps(X)}>{X.label}</a>
       </nav>
       <p>

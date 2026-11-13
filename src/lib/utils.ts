@@ -6,6 +6,7 @@ import { openingText } from 'wiki-formant/text';
 import { describe } from 'wiki-formant/metadata';
 import { hashStr, seededRandom } from 'wiki-formant/seeded';
 import { SITE_URL } from '@/lib/site';
+import { ROOT_ADDRESS } from '@/lib/static-pages';
 import type { ConflictReason } from 'wiki-formant/store';
 
 export function cn(...inputs: ClassValue[]): string {
@@ -36,7 +37,8 @@ export function shortenAddress(address: string, chars: number = 6): string {
  * segments are joined rather than interpolated with a slash that has nothing after it.
  */
 export function pagePath(tagPath: string, slug: string): string {
-  return `/${[tagPath, slug].filter(Boolean).join('/')}`;
+  const path = [tagPath, slug].filter(Boolean).join('/');
+  return `/${ROOT_ADDRESS.get(path) ?? path}`;
 }
 
 /** The one absolute URL for a page. Every export that advertises a page URL

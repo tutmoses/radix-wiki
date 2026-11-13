@@ -57,6 +57,19 @@ export const STATIC_PATH_TYPES = new Map(
   Object.entries(STATIC_PAGES).filter(([, p]) => p.path).map(([type, p]) => [p.path, type]),
 );
 
+/**
+ * Articles served at the site root instead of under their category: the legal
+ * pages, at the addresses every sibling site uses and a directory listing pins.
+ * The row keeps its tag path, so the API, MCP and history address it as before;
+ * `pagePath` hands out the short address and the proxy retires the long one.
+ */
+export const ROOT_ARTICLES = new Map([
+  ['privacy', 'contents/resources/legal/privacy-policy'],
+  ['terms', 'contents/resources/legal/terms-of-use'],
+  ['acceptable-use', 'contents/resources/legal/acceptable-use-policy'],
+]);
+export const ROOT_ADDRESS = new Map([...ROOT_ARTICLES].map(([short, path]) => [path, short]));
+
 /** The /charts routes as llms.txt's Live Data list quotes them. */
 export const CHARTS_PAGES = ['charts', 'charts-validators', 'charts-tokens'].map(key => {
   const p = STATIC_PAGES[key]!;

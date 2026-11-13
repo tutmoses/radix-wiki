@@ -181,7 +181,7 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
   // Paused by the bot's /stop: Watch then resumes every subscription, this one included.
   const live = !!watching && !paused;
 
-  const pageUrl = () => `${window.location.origin}/${tagPath}/${slug}`;
+  const pageUrl = () => `${window.location.origin}${pagePath(tagPath ?? '', slug ?? '')}`;
 
   const toggleWatch = async () => {
     if (!target || telegram.status === 'loading' || watchBusy) return;
