@@ -15,7 +15,8 @@ import { LinkPreview } from '@/components/LinkPreview';
 import { AuthRequired } from '@/components/AuthRequired';
 import { Button } from '@/components/ui';
 import { useAuth, useHistoryLink, useStore } from '@/hooks';
-import { categoryLabel, cn, generateBannerSvg, mustReload, pagePath, sendJson } from '@/lib/utils';
+import { bannerPalette, categoryLabel, cn, mustReload, pagePath, sendJson } from '@/lib/utils';
+import { PageBanner } from 'wiki-formant/banner';
 import { describe } from 'wiki-formant/metadata';
 import { openingText } from 'wiki-formant/text';
 import { slugifyHeading } from 'wiki-formant/headings';
@@ -117,23 +118,15 @@ export function Banner({ src, title, tagPath, editable, onUpload, onRemove, chil
     );
   }
 
-  const generativeSrc = !src && title ? generateBannerSvg(title, tagPath || '') : null;
-  if (!src && !generativeSrc && !children) return null;
-
+  // A page without a picture of its own is headed by art seeded by its title and section, in the section's palette.
   return (
-    <div className="banner-container">
-      {src ? (
-        <Image src={src} alt={title ? `${title} banner` : 'Page banner'} fill className="banner-image" sizes="100vw" priority />
-      ) : generativeSrc ? (
-        <Image src={generativeSrc} alt={title || 'Page banner'} fill className="banner-image" unoptimized />
-      ) : (
-        <div className="banner-placeholder" />
-      )}
-      {children && (
-        <div className="banner-overlay">
-          <div className="banner-overlay-left">{children}</div>
-        </div>
-      )}
+    <PageBanner
+      seed={(title ?? '') + (tagPath ?? '')}
+      className="banner-container"
+      style={src ? undefined : bannerPalette(tagPath ?? '')}
+      picture={src && <Image src={src} alt={title ? `${title} banner` : 'Page banner'} fill className="banner-image" sizes="100vw" priority />}
+    >
+      {children && <div className="banner-overlay-left">{children}</div>}
       {editable && (
         <div className="banner-actions">
           {FileInput}
@@ -141,7 +134,7 @@ export function Banner({ src, title, tagPath, editable, onUpload, onRemove, chil
           {onRemove && src && <button onClick={onRemove} className="icon-btn banner-action-btn text-error hover:text-error" title="Remove banner"><X size={16} /></button>}
         </div>
       )}
-    </div>
+    </PageBanner>
   );
 }
 

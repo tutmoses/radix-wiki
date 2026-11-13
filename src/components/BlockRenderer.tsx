@@ -6,7 +6,8 @@ import { useCallback, useRef, memo, useMemo, useState, type ReactNode } from 're
 import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, FileText, Copy, Check, AlertTriangle, Megaphone, CalendarClock, type LucideIcon } from 'lucide-react';
-import { cn, generateBannerSvg, pagePath, tipAddress } from '@/lib/utils';
+import { bannerPalette, cn, pagePath, tipAddress } from '@/lib/utils';
+import { BannerArt } from 'wiki-formant/banner';
 import { AGO, useNow } from '@/lib/now';
 import { formatDay, relativeTime } from 'wiki-formant/freshness';
 import { findTagByPath } from '@/lib/tags';
@@ -54,11 +55,11 @@ import { EmptyState } from '@/components/EmptyState';
 /** A page card's banner: the page's own image, or its generated one. */
 export function PageThumb({ page }: { page: Pick<WikiPage, 'title' | 'tagPath' | 'bannerImage'> }) {
   return (
-    <div className="page-card-thumb">
+    <div className="page-card-thumb" style={page.bannerImage ? undefined : bannerPalette(page.tagPath)}>
       {page.bannerImage ? (
         <Image src={page.bannerImage} alt={page.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
       ) : (
-        <Image src={generateBannerSvg(page.title, page.tagPath)} alt={page.title} fill className="object-cover" unoptimized />
+        <BannerArt seed={page.title + page.tagPath} />
       )}
     </div>
   );

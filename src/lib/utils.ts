@@ -1,5 +1,6 @@
 // src/lib/utils.ts
 
+import type { CSSProperties } from 'react';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { openingText } from 'wiki-formant/text';
@@ -88,64 +89,10 @@ export function paletteFor(tagPath: string): [string, string, string] {
   return Object.entries(CATEGORY_PALETTES).find(([k]) => tagPath.startsWith(k))?.[1] ?? DEFAULT_PALETTE;
 }
 
-const svgCache = new Map<string, string>();
-
-export function generateBannerSvg(title: string, tagPath: string): string {
-  const cacheKey = `${title}:${tagPath}`;
-  const cached = svgCache.get(cacheKey);
-  if (cached) return cached;
-
-  const palette = paletteFor(tagPath);
-  const hash = hashStr(title + tagPath);
-  const rand = seededRandom(hash);
-  const w = 800, h = 200;
-
-  let svg = '';
-  const angle = Math.floor(rand() * 360);
-  svg += `<defs><linearGradient id="bg" gradientTransform="rotate(${angle})">`;
-  svg += `<stop offset="0%" stop-color="${palette[0]}"/><stop offset="100%" stop-color="${palette[1]}" stop-opacity="0.6"/>`;
-  svg += `</linearGradient></defs>`;
-  svg += `<rect width="${w}" height="${h}" fill="url(#bg)"/>`;
-
-  // Large soft background blobs
-  for (let i = 0; i < 3; i++) {
-    const cx = rand() * w, cy = rand() * h, r = 60 + rand() * 120;
-    svg += `<circle cx="${cx.toFixed(0)}" cy="${cy.toFixed(0)}" r="${r.toFixed(0)}" fill="${palette[1]}" opacity="${(0.15 + rand() * 0.2).toFixed(2)}"/>`;
-  }
-
-  // Mid-layer geometric shapes
-  const count = 5 + Math.floor(rand() * 4);
-  for (let i = 0; i < count; i++) {
-    const x = rand() * w, y = rand() * h;
-    const color = i % 2 === 0 ? palette[2] : palette[1];
-    const opacity = 0.12 + rand() * 0.25;
-    const kind = Math.floor(rand() * 4);
-    if (kind === 0) {
-      const r = 8 + rand() * 40;
-      svg += `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${r.toFixed(0)}" fill="${color}" opacity="${opacity.toFixed(2)}"/>`;
-    } else if (kind === 1) {
-      const rw = 20 + rand() * 80, rh = 15 + rand() * 50, rx = rand() * 12;
-      svg += `<rect x="${x.toFixed(0)}" y="${y.toFixed(0)}" width="${rw.toFixed(0)}" height="${rh.toFixed(0)}" rx="${rx.toFixed(0)}" fill="${color}" opacity="${opacity.toFixed(2)}" transform="rotate(${(rand() * 60 - 30).toFixed(0)} ${x.toFixed(0)} ${y.toFixed(0)})"/>`;
-    } else if (kind === 2) {
-      const s = 15 + rand() * 35;
-      const pts = Array.from({ length: 3 }, () => `${(x + rand() * s * 2 - s).toFixed(0)},${(y + rand() * s * 2 - s).toFixed(0)}`).join(' ');
-      svg += `<polygon points="${pts}" fill="${color}" opacity="${opacity.toFixed(2)}"/>`;
-    } else {
-      // Ring / donut
-      const r = 12 + rand() * 30;
-      svg += `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${r.toFixed(0)}" fill="none" stroke="${color}" stroke-width="${(2 + rand() * 4).toFixed(1)}" opacity="${opacity.toFixed(2)}"/>`;
-    }
-  }
-
-  // Bright small accent dots
-  for (let i = 0; i < 4; i++) {
-    const x = rand() * w, y = rand() * h, r = 2 + rand() * 6;
-    svg += `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${r.toFixed(0)}" fill="${palette[2]}" opacity="${(0.4 + rand() * 0.4).toFixed(2)}"/>`;
-  }
-
-  const result = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">${svg}</svg>`)}`;
-  svgCache.set(cacheKey, result);
-  return result;
+/** A category's palette as the custom properties `wiki-formant/banner` draws its art in: the gradient from the dark base to the mid accent at 60%, the shapes in the two accents. */
+export function bannerPalette(tagPath: string): CSSProperties {
+  const [base, mid, bright] = paletteFor(tagPath);
+  return { '--banner-from': base, '--banner-to': `${mid}99`, '--banner-mid': mid, '--banner-ink': bright } as CSSProperties;
 }
 
 // ========== IDENTICON ==========
