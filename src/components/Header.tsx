@@ -19,7 +19,6 @@ import Highlight from '@/components/Highlight';
 import { Button, Dropdown } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiNotification } from '@/types';
-import type { WebhookEvent } from '@/lib/webhooks';
 import { useTelegram } from '@/components/WebhookSettings';
 import { EmptyState } from '@/components/EmptyState';
 import { LedgerDropdown, backupStanding, type BackupStanding, type LedgerStatus } from '@/components/LedgerBackupView';
@@ -166,12 +165,11 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
   const pageTitle = useStore(s => s.pageTitle);
   // `useCopy` from `wiki-formant/react`.
   const { copied, copy } = useCopy(1500);
-  // What Watch watches: this page, or on a category page the whole section,
-  // which also wants `page.created` – without it a blog subscription never
-  // delivered an issue.
+  // What Watch watches: this page, or on a category page the whole section.
+  // Which events each gets is the API's `subscriptionEvents`.
   const target = isPage && tagPath && slug
-    ? { tagPath, slug, noun: 'page', events: ['page.updated', 'comment.created'] satisfies WebhookEvent[] }
-    : sectionPath ? { tagPath: sectionPath, slug: '', noun: 'section', events: ['page.created', 'page.updated', 'comment.created'] satisfies WebhookEvent[] } : null;
+    ? { tagPath, slug, noun: 'page' }
+    : sectionPath ? { tagPath: sectionPath, slug: '', noun: 'section' } : null;
   // The same `/api/telegram` client /settings uses, asked only when there is
   // something to watch and someone to watch it with.
   const { telegram, paused, subscribe, unsubscribe } = useTelegram(isAuthenticated && !!target);
@@ -193,7 +191,7 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
       if (live) {
         if (await unsubscribe(watching.id)) showToast(`No longer watching this ${target.noun}`);
         else showToast(`This ${target.noun} could not be unwatched. Try again.`, 'error');
-      } else if (await subscribe(target.tagPath, target.slug || null, target.events)) {
+      } else if (await subscribe(target.tagPath, target.slug || null)) {
         showToast(paused ? `Watching this ${target.noun}; notifications resumed` : `Watching this ${target.noun}`);
       } else showToast(`This ${target.noun} could not be watched. Try again.`, 'error');
     } finally { setWatchBusy(false); }

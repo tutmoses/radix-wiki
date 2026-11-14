@@ -26,6 +26,14 @@ const EVENTS: Record<WebhookEvent, [icon: string, label: string]> = {
 /** Subscribable events, derived so the accepted list cannot drift from the table. */
 export const VALID_EVENTS = Object.keys(EVENTS) as WebhookEvent[];
 
+/**
+ * What a Telegram subscription that names no events delivers: a page's edits and
+ * comments, and a section's new pages too – without `page.created` a subscription
+ * to `blog` never delivered an issue. Watch and /settings send none and take this.
+ */
+export const subscriptionEvents = (pageSlug: string | null | undefined): WebhookEvent[] =>
+  pageSlug ? ['page.updated', 'comment.created'] : ['page.created', 'page.updated', 'comment.created'];
+
 const BOT_TOKEN = process.env.TELEGRAM_SUB_BOT_TOKEN;
 
 interface Notification {

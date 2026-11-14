@@ -142,8 +142,9 @@ export function useTelegram(enabled = true) {
    * way the state is read again: a refusal can mean the chat was disconnected
    * elsewhere, and Watch then offers to connect.
    */
-  const subscribe = async (tagPath: string, pageSlug: string | null, events: WebhookEvent[]) => {
-    const ok = await postTelegram({ tagPath, ...(pageSlug && { pageSlug }), events }).then(r => r.ok, () => false);
+  // No events: the API gives a page or a section its own (`subscriptionEvents`).
+  const subscribe = async (tagPath: string, pageSlug: string | null) => {
+    const ok = await postTelegram({ tagPath, ...(pageSlug && { pageSlug }) }).then(r => r.ok, () => false);
     await refresh().catch(() => null);
     return ok;
   };
@@ -176,13 +177,8 @@ function TelegramSection({ watch }: { watch?: string }) {
   const handleSubscribe = async () => {
     if (!context) return;
     setSubscribing(true);
-    // A section subscriber wants the new pages most of all; without
-    // `page.created` a subscription to `blog` never delivered an issue.
-    const events: WebhookEvent[] = context.slug
-      ? ['page.updated', 'comment.created']
-      : ['page.created', 'page.updated', 'comment.created'];
     try {
-      if (await subscribe(context.tagPath, context.slug, events)) showToast(paused ? `Subscribed to ${context.label}; notifications resumed` : `Subscribed to ${context.label}`);
+      if (await subscribe(context.tagPath, context.slug)) showToast(paused ? `Subscribed to ${context.label}; notifications resumed` : `Subscribed to ${context.label}`);
       else showToast(`Could not subscribe to ${context.label}. Try again.`, 'error');
     } finally { setSubscribing(false); }
   };

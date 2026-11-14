@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma/client';
 import { json, errors, handleRoute } from 'wiki-formant/http';
 import { clientKey } from 'wiki-formant/rate-limit';
 import { IP_LIMITS, overBudget, requireAuth } from '@/lib/api';
-import { VALID_EVENTS, type WebhookEvent } from '@/lib/webhooks';
+import { subscriptionEvents, VALID_EVENTS, type WebhookEvent } from '@/lib/webhooks';
 
 const BOT_USERNAME = process.env.TELEGRAM_SUB_BOT_USERNAME;
 
@@ -97,11 +97,13 @@ export async function POST(request: NextRequest) {
         chatId: existing.chatId,
         tagPath,
         pageSlug: pageSlug || '',
-        events: events ?? ['page.updated', 'comment.created'],
+        events: events ?? subscriptionEvents(pageSlug),
         active: true,
       },
+      // A subscription sent again without events takes the default again, which
+      // repairs a section row stored before sections included new pages.
       update: {
-        events: events ?? undefined,
+        events: events ?? subscriptionEvents(pageSlug),
         active: true,
       },
     });
