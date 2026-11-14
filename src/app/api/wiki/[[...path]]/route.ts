@@ -171,6 +171,17 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
         return cachedJson(paginatedResponse(items, total, page, pageSize), LISTING);
       }
 
+      // A path's pages by title are its category listing: the store's own query,
+      // which reads numbers as numbers (guide 10 after guide 9) and is the one the
+      // server-rendered page-list block runs, so the hydrated block cannot reshuffle.
+      if (sort === 'title' && tagPath !== null) {
+        const [items, total] = await Promise.all([
+          store.list(tagPath, { sort: 'title', limit: pageSize, offset: (page - 1) * pageSize }),
+          prisma.wikiPage.count({ where: { siteId: '', tagPath, slug: { not: '' } } }),
+        ]);
+        return cachedJson(paginatedResponse(await withAuthors(items), total, page, pageSize), LISTING);
+      }
+
       const orderBy = sort === 'title' ? { title: 'asc' as const } : { updatedAt: 'desc' as const };
 
       const [rows, total] = await Promise.all([
