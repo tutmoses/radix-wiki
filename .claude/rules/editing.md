@@ -89,7 +89,11 @@ await withClient(async (client) => {
 - **This is the live production DB** (Supabase). Every write is public the instant it runs.
 
 ### Homepage Latest News
-The `#latest-news` list on the homepage (tag path `''`, slug `''`) holds at most 8 items, newest first. An edit that adds one removes one in the same revision: first an item whose deadline has passed, otherwise the oldest dated item.
+The `#latest-news` list on the homepage (tag path `''`, slug `''`) holds at most 8 items, newest first, each dated by the day it happened (an undated status line such as **Exchanges:** goes last). The `radix-wiki` sweep reconciles it every run (radix-studio `sweep` skill → `radix-wiki`); any other edit follows the same rules.
+
+- **What earns a place:** an event that changes what someone holding, building on or validating Radix knows or should do. Funds lost or recovered; a protocol, node or wallet release; a governance step taken (a vote opened, closed or decided, a council seated); a legal or corporate event touching a Radix entity; an exchange listing, delisting or deposit change; a product people use launching or shutting; a large token or treasury movement on the ledger. Price moves, opinions, chat arguments and plans nobody has sourced do not.
+- **Each item** is one or two sentences in `radix-studio/VOICE.md` §4 Essay, sourced by a wiki page or a primary link opened in the same run; a wiki page that covers the event is the link.
+- **What removes one:** a passed deadline (replaced by its outcome when there is one); a later event on the same story, which absorbs it and links the older page; a status that changed or resolved, rewritten in place; a fact that changed, corrected in place. When the list is full, an addition then displaces the oldest dated item, in the same revision.
 
 ### Freshness stamps
 `freshnessBanner` from `wiki-formant/freshness` shows a synthetic "outdated" banner on any page whose `lastVerifiedAt` (falling back to `updatedAt`) is older than `DEFAULT_MAX_AGE_DAYS` (180). When a sweep confirms a page's facts are still current **without** needing an edit, stamp it rather than leaving the banner up:
