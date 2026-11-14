@@ -3,6 +3,7 @@
 'use client';
 
 import { useState } from 'react';
+import { create } from 'zustand';
 import { Upload, Download, CheckCircle, AlertCircle, ExternalLink, Loader2 } from 'lucide-react';
 import { useAuth, useStore, type Fetched } from '@/hooks';
 import { Dropdown } from '@/components/ui';
@@ -26,7 +27,12 @@ export interface LedgerStatus {
  */
 export type BackupStanding = 'unknown' | 'none' | 'stale' | 'current';
 
-export function backupStanding(status: Fetched<LedgerStatus>, slug: string | null): BackupStanding {
+/**
+ * A backup just made is `current` whatever the status says: the status endpoint
+ * is edge-cached, so a refetch would still read the anchor from before it.
+ */
+export function backupStanding(status: Fetched<LedgerStatus>, slug: string | null, backup: Backup): BackupStanding {
+  if (backup.stage === 'done') return 'current';
   if (status.status !== 'loaded') return 'unknown';
   const { anchor, currentPageVersion } = status.data;
   if (!slug || !anchor || anchor.slug !== slug) return 'none';
@@ -46,14 +52,62 @@ interface RecoverResult {
   recoveredCount: number;
 }
 
-// Each tab's state machine carries its own result or error, so a failure on
-// one never shows on the other.
+/** The account and page a backup is of; the menu shows a backup only on its own page, for its own account. */
+interface BackupOf { account: string; tagPath: string; slug: string }
+
+/**
+ * One page's backup: preparing its manifest, waiting on the wallet, on the
+ * ledger (with whether the wiki has recorded its transaction), or refused. It
+ * lives outside the menu, so closing the menu mid-backup loses nothing and the
+ * header's standing reads it too. Each tab's state machine carries its own
+ * result or error, so a failure on one never shows on the other.
+ */
 type Backup =
   | { stage: 'idle' }
-  | { stage: 'preparing' }
-  | { stage: 'signing' }
-  | { stage: 'done'; txHash: string }
-  | { stage: 'error'; message: string };
+  | ({ stage: 'preparing' | 'signing' } & BackupOf)
+  | ({ stage: 'done'; txHash: string; confirmed: 'pending' | 'stored' | 'failed' } & BackupOf)
+  | ({ stage: 'error'; message: string } & BackupOf);
+
+const IDLE: Backup = { stage: 'idle' };
+const useBackupStore = create<{ backup: Backup }>()(() => ({ backup: IDLE }));
+
+/** Numbers each backup: only the newest one's answers land. */
+let backupAttempt = 0;
+const land = (attempt: number, backup: Backup) => { if (attempt === backupAttempt) useBackupStore.setState({ backup }); };
+
+/** The backup of this page by this account, or idle. */
+export function useLedgerBackup(account: string | null, tagPath: string | null, slug: string | null): Backup {
+  const backup = useBackupStore(s => s.backup);
+  return backup.stage !== 'idle' && backup.account === account && backup.tagPath === tagPath && backup.slug === slug ? backup : IDLE;
+}
+
+/**
+ * Records the transaction against the page. The backup is on the ledger either
+ * way; a refusal here only means the page does not link it yet, and says so.
+ */
+async function recordBackup(attempt: number, of: BackupOf, txHash: string) {
+  land(attempt, { stage: 'done', ...of, txHash, confirmed: 'pending' });
+  const stored = await sendJson('/api/ledger/confirm', 'POST', { tagPath: of.tagPath, slug: of.slug, txHash }).then(r => r.ok, () => false);
+  land(attempt, { stage: 'done', ...of, txHash, confirmed: stored ? 'stored' : 'failed' });
+}
+
+async function runBackup(of: BackupOf, sendTransaction: (manifest: string) => Promise<{ transactionIntentHash: string }>) {
+  const attempt = ++backupAttempt;
+  land(attempt, { stage: 'preparing', ...of });
+  try {
+    const res = await sendJson('/api/ledger/prepare', 'POST', { tagPath: of.tagPath, slug: of.slug });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `Failed (${res.status})`);
+    }
+    const { manifest } = await res.json() as PrepareResult;
+    land(attempt, { stage: 'signing', ...of });
+    const { transactionIntentHash } = await sendTransaction(manifest);
+    await recordBackup(attempt, of, transactionIntentHash);
+  } catch (err) {
+    land(attempt, { stage: 'error', ...of, message: err instanceof Error ? err.message : 'Backup failed' });
+  }
+}
 
 type Recovery =
   | { stage: 'idle' }
@@ -74,36 +128,19 @@ export function LedgerDropdown({ tagPath, slug, status: statusFetch }: LedgerDro
   const accountAddress = user?.radixAddress ?? null;
   const status = statusFetch.data;
 
-  const [backup, setBackup] = useState<Backup>({ stage: 'idle' });
+  const backup = useLedgerBackup(accountAddress, tagPath, slug);
   const [tab, setTab] = useState<'backup' | 'recover'>('backup');
   const [recoverAddress, setRecoverAddress] = useState('');
   const [recovery, setRecovery] = useState<Recovery>({ stage: 'idle' });
 
-  const canBackup = !!tagPath && !!slug;
-  // The status endpoint is edge-cached, so a refetch would still read the
-  // anchor from before this backup: once it is done, the backup is the status.
+  const of = accountAddress && tagPath && slug ? { account: accountAddress, tagPath, slug } : null;
   const backedUp = backup.stage === 'done';
-  const standing = backedUp ? 'current' : backupStanding(statusFetch, slug);
+  const standing = backupStanding(statusFetch, slug, backup);
+  // One backup at a time, across pages: a second would orphan the first's wallet request.
+  const elsewhere = useBackupStore(s => s.backup.stage === 'preparing' || s.backup.stage === 'signing');
 
-  async function handleBackup() {
-    if (!canBackup) return;
-    setBackup({ stage: 'preparing' });
-    try {
-      const res = await sendJson('/api/ledger/prepare', 'POST', { tagPath, slug });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Failed (${res.status})`);
-      }
-      const { manifest } = await res.json() as PrepareResult;
-      setBackup({ stage: 'signing' });
-      const result = await sendTransaction(manifest);
-      const hash = result.transactionIntentHash;
-      setBackup({ stage: 'done', txHash: hash });
-      // Persist tx hash to database (fire-and-forget)
-      sendJson('/api/ledger/confirm', 'POST', { tagPath, slug, txHash: hash }).catch(() => {});
-    } catch (err) {
-      setBackup({ stage: 'error', message: err instanceof Error ? err.message : 'Backup failed' });
-    }
+  function handleBackup() {
+    if (of && !elsewhere && (backup.stage === 'idle' || backup.stage === 'error')) void runBackup(of, sendTransaction);
   }
 
   async function handleRecover() {
@@ -122,6 +159,8 @@ export function LedgerDropdown({ tagPath, slug, status: statusFetch }: LedgerDro
 
   const explorerBase = `${DASHBOARD_URL}/transaction/`;
   const busy = backup.stage === 'preparing' || backup.stage === 'signing';
+  const blocked = elsewhere && !busy;
+  const canBackup = !!of;
   const recovering = recovery.stage === 'reading';
 
   return (
@@ -182,7 +221,7 @@ export function LedgerDropdown({ tagPath, slug, status: statusFetch }: LedgerDro
 
           {/* Action */}
           {canBackup ? (
-            <button className="ledger-action-btn" onClick={handleBackup} disabled={busy || backedUp}>
+            <button className="ledger-action-btn" onClick={handleBackup} disabled={busy || backedUp || blocked} title={blocked ? 'Another page\'s backup is waiting on your wallet' : undefined}>
               {busy ? <Loader2 size={14} className="animate-spin" /> : backedUp ? <CheckCircle size={14} /> : <Upload size={14} />}
               {backup.stage === 'preparing' ? 'Preparing…' :
                backup.stage === 'signing' ? 'Sign in wallet…' :
@@ -196,6 +235,13 @@ export function LedgerDropdown({ tagPath, slug, status: statusFetch }: LedgerDro
             <a href={`${explorerBase}${backup.txHash}`} target="_blank" rel="noopener" className="ledger-tx-link">
               View transaction <ExternalLink size={12} />
             </a>
+          )}
+
+          {backup.stage === 'done' && backup.confirmed === 'failed' && (
+            <div className="text-error text-xs">
+              The backup is on the ledger, but the wiki could not record it against this page.{' '}
+              <button className="link" onClick={() => void recordBackup(backupAttempt, { account: backup.account, tagPath: backup.tagPath, slug: backup.slug }, backup.txHash)}>Try again</button>
+            </div>
           )}
 
           {backup.stage === 'error' && (

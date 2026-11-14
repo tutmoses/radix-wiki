@@ -21,7 +21,7 @@ import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiNotification } from '@/types';
 import { useTelegram } from '@/components/WebhookSettings';
 import { EmptyState } from '@/components/EmptyState';
-import { LedgerDropdown, backupStanding, type BackupStanding, type LedgerStatus } from '@/components/LedgerBackupView';
+import { LedgerDropdown, backupStanding, useLedgerBackup, type BackupStanding, type LedgerStatus } from '@/components/LedgerBackupView';
 
 // Edit is not here: it sits beside the breadcrumb (`PageActions`). History is
 // the view's to offer (`useHistoryLink`).
@@ -275,6 +275,8 @@ export function Header() {
     ? `/api/ledger/status?address=${accountAddress}&tagPath=${encodeURIComponent(tagPath)}&slug=${encodeURIComponent(slug)}`
     : accountAddress ? `/api/ledger/status?address=${accountAddress}` : null;
   const ledgerStatus = useFetch<LedgerStatus>(ledgerStatusUrl);
+  // A backup made from the menu, which outlives the menu, so the colour reads it too.
+  const ledgerBackup = useLedgerBackup(accountAddress, tagPath ?? null, slug ?? null);
 
   // The search field's state machine is `wiki-formant/react`, shared with the
   // other wikis. This surface had no keyboard navigation at all and no guard
@@ -418,7 +420,7 @@ export function Header() {
                     onClose={closeMenu}
                     mdxPath={canExportMdx ? mdxPath : null}
                     tagPath={tagPath ?? undefined} slug={slug ?? undefined} isPage={isPage} sectionPath={sectionPath}
-                    ledgerColor={LEDGER_COLOR[backupStanding(ledgerStatus, slug ?? null)]}
+                    ledgerColor={LEDGER_COLOR[backupStanding(ledgerStatus, slug ?? null, ledgerBackup)]}
                     onOpenLedger={isAuthenticated && hasLedger ? () => openMenu('ledger') : null}
                   />
                 )}
