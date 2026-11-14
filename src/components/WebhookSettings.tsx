@@ -43,6 +43,12 @@ type Telegram =
   | { status: 'failed' }
   | ({ status: 'ready' } & TelegramState);
 
+/** A change to the Telegram link in flight, so its button cannot send it twice: one subscription's removal, or the disconnect. */
+type TelegramBusy =
+  | { kind: 'idle' }
+  | { kind: 'unsubscribing'; id: string }
+  | { kind: 'disconnecting' };
+
 /** A connect link: none asked for, being made, waiting for Start in Telegram (polled until then), or refused. */
 type ConnectLink =
   | { status: 'none' }
@@ -84,6 +90,9 @@ export function useTelegram(enabled = true) {
   const [link, setLink] = useState<ConnectLink>({ status: 'none' });
   // Numbers each connect: a request or poll answers only while its attempt is the newest.
   const attemptRef = useRef(0);
+  // Numbers each read; one lands only if no newer read has, and none lands once `enabled` changes.
+  const readRef = useRef(0);
+  const landedRef = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const showToast = useStore(s => s.showToast);
 
@@ -94,18 +103,26 @@ export function useTelegram(enabled = true) {
 
   /** Null where the route did not answer; a refresh after the first load keeps what is on screen. */
   const refresh = useCallback(async (): Promise<TelegramState | null> => {
+    const read = ++readRef.current;
     const res = await fetch('/api/telegram');
     if (!res.ok) return null;
     const data: TelegramState = await res.json();
-    setTelegram({ status: 'ready', ...data });
+    if (read > landedRef.current) {
+      landedRef.current = read;
+      setTelegram({ status: 'ready', ...data });
+    }
     return data;
   }, []);
 
+  // A change of `enabled` (a sign-out, another account) starts from nothing, so
+  // the last account's chat is never shown as this one's.
   useEffect(() => {
+    landedRef.current = readRef.current;
+    setTelegram({ status: 'loading' });
     if (!enabled) return;
     let cancelled = false;
     refresh().catch(() => null).then(data => { if (!cancelled && !data) setTelegram({ status: 'failed' }); });
-    return () => { cancelled = true; attemptRef.current++; stopPoll(); };
+    return () => { cancelled = true; landedRef.current = Infinity; attemptRef.current++; stopPoll(); };
   }, [enabled, refresh]);
 
   // One attempt at a time: the button is disabled while a link is being made,
@@ -157,7 +174,11 @@ export function useTelegram(enabled = true) {
 
   const disconnect = async () => {
     const ok = await fetch('/api/telegram', { method: 'DELETE' }).then(r => r.ok, () => false);
-    if (ok) setTelegram({ status: 'ready', connected: false, chatId: null, subscriptions: [] });
+    if (ok) {
+      // A read that set out before the disconnect cannot land after it.
+      landedRef.current = readRef.current;
+      setTelegram({ status: 'ready', connected: false, chatId: null, subscriptions: [] });
+    }
     return ok;
   };
 
@@ -170,6 +191,7 @@ export function useTelegram(enabled = true) {
 function TelegramSection({ watch }: { watch?: string }) {
   const { telegram: state, paused, link, connect, subscribe, unsubscribe, disconnect } = useTelegram();
   const [subscribing, setSubscribing] = useState(false);
+  const [busy, setBusy] = useState<TelegramBusy>({ kind: 'idle' });
   const showToast = useStore(s => s.showToast);
 
   const context = parseWatchTarget(watch);
@@ -184,13 +206,21 @@ function TelegramSection({ watch }: { watch?: string }) {
   };
 
   const handleUnsubscribe = async (id: string) => {
-    if (await unsubscribe(id)) showToast('Unsubscribed');
-    else showToast('Could not unsubscribe. Try again.', 'error');
+    if (busy.kind !== 'idle') return;
+    setBusy({ kind: 'unsubscribing', id });
+    try {
+      if (await unsubscribe(id)) showToast('Unsubscribed');
+      else showToast('Could not unsubscribe. Try again.', 'error');
+    } finally { setBusy({ kind: 'idle' }); }
   };
 
   const handleDisconnect = async () => {
-    if (await disconnect()) showToast('Telegram disconnected');
-    else showToast('Telegram could not be disconnected. Try again.', 'error');
+    if (busy.kind !== 'idle') return;
+    setBusy({ kind: 'disconnecting' });
+    try {
+      if (await disconnect()) showToast('Telegram disconnected');
+      else showToast('Telegram could not be disconnected. Try again.', 'error');
+    } finally { setBusy({ kind: 'idle' }); }
   };
 
   if (state.status === 'loading') return null;
@@ -209,8 +239,8 @@ function TelegramSection({ watch }: { watch?: string }) {
       <div className="spread px-3 py-2">
         <span className="text-small font-medium">Telegram</span>
         {state.connected && (
-          <button onClick={handleDisconnect} className="text-xs text-text-muted hover:text-error cursor-pointer">
-            Disconnect
+          <button onClick={handleDisconnect} disabled={busy.kind !== 'idle'} className="text-xs text-text-muted hover:text-error cursor-pointer">
+            {busy.kind === 'disconnecting' ? 'Disconnecting...' : 'Disconnect'}
           </button>
         )}
       </div>
@@ -260,8 +290,8 @@ function TelegramSection({ watch }: { watch?: string }) {
                       {sub.events.map(e => <span key={e} className="badge">{e.replace('.', ' ')}</span>)}
                     </div>
                   </div>
-                  <button onClick={() => handleUnsubscribe(sub.id)} className="icon-btn icon-btn-remove" title="Unsubscribe" aria-label="Unsubscribe">
-                    <Trash2 size={14} />
+                  <button onClick={() => handleUnsubscribe(sub.id)} disabled={busy.kind !== 'idle'} className="icon-btn icon-btn-remove" title="Unsubscribe" aria-label="Unsubscribe">
+                    {busy.kind === 'unsubscribing' && busy.id === sub.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                   </button>
                 </div>
               ))}
@@ -313,6 +343,8 @@ export function WebhookSettings({ watch }: { watch?: string }) {
   const [url, setUrl] = useState('https://');
   const [events, setEvents] = useState<WebhookEvent[]>(DEFAULT_EVENTS);
   const [tagFilter, setTagFilter] = useState('');
+  // The webhook whose delete is in flight, so a second press cannot send it again.
+  const [deleting, setDeleting] = useState<string | null>(null);
   const showToast = useStore(s => s.showToast);
 
   useEffect(() => {
@@ -352,10 +384,14 @@ export function WebhookSettings({ watch }: { watch?: string }) {
   };
 
   const handleDelete = async (id: string) => {
-    const ok = await fetch(`/api/webhooks/${id}`, { method: 'DELETE' }).then(r => r.ok, () => false);
-    if (!ok) { showToast('The webhook could not be deleted. Try again.', 'error'); return; }
-    setList(l => (l.status === 'loaded' ? { status: 'loaded', items: l.items.filter(w => w.id !== id) } : l));
-    showToast('Webhook deleted');
+    if (deleting) return;
+    setDeleting(id);
+    try {
+      const ok = await fetch(`/api/webhooks/${id}`, { method: 'DELETE' }).then(r => r.ok, () => false);
+      if (!ok) { showToast('The webhook could not be deleted. Try again.', 'error'); return; }
+      setList(l => (l.status === 'loaded' ? { status: 'loaded', items: l.items.filter(w => w.id !== id) } : l));
+      showToast('Webhook deleted');
+    } finally { setDeleting(null); }
   };
 
   const copySecret = () => {
@@ -412,8 +448,8 @@ export function WebhookSettings({ watch }: { watch?: string }) {
                     </div>
                     {w.tagPathFilter && <div className="text-xs text-text-muted">Filter: {w.tagPathFilter}</div>}
                   </div>
-                  <button onClick={() => handleDelete(w.id)} className="icon-btn icon-btn-remove" title="Delete webhook" aria-label="Delete webhook">
-                    <Trash2 size={14} />
+                  <button onClick={() => handleDelete(w.id)} disabled={!!deleting} className="icon-btn icon-btn-remove" title="Delete webhook" aria-label="Delete webhook">
+                    {deleting === w.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                   </button>
                 </div>
               ))}
