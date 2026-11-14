@@ -17,6 +17,28 @@ import { formatUsd, formatPercent, formatAmount, formatPriceSubscript } from './
 import { Change } from './StatGrid';
 import { pagePath, shortenAddress } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
+import { JsonLd } from 'wiki-formant/react-server';
+import { SITE_REFS, SITE_URL, WIKI_LICENSE } from '@/lib/site';
+
+/** One token's page as a Dataset keyed on its resource address, the token's canonical identifier. */
+function tokenLd(token: TokenDetail) {
+  const label = token.name || token.symbol;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Dataset',
+    name: `${label} price, supply and holders`,
+    description: `Price history, supply and largest holders for ${label} on the Radix ledger, read from OciSwap and the Radix Gateway.`,
+    url: `${SITE_URL}/charts/tokens/${token.address}`,
+    identifier: token.address,
+    creator: SITE_REFS.organization,
+    publisher: SITE_REFS.organization,
+    isPartOf: SITE_REFS.website,
+    license: WIKI_LICENSE.url,
+    isAccessibleForFree: true,
+    keywords: ['Radix', token.symbol, 'token'].filter(Boolean),
+    variableMeasured: ['price', 'total supply', 'holders'],
+  };
+}
 
 interface WikiPageRef {
   tagPath: string;
@@ -132,6 +154,7 @@ export default async function TokenDetailView({ address, wikiPage }: { address: 
 
   return (
     <div className="stack">
+      <JsonLd data={tokenLd(token)} />
       <Link href="/charts/tokens" className="charts-section-link"><ArrowLeft size={14} /> Tokens</Link>
 
       <div className="token-page">

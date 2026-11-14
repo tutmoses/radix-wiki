@@ -214,6 +214,14 @@ export const getSiblingPages = cached('getSiblingPages', (tagPath: string) => li
  */
 export const getSubtreeRefs = cached('getSubtreeRefs', (tagPath: string) => store.subtree(tagPath), tagPath => [pageTag(tagPath)]);
 
+/** Every page's title by its address, so structured data can name the pages an article links to.
+ *  Every save busts it through the homepage's tag. */
+export const getTitleIndex = cached('getTitleIndex',
+  async (): Promise<Record<string, string>> =>
+    Object.fromEntries((await store.refs()).map(r => [pagePath(r.tagPath, r.slug), r.title])),
+  () => [CORPUS_TAG],
+);
+
 /** Title-only lookup — a category's main article usually lives in another category. */
 export const getPageRef = cached('getPageRef',
   async (path: string): Promise<{ title: string; href: string } | null> => {

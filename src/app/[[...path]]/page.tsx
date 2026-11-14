@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { parsePath } from '@/lib/path';
-import { getHomepage, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getPageByAsset, getSiblingPages, getAssetPages } from '@/lib/wiki';
+import { getHomepage, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getPageByAsset, getSiblingPages, getAssetPages, getTitleIndex } from '@/lib/wiki';
 import { getMaintenanceQueues } from '@/lib/maintenance';
 import { getSession } from '@/lib/auth';
 import { rankRelated, taxonomy } from '@/lib/taxonomy';
@@ -40,7 +40,7 @@ import { pageDescription, pageUrl } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_REFS, SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { CARD, ogMetadata } from '@/lib/og';
-import { articleType, aboutEntity, articleLearningProps } from '@/lib/entity-ld';
+import { articleType, aboutEntity, articleGraphProps, articleLearningProps } from '@/lib/entity-ld';
 import { getTokenDetail, getTopTokens } from '@/lib/radix/tokens';
 import { getEditorScores, publicScore } from '@/lib/scoring';
 import type { Block } from '@/types/blocks';
@@ -263,19 +263,28 @@ function sectionOf(tagPath: string | null | undefined): string | undefined {
  * The page as an Article. The envelope and the citations are
  * `wiki-formant/metadata`; `extra` carries what only this wiki states.
  */
-function pageLd(page: WikiPage, url: string) {
+function pageLd(page: WikiPage, url: string, titles: Record<string, string>) {
   const section = sectionOf(page.tagPath);
   const description = pageDescription(page);
   // Google recommends an image on every article; pages without a banner get the
   // same generated card the OG tags already use, rather than no image at all.
   const image = page.bannerImage || cardUrl(CARD, { title: page.title, tagPath: page.tagPath });
-  const about = aboutEntity(page.tagPath, page.title, page.metadata, { description, image });
-  // References blocks are usually top-level, but infobox/columns can nest them.
-  const references = Array.isArray(page.content)
-    ? leafBlocks(page.content as unknown as Block[]).flatMap(b => (b.type === 'references' ? b.items ?? [] : []))
-    : [];
+  const about = aboutEntity(page.tagPath, page.title, page.metadata, { description, image, url });
+  // References, content and code blocks are usually top-level, but infobox/columns can nest them.
+  const leaves = Array.isArray(page.content) ? leafBlocks(page.content as unknown as Block[]) : [];
+  const references = leaves.flatMap(b => (b.type === 'references' ? b.items ?? [] : []));
+  const graph = articleGraphProps({
+    tagPath: page.tagPath,
+    slug: page.slug,
+    url,
+    metadata: page.metadata,
+    html: leaves.map(b => (b.type === 'content' ? b.text || '' : '')).join('\n'),
+    codeTabs: leaves.flatMap(b => (b.type === 'codeTabs' ? b.tabs : [])),
+    lastVerifiedAt: page.lastVerifiedAt,
+    titles,
+  });
   return articleLd({
-    type: articleType(page.tagPath),
+    type: articleType(page.tagPath, page.slug),
     headline: page.title,
     url,
     description,
@@ -295,8 +304,64 @@ function pageLd(page: WikiPage, url: string) {
       ...(page.version && { version: page.version }),
       ...(about && { about }),
       ...articleLearningProps(page.tagPath, page.metadata),
+      ...graph,
     },
   });
+}
+
+/**
+ * The homepage as a WebPage about the wiki, whose main entity is the Latest News
+ * list, and the wiki's corpus as a Dataset with the feeds it ships as. Each news
+ * item points at the last wiki page it links, its own coverage of the event.
+ */
+function homepageLd(page: WikiPage | null) {
+  const html = Array.isArray(page?.content)
+    ? leafBlocks(page.content as unknown as Block[]).map(b => (b.type === 'content' ? b.text || '' : '')).join('\n')
+    : '';
+  const news = html.split(/<h2[^>]*id="latest-news"[^>]*>/)[1]?.split(/<h2/)[0] ?? '';
+  const items = [...news.matchAll(/<li>([\s\S]*?)<\/li>/g)].map(([, li = '']) => {
+    // An item names its event's own page last, after any background links.
+    const href = [...li.matchAll(/<a\s[^>]*?href="(\/[^"#?]*)"/g)].at(-1)?.[1];
+    return { name: describe(li, 200), ...(href && { url: `${SITE_URL}${href}` }) };
+  });
+  return [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      '@id': `${SITE_URL}/#webpage`,
+      url: SITE_URL,
+      name: SITE_NAME,
+      description: SITE_DESCRIPTION,
+      isPartOf: SITE_REFS.website,
+      about: SITE_REFS.organization,
+      ...(page?.updatedAt && { dateModified: new Date(page.updatedAt).toISOString() }),
+      ...(items.length && {
+        mainEntity: {
+          '@type': 'ItemList',
+          name: 'Latest News',
+          numberOfItems: items.length,
+          itemListElement: items.map((item, i) => ({ '@type': 'ListItem', position: i + 1, ...item })),
+        },
+      }),
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Dataset',
+      '@id': `${SITE_URL}/#corpus`,
+      name: `${SITE_NAME} corpus`,
+      description: 'Every article on RADIX Wiki – the Radix protocol, its ecosystem, developer guides and governance history – as plain text for language models, as RSS, and through an MCP server.',
+      url: SITE_URL,
+      creator: SITE_REFS.organization,
+      publisher: SITE_REFS.organization,
+      license: WIKI_LICENSE.url,
+      isAccessibleForFree: true,
+      keywords: ['Radix', 'XRD', 'Scrypto', 'blockchain', 'encyclopedia'],
+      distribution: [
+        { '@type': 'DataDownload', encodingFormat: 'text/plain', contentUrl: `${SITE_URL}/llms.txt` },
+        { '@type': 'DataDownload', encodingFormat: 'application/rss+xml', contentUrl: `${SITE_URL}/blog.xml` },
+      ],
+    },
+  ];
 }
 
 /**
@@ -386,7 +451,12 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
 
   if (parsed.type === 'homepage') {
     const page = await withProcessedContent(await getHomepage());
-    return <HomepageView page={page} isEditing={false} />;
+    return (
+      <>
+        {homepageLd(page).map(data => <JsonLd key={String(data['@id'])} data={data} />)}
+        <HomepageView page={page} isEditing={false} />
+      </>
+    );
   }
 
   // Every editor gets the stored row, cleaned but undecorated, as an article's
@@ -457,7 +527,7 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
 
     return (
       <>
-        {hub && <JsonLd data={pageLd(hub, categoryUrl)} />}
+        {hub && <JsonLd data={pageLd(hub, categoryUrl, await getTitleIndex())} />}
         <JsonLd data={categoryLd(categoryName, categoryUrl, pages.length ? pages : allSubcategories, tag?.description)} />
         <CategoryView
           tagPath={tagSegments} pages={pages} sort={sort} total={total}
@@ -503,12 +573,12 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
   // The topic this page is part of, unless this page *is* it.
   const mainArticle = getMainArticle(parsed.tagPath);
   const series = mainArticle && mainArticle !== `${parsed.tagPath}/${parsed.slug}` ? await getPageRef(mainArticle) : null;
-  const pathSegments = [...parsed.tagPath.split('/'), parsed.slug];
-  const pageUrl = `${SITE_URL}/${pathSegments.join('/')}`;
-  const faq = page && pageFaqLd(page, pageUrl);
+  // The canonical address: a root article's is its short one.
+  const url = pageUrl(parsed.tagPath, parsed.slug);
+  const faq = page && pageFaqLd(page, url);
   return (
     <>
-      {page && <JsonLd data={pageLd(page, pageUrl)} />}
+      {page && <JsonLd data={pageLd(page, url, await getTitleIndex())} />}
       {faq && <JsonLd data={faq} />}
       <PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} related={related} series={series} nowMs={nowMs} />
     </>

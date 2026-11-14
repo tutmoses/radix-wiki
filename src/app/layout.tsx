@@ -63,7 +63,9 @@ const SITE_JSON_LD = siteGraphLd({
   url: SITE_URL,
   description: SITE_DESCRIPTION,
   logo: `${SITE_URL}/logo.png`,
-  sameAs: [X.url, 'https://www.moltbook.com/u/RadixWiki', 'https://github.com/radixdlt', 'https://t.me/RadixDevelopers'],
+  // The wiki's own accounts only: listing the Radix GitHub org or a Radix
+  // Telegram here asserts the wiki is that organisation.
+  sameAs: [X.url, 'https://www.moltbook.com/u/RadixWiki', 'https://github.com/tutmoses/radix-wiki'],
   searchUrl: `${SITE_URL}/search?q={search_term_string}`,
   api: {
     description: 'REST API and MCP server for reading and writing Radix ecosystem wiki content',

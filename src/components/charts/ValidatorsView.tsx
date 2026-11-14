@@ -10,6 +10,24 @@ import StatGrid, { type Stat } from './StatGrid';
 import { validatorRows } from './rows';
 import { stakerApr } from '@/lib/radix/validators';
 import { formatPercent, formatXrd } from './format';
+import { JsonLd } from 'wiki-formant/react-server';
+import { SITE_REFS, SITE_URL, WIKI_LICENSE } from '@/lib/site';
+
+/** The validator directory as a Dataset, read live from the Gateway each epoch. */
+const VALIDATORS_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'Dataset',
+  name: 'Radix validator directory',
+  description: 'Every registered validator on the Radix mainnet with its stake, fee, uptime and pending fee changes, read from the Radix Gateway.',
+  url: `${SITE_URL}/charts/validators`,
+  creator: SITE_REFS.organization,
+  publisher: SITE_REFS.organization,
+  isPartOf: SITE_REFS.website,
+  license: WIKI_LICENSE.url,
+  isAccessibleForFree: true,
+  keywords: ['Radix', 'XRD', 'validators', 'staking'],
+  variableMeasured: ['stake', 'validator fee', 'uptime', 'staker APR'],
+};
 
 function stakingCards({ staking, xrdSupply }: NetworkStats): Stat[] {
   return [
@@ -28,6 +46,7 @@ export default async function ValidatorsView() {
 
   return (
     <div className="stack">
+      {stats && <JsonLd data={VALIDATORS_LD} />}
       <PageHeading icon={Server} id="validators" title="Validators" back={{ href: '/charts', label: 'Charts' }} description={stats && (
         <>
           {stats.staking.active} of the {stats.staking.registered} registered validators are validating this epoch. Click any column to sort.
