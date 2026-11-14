@@ -354,14 +354,15 @@ const getRecentPages = cached('getRecentPages',
 
 const getPagesByIds = cached('getPagesByIds', async (ids: string[]) => withAuthors(await store.byIds(ids)));
 
+// A failed read throws past the cache, so it is never stored as an empty feed:
+// the block is left unresolved and the reader's browser fetches it instead.
 const getFeedItems = cached('getFeedItems',
   async (url: string, limit: number): Promise<any[]> => {
-    try {
-      const res = await fetch(url, { headers: { 'User-Agent': 'radix-wiki' } });
-      if (!res.ok) return [];
-      const json = await res.json();
-      return Array.isArray(json?.items) ? json.items.slice(0, limit) : [];
-    } catch { return []; }
+    const res = await fetch(url, { headers: { 'User-Agent': 'radix-wiki' } });
+    if (!res.ok) throw new Error(`Feed ${url} answered ${res.status}`);
+    const json = await res.json();
+    if (!Array.isArray(json?.items)) throw new Error(`Feed ${url} returned no item list`);
+    return json.items.slice(0, limit);
   },
 );
 
@@ -390,7 +391,7 @@ export async function resolveBlockData(blocks: Block[]): Promise<Block[]> {
 
   const [listResults, feedResults] = await Promise.all([
     Promise.all(lists.map(listPages)),
-    Promise.all(feeds.map(b => getFeedItems(b.url, b.limit || 20))),
+    Promise.all(feeds.map(b => getFeedItems(b.url, b.limit || 20).catch(() => undefined))),
   ]);
   lists.forEach((b, i) => { b.items = listResults[i]; });
   feeds.forEach((b, i) => { b.resolvedItems = feedResults[i]; });
