@@ -64,6 +64,7 @@ export const STATIC_PATH_TYPES = new Map(
  * `pagePath` hands out the short address and the proxy retires the long one.
  */
 export const ROOT_ARTICLES = new Map([
+  ['about', 'contents/resources/about'],
   ['privacy', 'contents/resources/legal/privacy-policy'],
   ['terms', 'contents/resources/legal/terms-of-use'],
   ['acceptable-use', 'contents/resources/legal/acceptable-use-policy'],

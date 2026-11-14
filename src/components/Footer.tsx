@@ -10,6 +10,8 @@ export function Footer() {
   return (
     <footer className="footer">
       <nav className="footer-links" aria-label="Footer">
+        <Link href="/about">About</Link>
+        <Link href="/policy">Policy</Link>
         <a href="/llms.txt">llms.txt</a>
         <Link href="/terms">Terms</Link>
         <Link href="/privacy">Privacy</Link>
