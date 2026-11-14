@@ -12,7 +12,7 @@
 //   node scripts/check-links.ts contents/tech         # only this tag subtree
 //   node scripts/check-links.ts ecosystem --json      # machine-readable
 
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { auditLinks, mapLimit, printLinkAudit, probeExternal, unverifiableReason } from 'wiki-formant/link-check';
 import { withClient } from './wiki-utils.ts';
 
@@ -47,6 +47,10 @@ const appRoutePaths = () =>
     name === 'route.ts' ? [`/${prefix}`.replace(/(.)\/$/, '$1')] : CONVENTION_ROUTES[name] && !prefix ? [CONVENTION_ROUTES[name]!] : [],
   );
 const publicAssetPaths = () => walk(new URL('../public/', import.meta.url), (name, prefix) => [`/${prefix}${name}`]);
+// The legal pages served at the root (`ROOT_ARTICLES` in src/lib/static-pages.ts), read
+// from source as wiki-utils reads LOCKED_PAGES: scripts cannot import `@/` modules.
+const rootArticlePaths = () =>
+  [...(readFileSync(new URL('../src/lib/static-pages.ts', import.meta.url), 'utf8').match(/ROOT_ARTICLES\s*=\s*new Map\(\[([\s\S]*?)\]\);/)?.[1] ?? '').matchAll(/\[\s*'([^']+)',/g)].map(m => `/${m[1]}`);
 
 type Embed = { kind: string; url: string };
 async function probeEmbed({ kind, url }: Embed) {
@@ -70,7 +74,7 @@ await withClient(async client => {
     [`${prefix}%`],
   )) as { rows: Row[] };
 
-  const livePaths = new Set([...STATIC_PATHS, ...appRoutePaths(), ...publicAssetPaths()]);
+  const livePaths = new Set([...STATIC_PATHS, ...appRoutePaths(), ...publicAssetPaths(), ...rootArticlePaths()]);
   const { rows: allRows } = (await client.query(`SELECT slug, "tagPath" AS tag_path FROM "WikiPage" WHERE "siteId" = ''`)) as { rows: Row[] };
   for (const r of allRows) {
     livePaths.add(`/${r.tag_path}/${r.slug}`);
