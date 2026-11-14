@@ -23,8 +23,15 @@ export function TokenChart({ resourceAddress, defaultTimeframe = '30d', height =
     const json: UdfResponse = await res.json();
     if (json.s === 'no_data') return [];
     if (json.s !== 'ok' || !Array.isArray(json.t)) throw new Error('No chart data');
-    const at = (column: Column | undefined, i: number) => (column ? parseFloat(String(column[i])) || 0 : undefined);
-    return json.t.map((time, i) => ({ time, value: at(json.c, i) ?? 0, open: at(json.o, i), high: at(json.h, i), low: at(json.l, i), volume: at(json.v, i) }));
+    // A figure that does not parse was never quoted: undefined, not $0, and a bar without a close is left out.
+    const at = (column: Column | undefined, i: number) => {
+      const n = column ? parseFloat(String(column[i])) : NaN;
+      return Number.isFinite(n) ? n : undefined;
+    };
+    return json.t.flatMap((time, i) => {
+      const value = at(json.c, i);
+      return value === undefined ? [] : [{ time, value, open: at(json.o, i), high: at(json.h, i), low: at(json.l, i), volume: at(json.v, i) }];
+    });
   }, [resourceAddress]);
 
   return <TimeChart series={load} label="Price in USD" range={defaultTimeframe} format={formatChartPrice} height={height} markers={markers} />;

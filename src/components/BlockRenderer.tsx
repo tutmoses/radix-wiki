@@ -49,6 +49,7 @@ import { bannerVariant, openingText } from 'wiki-formant/text';
 import { describe } from 'wiki-formant/metadata';
 import { InfoboxAside, InfoboxFacts, formatFactValue } from 'wiki-formant/react-server';
 import { OCISWAP_API } from '@/lib/radix/config';
+import { ociswapPrice, type Price } from '@/lib/radix/price';
 import { EmptyState } from '@/components/EmptyState';
 
 // ========== PAGE CARD ==========
@@ -119,23 +120,12 @@ function ListBlockView({ block }: { block: ListBlock }) {
   return <PageRefsView refs={refs} link={Link} empty="No pages found." />;
 }
 
-/** `price` is null for a token OciSwap knows but quotes no price for, which used to show as $0. */
-type PriceData = { price: number | null; change24h?: number; symbol?: string; name?: string };
-
-function transformPrice(json: any): PriceData {
-  const priceNow = parseFloat(json.price?.usd?.now) || 0;
-  const price24h = parseFloat(json.price?.usd?.['24h']) || 0;
-  return {
-    price: priceNow > 0 ? priceNow : null,
-    change24h: priceNow > 0 && price24h > 0 ? ((priceNow - price24h) / price24h) * 100 : undefined,
-    symbol: json.symbol, name: json.name,
-  };
-}
+type PriceData = { price: Price; symbol?: string; name?: string };
 
 function useResourcePrice(resourceAddress?: string) {
   return useFetch<PriceData>(
     resourceAddress ? `${OCISWAP_API}/tokens/${resourceAddress}` : null,
-    { transform: transformPrice, interval: 60000 },
+    { transform: (json, status) => ({ price: ociswapPrice(status, json), symbol: json?.symbol, name: json?.name }), interval: 60000, answers: [404] },
   );
 }
 
@@ -144,9 +134,9 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
   if (!block.resourceAddress) return <p className="text-text-muted">No resource address configured</p>;
   if (status === 'failed') return <p className="text-error text-small">The price could not be read: {error}</p>;
   if (status !== 'loaded') return <div className="surface p-4 animate-pulse"><div className="h-8 w-32 bg-surface-2 rounded" /></div>;
-  if (data.price === null) return <p className="text-text-muted text-small">Not traded on OciSwap</p>;
+  if (data.price.kind !== 'priced') return <p className="text-text-muted text-small">Not traded on OciSwap</p>;
   const displayName = data.symbol || data.name || block.resourceAddress.slice(0, 20) + '...';
-  const priceStr = formatPriceSubscript(data.price);
+  const priceStr = formatPriceSubscript(data.price.usd);
   return (
     <div className="stack-sm">
       <div className="asset-price">
@@ -154,7 +144,7 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
           <span className="text-small text-text-muted">${displayName}</span>
           <span className="text-h3 font-semibold">${priceStr}</span>
         </div>
-        {block.showChange && typeof data.change24h === 'number' && <Change percent={data.change24h} digits={2} />}
+        {block.showChange && data.price.change24h !== undefined && <Change percent={data.price.change24h} digits={2} />}
       </div>
       {block.showChart && <TokenChart resourceAddress={block.resourceAddress!} defaultTimeframe={block.chartTimeframe || '30d'} />}
       <Link href={`/charts/tokens/${block.resourceAddress}`} className="charts-section-link">View full chart →</Link>

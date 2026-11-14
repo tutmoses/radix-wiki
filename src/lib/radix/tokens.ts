@@ -1,8 +1,9 @@
 // src/lib/radix/tokens.ts – Token data via OciSwap + Gateway
 
 import { cache } from 'react';
-import { chartsCache, chunks, fetchJson, GatewayUnavailableError, num, postGateway, readMetadata, type GatewayEntity, type GatewayMetadata } from './gateway';
+import { chartsCache, chunks, fetchAnswer, fetchJson, GatewayUnavailableError, num, postGateway, readMetadata, type GatewayEntity, type GatewayMetadata } from './gateway';
 import { DASHBOARD_URL, OCISWAP_API } from './config';
+import { ociswapPrice, type Price } from './price';
 
 export interface TokenSummary {
   address: string;
@@ -31,7 +32,8 @@ export interface TokenRole {
   locked: boolean;
 }
 
-export interface TokenDetail extends TokenSummary {
+export interface TokenDetail extends Omit<TokenSummary, 'price' | 'change24h'> {
+  price: Price;
   kind: 'Fungible' | 'Non-fungible';
   totalSupply?: number;
   totalMinted?: number;
@@ -159,14 +161,15 @@ function roleRows(assignments: RoleAssignments | undefined): TokenRole[] {
 async function _getTokenDetailRaw(address: string): Promise<TokenDetail | null> {
   if (!address.startsWith('resource_')) return null;
   const [oci, ledger] = await Promise.all([
-    ociswap<Record<string, unknown>>(`/tokens/${address}`, 'token-detail'),
+    fetchAnswer<Record<string, unknown>>(`${OCISWAP_API}/tokens/${address}`, {}, 'token-detail'),
     postGateway<{ items?: GatewayEntity[] }>('/state/entity/details', { addresses: [address] }, 'token-entity'),
   ]);
 
-  const summary = oci ? parseOciToken(oci) : null;
+  const summary = oci?.body ? parseOciToken(oci.body) : null;
+  const price = ociswapPrice(oci?.status ?? null, oci?.body);
   const entity = ledger?.items?.[0];
   if (!summary && !entity) {
-    // Only the ledger can say a resource does not exist: OciSwap answers 500 for an address
+    // Only the ledger can say a resource does not exist: OciSwap answers 404 for an address
     // it has never seen. When neither source answered, a returned null was cached and served
     // ASTRL's page as a 404 on 17 September 2026. Thrown, so the cache keeps no failure.
     if (!ledger) throw new GatewayUnavailableError('/state/entity/details', 'token-detail');
@@ -183,8 +186,7 @@ async function _getTokenDetailRaw(address: string): Promise<TokenDetail | null> 
     symbol,
     name: summary?.name || readMetadata(entity?.metadata, 'name') || symbol || address.slice(0, 24),
     iconUrl: summary?.iconUrl || readMetadata(entity?.metadata, 'icon_url'),
-    price: summary?.price ?? 0,
-    change24h: summary?.change24h,
+    price,
     volume24h: summary?.volume24h,
     // A circulating value above the whole ledger supply at the same price is impossible, and
     // OciSwap quoted one for hWBTC in September 2026: $717K against 0.0056 tokens worth $336.

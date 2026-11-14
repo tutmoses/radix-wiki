@@ -58,20 +58,24 @@ export class GatewayUnavailableError extends Error {
 export const chartsCache = <T extends (...args: any[]) => Promise<unknown>>(key: string, revalidate: number, fn: T): T =>
   cache(unstable_cache(fn, [key], { revalidate, tags: ['charts'] }));
 
-/** Single uncached fetch. Returns parsed JSON, or null on failure. */
-export async function fetchJson<T>(url: string, init: RequestInit, label: string): Promise<T | null> {
+/** Single uncached fetch: its status and, when it succeeded, its parsed JSON; null when nothing answered. */
+export async function fetchAnswer<T>(url: string, init: RequestInit, label: string): Promise<{ status: number; body: T | null } | null> {
   try {
     const res = await fetch(url, { ...init, cache: 'no-store', signal: AbortSignal.timeout(TIMEOUT_MS) });
     if (!res.ok) {
       console.error(`[${label}] ${url} ${res.status}: ${await res.text().catch(() => '')}`);
-      return null;
+      return { status: res.status, body: null };
     }
-    return await res.json() as T;
+    return { status: res.status, body: await res.json() as T };
   } catch (err) {
     console.error(`[${label}] ${url} error:`, err);
     return null;
   }
 }
+
+/** Single uncached fetch. Returns parsed JSON, or null on failure. */
+export const fetchJson = async <T>(url: string, init: RequestInit, label: string): Promise<T | null> =>
+  (await fetchAnswer<T>(url, init, label))?.body ?? null;
 
 /** Single POST to the Radix Gateway. Returns parsed JSON, or null on failure. */
 export const postGateway = <T>(path: string, body: Record<string, unknown>, label: string) =>

@@ -180,13 +180,13 @@ export default async function TokenDetailView({ address, wikiPage }: { address: 
 
           <div className="token-card">
             <span className="text-small text-text-muted">Price</span>
-            {token.price > 0 ? (
+            {token.price.kind === 'priced' ? (
               <>
-                <span className="stat-value">${formatPriceSubscript(token.price)}</span>
-                {token.change24h !== undefined && <Change percent={token.change24h} digits={2} label="in 24h" className="text-small" />}
+                <span className="stat-value">${formatPriceSubscript(token.price.usd)}</span>
+                {token.price.change24h !== undefined && <Change percent={token.price.change24h} digits={2} label="in 24h" className="text-small" />}
               </>
             ) : (
-              <span className="text-small text-text-muted">Not traded on OciSwap</span>
+              <span className="text-small text-text-muted">{token.price.kind === 'unpriced' ? 'Not traded on OciSwap' : 'OciSwap did not answer, so the price could not be read.'}</span>
             )}
           </div>
 
@@ -202,7 +202,7 @@ export default async function TokenDetailView({ address, wikiPage }: { address: 
         <TokenInfobox token={token} wikiPage={wikiPage} />
 
         <div className="token-body stack">
-          {token.price > 0 && <TokenChart resourceAddress={token.address} defaultTimeframe="30d" height={320} markers={eventMarkers(events)} />}
+          {token.price.kind !== 'unpriced' && <TokenChart resourceAddress={token.address} defaultTimeframe="30d" height={320} markers={eventMarkers(events)} />}
           {rows && rows.length > 0 && (
             <section className="stack-sm">
               <h2 id="largest-holders" className="charts-section-title">Largest holders</h2>

@@ -24,8 +24,10 @@ const LOADING = { status: 'loading', data: null, error: null } as const;
  * `interval` polls: a poll leaves the loaded state on screen until its answer
  * replaces it, and a poll that fails keeps it. Each request is numbered, so one
  * answering after a newer one has landed is dropped rather than shown over it.
+ * `answers` names refusals that are an answer rather than a failure (OciSwap's
+ * 404 for a token it has never seen): their body reaches `transform` with the status.
  */
-export function useFetch<T>(url: string | null | undefined, opts?: { transform?: (data: any) => T; interval?: number }): Fetched<T> {
+export function useFetch<T>(url: string | null | undefined, opts?: { transform?: (data: any, status: number) => T; interval?: number; answers?: number[] }): Fetched<T> {
   const [state, setState] = useState<Fetched<T>>(url ? LOADING : IDLE);
 
   useEffect(() => {
@@ -43,9 +45,9 @@ export function useFetch<T>(url: string | null | undefined, opts?: { transform?:
       const attempt = ++started;
       try {
         const res = await fetch(url);
-        if (!res.ok) throw new Error(res.statusText || `Failed (${res.status})`);
-        const json = await res.json();
-        const data: T = opts?.transform ? opts.transform(json) : json;
+        if (!res.ok && !opts?.answers?.includes(res.status)) throw new Error(res.statusText || `Failed (${res.status})`);
+        const json = res.ok ? await res.json() : await res.json().catch(() => null);
+        const data: T = opts?.transform ? opts.transform(json, res.status) : json;
         land(attempt, () => ({ status: 'loaded', data, error: null }));
       } catch (e) {
         land(attempt, s => (s.status === 'loaded' ? s : { status: 'failed', data: null, error: e instanceof Error ? e.message : 'Fetch failed' }));
