@@ -175,7 +175,7 @@ const isUnder = (paths: Set<string>, tagPath: string): boolean =>
   [...paths].some(p => isWithin(tagPath, p));
 
 /** Pages here belong to the board, not to their author — any editor can delete them. */
-export const isSharedPath = (tagPath: string): boolean => isUnder(SHARED_PATHS, tagPath);
+const isSharedPath = (tagPath: string): boolean => isUnder(SHARED_PATHS, tagPath);
 
 /**
  * The status option a board card sits under, matched by label so an option
