@@ -92,17 +92,27 @@ function PageMeta({ page }: { page: WikiPage }) {
 export function Banner({ src, title, tagPath, editable, onUpload, onRemove, children }: { src?: string | null; title?: string; tagPath?: string; editable?: boolean; onUpload?: (url: string) => void; onRemove?: () => void; children?: ReactNode }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  // Numbers each upload; a later one, or Remove, supersedes it, so its picture never lands after.
+  const attemptRef = useRef(0);
   const showToast = useStore(s => s.showToast);
+  const trackUpload = useStore(s => s.trackUpload);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !onUpload) return;
+    const attempt = ++attemptRef.current;
+    const current = () => attempt === attemptRef.current;
     setIsUploading(true);
     // Imported on use: the module carries Tiptap, which a reader never loads.
-    import('wiki-formant/editor')
-      .then(({ uploadImageTo }) => uploadImageTo('/api/upload')(file))
-      .then(onUpload, (err: Error) => showToast(err.message, 'error'))
-      .finally(() => { setIsUploading(false); if (fileInputRef.current) fileInputRef.current.value = ''; });
+    trackUpload(import('wiki-formant/editor').then(({ uploadImageTo }) => uploadImageTo('/api/upload')(file)))
+      .then(url => { if (current()) onUpload(url); }, (err: Error) => { if (current()) showToast(err.message, 'error'); })
+      .finally(() => { if (current()) setIsUploading(false); if (fileInputRef.current) fileInputRef.current.value = ''; });
+  };
+
+  const remove = () => {
+    attemptRef.current++;
+    setIsUploading(false);
+    onRemove?.();
   };
 
   const FileInput = <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />;
@@ -131,7 +141,7 @@ export function Banner({ src, title, tagPath, editable, onUpload, onRemove, chil
         <div className="banner-actions">
           {FileInput}
           <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="icon-btn banner-action-btn" title="Change banner"><Upload size={16} /></button>
-          {onRemove && src && <button onClick={onRemove} className="icon-btn banner-action-btn text-error hover:text-error" title="Remove banner"><X size={16} /></button>}
+          {onRemove && src && <button onClick={remove} className="icon-btn banner-action-btn text-error hover:text-error" title="Remove banner"><X size={16} /></button>}
         </div>
       )}
     </PageBanner>
@@ -306,8 +316,10 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
 
   // Unsaved work is guarded as the article editor guards it, a refused save included.
   const dirty = JSON.stringify({ content, bannerImage }) !== JSON.stringify({ content: page?.content || [], bannerImage: page?.bannerImage || null });
-  const confirmLeave = useUnsavedChanges(isEditing && dirty && save.kind !== 'saving');
-  useSaveShortcut(() => { if (isEditing && save.kind === 'editing') handleSave(); });
+  // An image still uploading is unsaved work too: leaving or saving now would lose it.
+  const uploading = useStore(s => s.uploads > 0);
+  const confirmLeave = useUnsavedChanges(isEditing && (dirty || uploading) && save.kind !== 'saving');
+  useSaveShortcut(() => { if (isEditing && save.kind === 'editing' && !uploading) handleSave(); });
 
   if (isEditing && status !== 'signed-in') return <AuthRequired status={status} {...EDIT_AUTH} backHref="/" />;
 
@@ -326,14 +338,14 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
     } catch { setSave({ kind: 'editing', error: 'Failed to save: the request did not reach the wiki.' }); }
   }
   const isSaving = save.kind === 'saving';
-  const canSave = save.kind === 'editing';
+  const canSave = save.kind === 'editing' && !uploading;
 
   if (isEditing) {
     return (
       <div className="stack">
         <div className="spread">
           <Link href="/" onClick={e => { if (!confirmLeave()) e.preventDefault(); }} className="row link-muted"><ArrowLeft size={16} /><span>Back to Homepage</span></Link>
-          <Button onClick={handleSave} disabled={!canSave} size="sm" title="Save (⌘S)"><Save size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
+          <Button onClick={handleSave} disabled={!canSave} size="sm" title="Save (⌘S)"><Save size={16} />{uploading ? 'Uploading...' : isSaving ? 'Saving...' : 'Save Changes'}</Button>
         </div>
         <h1 id="edit-homepage">Edit Homepage</h1>
         {save.kind === 'editing' && save.error && <div data-callout="error"><p>{save.error}</p></div>}
@@ -343,7 +355,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
         <ArticleBlocksEditor content={content} onChange={setContent} />
         <div className="spread">
           <Link href="/" onClick={e => { if (!confirmLeave()) e.preventDefault(); }}><Button variant="ghost">Cancel</Button></Link>
-          <Button onClick={handleSave} disabled={!canSave}><Save size={18} />{isSaving ? 'Saving...' : 'Save Changes'}</Button>
+          <Button onClick={handleSave} disabled={!canSave}><Save size={18} />{uploading ? 'Uploading...' : isSaving ? 'Saving...' : 'Save Changes'}</Button>
         </div>
       </div>
     );

@@ -171,6 +171,10 @@ interface AppStore {
   historyHref: string | null;
   notifications: Notifications;
   fetchNotifications: () => Promise<void>;
+  /** Image uploads in flight in the editor; a save and a leave wait for them, or the image is lost. */
+  uploads: number;
+  /** Counts `upload` in `uploads` until it settles, either way. */
+  trackUpload: <T>(upload: Promise<T>) => Promise<T>;
   markNotificationsRead: (ids?: string[]) => Promise<void>;
 }
 
@@ -247,6 +251,11 @@ export const useStore = create<AppStore>()((set, get) => ({
   },
   pageTitle: null,
   historyHref: null,
+  uploads: 0,
+  trackUpload: (upload) => {
+    set(s => ({ uploads: s.uploads + 1 }));
+    return upload.finally(() => set(s => ({ uploads: s.uploads - 1 })));
+  },
   notifications: { status: 'loading' },
   fetchNotifications: async () => {
     const attempt = ++notificationsAttempt;

@@ -12,7 +12,7 @@ import { CHART_RANGES } from 'wiki-formant/chart';
 import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Bold, Italic, Link2, Unlink, Heading2, Heading3, Heading4, List, ListOrdered, TableIcon, Globe, LayoutList, Info, Undo2, Redo2 } from 'lucide-react';
 import { categoryLabel, cn, tipAddress } from '@/lib/utils';
 import { TAG_TREE, tagPaths } from '@/lib/tags';
-import { useFetch } from '@/hooks';
+import { useFetch, useStore } from '@/hooks';
 import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock } from '@/lib/block-utils';
 import { resolveMapUrl } from 'wiki-formant/maps';
 import { ACTIVITY_METRICS } from '@/lib/radix/metrics';
@@ -24,7 +24,9 @@ import type { AtomicBlock, Block, BlockType, InfoboxBlock, AssetPriceBlock, Netw
 
 // The upload endpoint is this app's, so the hook takes the uploader rather than
 // owning one. Module-level because the hook's upload callback depends on it.
-const uploadImage = uploadImageTo('/api/upload');
+// Counted in the store while in flight, so the page's save waits for it.
+const postImage = uploadImageTo('/api/upload');
+const uploadImage = (file: File) => useStore.getState().trackUpload(postImage(file));
 
 // The editor's state, its toolbar and the address field are `wiki-formant/editor`,
 // shared with caper and acuiq2. The toolbar shows every button the editor's nodes

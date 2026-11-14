@@ -9,7 +9,7 @@ import { ArrowLeft, Save, Trash2, Link2, X } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { EmptyState } from '@/components/EmptyState';
 import { Button, Input } from '@/components/ui';
-import { useAuth, useHistoryLink } from '@/hooks';
+import { useAuth, useHistoryLink, useStore } from '@/hooks';
 import { CARRIED_TOAST } from '@/components/Toast';
 import { cn, mustReload, pagePath, sendJson } from '@/lib/utils';
 import { isReservedSlug } from '@/lib/path';
@@ -310,8 +310,10 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const shownSlug = slugField.kind === 'title' ? slugifyHeading(title) : slugField.value;
 
   const dirty = fields !== initial && JSON.stringify(fields) !== JSON.stringify(initial);
+  // An image still uploading is unsaved work too: leaving or saving now would lose it.
+  const uploading = useStore(s => s.uploads > 0);
   // A save leaves by a full page load, which would trip the guard it just passed.
-  const confirmLeave = useUnsavedChanges(dirty && phase.kind !== 'saving');
+  const confirmLeave = useUnsavedChanges((dirty || uploading) && phase.kind !== 'saving');
 
   const save = async () => {
     if (!title.trim()) { setPhase({ kind: 'editing', error: 'Title is required.' }); return; }
@@ -358,7 +360,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
     setPhase({ kind: 'editing', error: 'The page could not be deleted. Try again.' });
   };
 
-  const canSave = (isCreating ? !!title.trim() : true) && gate.kind !== 'refused';
+  const canSave = (isCreating ? !!title.trim() : true) && gate.kind !== 'refused' && !uploading;
   useSaveShortcut(() => { if (canSave && phase.kind === 'editing') save(); });
 
   const back = <Link href={viewPath}><Button variant="secondary"><ArrowLeft size={18} />Back</Button></Link>;
@@ -386,7 +388,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
       {/* A child of the article, not the header, so it stays stuck for the whole edit. */}
       <div className="editor-bar">
         <Link href={backHref} onClick={e => { if (!confirmLeave()) e.preventDefault(); }} className="row link-muted"><ArrowLeft size={16} /><span>{isCreating ? 'Back to Category' : 'Back to Page'}</span></Link>
-        <Button onClick={save} disabled={phase.kind !== 'editing' || !canSave} size="sm" title="Save (⌘S)"><Save size={16} />{saveLabel}</Button>
+        <Button onClick={save} disabled={phase.kind !== 'editing' || !canSave} size="sm" title={uploading ? 'Saves once the image has uploaded' : 'Save (⌘S)'}><Save size={16} />{uploading ? 'Uploading...' : saveLabel}</Button>
       </div>
       <header className="stack pb-6 border-b border-border">
         {gate.kind === 'refused' ? (
