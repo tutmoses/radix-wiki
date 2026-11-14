@@ -36,6 +36,7 @@ import type { WikiPage, PageMetadata } from '@/types';
 import type { Block, ListBlock, AssetPriceBlock, NetworkChartBlock, RssFeedBlock, InfoboxBlock, AtomicBlock, TipJarBlock, BannerVariant } from '@/types/blocks';
 import { getMetadataKeys } from '@/lib/tags';
 import { metadataRows } from '@/lib/taxonomy';
+import { assigneeName } from '@/lib/assignee';
 import { TokenChart } from '@/components/charts/TokenChart';
 import { TimeChart } from 'wiki-formant/chart';
 import { eventMarkers, type NetworkEvent } from '@/lib/radix/events';
@@ -226,7 +227,9 @@ function RssFeedBlockView({ block }: { block: RssFeedBlock }) {
 // they are not a table row on this wiki at all, they are the AssetPrice widgets
 // above the table.
 function factRows(metadata: PageMetadata | null | undefined, tagPath?: string) {
-  return metadata && tagPath ? metadataRows(tagPath, { metadata }).filter(row => row.type !== 'resource_address') : [];
+  return metadata && tagPath
+    ? metadataRows(tagPath, { metadata }).filter(row => row.type !== 'resource_address' && (row.type !== 'user' || assigneeName(row.value)))
+    : [];
 }
 
 // Metadata values are stored HTML, cleaned by `sanitizePage` with the rest of
@@ -234,6 +237,8 @@ function factRows(metadata: PageMetadata | null | undefined, tagPath?: string) {
 // value carrying markup is written as markup, through the prose link pass; a
 // plain one takes the package's date, URL and line formatting.
 function factValue(value: string, type: string): ReactNode {
+  // A `user` value is the picker's JSON, which is a name to the reader.
+  if (type === 'user') return assigneeName(value);
   return /<(?!br\b)[a-z]|&[#\w]+;/i.test(value)
     ? <span dangerouslySetInnerHTML={{ __html: processHtml(value) }} />
     : formatFactValue(value, type);

@@ -21,7 +21,7 @@ import type { WikiPage, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
 import { useSaveShortcut, useTypeahead, useUnsavedChanges, useClickOutside } from 'wiki-formant/react';
 import { WikiLine } from 'wiki-formant/editor';
-import { parseAssignee } from './assignee';
+import { assigneeName } from '@/lib/assignee';
 
 // ========== METADATA FIELDS ==========
 // A text value is stored HTML: the infobox writes one carrying markup as prose,
@@ -161,7 +161,7 @@ function MetadataFields({ metadataKeys, metadata, onChange, invalidKeys = [] }: 
               />
             ) : type === 'user' ? (
               <UserSearch
-                initial={parseAssignee(metadata[key])?.name ?? metadata[key] ?? ''}
+                initial={assigneeName(metadata[key]) ?? ''}
                 placeholder="Search users..."
                 onPick={u => { const name = u.displayName || u.shortAddress; updateField(key, JSON.stringify({ id: u.id, name, address: u.shortAddress })); return name; }}
                 onClear={() => updateField(key, '')}

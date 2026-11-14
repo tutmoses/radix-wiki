@@ -12,6 +12,7 @@
 //   aboutEntity() – what the page is ABOUT (the Organization, tool, or event)
 
 import { categoryLabel } from '@/lib/utils';
+import { assigneeName } from '@/lib/assignee';
 import { isoDate } from 'wiki-formant/freshness';
 import { plainText } from 'wiki-formant/text';
 import { decodeEntities } from 'wiki-formant/markdown';
@@ -299,9 +300,10 @@ export function articleGraphProps(p: {
 
   if (root === 'ideas') {
     const status = categoryLabel(md.status) || undefined;
+    const assignee = assigneeName(md.assignee);
     Object.assign(out, {
       ...(status && { creativeWorkStatus: status }),
-      ...(md.assignee && { contributor: { '@type': 'Person', name: md.assignee } }),
+      ...(assignee && { contributor: { '@type': 'Person', name: assignee } }),
     });
   }
 

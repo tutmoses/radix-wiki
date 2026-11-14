@@ -19,6 +19,7 @@ import { boardColumn, getMetadataKeys, UNPLACED_COLUMN } from '@/lib/tags';
 import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 import { getLedgerDayRows, parseDayRange } from '@/lib/radix/activity';
 import { trackMcpCall } from '@/lib/track';
+import { assigneeName } from '@/lib/assignee';
 import { uploadImage } from '@/lib/upload';
 import { McpToolError, readArgs, type McpServerConfig, type McpPrompt, type McpResource, type ToolContext } from 'wiki-formant/mcp';
 
@@ -94,12 +95,6 @@ const PROMPTS: McpPrompt[] = [
 const IDEAS_SELECT = { title: true, tagPath: true, slug: true, metadata: true, updatedAt: true } as const;
 
 // ========== IDEAS BOARD HELPERS ==========
-
-/** Assignee is stored either as a JSON string {name,address} or a plain name. */
-function assigneeName(raw?: string): string | null {
-  if (!raw) return null;
-  try { const parsed = JSON.parse(raw); return (parsed && parsed.name) || null; } catch { return raw; }
-}
 
 /** Working group is encoded as a "<WG> · <task>" title prefix. */
 function workingGroupFromTitle(title: string): string | null {

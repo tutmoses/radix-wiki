@@ -16,14 +16,14 @@ import { boardColumn, findTagByPath, getMetadataKeys, UNPLACED_COLUMN, type Sort
 import { NewPageControl, SortToggle } from './PageContent';
 import type { WikiPage, PageMetadata, IdeasPage } from '@/types';
 import { EmptyState } from '@/components/EmptyState';
-import { parseAssignee } from './assignee';
+import { readAssignee } from '@/lib/assignee';
 
 function AssigneeChip({ raw }: { raw?: string }) {
-  const assignee = parseAssignee(raw);
-  if (!assignee) return null;
+  const assignee = readAssignee(raw);
+  if (assignee.kind === 'none') return null;
   return (
     <span className="assignee-chip">
-      {assignee.address ? <UserAvatar seed={assignee.address} size="sm" /> : null}
+      {assignee.kind === 'member' && assignee.address ? <UserAvatar seed={assignee.address} size="sm" /> : null}
       <span>{assignee.name}</span>
     </span>
   );
