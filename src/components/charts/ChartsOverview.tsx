@@ -16,6 +16,7 @@ import { getLatestRecap, getNetworkEvents, getPageByAsset } from '@/lib/wiki';
 import { pagePath } from '@/lib/utils';
 import { SITE_REFS, SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { PageHeading } from '@/components/PageHeading';
+import { EmptyState } from '@/components/EmptyState';
 import { MetricChart, type Metric } from './MetricChart';
 import { TokenChart } from './TokenChart';
 import { ValidatorsTable } from './ValidatorsTable';
@@ -66,7 +67,7 @@ function statCards(stats: NetworkStats | null, xrd: TokenSummary | undefined, da
 
 /** The daily series as a schema.org Dataset, with the CSV and JSON it downloads as. */
 function datasetLd(days: LedgerDayPoint[]) {
-  const first = days[0], last = days.at(-1);
+  const first = days?.[0], last = days?.at(-1);
   const day = (p: LedgerDayPoint) => new Date(p.time * 1000).toISOString().slice(0, 10);
   return {
     '@context': 'https://schema.org',
@@ -97,16 +98,22 @@ function Section({ id, title, link, children }: { id: string; title: string; lin
   );
 }
 
+/** A section whose read failed keeps its heading and says so, rather than leaving the page without it. */
+const unread = (what: string, source: string) => (
+  <EmptyState title={`${what} could not be read.`} description={`${source} did not answer just now. Try again in a minute.`} />
+);
+
 const viewAll = (href: string) => <Link href={href} className="charts-section-link">View all <ArrowRight size={14} /></Link>;
 
 export default async function ChartsOverview() {
   // Token prices come from OciSwap and survive a Gateway that will not answer state
-  // reads, so they are fetched apart from the ledger and still render alone.
+  // reads, so they are fetched apart from the ledger and still render alone. A read
+  // that failed is null, never an empty series, so its section names the failure.
   const [stats, tokens, days, weeks, dex, recap, xrdPage, events] = await Promise.all([
     getNetworkStats().catch(() => null),
     getTopTokens().catch(() => null),
-    getLedgerDays().catch(() => []),
-    getWeeklySnapshots().catch(() => []),
+    getLedgerDays().catch(() => null),
+    getWeeklySnapshots().catch(() => null),
     getDexStats(),
     getLatestRecap().catch(() => null),
     getPageByAsset(XRD_ADDRESS).catch(() => null),
@@ -114,11 +121,11 @@ export default async function ChartsOverview() {
   ]);
   const xrd = tokens?.find(t => t.address === XRD_ADDRESS);
   const [tokenTable, validatorTable] = await Promise.all([tokens && tokenRows(tokens), stats ? validatorRows(stats) : null]);
-  const first = days[0], last = days.at(-1);
+  const first = days?.[0], last = days?.at(-1);
 
   return (
     <div className="stack">
-      {days.length > 0 && <JsonLd data={datasetLd(days)} />}
+      {days && days.length > 0 && <JsonLd data={datasetLd(days)} />}
       <PageHeading icon={BarChart3} id="charts" title="Charts" description="Live Radix network statistics, validator directory, and ecosystem token data.">
         {recap && (
           <Link href={pagePath(recap.tagPath, recap.slug)} className="charts-recap">
@@ -129,10 +136,11 @@ export default async function ChartsOverview() {
         )}
       </PageHeading>
 
-      {stats || xrd ? <StatGrid stats={statCards(stats, xrd, days)} /> : null}
+      {stats || xrd ? <StatGrid stats={statCards(stats, xrd, days ?? [])} /> : null}
       {!stats && <LedgerUnavailable what="Live network data" />}
 
-      {first && last && (
+      {!days && <Section id="network-activity" title="Network activity">{unread('Daily network activity', 'The wiki\'s database')}</Section>}
+      {days && first && last && (
         <Section id="network-activity" title="Network activity">
           <MetricChart
             points={days}
@@ -151,6 +159,7 @@ export default async function ChartsOverview() {
         </Section>
       )}
 
+      {!tokens && <Section id="xrd-price" title="$XRD price">{unread('The $XRD price', 'OciSwap')}</Section>}
       {xrd && (
         <Section id="xrd-price" title="$XRD price" link={
           <span className="row text-small">
@@ -167,7 +176,8 @@ export default async function ChartsOverview() {
         </Section>
       )}
 
-      {weeks.length > 1 && (
+      {!weeks && <Section id="staking" title="Staking, week by week">{unread('The weekly staking figures', 'The wiki\'s database')}</Section>}
+      {weeks && weeks.length > 1 && (
         <Section id="staking" title="Staking, week by week">
           <MetricChart
             points={weeks}
@@ -185,16 +195,16 @@ export default async function ChartsOverview() {
         </Section>
       )}
 
-      {dex && (
-        <Section id="dex" title="OciSwap this week">
+      <Section id="dex" title="OciSwap this week">
+        {dex ? (
           <StatGrid stats={[
             { icon: ArrowLeftRight, value: isFinite(dex.volume7dXrd) ? formatXrd(dex.volume7dXrd) : '—', label: 'Volume, last 7 days' },
             { icon: BarChart3, value: dex.swaps7d.toLocaleString('en-US'), label: 'Swaps, last 7 days' },
             { icon: Lock, value: formatXrd(dex.tvlXrd), label: 'Value locked' },
             { icon: Layers, value: dex.newPools7d.toLocaleString('en-US'), label: 'Pools opened, last 7 days' },
           ]} />
-        </Section>
-      )}
+        ) : unread('This week\'s exchange figures', 'OciSwap')}
+      </Section>
 
       <Section id="top-tokens" title="Top tokens" link={viewAll('/charts/tokens')}>
         <TokensTable tokens={tokenTable} limit={10} />

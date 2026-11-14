@@ -9,11 +9,12 @@ import { XRD_ADDRESS } from './config';
 
 const pct = (n: number) => `${n >= 0 ? 'up' : 'down'} ${Math.abs(n).toFixed(1)}%`;
 
+/** A source that did not answer leaves its sentence out, so the card never states a figure nobody read. */
 export async function chartsHeadline(): Promise<string | null> {
-  const [days, tokens] = await Promise.all([getLedgerDays().catch(() => []), getTopTokens().catch(() => null)]);
+  const [days, tokens] = await Promise.all([getLedgerDays().catch(() => null), getTopTokens().catch(() => null)]);
   const parts: string[] = [];
-  const last = days.at(-1);
-  if (last) {
+  const last = days?.at(-1);
+  if (days && last) {
     const before = days.slice(-31, -1);
     const mean = before.reduce((sum, d) => sum + d.transactions, 0) / (before.length || 1);
     const day = new Date(last.time * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' });

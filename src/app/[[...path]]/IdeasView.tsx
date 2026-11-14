@@ -78,7 +78,7 @@ function IdeasListView({ pages, statusFilter, statusOptions, priorityOptions }: 
     [pages, statusFilter],
   );
 
-  if (filtered.length === 0) return <EmptyState title="No ideas yet." />;
+  if (filtered.length === 0) return <EmptyState title={pages.length ? 'No ideas match this filter.' : 'No ideas yet.'} />;
 
   return (
     <div className="ideas-list">
