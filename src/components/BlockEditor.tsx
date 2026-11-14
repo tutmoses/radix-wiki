@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { EditorContent, UrlPromptField, WikiToolbar, uploadImageTo, useUrlPrompt, useWikiEditor, type WikiToolbarProps } from 'wiki-formant/editor';
 import {
   BannerFields, BlockEditor as FormantBlockEditor, Choice, CodeTabsFields, ColumnsFields, Field, InfoboxFields, LimitField, LinkGridFields,
@@ -86,9 +86,20 @@ const SECTIONS = tagPaths().filter(t => t.path).map(t => ({
 }));
 
 function ListEdit({ block, onUpdate }: EditProps<ListBlock>) {
-  // The pages to pick from, fetched only once the list picks by hand.
-  const { data: pages } = useFetch<PageOption[]>(block.source === 'chosen' ? '/api/wiki?refs' : null);
-  return <ListFields block={block} onUpdate={onUpdate} pages={pages ?? undefined} sections={SECTIONS} />;
+  // The pages to pick from, fetched only once the list picks by hand. A failed
+  // read is not one still loading: it says so, and Try again reads it afresh.
+  const [retries, setRetries] = useState(0);
+  const pages = useFetch<PageOption[]>(block.source === 'chosen' ? `/api/wiki?refs${retries ? `&retry=${retries}` : ''}` : null);
+  return (
+    <div className="stack-sm">
+      <ListFields block={block} onUpdate={onUpdate} pages={pages.data ?? undefined} sections={SECTIONS} />
+      {pages.status === 'failed' && (
+        <div role="alert" data-callout="error">
+          <p>The pages to pick from could not be loaded. <Button variant="ghost" size="sm" onClick={() => setRetries(n => n + 1)}>Try again</Button></p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 const rangeOptions = (ranges: readonly string[]) => ranges.map(r => ({ value: r, label: r === 'all' ? 'All' : r.toUpperCase() }));
