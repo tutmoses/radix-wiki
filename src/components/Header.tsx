@@ -185,17 +185,17 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
 
   const toggleWatch = async () => {
     if (!target || telegram.status === 'loading' || watchBusy) return;
-    if (telegram.status === 'failed') { showToast('Your Telegram settings could not be loaded. Reload to try again.', 'info'); return; }
+    if (telegram.status === 'failed') { showToast('Your Telegram settings could not be loaded. Reload to try again.', 'error'); return; }
     // Telegram is connected on /settings, which then offers this page or section.
     if (!telegram.connected) { onClose(); router.push(`/settings?watch=${encodeURIComponent(pagePath(target.tagPath, target.slug).slice(1))}`); return; }
     setWatchBusy(true);
     try {
       if (live) {
         if (await unsubscribe(watching.id)) showToast(`No longer watching this ${target.noun}`);
-        else showToast(`This ${target.noun} could not be unwatched. Try again.`, 'info');
+        else showToast(`This ${target.noun} could not be unwatched. Try again.`, 'error');
       } else if (await subscribe(target.tagPath, target.slug || null, target.events)) {
         showToast(paused ? `Watching this ${target.noun}; notifications resumed` : `Watching this ${target.noun}`);
-      } else showToast(`This ${target.noun} could not be watched. Try again.`, 'info');
+      } else showToast(`This ${target.noun} could not be watched. Try again.`, 'error');
     } finally { setWatchBusy(false); }
   };
 
@@ -264,7 +264,8 @@ export function Header() {
   // Shared with the rail through wiki-formant's SidebarProvider.
   const { open: sidebarOpen, toggle: toggleSidebar } = useSidebar();
   const fetchNotifications = useStore(s => s.fetchNotifications);
-  const unreadCount = useStore(s => (s.notifications.status === 'loaded' ? s.notifications.unread : 0));
+  // A count, or the read in flight or failed: a failed read is never shown as nothing unread.
+  const bell = useStore(s => (s.notifications.status === 'loaded' ? s.notifications.unread : s.notifications.status));
   const historyHref = useStore(s => s.historyHref);
   const { hasTools, hasLedger, sectionPath, canExportMdx, isPage, mdxPath, tagPath, slug } = usePageContext();
   const [field, setField] = useState<SearchField>('folded');
@@ -431,7 +432,9 @@ export function Header() {
               <div className="relative">
                 <button onClick={() => toggleMenu('notifications')} className="icon-btn" title="Notifications" aria-label="Notifications" aria-expanded={menu === 'notifications'}>
                   <Bell size={20} />
-                  {unreadCount > 0 && <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+                  {bell === 'failed'
+                    ? <span className="notification-badge notification-badge-failed" title="Your notifications could not be loaded">!</span>
+                    : typeof bell === 'number' && bell > 0 && <span className="notification-badge">{bell > 9 ? '9+' : bell}</span>}
                 </button>
                 {menu === 'notifications' && <NotificationDropdown onClose={closeMenu} />}
               </div>

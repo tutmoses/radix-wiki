@@ -112,7 +112,7 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
             });
           } catch (error) {
             console.error('[ROLA] Auth failed:', error);
-            useStore.getState().showToast('Sign-in failed — the wallet proof could not be verified. Please try connecting again.', 'info');
+            useStore.getState().showToast('Sign-in failed — the wallet proof could not be verified. Please try connecting again.', 'error');
           }
         });
 

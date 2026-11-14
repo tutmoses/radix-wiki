@@ -137,6 +137,12 @@ type Notifications =
  */
 let notificationsAttempt = 0;
 
+/** A sign-out the server confirmed, or one it did not, which leaves the session as it was. */
+type Logout = { kind: 'signed-out' } | { kind: 'failed'; message: string };
+
+/** `error` is something the reader asked for that did not happen; `info` is news that is not a failure. */
+type ToastType = 'success' | 'info' | 'error';
+
 const WALLET_UNAVAILABLE = 'The Radix wallet toolkit did not load, so the wallet cannot be reached from this page. Reload and try again.';
 
 interface AppStore {
@@ -153,10 +159,11 @@ interface AppStore {
   sessionChecked: (answered: boolean) => void;
   setWalletData: (walletData: RadixWalletData | null) => void;
   connect: () => void;
-  logout: (everywhere?: boolean) => Promise<void>;
+  /** Signs out only once the server has ended the session; a failure keeps it, and says so. */
+  logout: (everywhere?: boolean) => Promise<Logout>;
   /** `timer` is the toast's own dismissal, cleared when another replaces it. */
-  toast: { message: string; type: 'success' | 'info'; timer: ReturnType<typeof setTimeout> } | null;
-  showToast: (message: string, type?: 'success' | 'info') => void;
+  toast: { message: string; type: ToastType; timer: ReturnType<typeof setTimeout> } | null;
+  showToast: (message: string, type?: ToastType) => void;
   dismissToast: () => void;
   /** The article on screen, set by `PageView`, so the header's citation can name it. */
   pageTitle: string | null;
@@ -185,7 +192,7 @@ export const useStore = create<AppStore>()((set, get) => ({
     if (auth.kind !== 'connecting' || auth.timeout !== timeout) return;
     clearTimeout(timeout);
     set({ auth: { kind: 'idle' } });
-    if (message) get().showToast(message, 'info');
+    if (message) get().showToast(message, 'error');
   },
   setWallet: (wallet) => {
     const { wallet: prev, auth } = get();
@@ -205,7 +212,7 @@ export const useStore = create<AppStore>()((set, get) => ({
   setWalletData: (walletData) => set({ walletData }),
   connect: () => {
     const { wallet, auth } = get();
-    if (wallet.kind === 'unavailable') { get().showToast(WALLET_UNAVAILABLE, 'info'); return; }
+    if (wallet.kind === 'unavailable') { get().showToast(WALLET_UNAVAILABLE, 'error'); return; }
     if (auth.kind === 'connecting') clearTimeout(auth.timeout);
     const timeout = setTimeout(() => get()._endConnect(timeout,
       'No response from the Radix Wallet. Make sure the wallet app or Connector extension is reachable, then try again.'), 60_000);
@@ -213,15 +220,19 @@ export const useStore = create<AppStore>()((set, get) => ({
     if (wallet.kind === 'ready') sendConnect(wallet, timeout);
   },
   logout: async (everywhere = false) => {
-    const { wallet } = get();
-    try {
-      await fetch(everywhere ? '/api/auth?everywhere' : '/api/auth', { method: 'DELETE' });
-    } catch (error) {
-      console.error('Failed to clear server session:', error);
+    const ended = await fetch(everywhere ? '/api/auth?everywhere' : '/api/auth', { method: 'DELETE' }).then(res => res.ok, () => false);
+    if (!ended) {
+      const message = everywhere
+        ? 'Your sessions could not be ended, so you are still signed in everywhere. Try again.'
+        : 'You could not be signed out just now, so your session is still live. Try again.';
+      get().showToast(message, 'error');
+      return { kind: 'failed', message };
     }
+    const { wallet } = get();
     if (wallet.kind === 'ready') wallet.disconnect();
     notificationsAttempt++;
     set({ session: null, walletData: null, notifications: { status: 'loading' } });
+    return { kind: 'signed-out' };
   },
   toast: null,
   showToast: (message, type = 'success') => {
@@ -251,7 +262,7 @@ export const useStore = create<AppStore>()((set, get) => ({
   },
   markNotificationsRead: async (ids) => {
     const ok = await sendJson('/api/notifications', 'PATCH', { ids }).then(r => r.ok, () => false);
-    if (!ok) { get().showToast('Your notifications could not be marked read. Try again.', 'info'); return; }
+    if (!ok) { get().showToast('Your notifications could not be marked read. Try again.', 'error'); return; }
     notificationsAttempt++;
     set(({ notifications: n }) => {
       if (n.status !== 'loaded') return {};

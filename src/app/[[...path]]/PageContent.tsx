@@ -101,7 +101,7 @@ export function Banner({ src, title, tagPath, editable, onUpload, onRemove, chil
     // Imported on use: the module carries Tiptap, which a reader never loads.
     import('wiki-formant/editor')
       .then(({ uploadImageTo }) => uploadImageTo('/api/upload')(file))
-      .then(onUpload, (err: Error) => showToast(err.message, 'info'))
+      .then(onUpload, (err: Error) => showToast(err.message, 'error'))
       .finally(() => { setIsUploading(false); if (fileInputRef.current) fileInputRef.current.value = ''; });
   };
 

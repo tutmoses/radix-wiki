@@ -819,6 +819,7 @@
     @apply flex items-center gap-3;
     animation: slide-up 0.3s ease-out;
   }
+  .toast-error { @apply border-error; }
   .toast-close { @apply p-1 rounded hover:text-text-muted transition-colors; }
 
   /* ===== NOTIFICATIONS ===== */
@@ -833,6 +834,7 @@
     @apply absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-accent text-text-inverted text-[11px] font-bold;
     @apply flex items-center justify-center px-1;
   }
+  .notification-badge-failed { @apply bg-surface-2 text-error border border-error; }
 
   /* ===== WEBHOOKS ===== */
   /* /settings holds the panel the bell's dropdown used to: one bordered column. */

@@ -3,8 +3,9 @@
 'use client';
 
 import { useEffect } from 'react';
-import { X } from 'lucide-react';
+import { AlertTriangle, X } from 'lucide-react';
 import { useStore } from '@/hooks';
+import { cn } from '@/lib/utils';
 
 /** A toast raised just before a full page load, carried across it in sessionStorage. */
 export const CARRIED_TOAST = 'toast';
@@ -25,7 +26,8 @@ export function Toast() {
   if (!toast) return null;
 
   return (
-    <div className="toast" role="alert">
+    <div className={cn('toast', toast.type === 'error' && 'toast-error')} role={toast.type === 'error' ? 'alert' : 'status'}>
+      {toast.type === 'error' && <AlertTriangle size={16} className="text-error shrink-0" />}
       <span>{toast.message}</span>
       <button onClick={dismissToast} className="toast-close" title="Dismiss" aria-label="Dismiss">
         <X size={16} />

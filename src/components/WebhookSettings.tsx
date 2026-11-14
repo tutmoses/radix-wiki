@@ -130,7 +130,7 @@ export function useTelegram(enabled = true) {
         attemptRef.current++;
         stopPoll();
         setLink({ status: 'none' });
-        showToast(connected ? 'Telegram connected!' : 'The Telegram link expired. Press Connect Telegram for a new one.', connected ? 'success' : 'info');
+        showToast(connected ? 'Telegram connected!' : 'The Telegram link expired. Press Connect Telegram for a new one.', connected ? 'success' : 'error');
       }, 3000);
     } catch {
       if (attempt === attemptRef.current) setLink({ status: 'failed', error: 'The request did not reach the wiki. Try again.' });
@@ -183,18 +183,18 @@ function TelegramSection({ watch }: { watch?: string }) {
       : ['page.created', 'page.updated', 'comment.created'];
     try {
       if (await subscribe(context.tagPath, context.slug, events)) showToast(paused ? `Subscribed to ${context.label}; notifications resumed` : `Subscribed to ${context.label}`);
-      else showToast(`Could not subscribe to ${context.label}. Try again.`, 'info');
+      else showToast(`Could not subscribe to ${context.label}. Try again.`, 'error');
     } finally { setSubscribing(false); }
   };
 
   const handleUnsubscribe = async (id: string) => {
     if (await unsubscribe(id)) showToast('Unsubscribed');
-    else showToast('Could not unsubscribe. Try again.', 'info');
+    else showToast('Could not unsubscribe. Try again.', 'error');
   };
 
   const handleDisconnect = async () => {
     if (await disconnect()) showToast('Telegram disconnected');
-    else showToast('Telegram could not be disconnected. Try again.', 'info');
+    else showToast('Telegram could not be disconnected. Try again.', 'error');
   };
 
   if (state.status === 'loading') return null;
@@ -357,7 +357,7 @@ export function WebhookSettings({ watch }: { watch?: string }) {
 
   const handleDelete = async (id: string) => {
     const ok = await fetch(`/api/webhooks/${id}`, { method: 'DELETE' }).then(r => r.ok, () => false);
-    if (!ok) { showToast('The webhook could not be deleted. Try again.', 'info'); return; }
+    if (!ok) { showToast('The webhook could not be deleted. Try again.', 'error'); return; }
     setList(l => (l.status === 'loaded' ? { status: 'loaded', items: l.items.filter(w => w.id !== id) } : l));
     showToast('Webhook deleted');
   };
