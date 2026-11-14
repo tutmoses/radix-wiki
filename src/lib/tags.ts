@@ -228,6 +228,25 @@ export const tagLabel = (pathSegments: string[]): string =>
 export const isAuthorOnlyPath = (tagPath: string): boolean => resolveTagPath(tagPath.split('/')).isAuthorOnly;
 export const canEditAuthorOnlyPage = (page: { authorId: string | null; editorIds?: string[] }, userId: string): boolean =>
   page.authorId === userId || (page.editorIds ?? []).includes(userId);
+/**
+ * Whether a user may delete a page: the one rule the editor's button, the API and
+ * delete_page apply. Its author may; on a shared board, so may anyone who clears
+ * the bar to edit it (`board`, which the caller checks against the wallet). The
+ * homepage, a hub article, a locked page and someone else's page are refused.
+ */
+export function deleteRight(
+  page: { tagPath: string; slug: string; authorId: string | null; editorIds?: string[] },
+  userId: string,
+): { kind: 'author' | 'board' } | { kind: 'refused'; reason: string } {
+  const refused = (reason: string) => ({ kind: 'refused' as const, reason });
+  if (!page.slug) return refused(page.tagPath ? 'A hub article is its category\'s own page and cannot be deleted' : 'The homepage cannot be deleted');
+  if (isLockedPage(page.tagPath, page.slug)) return refused('This page is locked and cannot be deleted');
+  if (isAuthorOnlyPath(page.tagPath) && !canEditAuthorOnlyPage(page, userId)) return refused('You can only delete your own pages in this category');
+  if (page.authorId === userId) return { kind: 'author' };
+  if (isSharedPath(page.tagPath)) return { kind: 'board' };
+  return refused('Only its author can delete this page');
+}
+
 const XRD_DEFAULTS = { create: 10_000, edit: 20_000, comment: 10_000 } as const;
 
 export function getXrdRequired(action: 'create' | 'edit' | 'comment', tagPath: string): number {

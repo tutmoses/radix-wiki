@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma/client';
 import { pageUrl, pagePath } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { SITE_URL, WIKI_LICENSE } from '@/lib/site';
-import { findTagByPath, tagLabel, isValidTagPath, isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys } from '@/lib/tags';
+import { findTagByPath, tagLabel, isValidTagPath, isAuthorOnlyPath, isLockedPage, canEditAuthorOnlyPage, deleteRight, getMetadataKeys } from '@/lib/tags';
 import { checkBalance, balanceRefusal } from '@/lib/radix/balance';
 import { parsePagination, paginatedResponse } from 'wiki-formant/pagination';
 import { requireAuth, cachedJson, tagged, CACHE, overBudget, IP_LIMITS, type RouteContext } from '@/lib/api';
@@ -44,7 +44,7 @@ function twinHeaders(request: NextRequest, etagParts: Parameters<typeof corpusEt
   return { headers, unchanged: notModified(request, etag, lastModified ?? null, headers) };
 }
 
-const LOCKED_VERB = { edit: 'edited', restore: 'modified', delete: 'deleted' } as const;
+const LOCKED_VERB = { edit: 'edited', restore: 'modified' } as const;
 
 /** The refusal a write to a locked page, or to someone else's author-only page, gets; null when the write may go ahead. */
 function writeRefusal(row: StoredRow, userId: string, verb: keyof typeof LOCKED_VERB): Response | null {
@@ -443,13 +443,9 @@ export async function DELETE(request: NextRequest, context: RouteContext<PathPar
 
     const existing = await store.get(parsed.tagPath, parsed.slug);
     if (!existing) return errors.notFound('Page not found');
-    const refusal = writeRefusal(existing, auth.session.userId, 'delete');
-    if (refusal) return refusal;
-
-    // Authors delete their own pages. On a shared board the card belongs to the
-    // board, so anyone who clears the bar to edit it may also delete it.
-    if (existing.authorId !== auth.session.userId) {
-      if (!isSharedPath(existing.tagPath)) return errors.forbidden();
+    const right = deleteRight(toWikiPage(existing), auth.session.userId);
+    if (right.kind === 'refused') return errors.forbidden(right.reason);
+    if (right.kind === 'board') {
       const action = { type: 'edit', tagPath: existing.tagPath } as const;
       const check = await checkBalance(auth.session, action);
       if (check.status !== 'allowed') return balanceRefusal(check, action);

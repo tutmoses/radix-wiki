@@ -14,7 +14,7 @@ import { CARRIED_TOAST } from '@/components/Toast';
 import { cn, mustReload, pagePath, sendJson } from '@/lib/utils';
 import { isReservedSlug } from '@/lib/path';
 import { slugifyHeading } from 'wiki-formant/headings';
-import { isAuthorOnlyPath, isLockedPage, isSharedPath, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, XRD_NOT_A_FEE, type MetadataKeyDefinition } from '@/lib/tags';
+import { isAuthorOnlyPath, isLockedPage, deleteRight, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, XRD_NOT_A_FEE, type MetadataKeyDefinition } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
 import { ArticleBlocksEditor, Banner, ConflictNotice, type SavePhase } from './PageContent';
 import type { WikiPage, PageMetadata } from '@/types';
@@ -350,6 +350,10 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
       const r = await fetch(`/api/wiki/${page.tagPath}/${page.slug}`, { method: 'DELETE' });
       // Deleting stays the phase until the navigation replaces the editor.
       if (r.ok) { router.push(`/${page.tagPath}`); return; }
+      // The server says why: a lock, someone else's page, or a wallet below the bar.
+      const reason = (await r.json().catch(() => null) as { error?: string } | null)?.error;
+      setPhase({ kind: 'editing', error: reason ? `The page was not deleted: ${reason}` : 'The page could not be deleted. Try again.' });
+      return;
     } catch { /* reported below */ }
     setPhase({ kind: 'editing', error: 'The page could not be deleted. Try again.' });
   };
@@ -367,8 +371,9 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   }
 
   // On a shared board the card is the board's, not its filer's: whoever passes
-  // the edit gate can delete it too.
-  const canDelete = !isCreating && (isAuthor || (isSharedPath(tagPath) && gate.kind === 'allowed'));
+  // the edit gate can delete it too. The API applies the same rule.
+  const right = page && user ? deleteRight(page, user.id).kind : 'refused';
+  const canDelete = right === 'author' || (right === 'board' && gate.kind === 'allowed');
   const backHref = isCreating ? `/${tagPath}` : viewPath;
   const isSaving = phase.kind === 'saving';
   const saveLabel = isCreating ? (isSaving ? 'Creating...' : 'Create Page') : (isSaving ? 'Saving...' : 'Save Changes');
