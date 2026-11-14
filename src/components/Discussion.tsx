@@ -15,6 +15,17 @@ import { EmptyState } from '@/components/EmptyState';
 
 const MAX_DEPTH = 3;
 
+/** The route's largest page: a thread is read in as few requests as it allows. */
+const COMMENT_PAGE = 100;
+
+/** `comments` less the comment `id` and every reply beneath it. */
+function withoutThread(comments: WikiComment[], id: string): WikiComment[] {
+  const gone = new Set([id]);
+  // Replies follow their parents, oldest first, so one pass finds every depth.
+  for (const c of comments) if (c.parentId && gone.has(c.parentId)) gone.add(c.id);
+  return comments.filter(c => !gone.has(c.id));
+}
+
 function buildCommentTree(comments: WikiComment[]): WikiComment[] {
   const map = new Map<string, WikiComment>();
   const roots: WikiComment[] = [];
@@ -130,13 +141,21 @@ export function Discussion({ pageId }: { pageId: string }) {
 
   // The list is edge-cached for a minute, so a refetch after the reader's own
   // post or delete names a fresh URL: the cached copy would not show it yet.
+  // The route pages, oldest first; every page is read, so the newest comments
+  // and the count are never cut at the first page.
   const fetchComments = useCallback(async (fresh?: boolean) => {
     const attempt = ++attemptRef.current;
-    try {
-      const res = await fetch(`/api/comments?pageId=${pageId}${fresh ? `&t=${Date.now()}` : ''}`);
+    const url = (page: number) => `/api/comments?pageId=${pageId}&pageSize=${COMMENT_PAGE}&page=${page}${fresh ? `&t=${Date.now()}` : ''}`;
+    const read = async (page: number): Promise<{ items: WikiComment[]; totalPages: number }> => {
+      const res = await fetch(url(page));
       if (!res.ok) throw new Error(res.statusText);
-      const data = await res.json();
-      if (attempt === attemptRef.current) setThread({ kind: 'loaded', comments: data.items });
+      return res.json();
+    };
+    try {
+      const first = await read(1);
+      const rest = await Promise.all(Array.from({ length: Math.max(0, first.totalPages - 1) }, (_, i) => read(i + 2)));
+      const comments = [first, ...rest].flatMap(p => p.items);
+      if (attempt === attemptRef.current) setThread({ kind: 'loaded', comments });
     } catch (e) {
       console.error('Failed to fetch comments:', e);
       if (attempt === attemptRef.current) setThread(t => t.kind === 'loaded' ? t : { kind: 'failed' });
@@ -159,10 +178,18 @@ export function Discussion({ pageId }: { pageId: string }) {
     void fetchComments(true);
   };
 
+  // A delete the route confirmed leaves the thread at once, with its replies (the
+  // delete cascades), whether or not the refetch behind it answers.
   const handleDelete = async (id: string) => {
     const res = await fetch(`/api/comments/${id}`, { method: 'DELETE' });
-    if (res.ok) await fetchComments(true);
-    else throw new Error('Failed to delete comment');
+    if (!res.ok) throw new Error('Failed to delete comment');
+    setThread(t => (t.kind === 'loaded' ? { kind: 'loaded', comments: withoutThread(t.comments, id) } : t));
+    void fetchComments(true);
+  };
+
+  const retry = () => {
+    setThread({ kind: 'loading' });
+    void fetchComments(true);
   };
 
   const tree = useMemo(() => (thread.kind === 'loaded' ? buildCommentTree(thread.comments) : []), [thread]);
@@ -181,7 +208,7 @@ export function Discussion({ pageId }: { pageId: string }) {
             </>
           ) : <p className="text-text-muted surface p-4 text-center">Connect your wallet to join the discussion.</p>}
           {thread.kind === 'loading' ? <div className="stack">{[1, 2].map(i => <div key={i} className="h-20 skeleton" />)}</div>
-            : thread.kind === 'failed' ? <EmptyState title="The discussion could not be loaded." action={<Button variant="ghost" size="sm" onClick={() => fetchComments(true)}>Try again</Button>} />
+            : thread.kind === 'failed' ? <EmptyState title="The discussion could not be loaded." action={<Button variant="ghost" size="sm" onClick={retry}>Try again</Button>} />
             : tree.length > 0 ? <div className="stack">{tree.map(c => <CommentThread key={c.id} comment={c} depth={0} onReply={handlePost} onDelete={handleDelete} currentUserId={user?.id} />)}</div>
             : <EmptyState title="No comments yet." />}
         </div>
