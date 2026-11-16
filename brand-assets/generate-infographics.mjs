@@ -29,7 +29,7 @@ function radixEngine() {
   const cy = kb + 26, ch = 60;
   b += card(L, cy, w, ch, true);
   b += t(L + 20, cy + 27, 'Cerberus consensus', { size: 16, w: 700, fill: C.getaway });
-  b += t(L + 20, cy + 47, 'Braided BFT – reaches agreement across only the shards each transaction touches.', { size: 13, w: 400, fill: C.text2 });
+  b += t(L + 20, cy + 47, 'Runs unsharded on Babylon: one shard, ordered by a variant of the original HotStuff.', { size: 13, w: 400, fill: C.text2 });
   return { W, H, title: 'The Radix Engine', tag: 'EXECUTION STACK', note: 'Written in Scrypto (Rust) · asset-oriented · Scrypto VM + Native VM.', body: b };
 }
 
@@ -436,6 +436,122 @@ function hyperscaleLegLocal() {
   return { W, H, title: 'Leg Local Execution', tag: 'HYPERSCALE-RS', note: 'hyperscale-rs PR #156 · project channel, 4 September 2026', body: b };
 }
 
+// ============================ Manifest and auth =============================
+// Two figures for developers/transactions/01-manifest-language and
+// contents/tech/core-concepts/access-rules-and-auth-zones. The transfer is that page's
+// Simple Token Transfer; the worktop, fee and proof rules are docs.radixdlt.com's
+// (learning-to-create-and-use-transaction-manifests, transactions, using-proofs).
+
+// Four places in a row, a numbered arrow between each pair: where the thing is at each step.
+function flowStrip(boxes, y, { h = 80, gap = 40, chips = [] } = {}) {
+  const L = 48, w = 664, bw = (w - (boxes.length - 1) * gap) / boxes.length;
+  let b = '';
+  boxes.forEach((bx, i) => {
+    const x = L + i * (bw + gap);
+    b += card(x, y, bw, h, bx.hero);
+    b += `<rect x="${x}" y="${y}" width="3" height="${h}" fill="${bx.col}"/>`;
+    b += t(x + 16, y + 28, bx.name, { size: 15, w: 700, fill: bx.col });
+    b += paras(x + 16, y + 48, bx.sub, 20, { size: 11.5, lh: 15, fill: C.text2 });
+    if (i < boxes.length - 1) {
+      const cx = x + bw + gap / 2;
+      if (chips[i] != null) b += numChip(cx, y + 26, chips[i], C.jupiter);
+      b += arrowR(cx + 1, y + 56, C.neut);
+    }
+  });
+  return b;
+}
+
+// Numbered cards carrying a line of manifest code between the name and the description.
+function codeSteps(steps, y0, { h = 80, gap = 10 } = {}) {
+  const L = 48, w = 664;
+  let b = '';
+  steps.forEach((st, i) => {
+    const y = y0 + i * (h + gap), col = st.hero ? C.getaway : C.jupiter;
+    b += card(L, y, w, h, st.hero);
+    b += `<rect x="${L}" y="${y}" width="3" height="${h}" fill="${col}"/>`;
+    b += numChip(L + 34, y + h / 2, i + 1, col);
+    b += t(L + 62, y + 25, st.name, { size: 16, w: 700, fill: C.text });
+    b += t(L + w - 16, y + 25, st.tag, { size: 11, w: 700, fill: C.muted, anchor: 'end', ls: '0.08em', font: MONO });
+    const descY = st.code ? y + 63 : y + 47;
+    if (st.code) b += t(L + 62, y + 44, st.code, { size: 11.5, w: 500, fill: C.xrd, font: MONO });
+    b += paras(L + 62, descY, st.desc, 84, { size: 13, lh: 17, fill: C.text2 });
+  });
+  return b;
+}
+
+// Two cards side by side: the outcomes a figure ends on.
+function outcomes(y, pair, h = 68) {
+  const L = 48, ow = (664 - 14) / 2;
+  return pair.map((o, i) => {
+    const x = L + i * (ow + 14);
+    return card(x, y, ow, h)
+      + t(x + 18, y + 27, o.name, { size: 14, w: 700, fill: o.col })
+      + paras(x + 18, y + 47, o.desc, 46, { size: 12, lh: 15, fill: C.text2 });
+  }).join('');
+}
+
+function manifestAnatomy() {
+  const W = 760, L = 48;
+  let b = paras(L, 150, 'A transaction manifest is the list of instructions a Radix transaction carries, run in order. In a transfer the tokens pass through two holding places the transaction creates and clears: the worktop and a named bucket.', 93, { size: 14, lh: 21, fill: C.text2 });
+  b += sectionLabel(L, 225, 'WHERE THE TOKENS ARE');
+  b += flowStrip([
+    { name: 'Vault', sub: "in the sender's account", col: C.xrd },
+    { name: 'Worktop', sub: 'held by the transaction', col: C.jupiter },
+    { name: 'Bucket', sub: 'named "tokens" by the manifest', col: C.jupiter },
+    { name: 'Vault', sub: "in the recipient's account", col: C.xrd },
+  ], 243, { chips: [2, 3, 4] });
+  const steps = [
+    { name: 'Lock the fee', tag: 'FEE', code: 'CALL_METHOD sender "lock_fee" Decimal("5")',
+      desc: "Reserves up to 5 $XRD in the sender's vault for the fee; the unspent part stays." },
+    { name: 'Withdraw', tag: 'VAULT → WORKTOP', code: 'CALL_METHOD sender "withdraw" XRD Decimal("100")',
+      desc: "Takes 100 $XRD out of the sender's vault, and they land on the worktop." },
+    { name: 'Take into a bucket', tag: 'WORKTOP → BUCKET', code: 'TAKE_ALL_FROM_WORKTOP XRD Bucket("tokens")',
+      desc: 'Moves them off the worktop into a bucket the next instruction can pass.' },
+    { name: 'Deposit', tag: 'BUCKET → VAULT', hero: true, code: 'CALL_METHOD recipient "try_deposit_or_abort" Bucket("tokens")',
+      desc: "Hands the bucket to the recipient's account, which deposits it or aborts." },
+  ];
+  b += codeSteps(steps, 345);
+  const oy = 345 + 4 * 90 + 4;
+  b += outcomes(oy, [
+    { name: 'The worktop ends empty', col: C.jupiter, desc: 'A resource still on it when the manifest ends fails the transaction.' },
+    { name: 'All or nothing', col: C.xrd, desc: 'If any instruction fails, nothing moves, and the fee spent up to that point is paid.' },
+  ]);
+  const H = oy + 68 + 72;
+  return { W, H, title: 'Anatomy of a Manifest', tag: 'TRANSACTIONS', note: 'docs.radixdlt.com · transaction manifests, transactions · Babylon', body: b };
+}
+
+function badgeProofAuth() {
+  const W = 760, L = 48;
+  let b = paras(L, 150, 'A badge is an ordinary resource used as a credential, and it never leaves its vault. The holder shows a proof of it, and the Radix Engine checks the method\'s access rule against the proofs in the caller\'s auth zone before the method runs.', 93, { size: 14, lh: 21, fill: C.text2 });
+  b += sectionLabel(L, 225, 'FROM BADGE TO CHECK');
+  b += flowStrip([
+    { name: 'Vault', sub: 'holds the badge, which stays here', col: C.xrd },
+    { name: 'Proof', sub: 'shows the badge exists and locks it', col: C.jupiter },
+    { name: 'Auth zone', sub: 'the proofs of one call frame', col: C.jupiter },
+    { name: 'Access rule', sub: 'require(badge)', col: C.getaway, hero: true },
+  ], 243, { chips: [2, 3, 4] });
+  const steps = [
+    { name: 'Hold a badge', tag: 'VAULT',
+      desc: "The badge is a resource like any token, held in a vault inside the account." },
+    { name: 'Create a proof', tag: 'PROOF', code: 'CALL_METHOD account "create_proof_of_amount" badge Decimal("1")',
+      desc: 'The badge stays in its vault, locked there while the proof exists.' },
+    { name: 'Fill the auth zone', tag: 'AUTH ZONE',
+      desc: 'A proof a method returns to the manifest goes straight onto the auth zone. Each signature on the transaction adds a virtual badge.' },
+    { name: 'Check the rule', tag: 'BEFORE THE BODY', hero: true,
+      desc: "The engine resolves the called method's role to its access rule and tests the rule against the auth zone." },
+  ];
+  b += codeSteps(steps, 345, { h: 80 });
+  const oy = 345 + 4 * 90 + 4;
+  b += outcomes(oy, [
+    { name: 'Rule met', col: C.xrd, desc: 'The method body runs.' },
+    { name: 'Rule not met', col: C.jupiter, desc: 'The call fails before the body runs, and the transaction fails with it.' },
+  ]);
+  const ny = oy + 68 + 30;
+  b += paras(L, ny, 'The zone belongs to one call frame. A call into another component starts a fresh zone, so calling a component does not hand it your proofs.', 100, { size: 12, lh: 16, fill: C.muted });
+  const H = ny + 16 + 72;
+  return { W, H, title: 'Badge, Proof, Auth Zone', tag: 'AUTHORIZATION', note: 'docs.radixdlt.com · auth, using proofs · radixdlt-scrypto auth_module.rs', body: b };
+}
+
 // ============================ render ========================================
 // scripts/seed-infographics.mjs embeds these through `svgOf`, so the page carries what this file draws.
 export const GRAPHICS = [
@@ -447,6 +563,8 @@ export const GRAPHICS = [
   { file: '06-hyperscale-commit', build: hyperscaleCommit },
   { file: '07-hyperscale-split', build: hyperscaleSplit },
   { file: '08-hyperscale-leg-local', build: hyperscaleLegLocal },
+  { file: '09-manifest-anatomy', build: manifestAnatomy },
+  { file: '10-badge-proof-auth', build: badgeProofAuth },
 ];
 
 /** The finished SVG of one graphic, with the dimensions `renderPngs` takes. */

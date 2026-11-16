@@ -42,6 +42,22 @@ const SPECS = [
     },
   },
   ...[
+    { file: '09-manifest-anatomy', marker: 'manifest-anatomy', heading: 'Anatomy of a Manifest',
+      tagPath: 'developers/transactions', slug: '01-manifest-language', after: '<h2>Common Patterns</h2>',
+      caption: 'The Simple Token Transfer above, instruction by instruction: the fee is locked, then the tokens move from vault to worktop to bucket to vault.' },
+    { file: '10-badge-proof-auth', marker: 'badge-proof-auth', heading: 'Badge, Proof, Auth Zone',
+      tagPath: 'contents/tech/core-concepts', slug: 'access-rules-and-auth-zones', after: '<h2>How a check is resolved</h2>',
+      caption: 'A badge never leaves its vault: a proof of it goes onto the auth zone, and the access rule is tested against the zone before the method body runs.' },
+  ].map(({ after, ...s }) => ({
+    // Figure only, after the section it draws.
+    ...s,
+    place: (blocks) => {
+      const i = blocks.findIndex((b) => b.text?.includes(after));
+      if (i < 0) throw new Error(`${after} missing`);
+      return i + 1;
+    },
+  })),
+  ...[
     { file: '05-hyperscale-layers', marker: 'hyperscale-layers', heading: 'Three Layers, One Clock', after: '<h3>One Clock</h3>',
       caption: 'hyperscale-rs runs three consensus mechanisms: the beacon chain assigns committees, each shard orders its own transactions, and execution is voted on separately.' },
     { file: '06-hyperscale-commit', marker: 'hyperscale-commit', heading: 'Cross-Shard Commitment', after: '<h3>Cross-Shard Commitment Without a Coordinator</h3>',
