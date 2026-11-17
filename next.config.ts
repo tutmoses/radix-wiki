@@ -7,8 +7,8 @@ import { contentSecurityPolicy, withWikiDefaults } from 'wiki-formant/headers';
 // `wiki-formant/headers`, with this origin's own source lists. Verified against
 // home, article pages with embeds/images, and the wallet-connect init before
 // flipping from Report-Only. img-src stays `https:`-broad because published
-// articles embed arbitrary hosts; frame-src too, on purpose — IFRAME_HOSTS in
-// src/lib/sanitize.ts decides which embeds survive, so the policy need not
+// articles embed arbitrary hosts; frame-src too, on purpose – EMBED_HOSTS in
+// src/lib/embed.ts decides which embeds survive, so the policy need not
 // repeat it. connect-src covers the Radix Gateway + wallet Connect Relay (both
 // under *.radixdlt.com) and OciSwap.
 const csp = contentSecurityPolicy({

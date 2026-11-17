@@ -14,6 +14,7 @@ import { categoryLabel, cn, tipAddress } from '@/lib/utils';
 import { TAG_TREE, tagPaths } from '@/lib/tags';
 import { useFetch, useStore } from '@/hooks';
 import { BLOCK_META, INSERTABLE_BLOCKS, ATOMIC_BLOCK_TYPES, createBlock, duplicateBlock } from '@/lib/block-utils';
+import { EMBED_HOSTS } from '@/lib/embed';
 import { resolveMapUrl } from 'wiki-formant/maps';
 import { ACTIVITY_METRICS } from '@/lib/radix/metrics';
 import { DAILY_RANGES } from '@/components/charts/format';
@@ -45,7 +46,7 @@ const PROMPT_CLASSES = { row: 'row', input: 'input', apply: 'btn btn-primary', c
 function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   // This wiki's own nodes, built from its class names and icons. Memoised
   // because a fresh array would tear the editor down and lose the selection.
-  const nodes = useMemo(() => [...embedNodes(), TabGroup, TabItem, CodeBlock, HeadingIds], []);
+  const nodes = useMemo(() => [...embedNodes({ iframeHosts: EMBED_HOSTS }), TabGroup, TabItem, CodeBlock, HeadingIds], []);
   const { editor, fileInputRef, upload, handleFileChange, triggerUpload } = useWikiEditor({
     value,
     onChange,

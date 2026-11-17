@@ -16,18 +16,8 @@
 import { mapBlockTree } from 'wiki-formant/blocks';
 import { createHtmlSanitizer, sanitizeCoreLeaf } from 'wiki-formant/sanitize';
 import { BLOCK_SHAPE } from '@/lib/block-utils';
+import { EMBED_HOSTS } from '@/lib/embed';
 import type { Block } from '@/types/blocks';
-
-// Third-party embed hosts: the editor's YouTube, tweet and map nodes, plus every
-// host a stored iframe points at. `frame-src` in next.config.ts is `https:`
-// broad, so this list is the only thing deciding which hosts a page can frame.
-const IFRAME_HOSTS = [
-  'www.youtube.com', 'www.youtube-nocookie.com', 'platform.twitter.com',
-  'www.google.com', 'maps.google.com', 'embed.apple.com', 'docs.google.com',
-  'radixrolodex.com', 'quack.space',
-  // Only in older revisions, kept so a restore still renders.
-  'embed.notion.co', 'replit.com', 'tutmoses.github.io', 'widgets.sociablekit.com',
-];
 
 // The YouTube node round-trips its player options as iframe attributes. They are
 // inert in the DOM, but an editor that loses them resets the options on save.
@@ -38,7 +28,7 @@ const YOUTUBE_ATTRS = [
 
 /** One stored HTML fragment, cleaned. Text without a tag passes untouched. */
 const sanitizeHtml = createHtmlSanitizer({
-  iframeHosts: IFRAME_HOSTS,
+  iframeHosts: EMBED_HOSTS,
   // `image` is the infographic kit's logo (`brand-assets/kit.mjs`), always a
   // data: PNG and held to that scheme below, so it can never fetch.
   tags: ['q', 'aside', 'image'],
