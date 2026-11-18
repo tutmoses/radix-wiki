@@ -7,7 +7,8 @@ import Link from 'next/link';
 import { BadgeCheck, CornerUpLeft, Flag, Hash, ImagePlus, Loader2, Trash2, X } from 'lucide-react';
 import { useAuth, useStore } from '@/hooks';
 import { CHANGE_WINDOW_MS, MAX_BODY, POLL_MS, type Me, type Message, type Read, type Ref } from '@/lib/trollbox';
-import { cn, pagePath, sendJson } from '@/lib/utils';
+import { HIDDEN_TAG_PATHS, TAG_TREE } from '@/lib/tags';
+import { categoryLabel, cn, sendJson } from '@/lib/utils';
 import { SignInOptions } from '@/components/SignIn';
 import { Button } from '@/components/ui';
 
@@ -79,12 +80,49 @@ function pickingAt(text: string, caret: number): Picking | null {
   return word ? { kind: word[1] === '#' ? 'page' : 'user', query: word[2]!, start: before.length - word[2]!.length - 1 } : null;
 }
 
-async function optionsFor({ kind, query }: Picking, signal: AbortSignal): Promise<Option[]> {
-  if (kind === 'page') {
-    const { items } = await ask<{ items: { id: string; title: string; tagPath: string; slug: string }[] }>(
-      fetch(`/api/wiki?${new URLSearchParams({ q: query, pageSize: '5' })}`, { signal }));
-    return items.map(p => ({ key: p.id, label: p.title, detail: pagePath(p.tagPath, p.slug), insert: `[[${p.title}]] ` }));
-  }
+/** A page or a section a line can tag: what it is called and where it lives. */
+type Taggable = { key: string; title: string; detail: string };
+
+// The wiki's sections, which the browser already holds. A section is tagged by
+// its name whether or not it has an article of its own.
+const SECTIONS: Taggable[] = TAG_TREE.paths()
+  .filter(p => p.path && !p.hidden)
+  .map(p => ({ key: `section:${p.path}`, title: categoryLabel(p.node.name), detail: p.path }));
+
+const inHidden = (tagPath: string) => HIDDEN_TAG_PATHS.some(hidden => hidden && (tagPath === hidden || tagPath.startsWith(`${hidden}/`)));
+
+let taggables: Promise<Taggable[]> | null = null;
+
+/**
+ * Everything a line can tag, read once a visit: the sections, and every page's
+ * title, which is one small cached read. Searching the wiki as each letter was
+ * typed took most of a second a query; a list this size is filtered in place,
+ * as fast as it is typed.
+ */
+function loadTaggables(): Promise<Taggable[]> {
+  taggables ??= ask<{ id: string; title: string; detail: string }[]>(fetch('/api/wiki?refs'))
+    .then(pages => [...SECTIONS, ...pages.filter(p => !inHidden(p.detail)).map(p => ({ key: p.id, title: p.title, detail: p.detail }))])
+    // A failed read is asked for again the next time, not remembered as the answer.
+    .catch(error => { taggables = null; throw error; });
+  return taggables;
+}
+
+/** The few whose title holds what was typed: at its start first, then at the start of a word, then anywhere. */
+function matching(all: Taggable[], query: string): Option[] {
+  const typed = query.toLowerCase();
+  const rank = ({ title }: Taggable) => {
+    const at = title.toLowerCase().indexOf(typed);
+    return at < 0 ? -1 : at === 0 ? 0 : /[\p{L}\p{N}]/u.test(title[at - 1]!) ? 2 : 1;
+  };
+  return all
+    .map(taggable => ({ taggable, rank: rank(taggable) }))
+    .filter(found => found.rank >= 0)
+    .sort((a, b) => a.rank - b.rank || a.taggable.title.length - b.taggable.title.length)
+    .slice(0, 6)
+    .map(({ taggable }) => ({ key: taggable.key, label: taggable.title, detail: taggable.detail, insert: `[[${taggable.title}]] ` }));
+}
+
+async function peopleFor(query: string, signal: AbortSignal): Promise<Option[]> {
   if (query.length < 2) return [];
   const users = await ask<{ id: string; displayName: string | null; shortAddress: string }[]>(
     fetch(`/api/users/search?${new URLSearchParams({ q: query })}`, { signal }));
@@ -281,12 +319,18 @@ export default function Trollbox({ onSeen }: { onSeen: (id: number) => void }) {
     }
   };
 
-  // What the wiki offers for the tag or mention being typed, a moment after the typing stops.
+  // What the wiki offers for the tag or mention being typed. Pages are matched
+  // in the browser as each letter lands; people are asked for a moment after the typing stops.
   useEffect(() => {
     setActive(0);
     if (!picking) { setOptions([]); return; }
+    if (picking.kind === 'page') {
+      let live = true;
+      loadTaggables().then(all => { if (live) setOptions(matching(all, picking.query)); }, () => {});
+      return () => { live = false; };
+    }
     const abort = new AbortController();
-    const timer = setTimeout(() => optionsFor(picking, abort.signal).then(setOptions, () => {}), 150);
+    const timer = setTimeout(() => peopleFor(picking.query, abort.signal).then(setOptions, () => {}), 150);
     return () => { clearTimeout(timer); abort.abort(); };
   }, [picking]);
 
@@ -521,6 +565,8 @@ export default function Trollbox({ onSeen }: { onSeen: (id: number) => void }) {
               rows={1}
               value={body}
               onChange={e => { setBody(e.target.value.slice(0, MAX_BODY)); setPicking(pickingAt(e.target.value, e.target.selectionStart)); }}
+              // The list a tag is picked from is on its way before the first # is typed.
+              onFocus={() => { loadTaggables().catch(() => {}); }}
               onBlur={() => setPicking(null)}
               onPaste={e => { const file = e.clipboardData.files[0]; if (pictures && file?.type.startsWith('image/')) { e.preventDefault(); void upload(file); } }}
               onKeyDown={e => {

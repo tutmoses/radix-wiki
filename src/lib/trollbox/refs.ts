@@ -2,6 +2,8 @@
 //
 // A line tags a page the way a wiki links one, `[[Radix Engine]]` or
 // `[[contents/tech/core-protocols/radix-engine]]`, or by pasting its address. A
+// section is tagged the same way, by its name or its path, whether or not it
+// has an article of its own: `[[Ideas Pipeline]]` is the board at /ideas. A
 // mention is `@name`, with the account it names sent beside the body, because a
 // name is not unique and may hold spaces. Each is stored with the text it
 // stands for and what it resolved to, so the room draws the line without
@@ -10,7 +12,8 @@
 import { prisma } from '@/lib/prisma/client';
 import { parsePath } from '@/lib/path';
 import { SITE_URL } from '@/lib/site';
-import { pagePath } from '@/lib/utils';
+import { TAG_TREE } from '@/lib/tags';
+import { categoryLabel, pagePath } from '@/lib/utils';
 import { getTitleIndex } from '@/lib/wiki';
 import type { Ref } from '.';
 
@@ -29,6 +32,19 @@ function addressOf(path: string): string | null {
   return parsed.type === 'page' || parsed.type === 'category' || parsed.type === 'homepage' ? pagePath(parsed.tagPath, parsed.slug) : null;
 }
 
+/**
+ * What can be tagged, by address: every page under its title, and every section
+ * under its article's title or, where it has none, its own name.
+ */
+async function taggable(): Promise<Record<string, string>> {
+  const titles = await getTitleIndex();
+  const sections = TAG_TREE.paths().filter(p => p.path && !p.hidden).map(p => [`/${p.path}`, categoryLabel(p.node.name)] as const);
+  return { ...Object.fromEntries(sections), ...titles };
+}
+
+// A section answers to its name as well as to its article's title.
+const SECTION_NAMES = TAG_TREE.paths().filter(p => p.path && !p.hidden).map(p => [categoryLabel(p.node.name).toLowerCase(), `/${p.path}`] as const);
+
 /** The pages a body tags and the accounts in `mentioned` it names, in the order they appear. */
 export async function refsOf(body: string, mentioned: unknown): Promise<Ref[]> {
   const refs: Ref[] = [];
@@ -36,8 +52,9 @@ export async function refsOf(body: string, mentioned: unknown): Promise<Ref[]> {
   const links = [...body.matchAll(WIKILINK)].map(m => ({ match: m[0], named: m[1]!.trim() }));
   const urls = [...body.matchAll(WIKI_URL)].map(m => ({ match: m[0].replace(/[.,;:!?)]+$/, ''), named: null }));
   if (links.length || urls.length) {
-    const titles = await getTitleIndex();
-    const byTitle = new Map(Object.entries(titles).map(([path, title]) => [title.toLowerCase(), path]));
+    const titles = await taggable();
+    // A page's title wins a name it shares with a section.
+    const byTitle = new Map([...SECTION_NAMES, ...Object.entries(titles).map(([path, title]) => [title.toLowerCase(), path] as const)]);
     for (const { match, named } of [...links, ...urls].slice(0, MAX_REFS)) {
       const address = named === null
         ? addressOf(new URL(match).pathname)

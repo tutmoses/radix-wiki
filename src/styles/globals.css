@@ -876,6 +876,9 @@
   .trollbox-foot { @apply p-2 border-t border-border-muted; }
   .trollbox-form { @apply relative flex items-end gap-2; }
   .trollbox-input { @apply flex-1 min-w-0 resize-none py-1.5 px-3 text-small; field-sizing: content; max-height: 6rem; }
+  /* iOS zooms the page into a field whose text is under 16px, which pushes the
+     room, and whatever it offers above the field, off the sides of the screen. */
+  @media (pointer: coarse) { .trollbox-input { font-size: 1rem; } }
   .trollbox-count { @apply self-center text-xs text-text-muted; }
   /* The header button's dot: a closed room has lines the reader has not seen. */
   .trollbox-unread { @apply absolute top-1 right-1 size-2 rounded-full bg-accent; }
