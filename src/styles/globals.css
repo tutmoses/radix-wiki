@@ -816,9 +816,55 @@
   .rss-card-source { @apply text-success font-medium; }
   .rss-card-desc { @apply text-text-muted text-[13px] leading-relaxed; }
 
+  /* ===== TROLLBOX ===== */
+  /* The room's shape is caper's: flat, newest at the foot, one wrapping line a
+     message. On a phone it is the whole screen, over the header; from 1024px it
+     docks in the corner, under the header's menus. */
+  .trollbox {
+    @apply fixed inset-0 z-[60] flex flex-col bg-surface-1;
+    @apply lg:inset-auto lg:right-4 lg:bottom-4 lg:z-40 lg:w-96 lg:border lg:border-border lg:rounded-lg lg:shadow-lg;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  @media (min-width: 1024px) { .trollbox { height: min(36rem, calc(100dvh - var(--header-height) - 2rem)); } }
+  .trollbox-head { @apply flex items-center gap-2 pl-3 pr-1 py-1 border-b border-border-muted; }
+  .trollbox-title { @apply m-0 text-base font-semibold; }
+  /* The log scrolls, the room does not: without `min-h-0` a long room pushes the composer off its foot. */
+  .trollbox-log { @apply flex-1 min-h-0 flex flex-col gap-1 overflow-y-auto px-3 py-2 text-small; overscroll-behavior: contain; font-variant-numeric: tabular-nums; }
+  /* A near-empty room fills from the foot, the way every chat log does. `margin-top: auto`
+     rather than `justify-content: flex-end`, which clips the top of an overflowing column. */
+  .trollbox-log > :first-child { margin-top: auto; }
+  .trollbox-row { overflow-wrap: anywhere; white-space: pre-wrap; a { @apply text-accent underline; } }
+  .trollbox-day { @apply self-center py-1 text-xs text-text-muted; }
+  .trollbox-time { @apply mr-2 text-xs text-text-muted; }
+  .trollbox-name { @apply mr-1 font-semibold; }
+  .trollbox-name::after { content: ':'; @apply font-normal text-text-muted; }
+  .trollbox-name[data-standing='guest'] { @apply font-normal; }
+  .trollbox-mark { @apply inline ml-0.5 text-accent; vertical-align: -1px; }
+  .trollbox-guest { @apply ml-1 text-xs text-text-muted; }
+  /* What the room says in its own voice: a collapsed line's slot, an empty log, a mute. */
+  .trollbox-note { @apply m-0 text-small text-text-muted italic; }
+  .trollbox-link { @apply ml-1 text-xs text-accent underline cursor-pointer disabled:opacity-50; }
+  /* A line's actions stay out of the way until the row is under the cursor, or
+     carry something to read: a flag count, the reader's own flag. A touch
+     screen has no cursor, so there they are always shown. */
+  .trollbox-act { @apply inline-flex items-center gap-0.5 ml-1 px-1 text-xs text-text-muted cursor-pointer opacity-0 transition-opacity hover:text-accent disabled:cursor-default; vertical-align: -1px; }
+  .trollbox-row:hover .trollbox-act, .trollbox-act:focus-visible, .trollbox-act[data-on] { @apply opacity-100; }
+  .trollbox-act:disabled { @apply text-accent; }
+  @media (hover: none) { .trollbox-act { @apply opacity-70; } }
+  /* Shown only while the reader is scrolled up and has missed lines. */
+  .trollbox-jump { @apply self-center -mt-8 mb-1 z-10 px-3 py-1 rounded-full bg-accent text-text-inverted text-xs font-semibold shadow cursor-pointer; }
+  .trollbox-error { @apply m-0 px-3 py-1 text-small text-error; }
+  .trollbox-foot { @apply p-2 border-t border-border-muted; }
+  .trollbox-form { @apply flex items-end gap-2; }
+  .trollbox-input { @apply flex-1 min-w-0 resize-none py-1.5 px-3 text-small; field-sizing: content; max-height: 6rem; }
+  .trollbox-count { @apply self-center text-xs text-text-muted; }
+  /* The header button's dot: a closed room has lines the reader has not seen. */
+  .trollbox-unread { @apply absolute top-1 right-1 size-2 rounded-full bg-accent; }
+
   /* ===== TOAST ===== */
+  /* Over the trollbox, which on a phone is the whole screen. */
   .toast {
-    @apply fixed bottom-6 right-6 z-50 bg-surface-1 border border-accent/30 rounded-lg px-4 py-3 text-small shadow-lg;
+    @apply fixed bottom-6 right-6 z-[70] bg-surface-1 border border-accent/30 rounded-lg px-4 py-3 text-small shadow-lg;
     @apply flex items-center gap-3;
     animation: slide-up 0.3s ease-out;
   }

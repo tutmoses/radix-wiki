@@ -5,7 +5,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Search, Loader2, LogOut, User, FileCode, Bell, Database, MoreVertical, Quote, Check, Eye, EyeOff, Settings, History, KeyRound, Wallet } from 'lucide-react';
+import { Search, Loader2, LogOut, User, FileCode, Bell, Database, MoreVertical, Quote, Check, Eye, EyeOff, Settings, History, KeyRound, MessagesSquare, Wallet } from 'lucide-react';
 import { RailToggle, focusShown, useCopy, useSearchShortcut, useTypeahead, useClickOutside } from 'wiki-formant/react';
 import type { ComboboxOptionProps } from 'wiki-formant/combobox';
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -16,7 +16,8 @@ import { AGO, useNow } from '@/lib/now';
 import { isoDate, relativeTime } from 'wiki-formant/freshness';
 import type { PageSummary } from '@/lib/wiki';
 import Highlight from '@/components/Highlight';
-import { Button, Dropdown, Input } from '@/components/ui';
+import { Button, Dropdown } from '@/components/ui';
+import { SignInOptions } from '@/components/SignIn';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiNotification } from '@/types';
 import { useTelegram } from '@/components/WebhookSettings';
@@ -97,38 +98,6 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
           ))}
         </div>
       )}
-    </Dropdown>
-  );
-}
-
-/** The longest name a passkey account can take, as `@/lib/passkey` holds it to. */
-const NAME_MAX = 24;
-
-/**
- * The two ways in. A wallet signs in the account its $XRD belongs to; a passkey
- * signs in an account that saved one, or makes one for a reader with no wallet.
- */
-function SignInMenu({ onClose }: { onClose: () => void }) {
-  const connect = useStore(s => s.connect);
-  const passkey = useStore(s => s.passkey);
-  const [name, setName] = useState('');
-  const [busy, setBusy] = useState(false);
-  const run = async (ceremony: 'register' | 'login') => {
-    setBusy(true);
-    const done = await passkey(ceremony, name);
-    setBusy(false);
-    if (done) onClose();
-  };
-
-  return (
-    <Dropdown className="signin-menu">
-      <button className="dropdown-item" onClick={() => { onClose(); connect(); }}><Wallet size={16} />Radix Wallet</button>
-      <button className="dropdown-item" disabled={busy} onClick={() => run('login')}><KeyRound size={16} />Passkey</button>
-      <form className="signin-new" onSubmit={e => { e.preventDefault(); run('register'); }}>
-        <label htmlFor="signin-name" className="text-small text-text-muted">No wallet? Pick a name and save a passkey. A passkey account can chat; editing needs a wallet.</label>
-        <Input id="signin-name" value={name} onChange={e => setName(e.target.value)} placeholder="Name" autoComplete="nickname" minLength={2} maxLength={NAME_MAX} required />
-        <Button type="submit" variant="secondary" size="sm" disabled={busy}>Create account</Button>
-      </form>
     </Dropdown>
   );
 }
@@ -301,6 +270,9 @@ export function Header() {
   // A count, or the read in flight or failed: a failed read is never shown as nothing unread.
   const bell = useStore(s => (s.notifications.status === 'loaded' ? s.notifications.unread : s.notifications.status));
   const historyHref = useStore(s => s.historyHref);
+  const chatOpen = useStore(s => s.chatOpen);
+  const chatUnread = useStore(s => s.chatUnread);
+  const toggleChat = useStore(s => s.toggleChat);
   const { hasTools, hasLedger, sectionPath, canExportMdx, isPage, mdxPath, tagPath, slug } = usePageContext();
   const [field, setField] = useState<SearchField>('folded');
   const { menu, open: openMenu, close: closeMenu, toggle: toggleMenu, ref: actionsRef } = useHeaderMenu();
@@ -463,6 +435,11 @@ export function Header() {
               </div>
             )}
 
+            <button onClick={() => { closeMenu(); toggleChat(); }} className="icon-btn relative" title="Trollbox" aria-label="Trollbox" aria-expanded={chatOpen}>
+              <MessagesSquare size={20} />
+              {chatUnread && !chatOpen && <span className="trollbox-unread" title="New lines in the trollbox" />}
+            </button>
+
             {isAuthenticated && (
               <div className="relative">
                 <button onClick={() => toggleMenu('notifications')} className="icon-btn" title="Notifications" aria-label="Notifications" aria-expanded={menu === 'notifications'}>
@@ -490,7 +467,7 @@ export function Header() {
                   <Button variant="primary" size="sm" onClick={() => toggleMenu('signin')} aria-expanded={menu === 'signin'} title={authStatus === 'unreadable' ? SESSION_UNREADABLE : undefined}>
                     Sign in
                   </Button>
-                  {menu === 'signin' && <SignInMenu onClose={closeMenu} />}
+                  {menu === 'signin' && <Dropdown className="signin-menu"><SignInOptions onDone={closeMenu} /></Dropdown>}
                 </>
               )}
             </div>

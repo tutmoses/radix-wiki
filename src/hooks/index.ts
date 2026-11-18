@@ -182,6 +182,11 @@ interface AppStore {
   /** Counts `upload` in `uploads` until it settles, either way. */
   trackUpload: <T>(upload: Promise<T>) => Promise<T>;
   markNotificationsRead: (ids?: string[]) => Promise<void>;
+  /** The trollbox: the header's button opens it, and the room is mounted beside the page (`TrollboxDock`). */
+  chatOpen: boolean;
+  /** A closed room has lines the reader has not seen. */
+  chatUnread: boolean;
+  toggleChat: () => void;
 }
 
 // The wallet's answer ends the attempt, so a rejection or a failed challenge
@@ -285,6 +290,9 @@ export const useStore = create<AppStore>()((set, get) => ({
     set(s => ({ uploads: s.uploads + 1 }));
     return upload.finally(() => set(s => ({ uploads: s.uploads - 1 })));
   },
+  chatOpen: false,
+  chatUnread: false,
+  toggleChat: () => set(s => ({ chatOpen: !s.chatOpen })),
   notifications: { status: 'loading' },
   fetchNotifications: async () => {
     const attempt = ++notificationsAttempt;

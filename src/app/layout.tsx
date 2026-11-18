@@ -13,6 +13,7 @@ import { Header } from '@/components/Header';
 import { Sidebar } from '@/components/Sidebar';
 import { Footer } from '@/components/Footer';
 import { Toast } from '@/components/Toast';
+import { TrollboxDock } from '@/components/TrollboxDock';
 
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, X } from '@/lib/site';
 import { ogMetadata } from '@/lib/og';
@@ -116,6 +117,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </div>
           </SidebarProvider>
+          <TrollboxDock />
           <Toast />
         </RadixProvider>
       </body>

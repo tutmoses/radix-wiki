@@ -1,0 +1,51 @@
+// The trollbox: the wiki's one public room. `src/lib/trollbox` reads and writes it.
+
+/// One line. A line is never deleted, only moved between states, so the log
+/// keeps its shape: live, hidden by weighted flags, removed by an admin, or
+/// retracted by its author.
+model ChatMessage {
+  id           Int           @id @default(autoincrement())
+  authorId     String        @map("author_id")
+  author       User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body         String
+  /// A picture, as a URL in the wiki's own Blob store.
+  image        String?
+  replyToId    Int?          @map("reply_to_id")
+  replyTo      ChatMessage?  @relation("ChatReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies      ChatMessage[] @relation("ChatReplies")
+  /// The pages and users the body names, as they were called when it was posted.
+  refs         Json          @default("{}")
+  /// The author's $XRD when they posted, liquid and staked: the line's shield against flags.
+  authorWeight Float         @default(0) @map("author_weight")
+  /// Collapsed by weighted flags.
+  hiddenAt     DateTime?     @map("hidden_at")
+  /// Removed by its author or an admin.
+  deletedAt    DateTime?     @map("deleted_at")
+  /// An admin restored it after a collapse, which is final: flags cannot collapse it again.
+  clearedAt    DateTime?     @map("cleared_at")
+  /// Deleted by its own author, so an admin is not offered a restore.
+  retracted    Boolean       @default(false)
+  /// When its state last moved, which is how an open room learns of it.
+  moderatedAt  DateTime?     @map("moderated_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  flags        ChatFlag[]
+
+  @@index([authorId, hiddenAt])
+  @@index([moderatedAt])
+  @@map("chat_messages")
+}
+
+/// One holder's flag on one line. `weight` is their $XRD when they flagged; the
+/// flag counts for that or for what they hold now, whichever is less.
+model ChatFlag {
+  id        Int         @id @default(autoincrement())
+  messageId Int         @map("message_id")
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String      @map("user_id")
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weight    Float
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  @@unique([messageId, userId])
+  @@map("chat_flags")
+}

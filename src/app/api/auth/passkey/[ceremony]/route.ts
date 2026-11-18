@@ -10,6 +10,7 @@ import { errors, handleRoute, json } from 'wiki-formant/http';
 import { IP_LIMITS, overBudget, type RouteContext } from '@/lib/api';
 import { createSession, getSession, sessionJson } from '@/lib/auth';
 import { cleanName, login, loginOptions, NAME_MAX, register, registrationOptions } from '@/lib/passkey';
+import { BLOCKED, isPostable } from '@/lib/trollbox/blocklist';
 
 export async function POST(request: NextRequest, { params }: RouteContext<{ ceremony: string }>) {
   const { ceremony } = await params;
@@ -35,6 +36,8 @@ export async function POST(request: NextRequest, { params }: RouteContext<{ cere
     const session = await getSession();
     const name = session ? null : cleanName(body.name);
     if (!session && !name) return errors.badRequest(`Pick a name of 2 to ${NAME_MAX} characters.`);
+    // The name is what the room shows beside every line the account posts.
+    if (name && !isPostable(name)) return errors.badRequest(BLOCKED);
     if (!body.response) return json(await registrationOptions(request, session, name));
     const user = await register(request, session, name, body.response);
     if (!user) return errors.badRequest('That passkey could not be saved. Try again.');

@@ -19,6 +19,8 @@ model User {
   updatedAt       DateTime  @updatedAt @map("updated_at")
   
   passkeys        UserPasskey[]
+  chatMessages    ChatMessage[]
+  chatFlags       ChatFlag[]
   comments        Comment[]
   webhooks        Webhook[]
   telegramLinks   TelegramLink[]

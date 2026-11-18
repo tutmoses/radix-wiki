@@ -38,6 +38,10 @@ export interface Validator {
    * on 15 September 2026. Unset when the unit supply could not be read.
    */
   ownerStake?: number;
+  /** The validator's stake-unit resource: what a staker holds in place of the $XRD they staked. */
+  unitResource?: string;
+  /** What one stake unit redeems for in $XRD: the stake over the unit supply. Unset when the supply could not be read. */
+  xrdPerUnit?: number;
   /** Proposals made over proposals due in the last seven days. Unset when none were due or the read failed. */
   uptime?: number;
   /**
@@ -55,7 +59,7 @@ export interface ValidatorSet {
 }
 
 /** A validator before the reads that need the whole list: stake-unit supply and uptime. */
-type Parsed = Omit<Validator, 'stakeShare' | 'ownerStake' | 'uptime'> & { ownerUnits: number; unitResource?: string };
+type Parsed = Omit<Validator, 'stakeShare' | 'ownerStake' | 'xrdPerUnit' | 'uptime'> & { ownerUnits: number };
 
 function parseValidator(item: any, ledger: LedgerState): Parsed | null {
   if (!item?.address) return null;
@@ -120,7 +124,7 @@ async function getUptimes(addresses: string[], ledger: LedgerState): Promise<Map
   return uptimes;
 }
 
-export const getValidatorSet = chartsCache('radix-validators-v4', 300,
+export const getValidatorSet = chartsCache('radix-validators-v5', 300,
   async (): Promise<ValidatorSet> => {
     let ledger: LedgerState = {};
     const parsed = await paginatedGatewayFetch<Parsed, ValidatorPage>(
@@ -140,22 +144,25 @@ export const getValidatorSet = chartsCache('radix-validators-v4', 300,
     const stateVersion = Number(ledger.state_version);
     if (!epoch || !stateVersion) throw new GatewayUnavailableError('/state/validators/list', 'validators');
 
-    // A stake unit is worth the validator's stake over its unit supply, so owner stake needs
-    // each validator's supply, read at the same state version as the stake.
-    const unitResources = [...new Set(parsed.flatMap((v) => (v.ownerUnits > 0 && v.unitResource ? [v.unitResource] : [])))];
+    // A stake unit is worth the validator's stake over its unit supply, so owner stake and a
+    // staker's weight (`xrdWeight`) need each validator's supply, read at the same state
+    // version as the stake.
+    const unitResources = [...new Set(parsed.flatMap((v) => (v.unitResource ? [v.unitResource] : [])))];
     const [supplies, uptimes] = await Promise.all([
       entityDetailsAt(unitResources, stateVersion, 'stake-units').catch(() => null),
       getUptimes(parsed.map((v) => v.address), ledger),
     ]);
     const totalStake = parsed.reduce((sum, v) => sum + v.totalStake, 0);
 
-    const validators = parsed.map(({ ownerUnits, unitResource, ...v }): Validator => {
-      const supply = unitResource ? num(supplies?.get(unitResource)?.details?.total_supply) : 0;
+    const validators = parsed.map(({ ownerUnits, ...v }): Validator => {
+      const supply = v.unitResource ? num(supplies?.get(v.unitResource)?.details?.total_supply) : 0;
+      const xrdPerUnit = supply > 0 ? v.totalStake / supply : undefined;
       const uptime = uptimes?.get(v.address);
       return {
         ...v,
         stakeShare: totalStake > 0 ? v.totalStake / totalStake : 0,
-        ...(ownerUnits === 0 ? { ownerStake: 0 } : supply > 0 ? { ownerStake: (ownerUnits * v.totalStake) / supply } : {}),
+        ...(xrdPerUnit === undefined ? {} : { xrdPerUnit }),
+        ...(ownerUnits === 0 ? { ownerStake: 0 } : xrdPerUnit === undefined ? {} : { ownerStake: ownerUnits * xrdPerUnit }),
         ...(uptime === undefined ? {} : { uptime }),
       };
     });
