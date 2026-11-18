@@ -46,12 +46,15 @@ function usePageContext() {
 
 function notificationText(n: WikiNotification): string {
   const actor = n.actor.displayName || 'Someone';
+  if (n.type === 'chat_mention') return `${actor} mentioned you in the trollbox`;
+  if (n.type === 'chat_reply') return `${actor} replied to you in the trollbox`;
+  const title = n.page?.title ?? '';
   switch (n.type) {
-    case 'comment_on_page': return `${actor} commented on "${n.page.title}"`;
-    case 'comment_reply': return `${actor} replied to your comment on "${n.page.title}"`;
-    case 'page_edited': return `${actor} edited "${n.page.title}"`;
+    case 'comment_on_page': return `${actor} commented on "${title}"`;
+    case 'comment_reply': return `${actor} replied to your comment on "${title}"`;
+    case 'page_edited': return `${actor} edited "${title}"`;
     // A row written by another deploy can carry a type this one does not know.
-    default: return `New activity from ${actor} on "${n.page.title}"`;
+    default: return `New activity from ${actor} on "${title}"`;
   }
 }
 
@@ -87,7 +90,13 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
         <div className="notification-list">
           {notifications.items.map(n => (
             <button key={n.id} className={cn('notification-item', !n.read && 'notification-unread')}
-              onClick={() => { markNotificationsRead([n.id]); router.push(pagePath(n.page.tagPath, n.page.slug)); onClose(); }}>
+              onClick={() => {
+                markNotificationsRead([n.id]);
+                // One from the trollbox opens the room at its line; any other, its page.
+                if (n.page) router.push(pagePath(n.page.tagPath, n.page.slug));
+                else if (n.chatMessageId) useStore.setState({ chatOpen: true, chatLine: n.chatMessageId });
+                onClose();
+              }}>
               <UserAvatar seed={n.actor.id} avatarUrl={n.actor.avatarUrl} size="sm" />
               <div className="min-w-0 flex-1">
                 <div className="text-small truncate">{notificationText(n)}</div>

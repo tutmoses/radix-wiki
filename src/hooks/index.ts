@@ -186,6 +186,8 @@ interface AppStore {
   chatOpen: boolean;
   /** A closed room has lines the reader has not seen. */
   chatUnread: boolean;
+  /** The line a notification pointed at, for the room to scroll to and then clear. */
+  chatLine: number | null;
   toggleChat: () => void;
 }
 
@@ -292,6 +294,7 @@ export const useStore = create<AppStore>()((set, get) => ({
   },
   chatOpen: false,
   chatUnread: false,
+  chatLine: null,
   toggleChat: () => set(s => ({ chatOpen: !s.chatOpen })),
   notifications: { status: 'loading' },
   fetchNotifications: async () => {

@@ -90,11 +90,13 @@ model Comment {
 model Notification {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
-  type      String   // 'comment_on_page' | 'comment_reply' | 'page_edited'
+  type      String   // 'comment_on_page' | 'comment_reply' | 'page_edited' | 'chat_mention' | 'chat_reply'
   actorId   String   @map("actor_id")
-  /// A "WikiPage" id, without a relation for the reason Comment.pageId gives.
-  pageId    String   @map("page_id")
+  /// A "WikiPage" id, without a relation for the reason Comment.pageId gives. Null for one from the trollbox.
+  pageId    String?  @map("page_id")
   commentId String?  @map("comment_id")
+  /// The trollbox line a mention or a reply was made in.
+  chatMessageId Int? @map("chat_message_id")
   read      Boolean  @default(false)
   createdAt DateTime @default(now()) @map("created_at")
 

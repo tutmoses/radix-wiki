@@ -3,7 +3,8 @@
 import { prisma } from '@/lib/prisma/client';
 import { xrdWeight } from '@/lib/radix/weight';
 import { getXrdRequired } from '@/lib/tags';
-import { CHANGE_WINDOW_MS, PAGE, type Message, type Read, type Standing } from '.';
+import { CHANGE_WINDOW_MS, EXCERPT, PAGE, type Message, type Read, type Ref, type Standing } from '.';
+import { plainText } from './refs';
 
 /**
  * The $XRD, liquid and staked, that makes a wallet a holder in the room: the
@@ -46,26 +47,43 @@ const ROW = {
   select: {
     id: true,
     body: true,
+    image: true,
+    refs: true,
     authorWeight: true,
     hiddenAt: true,
     deletedAt: true,
     retracted: true,
     createdAt: true,
     author: { select: { id: true, displayName: true, shortAddress: true, avatarUrl: true } },
+    replyTo: {
+      select: { id: true, body: true, image: true, refs: true, hiddenAt: true, deletedAt: true, author: { select: { displayName: true, shortAddress: true } } },
+    },
     _count: { select: { flags: true } },
   },
 } as const;
 
 type Row = Awaited<ReturnType<typeof prisma.chatMessage.findMany<typeof ROW>>>[number];
 
+/** A row's stored refs. The column is JSON, and a row written before refs existed holds `{}`. */
+const refsIn = (stored: unknown): Ref[] => (Array.isArray(stored) ? stored as Ref[] : []);
+
 function toMessage(row: Row): Message {
   const standing: Standing = !row.author.shortAddress ? 'guest' : row.authorWeight >= HOLDER_XRD ? 'holder' : 'wallet';
+  const parent = row.replyTo;
   return {
     id: row.id,
     author: { id: row.author.id, name: row.author.displayName || row.author.shortAddress, avatarUrl: row.author.avatarUrl, standing },
     line: row.deletedAt ? { state: row.retracted ? 'retracted' : 'removed' }
       : row.hiddenAt ? { state: 'hidden' }
-      : { state: 'live', body: row.body },
+      : { state: 'live', body: row.body, ...(row.image && { image: row.image }), refs: refsIn(row.refs) },
+    ...(parent && {
+      replyTo: {
+        id: parent.id,
+        name: parent.author.displayName || parent.author.shortAddress,
+        // A collapsed or deleted line is quoted by nobody: its body is withheld here as everywhere.
+        excerpt: parent.hiddenAt || parent.deletedAt ? null : plainText(parent.body, refsIn(parent.refs)).slice(0, EXCERPT) || (parent.image ? 'a picture' : ''),
+      },
+    }),
     flagCount: row._count.flags,
     at: row.createdAt.toISOString(),
   };

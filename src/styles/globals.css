@@ -844,6 +844,22 @@
   .trollbox-name[data-standing='guest'] { @apply font-normal; }
   .trollbox-mark { @apply inline ml-0.5 text-accent; vertical-align: -1px; }
   .trollbox-guest { @apply ml-1 text-xs text-text-muted; }
+  /* A tagged page reads as the page's title; a mention as the name. */
+  .trollbox-page { @apply px-1 rounded bg-accent-muted text-accent no-underline!; }
+  .trollbox-mention { @apply font-semibold text-accent; }
+  /* The line a reply answers, above it: who said it and how it began. */
+  .trollbox-quote { @apply flex items-center gap-1 max-w-full pl-2 border-l-2 border-border text-xs text-text-muted truncate cursor-pointer hover:text-text; }
+  .trollbox-picture { @apply block mt-1; img { @apply max-h-56 max-w-full rounded; } }
+  /* A line a notification or a quote pointed at, marked while the reader finds it. */
+  .trollbox-row[data-shown] { @apply bg-accent-muted rounded; }
+  /* What the wiki offers while a tag or a mention is typed, above the composer. */
+  .trollbox-options { @apply absolute left-0 right-0 bottom-full mb-1 flex flex-col bg-surface-1 border border-border rounded shadow overflow-hidden; }
+  .trollbox-option { @apply flex items-baseline gap-2 px-3 py-1.5 text-left text-small cursor-pointer; }
+  .trollbox-option-active { @apply bg-surface-2; }
+  .trollbox-option-detail { @apply ml-auto shrink-0 max-w-[50%] truncate text-xs text-text-muted; }
+  /* What rides on the next line sent: the line it answers, the picture it carries. */
+  .trollbox-pending { @apply flex items-center gap-2 mb-2 px-2 py-1 bg-surface-2 rounded text-xs text-text-muted; }
+  .trollbox-thumb { @apply h-10 rounded; }
   /* What the room says in its own voice: a collapsed line's slot, an empty log, a mute. */
   .trollbox-note { @apply m-0 text-small text-text-muted italic; }
   .trollbox-link { @apply ml-1 text-xs text-accent underline cursor-pointer disabled:opacity-50; }
@@ -858,7 +874,7 @@
   .trollbox-jump { @apply self-center -mt-8 mb-1 z-10 px-3 py-1 rounded-full bg-accent text-text-inverted text-xs font-semibold shadow cursor-pointer; }
   .trollbox-error { @apply m-0 px-3 py-1 text-small text-error; }
   .trollbox-foot { @apply p-2 border-t border-border-muted; }
-  .trollbox-form { @apply flex items-end gap-2; }
+  .trollbox-form { @apply relative flex items-end gap-2; }
   .trollbox-input { @apply flex-1 min-w-0 resize-none py-1.5 px-3 text-small; field-sizing: content; max-height: 6rem; }
   .trollbox-count { @apply self-center text-xs text-text-muted; }
   /* The header button's dot: a closed room has lines the reader has not seen. */

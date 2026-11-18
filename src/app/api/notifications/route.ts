@@ -17,16 +17,17 @@ export async function GET(request: NextRequest) {
 
     // Notification.pageId names a WikiPage row without a relation, so the pages are
     // joined here, and a deleted page's rows are dropped before the list, its total
-    // and the unread count are taken, so all three count the same rows.
+    // and the unread count are taken, so all three count the same rows. One from
+    // the trollbox names a line instead of a page, and is kept.
     const { userId } = auth.session;
-    const pageIds = await prisma.notification.findMany({ where: { userId }, distinct: ['pageId'], select: { pageId: true } });
+    const pageIds = await prisma.notification.findMany({ where: { userId, pageId: { not: null } }, distinct: ['pageId'], select: { pageId: true } });
     const pages = await prisma.wikiPage.findMany({
-      where: { id: { in: pageIds.map(n => n.pageId) } },
+      where: { id: { in: pageIds.flatMap(n => n.pageId ?? []) } },
       select: { id: true, title: true, tagPath: true, slug: true },
     });
     const byId = new Map(pages.map(p => [p.id, p]));
 
-    const where = { userId, pageId: { in: [...byId.keys()] } };
+    const where = { userId, OR: [{ pageId: { in: [...byId.keys()] } }, { chatMessageId: { not: null } }] };
     const [notifications, total, unreadCount] = await Promise.all([
       prisma.notification.findMany({
         where,
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
       prisma.notification.count({ where: { ...where, read: false } }),
     ]);
 
-    const items = notifications.map(n => ({ ...n, page: byId.get(n.pageId)! }));
+    const items = notifications.map(n => ({ ...n, page: (n.pageId && byId.get(n.pageId)) || null }));
     return json({ ...paginatedResponse(items, total, page, pageSize), unreadCount });
   }, 'Failed to fetch notifications');
 }

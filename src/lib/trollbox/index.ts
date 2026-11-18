@@ -12,10 +12,18 @@
  *   retracted: deleted by its own author.
  */
 type Line =
-  | { state: 'live'; body: string }
+  | { state: 'live'; body: string; image?: string; refs: Ref[] }
   | { state: 'hidden' }
   | { state: 'removed' }
   | { state: 'retracted' };
+
+/**
+ * Something a line's text names, with the text that stands for it: a tagged
+ * page, as it was titled when the line was posted, or a mentioned account.
+ */
+export type Ref =
+  | { kind: 'page'; match: string; path: string; title: string }
+  | { kind: 'user'; match: string; id: string; name: string };
 
 /**
  * What a poster is to the room: a holder of the $XRD the wiki asks of a
@@ -28,6 +36,8 @@ export interface Message {
   id: number;
   author: { id: string; name: string; avatarUrl: string | null; standing: Standing };
   line: Line;
+  /** The line this one answers: who said it and how it began, or no excerpt once it is no longer live. */
+  replyTo?: { id: number; name: string; excerpt: string | null };
   /** How many holders have flagged it. A count only, never who. */
   flagCount: number;
   at: string;
@@ -53,6 +63,9 @@ export interface Me {
 }
 
 export const MAX_BODY = 500;
+
+/** How much of a line a reply to it quotes. */
+export const EXCERPT = 80;
 
 /** Lines in one page of scrollback. */
 export const PAGE = 50;

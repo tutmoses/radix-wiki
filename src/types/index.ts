@@ -67,10 +67,11 @@ export type IdeasPage = WikiPage & {
 
 
 /** What a notification reports. The column is a plain string, so a row can still carry another value. */
-export type NotificationType = 'comment_on_page' | 'comment_reply' | 'page_edited';
+export type NotificationType = 'comment_on_page' | 'comment_reply' | 'page_edited' | 'chat_mention' | 'chat_reply';
 
 export type WikiNotification = Omit<Notification, 'type'> & {
   type: NotificationType;
   actor: WikiAuthor;
-  page: Pick<WikiPageRow, 'id' | 'title' | 'tagPath' | 'slug'>;
+  /** The page it is about. Null for one from the trollbox, which names its line in `chatMessageId`. */
+  page: Pick<WikiPageRow, 'id' | 'title' | 'tagPath' | 'slug'> | null;
 };
