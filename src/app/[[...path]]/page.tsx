@@ -321,7 +321,7 @@ function homepageLd(page: WikiPage | null) {
   const news = html.split(/<h2[^>]*id="latest-news"[^>]*>/)[1]?.split(/<h2/)[0] ?? '';
   const items = [...news.matchAll(/<li>([\s\S]*?)<\/li>/g)].map(([, li = '']) => {
     // An item names its event's own page last, after any background links.
-    const href = [...li.matchAll(/<a\s[^>]*?href="(\/[^"#?]*)"/g)].at(-1)?.[1];
+    const href = [...li.matchAll(/<a\s[^>]*?href="(\/[^"#?]*)[^"]*"/g)].at(-1)?.[1];
     return { name: describe(li, 200), ...(href && { url: `${SITE_URL}${href}` }) };
   });
   return [
