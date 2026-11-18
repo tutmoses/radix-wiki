@@ -16,7 +16,7 @@ type Suffix = typeof SUFFIXES[number];
 export const isReservedSlug = (tagPath: string, slug: string): boolean => reservedIn(TREE, tagPath, slug, SUFFIXES);
 
 interface ParsedPath {
-  type: 'homepage' | 'category' | 'page' | 'history' | 'edit' | 'mdx' | 'leaderboard' | 'search' | 'maintenance' | 'stats' | 'settings' | 'charts' | 'charts-validators' | 'charts-tokens' | 'token-detail' | 'invalid';
+  type: 'homepage' | 'category' | 'page' | 'history' | 'edit' | 'mdx' | 'leaderboard' | 'trollbox' | 'search' | 'maintenance' | 'stats' | 'settings' | 'charts' | 'charts-validators' | 'charts-tokens' | 'token-detail' | 'invalid';
   tagPath: string;
   slug: string;
   suffix: Suffix | null;

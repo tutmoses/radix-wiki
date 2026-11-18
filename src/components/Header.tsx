@@ -9,7 +9,8 @@ import { Search, Loader2, LogOut, User, FileCode, Bell, Database, MoreVertical, 
 import { RailToggle, focusShown, useCopy, useSearchShortcut, useTypeahead, useClickOutside } from 'wiki-formant/react';
 import type { ComboboxOptionProps } from 'wiki-formant/combobox';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { SESSION_UNREADABLE, useStore, useAuth, usePagePath, useFetch } from '@/hooks';
+import { SESSION_UNREADABLE, useStore, useAuth, usePagePath, useFetch, useWikiPathname } from '@/hooks';
+import { ROOM_PATH } from '@/lib/trollbox';
 import { cn, shortenAddress, pagePath } from '@/lib/utils';
 import { SITE_NAME } from '@/lib/site';
 import { AGO, useNow } from '@/lib/now';
@@ -282,6 +283,7 @@ export function Header() {
   const chatOpen = useStore(s => s.chatOpen);
   const chatUnread = useStore(s => s.chatUnread);
   const toggleChat = useStore(s => s.toggleChat);
+  const pathname = useWikiPathname();
   const { hasTools, hasLedger, sectionPath, canExportMdx, isPage, mdxPath, tagPath, slug } = usePageContext();
   const [field, setField] = useState<SearchField>('folded');
   const { menu, open: openMenu, close: closeMenu, toggle: toggleMenu, ref: actionsRef } = useHeaderMenu();
@@ -444,10 +446,13 @@ export function Header() {
               </div>
             )}
 
-            <button onClick={() => { closeMenu(); toggleChat(); }} className="icon-btn relative" title="Trollbox" aria-label="Trollbox" aria-expanded={chatOpen}>
-              <MessagesSquare size={20} />
-              {chatUnread && !chatOpen && <span className="trollbox-unread" title="New lines in the trollbox" />}
-            </button>
+            {/* On the room's own page the room is on screen, and there is nothing for the button to open. */}
+            {pathname !== ROOM_PATH && (
+              <button onClick={() => { closeMenu(); toggleChat(); }} className="icon-btn relative" title="Trollbox" aria-label="Trollbox" aria-expanded={chatOpen}>
+                <MessagesSquare size={20} />
+                {chatUnread && !chatOpen && <span className="trollbox-unread" title="New lines in the trollbox" />}
+              </button>
+            )}
 
             {isAuthenticated && (
               <div className="relative">

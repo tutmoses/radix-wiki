@@ -35,6 +35,9 @@ export const STATIC_PAGES: Record<string, StaticPage> = {
   'charts-validators': { path: 'charts/validators', title: 'Validators', description: 'Every Radix validator with its stake, fee, pending fee changes, 7-day uptime and owner stake, and how concentrated staking is.', changeFrequency: 'daily', priority: 0.7 },
   'charts-tokens': { path: 'charts/tokens', title: 'Tokens', description: 'Radix tokens traded on OciSwap in the last 24 hours, by volume, with price and 24h change.', changeFrequency: 'daily', priority: 0.7 },
   leaderboard: { path: 'leaderboard', title: 'Leaderboard', description: 'Top RADIX.wiki contributors ranked by contribution points.', changeFrequency: 'monthly', priority: 0.5 },
+  // The room's own address, for a link that opens the room and nothing else. It
+  // has no sitemap row: its lines are drawn in the browser, so a crawler finds the heading alone.
+  trollbox: { path: 'trollbox', title: 'Trollbox', description: 'The public chat room of RADIX Wiki. Anyone can read it; a Radix wallet or a passkey signs you in to post, and $XRD holders moderate it with weighted flags.' },
   // Maintenance is a work queue, hidden the way Wikipedia hides its
   // maintenance categories.
   search: { path: 'search', title: 'Search', description: 'Search the community-maintained RADIX Wiki.', noindex: true },

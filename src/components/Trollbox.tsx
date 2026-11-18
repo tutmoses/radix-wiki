@@ -4,9 +4,9 @@
 
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { BadgeCheck, CornerUpLeft, Flag, Hash, ImagePlus, Loader2, Trash2, X } from 'lucide-react';
+import { BadgeCheck, CornerUpLeft, Flag, Hash, ImagePlus, Loader2, Maximize2, Trash2, X } from 'lucide-react';
 import { useAuth, useStore } from '@/hooks';
-import { CHANGE_WINDOW_MS, MAX_BODY, POLL_MS, type Me, type Message, type Read, type Ref } from '@/lib/trollbox';
+import { CHANGE_WINDOW_MS, MAX_BODY, POLL_MS, remember, ROOM_PATH, SEEN_KEY, type Me, type Message, type Read, type Ref } from '@/lib/trollbox';
 import { HIDDEN_TAG_PATHS, TAG_TREE } from '@/lib/tags';
 import { categoryLabel, cn, sendJson } from '@/lib/utils';
 import { SignInOptions } from '@/components/SignIn';
@@ -132,7 +132,12 @@ async function peopleFor(query: string, signal: AbortSignal): Promise<Option[]> 
   });
 }
 
-export default function Trollbox({ onSeen }: { onSeen: (id: number) => void }) {
+/**
+ * The room. `docked` is the one the header's button opens beside any page: in
+ * the corner on a desktop, the whole screen on a phone, and closable. Without
+ * it the room is drawn in place, as its own page does.
+ */
+export default function Trollbox({ docked = false }: { docked?: boolean }) {
   const { user, status: authStatus } = useAuth();
   const toggleChat = useStore(s => s.toggleChat);
   const chatLine = useStore(s => s.chatLine);
@@ -236,13 +241,13 @@ export default function Trollbox({ onSeen }: { onSeen: (id: number) => void }) {
   const refreshMe = useCallback(() => ask<Me>(fetch('/api/trollbox/me')).then(setMe, () => {}), []);
   useEffect(() => { void refreshMe(); }, [refreshMe, user?.id, user?.radixAddress]);
 
-  // On a phone the room is the whole screen, so the page behind it does not scroll.
+  // On a phone a docked room is the whole screen, so the page behind it does not scroll.
   useEffect(() => {
-    if (window.matchMedia('(min-width: 1024px)').matches) return;
+    if (!docked || window.matchMedia('(min-width: 1024px)').matches) return;
     const { overflow } = document.documentElement.style;
     document.documentElement.style.overflow = 'hidden';
     return () => { document.documentElement.style.overflow = overflow; };
-  }, []);
+  }, [docked]);
 
   const messages = room.status === 'ready' ? room.messages : null;
 
@@ -257,7 +262,12 @@ export default function Trollbox({ onSeen }: { onSeen: (id: number) => void }) {
   }, [messages]);
 
   const newest = messages?.at(-1)?.id;
-  useEffect(() => { if (newest) onSeen(newest); }, [newest, onSeen]);
+  // What the reader has seen, kept for the header's dot once the room is closed.
+  useEffect(() => {
+    if (!newest) return;
+    remember(SEEN_KEY, String(newest));
+    useStore.setState({ chatUnread: false });
+  }, [newest]);
 
   const onScroll = () => {
     const log = logRef.current;
@@ -430,18 +440,22 @@ export default function Trollbox({ onSeen }: { onSeen: (id: number) => void }) {
 
   const signedIn = authStatus === 'signed-in';
   // A tagged page is somewhere to go: on a phone the room is in front of it, so it steps aside.
-  const onPage = () => { if (!window.matchMedia('(min-width: 1024px)').matches) toggleChat(); };
+  const onPage = () => { if (docked && !window.matchMedia('(min-width: 1024px)').matches) toggleChat(); };
   const pictures = me?.holder === true;
   const mutedUntil = me?.mutedUntil && new Date(me.mutedUntil) > new Date() ? new Date(me.mutedUntil) : null;
 
   return (
-    <section className="trollbox" aria-label="Trollbox" onKeyDown={e => { if (e.key === 'Escape') toggleChat(); }}
+    <section className={docked ? 'trollbox' : 'trollbox-inline'} aria-label="Trollbox" onKeyDown={e => { if (docked && e.key === 'Escape') toggleChat(); }}
       onDragOver={e => { if (pictures) e.preventDefault(); }}
       onDrop={e => { const file = e.dataTransfer.files[0]; if (pictures && file) { e.preventDefault(); void upload(file); } }}>
-      <header className="trollbox-head">
-        <h2 className="trollbox-title">Trollbox</h2>
-        <button type="button" className="icon-btn ml-auto" onClick={toggleChat} aria-label="Close the trollbox"><X size={18} /></button>
-      </header>
+      {/* Its page has the title and needs no way out; the dock has both, and the way to that page. */}
+      {docked && (
+        <header className="trollbox-head">
+          <h2 className="trollbox-title">Trollbox</h2>
+          <Link href={ROOM_PATH} className="icon-btn ml-auto text-inherit" title="Open the trollbox as a page" aria-label="Open the trollbox as a page"><Maximize2 size={16} /></Link>
+          <button type="button" className="icon-btn" onClick={toggleChat} aria-label="Close the trollbox"><X size={18} /></button>
+        </header>
+      )}
 
       <div ref={logRef} className="trollbox-log" onScroll={onScroll} role="log" aria-live="polite">
         {room.status === 'loading' ? (

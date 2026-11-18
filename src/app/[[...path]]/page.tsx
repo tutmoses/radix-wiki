@@ -27,6 +27,7 @@ import { PageSkeleton } from '@/components/AuthRequired';
 import dynamic from 'next/dynamic';
 
 const IdeasView = dynamic(() => import('./IdeasView'), { loading: () => <PageSkeleton /> });
+const TrollboxView = dynamic(() => import('@/components/TrollboxView'), { loading: () => <PageSkeleton /> });
 const LeaderboardView = dynamic(() => import('@/components/LeaderboardView'), { loading: () => <PageSkeleton /> });
 const SettingsView = dynamic(() => import('@/components/SettingsView'), { loading: () => <PageSkeleton /> });
 const SearchView = dynamic(() => import('@/components/SearchView'), { loading: () => <PageSkeleton /> });
@@ -436,6 +437,7 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
     const query = await searchParams;
     return <SiteStats query={query} invite={str(query.invite)} />;
   }
+  if (parsed.type === 'trollbox') return <TrollboxView />;
   if (parsed.type === 'leaderboard') return <LeaderboardView entries={(await getEditorScores()).map(publicScore)} />;
   // `?watch=` names the page or section a Telegram subscription is offered for:
   // Tools → Watch sends a reader here to connect Telegram first.

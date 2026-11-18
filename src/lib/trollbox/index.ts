@@ -83,3 +83,10 @@ export const CHANGE_WINDOW_MS = 10 * 60_000;
 /** Where the browser keeps the newest line the reader has seen, and whether they left the room open. */
 export const SEEN_KEY = 'trollbox:seen';
 export const OPEN_KEY = 'trollbox:open';
+
+/** The room's own page, where it is drawn in place and the dock stands down. */
+export const ROOM_PATH = '/trollbox';
+
+/** Storage a browser may refuse (private mode, a blocked site): the room works without it. */
+export const recall = (key: string) => { try { return localStorage.getItem(key); } catch { return null; } };
+export const remember = (key: string, value: string) => { try { localStorage.setItem(key, value); } catch { /* not kept */ } };
