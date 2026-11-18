@@ -9,13 +9,18 @@
 // agent's own request headers, so its per-IP limit counts the agent rather than
 // the server forwarding for every agent at once.
 
+import { errors } from 'wiki-formant/http';
 import { uploadHandler } from 'wiki-formant/upload';
 import { requireAuth, UPLOAD } from '@/lib/api';
 
 export const uploadImage = uploadHandler({
   authorize: async request => {
     const auth = await requireAuth(request);
-    return 'error' in auth ? auth.error : auth.session.userId;
+    if ('error' in auth) return auth.error;
+    // A passkey account costs nothing to make, and an upload is stored and served
+    // by the wiki, so a picture needs the wallet behind it.
+    if (!auth.session.radixAddress) return errors.forbidden('Uploading a picture needs a Radix wallet. Connect one from the account menu.');
+    return auth.session.userId;
   },
   maxBytes: UPLOAD.maxBytes,
   encode: (image, { format, width }) => ({

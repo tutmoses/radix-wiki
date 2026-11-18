@@ -24,6 +24,8 @@
     "@prisma/client": "^7.8.0",
     "@radixdlt/radix-dapp-toolkit": "^2.3.0",
     "@radixdlt/rola": "^2.1.0",
+    "@simplewebauthn/browser": "^14.0.0",
+    "@simplewebauthn/server": "^14.1.0",
     "@vercel/blob": "^2.8.0",
     "clsx": "^2.1.1",
     "jose": "^6.2.12",

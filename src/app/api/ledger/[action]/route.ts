@@ -110,7 +110,10 @@ export async function POST(request: NextRequest, { params }: Ctx) {
   return handleRoute(async () => {
     const auth = await requireAuth(request);
     if ('error' in auth) return auth.error;
+    // The backup is a transaction the account signs, so an account with no wallet has none to make.
+    const { radixAddress } = auth.session;
+    if (!radixAddress) return errors.forbidden('A ledger backup is signed by a Radix wallet. Connect one to this account first.');
     const body = await request.json() as Body;
-    return action === 'prepare' ? prepare(auth.session.radixAddress, body) : confirm(auth.session.radixAddress, body);
+    return action === 'prepare' ? prepare(radixAddress, body) : confirm(radixAddress, body);
   }, action === 'prepare' ? 'Failed to prepare ledger backup' : 'Failed to confirm backup');
 }

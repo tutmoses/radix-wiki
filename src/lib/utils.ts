@@ -28,7 +28,9 @@ export function cn(...inputs: ClassValue[]): string {
 export const categoryLabel = (name?: string): string =>
   (name ?? '').replace(/^[^\p{Lu}\p{Ll}\p{Nd}]+/u, '').trim();
 
-export function shortenAddress(address: string, chars: number = 6): string {
+/** A wallet address cut to its ends. Empty for an account with no wallet, which signs in with a passkey. */
+export function shortenAddress(address: string | null | undefined, chars: number = 6): string {
+  if (!address) return '';
   return address.length <= chars * 2 ? address : `${address.slice(0, chars)}...${address.slice(-chars)}`;
 }
 

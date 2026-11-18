@@ -4,7 +4,8 @@
 // `wiki-formant/rola`, shared with caper. What is this wiki's own is the
 // session: a `Session` row behind a seven-day cookie, so signing out revokes
 // the token (signing out everywhere, every token the user holds), and the same
-// token taken as a Bearer header by agents.
+// token taken as a Bearer header by agents. A passkey (`@/lib/passkey`) opens
+// the same session, with no address in it until its user connects a wallet.
 
 import { cookies } from 'next/headers';
 import { bearerToken, createRola, sessionSecret, signSession, verifySession } from 'wiki-formant/rola';
@@ -15,7 +16,8 @@ export type { SignedChallenge } from 'wiki-formant/rola';
 
 export interface AuthSession {
   userId: string;
-  radixAddress: string;
+  /** Unset for an account that signs in with a passkey and has connected no wallet. */
+  radixAddress?: string;
   personaAddress?: string;
   displayName?: string;
   expiresAt: Date;
@@ -54,10 +56,19 @@ async function verifyToken(token: string): Promise<AuthSession | null> {
   };
 }
 
-export async function createSession(userId: string, radixAddress: string, personaAddress?: string, displayName?: string): Promise<{ token: string; expiresAt: Date }> {
-  const token = await signSession({ userId, radixAddress, personaAddress, displayName }, secret, SESSION_SEC);
+/** The user a session is opened for: a `User` row, as far as the token carries it. */
+type SessionUser = { id: string; radixAddress: string | null; personaAddress: string | null; displayName: string | null };
+
+export async function createSession(user: SessionUser): Promise<{ token: string; expiresAt: Date }> {
+  const claims: SessionClaims = {
+    userId: user.id,
+    radixAddress: user.radixAddress ?? undefined,
+    personaAddress: user.personaAddress ?? undefined,
+    displayName: user.displayName ?? undefined,
+  };
+  const token = await signSession(claims, secret, SESSION_SEC);
   const expiresAt = new Date(Date.now() + SESSION_SEC * 1000);
-  await prisma.session.create({ data: { userId, token, expiresAt } });
+  await prisma.session.create({ data: { userId: user.id, token, expiresAt } });
   (await cookies()).set(COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -67,6 +78,15 @@ export async function createSession(userId: string, radixAddress: string, person
   });
   return { token, expiresAt };
 }
+
+/** A session as the session check and every sign-in answer it. */
+export const sessionJson = (user: SessionUser, expiresAt: Date) => ({
+  userId: user.id,
+  radixAddress: user.radixAddress,
+  personaAddress: user.personaAddress,
+  displayName: user.displayName,
+  expiresAt: expiresAt.toISOString(),
+});
 
 /** The cookie's session, else the request's Bearer token: agents send the same token as a header. */
 export async function getSession(request?: { headers: { get(name: string): string | null } }): Promise<AuthSession | null> {

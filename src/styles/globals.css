@@ -320,6 +320,9 @@
     @apply hover:text-text hover:bg-surface-2;
   }
   .dropdown-tab-active { @apply text-accent border-b-2 border-accent font-medium; }
+  /* The sign-in menu: two ways in, then the form that makes a passkey account. */
+  .signin-menu { @apply w-72; }
+  .signin-new { @apply flex flex-col gap-2 px-4 py-3 mt-1 border-t border-border-muted; }
   /* The account menu's first line: which account is connected. Not a control. */
   .dropdown-header { @apply px-4 py-2 border-b border-border-muted text-small font-medium truncate; }
 

@@ -29,12 +29,15 @@ export type BalanceCheck =
   | { status: 'allowed'; balance: number }
   | { status: 'short'; balance: number; required: number }
   | { status: 'unreadable' }
+  | { status: 'no-wallet'; required: number }
   | { status: 'no-user' };
 
 export async function checkBalance(session: AuthSession, action: BalanceAction): Promise<BalanceCheck> {
   const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { radixAddress: true } });
   if (!user) return { status: 'no-user' };
   const required = getXrdRequired(action.type, action.tagPath);
+  // A passkey account that has connected no wallet: nothing to read, which is not a balance of zero.
+  if (!user.radixAddress) return { status: 'no-wallet', required };
   let balance: number;
   try {
     balance = await getXrdBalance(user.radixAddress);
@@ -56,6 +59,11 @@ export function balanceRefusal(check: Exclude<BalanceCheck, { status: 'allowed' 
       return errors.notFound('User not found');
     case 'unreadable':
       return json({ error: 'Your $XRD balance cannot be read right now: the Radix Gateway is not answering. This is not a judgement about your wallet — try again shortly.' }, 503);
+    case 'no-wallet':
+      return errors.forbidden(
+        `To ${ACTION_LABELS[action.type]}${action.tagPath ? ` in ${action.tagPath}` : ''} you need a Radix wallet holding at least ${check.required.toLocaleString()} $XRD. You are signed in with a passkey: connect a wallet from the account menu. ${XRD_NOT_A_FEE}`,
+        { required: check.required },
+      );
     case 'short': {
       const { balance, required } = check;
       const shortfall = required - Math.floor(balance);

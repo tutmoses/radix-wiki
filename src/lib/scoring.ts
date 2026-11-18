@@ -34,7 +34,7 @@ export function totalPoints(s: ScoreInput): number {
 interface EditorRow {
   id: string;
   display_name: string | null;
-  radix_address: string;
+  radix_address: string | null;
   avatar_url: string | null;
   created_at: Date;
   subject_tag_path: string | null;
@@ -48,7 +48,7 @@ interface EditorRow {
 interface EditorScore {
   id: string;
   displayName: string | null;
-  radixAddress: string;
+  radixAddress: string | null;
   avatarUrl: string | null;
   /** ISO string: the cache hands back JSON, so a Date would not survive a hit. */
   createdAt: string;

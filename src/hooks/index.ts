@@ -159,6 +159,12 @@ interface AppStore {
   sessionChecked: (answered: boolean) => void;
   setWalletData: (walletData: RadixWalletData | null) => void;
   connect: () => void;
+  /**
+   * Runs a passkey ceremony: `login` with a saved key, or `register` to save one,
+   * on the signed-in account or on a new one called `name`. True once it is done;
+   * a failure says why, and a prompt the reader dismissed says nothing.
+   */
+  passkey: (ceremony: 'register' | 'login', name?: string) => Promise<boolean>;
   /** Signs out only once the server has ended the session; a failure keeps it, and says so. */
   logout: (everywhere?: boolean) => Promise<Logout>;
   /** `timer` is the toast's own dismissal, cleared when another replaces it. */
@@ -222,6 +228,29 @@ export const useStore = create<AppStore>()((set, get) => ({
       'No response from the Radix Wallet. Make sure the wallet app or Connector extension is reachable, then try again.'), 60_000);
     set({ auth: { kind: 'connecting', timeout } });
     if (wallet.kind === 'ready') sendConnect(wallet, timeout);
+  },
+  passkey: async (ceremony, name) => {
+    const ask = async (body: unknown) => {
+      const res = await sendJson(`/api/auth/passkey/${ceremony}`, 'POST', body);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'The wiki did not answer. Try again.');
+      return data;
+    };
+    try {
+      // Loaded on the first use: most readers never sign in.
+      const webauthn = await import('@simplewebauthn/browser');
+      if (!webauthn.browserSupportsWebAuthn()) throw new Error('This browser cannot use passkeys.');
+      const optionsJSON = await ask({ name });
+      const response = ceremony === 'register' ? await webauthn.startRegistration({ optionsJSON }) : await webauthn.startAuthentication({ optionsJSON });
+      set({ session: await ask({ name, response }) });
+      return true;
+    } catch (err) {
+      const { name: kind, message } = err as Error;
+      if (kind !== 'NotAllowedError' && kind !== 'AbortError') {
+        get().showToast(kind === 'InvalidStateError' ? 'This device already holds a passkey for this account.' : message, 'error');
+      }
+      return false;
+    }
   },
   logout: async (everywhere = false) => {
     const ended = await fetch(everywhere ? '/api/auth?everywhere' : '/api/auth', { method: 'DELETE' }).then(res => res.ok, () => false);

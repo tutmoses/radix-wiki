@@ -2,23 +2,20 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/client';
-import { getSession, createSession, destroySession, verifySignedChallenge } from '@/lib/auth';
+import { getSession, createSession, destroySession, sessionJson, verifySignedChallenge } from '@/lib/auth';
 import { json, errors, handleRoute } from 'wiki-formant/http';
 import type { SignedChallenge, RadixAccount, RadixPersona } from '@/types';
-
-/** A session as the session check and the sign-in both answer it. */
-const sessionJson = (s: { userId: string; radixAddress: string; personaAddress?: string | null; displayName?: string | null; expiresAt: Date }) => ({
-  userId: s.userId,
-  radixAddress: s.radixAddress,
-  personaAddress: s.personaAddress,
-  displayName: s.displayName,
-  expiresAt: s.expiresAt.toISOString(),
-});
 
 export async function GET() {
   return handleRoute(async () => {
     const session = await getSession();
-    return json(session && sessionJson(session));
+    return json(session && {
+      userId: session.userId,
+      radixAddress: session.radixAddress ?? null,
+      personaAddress: session.personaAddress ?? null,
+      displayName: session.displayName ?? null,
+      expiresAt: session.expiresAt.toISOString(),
+    });
   }, 'Session check error');
 }
 
@@ -55,14 +52,29 @@ export async function POST(request: NextRequest) {
     let isNewUser = false;
 
     if (!user) {
-      isNewUser = true;
-      user = await prisma.user.create({
-        data: {
-          radixAddress: address,
-          personaAddress: persona?.identityAddress,
-          displayName: persona?.label || account?.label,
-        },
-      });
+      // A passkey account connecting its first wallet keeps its account and gains
+      // the address. The update is conditional, so two proofs racing for one
+      // account cannot both attach.
+      const current = await getSession();
+      const attached = current && !current.radixAddress
+        ? await prisma.user.updateMany({
+          where: { id: current.userId, radixAddress: null },
+          data: { radixAddress: address, personaAddress: persona?.identityAddress },
+        })
+        : null;
+      if (current && attached?.count === 1) {
+        await destroySession();
+        user = await prisma.user.findUniqueOrThrow({ where: { id: current.userId } });
+      } else {
+        isNewUser = true;
+        user = await prisma.user.create({
+          data: {
+            radixAddress: address,
+            personaAddress: persona?.identityAddress,
+            displayName: persona?.label || account?.label,
+          },
+        });
+      }
     } else if (persona?.identityAddress || persona?.label) {
       user = await prisma.user.update({
         where: { id: user.id },
@@ -73,12 +85,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const { token, expiresAt } = await createSession(
-      user.id,
-      user.radixAddress,
-      user.personaAddress || undefined,
-      user.displayName || undefined
-    );
+    const { token, expiresAt } = await createSession(user);
 
     // A browser is authenticated by the httpOnly cookie `createSession` just set, so
     // the token stays out of reach of page scripts. Every browser sends
@@ -87,7 +94,7 @@ export async function POST(request: NextRequest) {
     const fromBrowser = request.headers.has('sec-fetch-site');
 
     return json({
-      ...sessionJson({ ...user, userId: user.id, expiresAt }),
+      ...sessionJson(user, expiresAt),
       ...(fromBrowser ? {} : { token }),
       isNewUser,
     });

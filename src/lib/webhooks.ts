@@ -40,7 +40,7 @@ interface Notification {
   event: WebhookEvent;
   page: { slug: string; title: string; tagPath: string; version: string };
   revision?: { changeType: ChangeType; message?: string | null; version: string } | null;
-  actor?: { displayName?: string | null; radixAddress: string } | null;
+  actor?: { displayName?: string | null; radixAddress?: string | null } | null;
   comment?: { id: string; content: string; parentId?: string | null } | null;
 }
 

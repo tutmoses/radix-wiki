@@ -5,7 +5,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Search, Loader2, LogOut, User, FileCode, Bell, Database, MoreVertical, Quote, Check, Eye, EyeOff, Settings, History } from 'lucide-react';
+import { Search, Loader2, LogOut, User, FileCode, Bell, Database, MoreVertical, Quote, Check, Eye, EyeOff, Settings, History, KeyRound, Wallet } from 'lucide-react';
 import { RailToggle, focusShown, useCopy, useSearchShortcut, useTypeahead, useClickOutside } from 'wiki-formant/react';
 import type { ComboboxOptionProps } from 'wiki-formant/combobox';
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -16,7 +16,7 @@ import { AGO, useNow } from '@/lib/now';
 import { isoDate, relativeTime } from 'wiki-formant/freshness';
 import type { PageSummary } from '@/lib/wiki';
 import Highlight from '@/components/Highlight';
-import { Button, Dropdown } from '@/components/ui';
+import { Button, Dropdown, Input } from '@/components/ui';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiNotification } from '@/types';
 import { useTelegram } from '@/components/WebhookSettings';
@@ -101,15 +101,54 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** One menu for the account: who is connected, their profile, their notification settings, the ways out. */
-function AccountMenu({ name, profilePath, onClose, onLogout }: { name: string; profilePath: string | null; onClose: () => void; onLogout: (everywhere?: boolean) => void }) {
+/** The longest name a passkey account can take, as `@/lib/passkey` holds it to. */
+const NAME_MAX = 24;
+
+/**
+ * The two ways in. A wallet signs in the account its $XRD belongs to; a passkey
+ * signs in an account that saved one, or makes one for a reader with no wallet.
+ */
+function SignInMenu({ onClose }: { onClose: () => void }) {
+  const connect = useStore(s => s.connect);
+  const passkey = useStore(s => s.passkey);
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const run = async (ceremony: 'register' | 'login') => {
+    setBusy(true);
+    const done = await passkey(ceremony, name);
+    setBusy(false);
+    if (done) onClose();
+  };
+
+  return (
+    <Dropdown className="signin-menu">
+      <button className="dropdown-item" onClick={() => { onClose(); connect(); }}><Wallet size={16} />Radix Wallet</button>
+      <button className="dropdown-item" disabled={busy} onClick={() => run('login')}><KeyRound size={16} />Passkey</button>
+      <form className="signin-new" onSubmit={e => { e.preventDefault(); run('register'); }}>
+        <label htmlFor="signin-name" className="text-small text-text-muted">No wallet? Pick a name and save a passkey. A passkey account can chat; editing needs a wallet.</label>
+        <Input id="signin-name" value={name} onChange={e => setName(e.target.value)} placeholder="Name" autoComplete="nickname" minLength={2} maxLength={NAME_MAX} required />
+        <Button type="submit" variant="secondary" size="sm" disabled={busy}>Create account</Button>
+      </form>
+    </Dropdown>
+  );
+}
+
+/** One menu for the account: who is signed in, their profile, their notification settings, their ways in, the ways out. */
+function AccountMenu({ name, hasWallet, profilePath, onClose, onLogout }: { name: string; hasWallet: boolean; profilePath: string | null; onClose: () => void; onLogout: (everywhere?: boolean) => void }) {
+  const connect = useStore(s => s.connect);
+  const passkey = useStore(s => s.passkey);
+  const showToast = useStore(s => s.showToast);
   return (
     <Dropdown>
       <div className="dropdown-header">{name}</div>
       {profilePath && <Link href={profilePath} className="dropdown-item" onClick={onClose}><User size={16} />Profile</Link>}
       <Link href="/settings" className="dropdown-item" onClick={onClose}><Settings size={16} />Notification settings</Link>
+      {!hasWallet && <button className="dropdown-item" onClick={() => { onClose(); connect(); }}><Wallet size={16} />Connect a wallet</button>}
+      <button className="dropdown-item" onClick={async () => { onClose(); if (await passkey('register')) showToast('Passkey saved. It signs this account in on this device.'); }}>
+        <KeyRound size={16} />Save a passkey
+      </button>
       <button onClick={() => { onClose(); onLogout(); }} className="dropdown-item text-error hover:text-error/80">
-        <LogOut size={16} />Disconnect
+        <LogOut size={16} />{hasWallet ? 'Disconnect' : 'Sign out'}
       </button>
       <button
         onClick={() => { onClose(); if (confirm('Sign out every browser and agent signed in with this account?')) onLogout(true); }}
@@ -233,7 +272,7 @@ const LEDGER_COLOR: Record<BackupStanding, string | null> = { unknown: null, non
 type SearchField = 'folded' | 'open' | 'listing';
 
 /** The header menus: at most one is open, so opening one closes the other. */
-type Menu = 'tools' | 'ledger' | 'notifications' | 'account' | null;
+type Menu = 'tools' | 'ledger' | 'notifications' | 'account' | 'signin' | null;
 
 /**
  * One open menu for the header's actions row. A click outside the row or Escape
@@ -258,7 +297,6 @@ export function Header() {
   const router = useRouter();
   const { status: authStatus, isAuthenticated, user, walletData } = useAuth();
   const logout = useStore(s => s.logout);
-  const connect = useStore(s => s.connect);
   const fetchNotifications = useStore(s => s.fetchNotifications);
   // A count, or the read in flight or failed: a failed read is never shown as nothing unread.
   const bell = useStore(s => (s.notifications.status === 'loaded' ? s.notifications.unread : s.notifications.status));
@@ -324,7 +362,8 @@ export function Header() {
     (walletData?.accounts?.[0]?.address ? shortenAddress(walletData.accounts[0].address) : null) ||
     (user?.radixAddress ? shortenAddress(user.radixAddress) : 'Connected');
 
-  const userProfilePath = user ? `/leaderboard#u-${user.id}` : null;
+  // The leaderboard lists editors, and editing needs a wallet.
+  const userProfilePath = user?.radixAddress ? `/leaderboard#u-${user.id}` : null;
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -444,13 +483,15 @@ export function Header() {
                   <button onClick={() => toggleMenu('account')} className="icon-btn" title={displayName} aria-expanded={menu === 'account'} aria-label="Account menu">
                     <UserAvatar seed={user?.id || walletData?.accounts?.[0]?.address || ''} size="md" />
                   </button>
-                  {menu === 'account' && <AccountMenu name={displayName} profilePath={userProfilePath} onClose={closeMenu} onLogout={handleLogout} />}
+                  {menu === 'account' && <AccountMenu name={displayName} hasWallet={!!user?.radixAddress} profilePath={userProfilePath} onClose={closeMenu} onLogout={handleLogout} />}
                 </>
               ) : (
-                <Button variant="primary" size="sm" onClick={connect} title={authStatus === 'unreadable' ? SESSION_UNREADABLE : undefined}>
-                  <span className="hidden sm:inline">Connect Wallet</span>
-                  <span className="sm:hidden">Connect</span>
-                </Button>
+                <>
+                  <Button variant="primary" size="sm" onClick={() => toggleMenu('signin')} aria-expanded={menu === 'signin'} title={authStatus === 'unreadable' ? SESSION_UNREADABLE : undefined}>
+                    Sign in
+                  </Button>
+                  {menu === 'signin' && <SignInMenu onClose={closeMenu} />}
+                </>
               )}
             </div>
           </div>
