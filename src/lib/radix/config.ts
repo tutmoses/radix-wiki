@@ -23,6 +23,9 @@ export const XRD_ADDRESS = STOKENET
   ? 'resource_tdx_2_1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxtfd2jc'
   : 'resource_rdx1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxradxrd';
 
+/** How an account's address begins on the configured network. */
+export const ACCOUNT_PREFIX = STOKENET ? 'account_tdx_2_' : 'account_rdx';
+
 /** OciSwap's public API, behind token prices and the price charts. */
 export const OCISWAP_API = 'https://api.ociswap.com';
 

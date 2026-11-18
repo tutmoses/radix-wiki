@@ -1,6 +1,6 @@
 // src/lib/radix/weight.ts – what an account holds in $XRD, staked $XRD included.
 
-import { XRD_ADDRESS } from './config';
+import { ACCOUNT_PREFIX, XRD_ADDRESS } from './config';
 import { GatewayUnavailableError, num, paginatedGatewayFetch } from './gateway';
 import { getValidatorSet } from './validators';
 
@@ -15,8 +15,13 @@ const FUNGIBLES = '/state/entity/page/fungibles/';
  * Stake being unstaked is a claim NFT and is not counted. Throws
  * `GatewayUnavailableError` when the account, or the rate of a stake unit it
  * holds, could not be read: an unread weight is never a weight of zero.
+ *
+ * An account on another network weighs nothing on this one, and that is a fact
+ * about the address rather than a read that failed: the Gateway refuses it
+ * every time, which would otherwise read as an outage that never ends.
  */
 export async function xrdWeight(address: string): Promise<number> {
+  if (!address.startsWith(ACCOUNT_PREFIX)) return 0;
   const [held, { validators }] = await Promise.all([
     paginatedGatewayFetch<{ resource: string; amount: number }, { items?: { resource_address: string; amount?: string }[] }>(
       FUNGIBLES,
