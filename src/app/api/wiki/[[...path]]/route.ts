@@ -166,8 +166,9 @@ export async function GET(request: NextRequest, context: RouteContext<PathParams
         // The only place a reader's own question is countable. `cachedJson`
         // below puts a 30s edge cache in front of this, so a repeated query
         // inside that window fires once — which is the debounce this wants
-        // anyway, not a gap in the measurement.
-        trackSearch(request.headers, q, total, 'wiki');
+        // anyway, not a gap in the measurement. A miss under a tagPath says
+        // the section lacks it, not the wiki, so it is not counted.
+        if (total || !tagPath) trackSearch(request.headers, q, total, 'wiki');
         return cachedJson(paginatedResponse(items, total, page, pageSize), LISTING);
       }
 
