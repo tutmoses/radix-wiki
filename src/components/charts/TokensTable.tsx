@@ -20,8 +20,8 @@ const COLUMNS: Column<TokenRow>[] = [
         <Link href={`/charts/tokens/${t.address}`} className="row group min-w-0">
           <EntityIcon src={t.iconUrl} name={t.symbol || t.name} />
           <div className="stack-xs min-w-0">
-            <span className="font-medium group-hover:text-accent transition-colors truncate">{t.symbol || t.name}</span>
-            {t.symbol && t.name && t.symbol !== t.name && <span className="text-xs text-text-muted truncate">{t.name}</span>}
+            <span className="font-medium group-hover:text-accent transition-colors data-table-name">{t.symbol || t.name}</span>
+            {t.symbol && t.name && t.symbol !== t.name && <span className="text-xs text-text-muted data-table-name">{t.name}</span>}
           </div>
         </Link>
         {t.wikiPath && (

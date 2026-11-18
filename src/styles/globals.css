@@ -686,6 +686,8 @@
   .assignee-chip { @apply flex items-center gap-1.5 text-xs text-text-muted; }
 
   /* ===== HISTORY / DIFF ===== */
+  /* A phone shows three of the table's columns, on a narrower gutter. */
+  .history-cell { @apply py-2 px-2 sm:px-3; }
   .restore-btn { @apply flex items-center gap-1 text-accent hover:text-accent-hover disabled:opacity-50; }
   /* RevisionChanges (wiki-formant/react-server): the list resets in base.css,
      the colours are these. */
@@ -763,8 +765,14 @@
 
   .data-table-wrap { @apply bg-surface-1 border border-border-muted rounded-lg overflow-y-hidden; }
   .data-table { @apply w-full text-small border-collapse; }
-  .data-table-th { @apply text-left text-small text-text-muted border-b border-surface-2 p-3 font-medium; }
-  .data-table-td { @apply p-3 border-b border-surface-2; }
+  .data-table-th { @apply text-left text-small text-text-muted border-b border-surface-2 px-2 py-3 sm:px-3 font-medium whitespace-nowrap; }
+  .data-table-td { @apply px-2 py-3 sm:px-3 border-b border-surface-2 whitespace-nowrap; }
+  /* A name in a cell. `truncate` cannot shorten one: text that never wraps is as
+     wide at its narrowest as at its widest, so the column grows to the longest
+     name and the last columns leave a phone's screen. Clamped to one line and
+     breakable anywhere, a name's narrowest is its `min-width`, and since every
+     other cell holds its line, the name's column is the one that yields. */
+  .data-table-name { @apply line-clamp-1 whitespace-normal break-all min-w-[6ch]; }
   .data-table-row { @apply transition-colors hover:bg-surface-1/40; }
   .data-table-row:target { @apply bg-surface-2; }
   .data-table-row:last-child .data-table-td { @apply border-b-0; }

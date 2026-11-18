@@ -25,7 +25,7 @@ function Contributor({ entry }: { entry: RankedEntry }) {
   const body = (
     <>
       <UserAvatar seed={entry.id} avatarUrl={entry.avatarUrl} size="sm" />
-      <span className="font-medium truncate">{nameOf(entry)}</span>
+      <span className="font-medium data-table-name">{nameOf(entry)}</span>
     </>
   );
   return entry.profilePath ? <Link href={entry.profilePath} className="row">{body}</Link> : <span className="row">{body}</span>;

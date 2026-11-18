@@ -18,7 +18,8 @@ export type Column<T> = {
   /** The header text, and the header's accessible name when `header` replaces it with an icon. */
   label: string;
   header?: ReactNode;
-  /** On the header cell and the body cells alike; `cellClass` is body-only. */
+  /** On the header cell and the body cells alike; `cellClass` is body-only. A cell
+   *  holds its line, so a name that may run long takes `.data-table-name`, never `truncate`. */
   className?: string;
   cellClass?: string | ((row: T) => string | undefined);
   cell: (row: T) => ReactNode;
@@ -28,7 +29,7 @@ export function DataTable<T>({ rows, columns, defaultKey, rowKey, rowId, numbere
   rows: T[]; columns: Column<T>[]; defaultKey: string; rowKey: (row: T) => string;
   /** An anchor per row, for tables that are linked into. */
   rowId?: (row: T) => string;
-  /** The `#` column. A table whose rows carry their own rank turns it off. */
+  /** The `#` column, which a phone gives up to the name. A table whose rows carry their own rank turns it off. */
   numbered?: boolean;
   limit?: number; empty: string;
 }) {
@@ -50,7 +51,7 @@ export function DataTable<T>({ rows, columns, defaultKey, rowKey, rowId, numbere
       <table className="data-table">
         <thead>
           <tr>
-            {numbered && <th className="data-table-th w-12">#</th>}
+            {numbered && <th className="data-table-th w-12 hidden-mobile">#</th>}
             {columns.map(c => (
               <SortHeader key={c.k} {...headerProps(c.k)} label={c.header ? c.label : undefined} className={cn('data-table-th', c.className)}>{c.header ?? c.label}</SortHeader>
             ))}
@@ -59,7 +60,7 @@ export function DataTable<T>({ rows, columns, defaultKey, rowKey, rowId, numbere
         <tbody>
           {shown.map((row, i) => (
             <tr key={rowKey(row)} id={rowId?.(row)} className="data-table-row">
-              {numbered && <td className="data-table-td text-text-muted">{i + 1}</td>}
+              {numbered && <td className="data-table-td text-text-muted hidden-mobile">{i + 1}</td>}
               {columns.map(c => (
                 <td key={c.k} className={cn('data-table-td', c.className, typeof c.cellClass === 'function' ? c.cellClass(row) : c.cellClass)}>{c.cell(row)}</td>
               ))}
@@ -67,7 +68,7 @@ export function DataTable<T>({ rows, columns, defaultKey, rowKey, rowId, numbere
           ))}
           {!shown.length && (
             <tr>
-              <td colSpan={columns.length + Number(numbered)} className="data-table-td"><EmptyState title={empty} /></td>
+              <td colSpan={columns.length + Number(numbered)} className="data-table-td whitespace-normal"><EmptyState title={empty} /></td>
             </tr>
           )}
         </tbody>

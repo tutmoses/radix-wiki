@@ -98,12 +98,12 @@ export default function HistoryView({ data, tagPath, slug, isHomepage }: { data:
           <table className="w-full text-small">
             <thead>
               <tr className="text-left text-text-muted">
-                <SortHeader {...headerProps('version')} className="py-2 px-3 font-medium w-24">Version</SortHeader>
-                <SortHeader {...headerProps('type')} className="py-2 px-3 font-medium w-20">Type</SortHeader>
-                <SortHeader {...headerProps('changes')} className="py-2 px-3 font-medium">Changes</SortHeader>
-                <SortHeader {...headerProps('author')} className="py-2 px-3 font-medium">Author</SortHeader>
-                <SortHeader {...headerProps('date')} className="py-2 px-3 font-medium w-36">Date</SortHeader>
-                <th className="py-2 px-3 font-medium w-24"></th>
+                <SortHeader {...headerProps('version')} className="history-cell font-medium w-20 sm:w-24">Version</SortHeader>
+                <SortHeader {...headerProps('type')} className="history-cell font-medium w-20 hidden-mobile">Type</SortHeader>
+                <SortHeader {...headerProps('changes')} className="history-cell font-medium">Changes</SortHeader>
+                <SortHeader {...headerProps('author')} className="history-cell font-medium hidden-mobile">Author</SortHeader>
+                <SortHeader {...headerProps('date')} className="history-cell font-medium w-28 sm:w-36">Date</SortHeader>
+                {isAuthenticated && <th className="history-cell font-medium sm:w-24"></th>}
               </tr>
             </thead>
             <tbody>
@@ -114,15 +114,21 @@ export default function HistoryView({ data, tagPath, slug, isHomepage }: { data:
                 const { changes } = rev;
                 const summary = summarize(changes, rev.changeType);
                 const isExpanded = expandedId === rev.id;
+                const author = rev.author && (
+                  <Link href={`/leaderboard#u-${rev.author.id}`} className="row text-text-muted hover:text-accent">
+                    <UserAvatar seed={rev.author.id} avatarUrl={rev.author.avatarUrl} size="sm" />
+                    {rev.author.displayName || rev.author.shortAddress}
+                  </Link>
+                );
                 return (
                   <Fragment key={rev.id}>
                     <tr className={cn('border-t border-border-muted hover:bg-surface-1/50', isCurrent && 'bg-accent/5', i === 0 && '[&>td]:rounded-none')}>
-                      <td className="py-2 px-3">
+                      <td className="history-cell">
                         <span className="font-mono font-medium">v{rev.version}</span>
                         {isCurrent && <Badge variant="default" className="ml-2 text-xs py-0">current</Badge>}
                       </td>
-                      <td className="py-2 px-3"><Badge variant={type.variant}>{type.label}</Badge></td>
-                      <td className="py-2 px-3">
+                      <td className="history-cell hidden-mobile"><Badge variant={type.variant}>{type.label}</Badge></td>
+                      <td className="history-cell">
                         <div className="row gap-3">
                           <span className="text-xs text-text-muted">{summary}</span>
                           {changes.length > 0 && (
@@ -133,24 +139,21 @@ export default function HistoryView({ data, tagPath, slug, isHomepage }: { data:
                           )}
                         </div>
                         {/* The editor's own summary; one left blank was stored as the counted one above. */}
-                        {rev.message && rev.message !== summary && <div className="text-xs text-text-muted mt-1">{rev.message}</div>}
+                        {rev.message && rev.message !== summary && <div className="text-xs text-text-muted mt-1 wrap-anywhere">{rev.message}</div>}
+                        {/* A phone has no room for the author's column, so the author signs the change. */}
+                        {author && <div className="show-mobile text-xs mt-1">{author}</div>}
                       </td>
-                      <td className="py-2 px-3 truncate max-w-32">
-                        {rev.author ? (
-                          <Link href={`/leaderboard#u-${rev.author.id}`} className="row text-text-muted hover:text-accent">
-                            <UserAvatar seed={rev.author.id} avatarUrl={rev.author.avatarUrl} size="sm" />
-                            {rev.author.displayName || rev.author.shortAddress}
-                          </Link>
-                        ) : '—'}
-                      </td>
-                      <td className="py-2 px-3 text-text-muted">{formatDay(rev.createdAt, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}</td>
-                      <td className="py-2 px-3">
-                        {isAuthenticated && !isCurrent && (
-                          <button type="button" onClick={() => restore(rev.id, `v${rev.version}`)} disabled={busyId === rev.id} className="restore-btn">
-                            <RotateCcw size={14} /><span>{busyId === rev.id ? '…' : 'Restore'}</span>
-                          </button>
-                        )}
-                      </td>
+                      <td className="history-cell truncate max-w-32 hidden-mobile">{author ?? '—'}</td>
+                      <td className="history-cell text-text-muted">{formatDay(rev.createdAt, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}</td>
+                      {isAuthenticated && (
+                        <td className="history-cell">
+                          {!isCurrent && (
+                            <button type="button" onClick={() => restore(rev.id, `v${rev.version}`)} disabled={busyId === rev.id} className="restore-btn" aria-label={`Restore v${rev.version}`}>
+                              <RotateCcw size={14} /><span className="hidden-mobile">{busyId === rev.id ? '…' : 'Restore'}</span>
+                            </button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                     {isExpanded && changes.length > 0 && <ExpandedChanges changes={changes} />}
                   </Fragment>

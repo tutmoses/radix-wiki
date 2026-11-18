@@ -22,8 +22,8 @@ const COLUMNS: Column<HolderRow>[] = [
     k: 'holder', label: 'Holder', text: h => h.name ?? h.address,
     cell: h => (
       <>
-        <a href={h.href} target="_blank" rel="noopener" className="font-medium hover:text-accent">{h.name ?? shortenAddress(h.address)}</a>
-        <div className="text-xs text-text-muted">{h.name ? `${h.kind} · ${shortenAddress(h.address)}` : h.kind}</div>
+        <a href={h.href} target="_blank" rel="noopener" className="font-medium hover:text-accent data-table-name">{h.name ?? shortenAddress(h.address)}</a>
+        <div className="text-xs text-text-muted data-table-name">{h.name ? `${h.kind} · ${shortenAddress(h.address)}` : h.kind}</div>
       </>
     ),
   },

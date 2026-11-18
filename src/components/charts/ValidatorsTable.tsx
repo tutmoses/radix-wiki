@@ -25,7 +25,7 @@ const COLUMNS: Column<ValidatorRow>[] = [
       <>
         <div className="row">
           <EntityIcon src={v.iconUrl} name={v.name} />
-          <span className="font-medium truncate">{v.name}</span>
+          <span className="font-medium data-table-name">{v.name}</span>
           {!v.isRegistered && <span className="badge badge-warning">unreg</span>}
           {v.wikiPath && (
             <Link href={v.wikiPath} className="table-wiki-link" title="Wiki article" aria-label={`${v.name} on the wiki`}>
@@ -45,7 +45,7 @@ const COLUMNS: Column<ValidatorRow>[] = [
       <>
         {formatPercent(v.fee * 100)}
         {v.feeChange && (
-          <div className="text-xs text-warning" title={`Takes effect at epoch ${v.feeChange.epoch.toLocaleString('en-US')}`}>
+          <div className="text-xs text-warning whitespace-normal" title={`Takes effect at epoch ${v.feeChange.epoch.toLocaleString('en-US')}`}>
             → {formatPercent(v.feeChange.fee * 100)}{v.feeChange.around && ` around ${v.feeChange.around}`}
           </div>
         )}
