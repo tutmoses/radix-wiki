@@ -5,8 +5,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Search, Menu, X, Loader2, LogOut, User, FileCode, Bell, Database, MoreVertical, Quote, Check, Eye, EyeOff, Settings, History } from 'lucide-react';
-import { focusShown, useCopy, useSearchShortcut, useSidebar, useTypeahead, useClickOutside } from 'wiki-formant/react';
+import { Search, Loader2, LogOut, User, FileCode, Bell, Database, MoreVertical, Quote, Check, Eye, EyeOff, Settings, History } from 'lucide-react';
+import { RailToggle, focusShown, useCopy, useSearchShortcut, useTypeahead, useClickOutside } from 'wiki-formant/react';
 import type { ComboboxOptionProps } from 'wiki-formant/combobox';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { SESSION_UNREADABLE, useStore, useAuth, usePagePath, useFetch } from '@/hooks';
@@ -259,8 +259,6 @@ export function Header() {
   const { status: authStatus, isAuthenticated, user, walletData } = useAuth();
   const logout = useStore(s => s.logout);
   const connect = useStore(s => s.connect);
-  // Shared with the rail through wiki-formant's SidebarProvider.
-  const { open: sidebarOpen, toggle: toggleSidebar } = useSidebar();
   const fetchNotifications = useStore(s => s.fetchNotifications);
   // A count, or the read in flight or failed: a failed read is never shown as nothing unread.
   const bell = useStore(s => (s.notifications.status === 'loaded' ? s.notifications.unread : s.notifications.status));
@@ -358,9 +356,7 @@ export function Header() {
     <header className="header">
       <div className="header-inner">
         <div className="header-bar">
-          <button onClick={toggleSidebar} className="icon-btn" title={sidebarOpen ? 'Close menu' : 'Open menu'} aria-label="Toggle menu" aria-expanded={sidebarOpen}>
-            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          <RailToggle />
 
           <Link href="/" className="row shrink-0">
             <Image src="/logo.png" alt={SITE_NAME} width={240} height={240} className="size-8 object-contain" priority />
