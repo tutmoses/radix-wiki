@@ -3,7 +3,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Trophy, BarChart3, ChevronRight, ChevronDown, ListTree, Wrench } from 'lucide-react';
+import { Home, Trophy, BarChart3, ChevronRight, ChevronDown, ListTree, Wrench, MessagesSquare } from 'lucide-react';
 import { useMemo } from 'react';
 // The rail's shell — its landmark, its three collapse states and the scroll
 // container that closes it when a link is followed on mobile — is
@@ -15,6 +15,7 @@ import { RailShell, TableOfContents as SharedToc, isRailLinkActive } from 'wiki-
 import { cn } from '@/lib/utils';
 import { useAuth, useWikiPathname } from '@/hooks';
 import { getVisibleTags, type TagNode } from '@/lib/tags';
+import { ROOM_PATH } from '@/lib/trollbox';
 
 // `aria-current` is `page` on the view being rendered and `true` on a link lit
 // because the reader is somewhere beneath it, as on acuiq2's rail.
@@ -105,6 +106,7 @@ export function Sidebar() {
         <NavItem href="/" icon={<Home size={18} />} label="Home" pathname={pathname} />
         <NavItem href="/charts" icon={<BarChart3 size={18} />} label="Charts" pathname={pathname} tree />
         <NavItem href="/leaderboard" icon={<Trophy size={18} />} label="Leaderboard" pathname={pathname} />
+        <NavItem href={ROOM_PATH} icon={<MessagesSquare size={18} />} label="Trollbox" pathname={pathname} />
         {/* Editorial work queues — reader nav stays free of maintenance machinery. */}
         {isAuthenticated && <NavItem href="/maintenance" icon={<Wrench size={18} />} label="Maintenance" pathname={pathname} />}
       </nav>
