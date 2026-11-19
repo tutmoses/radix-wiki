@@ -37,7 +37,7 @@ export function NewsTicker({ items, id }: { items: NewsItem[]; id?: string }) {
   );
   return (
     <aside id={id} className="news-ticker" aria-label="Latest News">
-      <span className="news-ticker-label" aria-hidden>Latest News</span>
+      <span className="news-ticker-label" aria-hidden>Latest News:</span>
       <div className="news-ticker-view">
         <div className="news-ticker-track" style={{ animationDuration: `${seconds}s` }}>
           {copy(false)}
