@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import type { NewsItem } from '@/lib/news';
 
-/** The loop's pace, in px a second, and the width a character of 14px Inter averages. */
+/** The loop's pace, in px a second. */
 const SPEED = 120;
-const CHAR = 7;
+/** An item's width, estimated: 14px Inter averages 7px a character, 7.5px in the bold label, and the dot and the gap after add 54px. */
+const width = (item: NewsItem) => item.lead.length * 7.5 + (item.text.length + 1) * 7 + 54;
 
 function TickerItem({ item }: { item: NewsItem }) {
   const body = <>{item.lead && <strong>{item.lead}</strong>} {item.text}</>;
@@ -29,7 +30,7 @@ function TickerItem({ item }: { item: NewsItem }) {
  */
 export function NewsTicker({ items, id }: { items: NewsItem[]; id?: string }) {
   if (!items.length) return null;
-  const seconds = Math.round(items.reduce((n, item) => n + item.lead.length + item.text.length + 6, 0) * CHAR / SPEED);
+  const seconds = Math.round(items.reduce((px, item) => px + width(item), 0) / SPEED);
   const copy = (hidden: boolean) => (
     <ul className="news-ticker-list" aria-hidden={hidden || undefined} inert={hidden}>
       {items.map((item, i) => <TickerItem key={i} item={item} />)}
