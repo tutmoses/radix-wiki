@@ -14,7 +14,7 @@ export interface NewsItem {
 
 /** The stored section's heading. The block that carries it is the news; the ticker's own heading takes the id. */
 const HEADING = /<h2[^>]*id="latest-news"[^>]*>[\s\S]*?<\/h2>/;
-/** The ticker shows this much of an item, cut on a sentence where one ends in time. */
+/** The most the ticker shows of an item whose first sentence runs long. */
 const HEADLINE = 110;
 const hrefs = (html: string) => [...html.matchAll(/<a\s[^>]*?href="([^"]+)"/g)].map(m => m[1] ?? '');
 
@@ -41,6 +41,9 @@ export function splitNews(content: Block[]): { items: NewsItem[]; closing?: News
   return { items, ...(closing && { closing: newsItem(closing) }), blocks: content.filter(b => b !== block) };
 }
 
-/** The news as the ticker carries it: every item, then the closing line, each cut to a headline. */
+/** An item's first sentence, which is its headline, without the full stop a headline does not take. */
+const headline = (text: string) => describe(text.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? text, HEADLINE).replace(/\.$/, '');
+
+/** The news as the ticker carries it: every item, then the closing line, each as its headline. */
 export const tickerNews = ({ items, closing }: Pick<ReturnType<typeof splitNews>, 'items' | 'closing'>): NewsItem[] =>
-  [...items, ...(closing ? [closing] : [])].map(item => ({ ...item, text: describe(item.text, HEADLINE) }));
+  [...items, ...(closing ? [closing] : [])].map(item => ({ ...item, text: headline(item.text) }));
