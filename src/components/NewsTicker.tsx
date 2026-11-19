@@ -4,7 +4,7 @@ import Link from 'next/link';
 import type { NewsItem } from '@/lib/news';
 
 /** The loop's pace, in px a second, and the width a character of 14px Inter averages. */
-const SPEED = 100;
+const SPEED = 120;
 const CHAR = 7;
 
 function TickerItem({ item }: { item: NewsItem }) {
