@@ -11,6 +11,7 @@ import { rankRelated, taxonomy } from '@/lib/taxonomy';
 import { categoryView } from 'wiki-formant/category';
 import { findTagByPath, getMainArticle, getSortOrder, tagLabel, tagPaths, TAG_TREE, type SortOrder } from '@/lib/tags';
 import { highlightBlocks } from '@/lib/highlight';
+import { headline, splitNews, type NewsItem } from '@/lib/news';
 import { processBlocks } from '@/lib/html';
 import { sanitizePage } from '@/lib/sanitize';
 import { NowProvider } from '@/lib/now';
@@ -313,18 +314,13 @@ function pageLd(page: WikiPage, url: string, titles: Record<string, string>) {
 /**
  * The homepage as a WebPage about the wiki, whose main entity is the Latest News
  * list, and the wiki's corpus as a Dataset with the feeds it ships as. Each news
- * item points at the last wiki page it links, its own coverage of the event.
+ * item points at the wiki page that covers it.
  */
-function homepageLd(page: WikiPage | null) {
-  const html = Array.isArray(page?.content)
-    ? leafBlocks(page.content as unknown as Block[]).map(b => (b.type === 'content' ? b.text || '' : '')).join('\n')
-    : '';
-  const news = html.split(/<h2[^>]*id="latest-news"[^>]*>/)[1]?.split(/<h2/)[0] ?? '';
-  const items = [...news.matchAll(/<li>([\s\S]*?)<\/li>/g)].map(([, li = '']) => {
-    // An item names its event's own page last, after any background links.
-    const href = [...li.matchAll(/<a\s[^>]*?href="(\/[^"#?]*)[^"]*"/g)].at(-1)?.[1];
-    return { name: describe(li, 200), ...(href && { url: `${SITE_URL}${href}` }) };
-  });
+function homepageLd(page: WikiPage | null, news: NewsItem[]) {
+  const items = news.map(({ lead, text, href }) => ({
+    name: describe(`${lead} ${text}`, 200),
+    ...(href?.startsWith('/') && { url: `${SITE_URL}${href.split(/[#?]/)[0]}` }),
+  }));
   return [
     {
       '@context': 'https://schema.org',
@@ -453,10 +449,12 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
 
   if (parsed.type === 'homepage') {
     const page = await withProcessedContent(await getHomepage());
+    // The news leaves the article for the ticker under the banner, which carries headlines only.
+    const { items, closing, blocks } = splitNews((page?.content ?? []) as unknown as Block[]);
     return (
       <>
-        {homepageLd(page).map(data => <JsonLd key={String(data['@id'])} data={data} />)}
-        <HomepageView page={page} isEditing={false} />
+        {homepageLd(page, items).map(data => <JsonLd key={String(data['@id'])} data={data} />)}
+        <HomepageView page={page && { ...page, content: blocks as unknown as WikiPage['content'] }} news={[...items, ...(closing ? [closing] : [])].map(headline)} isEditing={false} />
       </>
     );
   }

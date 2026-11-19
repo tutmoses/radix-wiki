@@ -12,6 +12,7 @@ import { BlockRenderer, findInfobox, infoboxHasContent, InfoboxSidebar, PageThum
 import { UserAvatar } from '@/components/UserAvatar';
 import { Breadcrumbs, PageActions } from '@/components/Breadcrumbs';
 import { LinkPreview } from '@/components/LinkPreview';
+import { NewsTicker } from '@/components/NewsTicker';
 import { AuthRequired } from '@/components/AuthRequired';
 import { Button } from '@/components/ui';
 import { useAuth, useHistoryLink, useStore } from '@/hooks';
@@ -28,6 +29,7 @@ import { createBlock } from '@/lib/block-utils';
 import { formatDay, freshnessBanner, relativeTime } from 'wiki-formant/freshness';
 import { Cite, FacetBar, FacetSummary, RelatedPages as SeeAlso } from 'wiki-formant/react-server';
 import { useSaveShortcut, useUnsavedChanges } from 'wiki-formant/react';
+import type { NewsItem } from '@/lib/news';
 import type { WikiPage } from '@/types';
 import type { Block, InfoboxBlock } from '@/types/blocks';
 
@@ -301,7 +303,7 @@ export function ConflictNotice({ message }: { message: string }) {
 }
 
 // ========== HOMEPAGE VIEW ==========
-export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEditing: boolean }) {
+export function HomepageView({ page, news = [], isEditing }: { page: WikiPage | null; news?: NewsItem[]; isEditing: boolean }) {
   const router = useRouter();
   const { status, isAuthenticated } = useAuth();
   const connect = useStore(s => s.connect);
@@ -380,6 +382,7 @@ export function HomepageView({ page, isEditing }: { page: WikiPage | null; isEdi
         <PageActions className="justify-end" editHref={isAuthenticated ? '/edit' : undefined} />
         <h1 className="sr-only">Radix ($XRD) – The Radix DLT Crypto Wiki</h1>
       </Banner>
+      <NewsTicker items={news} />
       {infobox && infoboxHasContent(infobox) ? (
         <div className="page-with-infobox">
           <div className="page-main-content stack">{mainContent}</div>

@@ -78,6 +78,7 @@
 
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slide-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes news-ticker { to { transform: translateX(-50%); } }
 
 @layer base {
   /* No `scroll-behavior: smooth`: a page opened at #anchor would animate toward
@@ -811,6 +812,24 @@
     .link-grid-group { @apply mt-4 first:mt-0; }
   .link-grid-group h3 { @apply text-h4 font-medium mt-0 mb-3 border-b-0; }
 
+  /* ===== NEWS TICKER ===== */
+  /* Latest News on the homepage: one line under the banner that scrolls by itself
+     and holds still under the pointer or keyboard focus. The track is the list
+     twice, slid left by one copy. Asked for less motion, it stops and the reader
+     scrolls the one copy. */
+  .news-ticker { @apply flex items-center h-9 overflow-hidden rounded-lg border border-border-muted bg-surface-1 text-small; }
+  .news-ticker-label { @apply shrink-0 m-0 px-3 border-0 text-xs font-semibold uppercase tracking-wide text-accent; }
+  .news-ticker-view { @apply flex-1 min-w-0 overflow-hidden; mask-image: linear-gradient(to right, transparent, black 1rem, black calc(100% - 2rem), transparent); }
+  .news-ticker-track { @apply flex w-max; animation: news-ticker linear infinite; }
+  .news-ticker:is(:hover, :focus-within) .news-ticker-track { animation-play-state: paused; }
+  .news-ticker-list { @apply flex shrink-0 m-0 p-0 list-none whitespace-nowrap; }
+  .news-ticker-item { @apply m-0 pr-10; :is(a, span) { @apply text-text-muted; } a:hover { @apply text-text; } strong { @apply text-text; } &[data-pinned] strong { @apply text-warning; } }
+  @media (prefers-reduced-motion: reduce) {
+    .news-ticker-view { @apply overflow-x-auto; }
+    .news-ticker-track { animation: none; }
+    .news-ticker-list[aria-hidden] { @apply hidden; }
+  }
+
   /* ===== RSS FEED ===== */
   .rss-feed-scroll { @apply max-h-[494px] overflow-y-auto rounded-lg border border-border-muted bg-surface-0; }
   /* Side by side in a columns block, the feed matches its tallest sibling column instead
@@ -820,9 +839,6 @@
   .columns-layout > .column-view:has(> .rss-feed) { @apply md:self-stretch; }
   .column-view > .rss-feed { @apply md:relative md:flex-1 md:min-h-80; }
   .column-view > .rss-feed > .rss-feed-scroll { @apply md:absolute md:inset-0 md:max-h-none; }
-  /* Latest News on the homepage: the dated list scrolls in the feed's box, and the pinned
-     list above it stays in view. */
-  .prose-content > h2#latest-news ~ ul:last-of-type { @apply max-h-[494px] overflow-y-auto rounded-lg border border-border-muted bg-surface-0 py-3 pr-4; }
   .rss-card { @apply bg-surface-1 border border-border-muted rounded-md overflow-hidden transition-colors hover:bg-surface-2; }
   .rss-card-image { @apply w-full h-[200px] relative; }
   .rss-card-body { @apply p-3.5; }
