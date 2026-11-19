@@ -818,12 +818,23 @@
      twice, slid left by one copy. Asked for less motion, it stops and the reader
      scrolls the one copy. */
   .news-ticker { @apply flex items-center h-9 overflow-hidden rounded-lg border border-border-muted bg-surface-1 text-small; }
-  .news-ticker-label { @apply shrink-0 m-0 px-3 border-0 text-xs font-semibold uppercase tracking-wide text-accent; }
+  .news-ticker-label { @apply shrink-0 self-stretch flex items-center px-3 text-xs font-bold uppercase tracking-wide bg-accent text-text-inverted; }
   .news-ticker-view { @apply flex-1 min-w-0 overflow-hidden; mask-image: linear-gradient(to right, transparent, black 1rem, black calc(100% - 2rem), transparent); }
   .news-ticker-track { @apply flex w-max; animation: news-ticker linear infinite; }
   .news-ticker:is(:hover, :focus-within) .news-ticker-track { animation-play-state: paused; }
   .news-ticker-list { @apply flex shrink-0 m-0 p-0 list-none whitespace-nowrap; }
-  .news-ticker-item { @apply m-0 pr-10; :is(a, span) { @apply text-text-muted; } a:hover { @apply text-text; } strong { @apply text-text; } &[data-pinned] strong { @apply text-warning; } }
+  /* Each item takes the next of the palette's five tones, on its dot and its label. */
+  .news-ticker-item {
+    @apply m-0 pr-10; --tone: var(--color-accent);
+    &:nth-child(5n+2) { --tone: var(--color-success); }
+    &:nth-child(5n+3) { --tone: var(--color-warning); }
+    &:nth-child(5n+4) { --tone: var(--color-info); }
+    &:nth-child(5n) { --tone: var(--color-danger); }
+    &::before { content: ''; @apply inline-block size-1.5 mr-2 rounded-full align-middle; background: var(--tone); }
+    :is(a, span) { @apply text-text-muted; }
+    a:hover { @apply text-text; }
+    strong { color: var(--tone); }
+  }
   @media (prefers-reduced-motion: reduce) {
     .news-ticker-view { @apply overflow-x-auto; }
     .news-ticker-track { animation: none; }

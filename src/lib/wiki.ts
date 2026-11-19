@@ -16,6 +16,8 @@ import { blockLimit, MAX_BLOCK_ROWS } from 'wiki-formant/validation';
 import { today } from 'wiki-formant/blocks';
 import type { ChangeType } from 'wiki-formant/versioning';
 import { leafBlocks } from '@/lib/block-utils';
+import { sanitizePage } from '@/lib/sanitize';
+import { splitNews, tickerNews, type NewsItem } from '@/lib/news';
 import { RECAP_PREFIX } from '@/lib/week-in-review';
 
 /**
@@ -87,6 +89,9 @@ export const pageTag = (tagPath: string, slug = '') => `page:/${[tagPath, slug].
  *  counts what the wiki holds: a route handler whose text spans the corpus carries it. */
 export const CORPUS_TAG = pageTag('');
 
+/** The ticker's news, on every page that draws it; a homepage save expires it. */
+const NEWS_TAG = 'news';
+
 /** The tag headers a route handler sends: its own tags, plus `wiki`, which a
  *  script's bulk write purges, since it cannot name every page it touched. */
 export const routeTags = (tags: string | readonly string[]) => cacheTagHeaders([WIKI_TAG, ...[tags].flat()]);
@@ -101,6 +106,8 @@ export function revalidatePage(tagPath: string, ...slugs: string[]) {
   const segments = tagPath ? tagPath.split('/') : [];
   const tags = new Set([...segments.map((_, i) => segments.slice(0, i).join('/')), tagPath].map(t => pageTag(t)));
   for (const slug of slugs) tags.add(pageTag(tagPath, slug));
+  // The homepage stores the news every banner's ticker shows.
+  if (!tagPath && slugs.includes('')) tags.add(NEWS_TAG);
   for (const tag of tags) revalidateTag(tag, { expire: 0 });
 }
 
@@ -128,6 +135,21 @@ export const getPage = cached('getPage',
 
 /** The root's own article occupies the empty slug of the empty tag path. */
 export const getHomepage = () => getPage('', '');
+
+/**
+ * The homepage's Latest News as the ticker under every other page's banner
+ * carries it. Read from the store under its own tag, not through `getHomepage`:
+ * that would put the homepage's tag on every page drawing the ticker, and every
+ * save expires that tag. So an edit elsewhere leaves these pages cached, and a
+ * save of the homepage re-renders them.
+ */
+export const getNews = cached('getNews',
+  async (): Promise<NewsItem[]> => {
+    const home = await store.get('', '');
+    return home ? tickerNews(splitNews(sanitizePage(home).content)) : [];
+  },
+  () => [NEWS_TAG],
+);
 
 /**
  * A category's own article, stored at the empty slug — the same slot the homepage

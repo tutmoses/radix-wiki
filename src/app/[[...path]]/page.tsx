@@ -4,14 +4,14 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { parsePath } from '@/lib/path';
-import { getHomepage, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getPageByAsset, getSiblingPages, getAssetPages, getTitleIndex } from '@/lib/wiki';
+import { getHomepage, getNews, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getPageByAsset, getSiblingPages, getAssetPages, getTitleIndex } from '@/lib/wiki';
 import { getMaintenanceQueues } from '@/lib/maintenance';
 import { getSession } from '@/lib/auth';
 import { rankRelated, taxonomy } from '@/lib/taxonomy';
 import { categoryView } from 'wiki-formant/category';
 import { findTagByPath, getMainArticle, getSortOrder, tagLabel, tagPaths, TAG_TREE, type SortOrder } from '@/lib/tags';
 import { highlightBlocks } from '@/lib/highlight';
-import { headline, splitNews, type NewsItem } from '@/lib/news';
+import { splitNews, tickerNews, type NewsItem } from '@/lib/news';
 import { processBlocks } from '@/lib/html';
 import { sanitizePage } from '@/lib/sanitize';
 import { NowProvider } from '@/lib/now';
@@ -450,11 +450,11 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
   if (parsed.type === 'homepage') {
     const page = await withProcessedContent(await getHomepage());
     // The news leaves the article for the ticker under the banner, which carries headlines only.
-    const { items, closing, blocks } = splitNews((page?.content ?? []) as unknown as Block[]);
+    const news = splitNews((page?.content ?? []) as unknown as Block[]);
     return (
       <>
-        {homepageLd(page, items).map(data => <JsonLd key={String(data['@id'])} data={data} />)}
-        <HomepageView page={page && { ...page, content: blocks as unknown as WikiPage['content'] }} news={[...items, ...(closing ? [closing] : [])].map(headline)} isEditing={false} />
+        {homepageLd(page, news.items).map(data => <JsonLd key={String(data['@id'])} data={data} />)}
+        <HomepageView page={page && { ...page, content: news.blocks as unknown as WikiPage['content'] }} news={tickerNews(news)} isEditing={false} />
       </>
     );
   }
@@ -533,7 +533,7 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
           tagPath={tagSegments} pages={pages} sort={sort} total={total}
           facetGroups={facets} filters={filters}
           letters={letters} letter={letter} clearHref={clearHref} subcategories={subcategories} mainArticle={mainArticle}
-          hub={hub} nowMs={nowMs}
+          hub={hub} news={hub ? await getNews() : []} nowMs={nowMs}
         />
       </>
     );
@@ -580,7 +580,7 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
     <>
       {page && <JsonLd data={pageLd(page, url, await getTitleIndex())} />}
       {faq && <JsonLd data={faq} />}
-      <PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} related={related} series={series} nowMs={nowMs} />
+      <PageView page={page} tagPath={parsed.tagPath} slug={parsed.slug} isEditMode={parsed.suffix === 'edit'} related={related} series={series} news={page && parsed.suffix !== 'edit' ? await getNews() : []} nowMs={nowMs} />
     </>
   );
 }

@@ -382,7 +382,7 @@ export function HomepageView({ page, news = [], isEditing }: { page: WikiPage | 
         <PageActions className="justify-end" editHref={isAuthenticated ? '/edit' : undefined} />
         <h1 className="sr-only">Radix ($XRD) – The Radix DLT Crypto Wiki</h1>
       </Banner>
-      <NewsTicker items={news} />
+      <NewsTicker items={news} id="latest-news" />
       {infobox && infoboxHasContent(infobox) ? (
         <div className="page-with-infobox">
           <div className="page-main-content stack">{mainContent}</div>
@@ -476,12 +476,14 @@ function CategoryListing({ name, tagPath, pages, sort, total, facetGroups, filte
 }
 
 // ========== CATEGORY VIEW ==========
-export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters, letters, letter, clearHref, subcategories, mainArticle, hub, nowMs }: {
+export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters, letters, letter, clearHref, subcategories, mainArticle, hub, news, nowMs }: {
   tagPath: string[]; pages: WikiPage[]; sort: SortOrder; total: number;
   facetGroups: FacetControlGroup[]; filters: FacetFilters; letters: Control[]; letter?: string;
   /** Back to the whole category, when the view is narrowed. */
   clearHref?: string;
   subcategories: SubcategorySummary[]; mainArticle: PageRef | null; hub: WikiPage | null;
+  /** The ticker under the hub's banner. */
+  news: NewsItem[];
   /** Server clock, so a hub's freshness notice cannot differ between SSR and hydration. */
   nowMs: number;
 }) {
@@ -519,6 +521,7 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
         page={hub}
         related={{ pages: [], sharedFacet: null }}
         series={null}
+        news={news}
         nowMs={nowMs}
         sections={sections || undefined}
         listing={listing || undefined}
@@ -546,7 +549,7 @@ type RelatedPage = Pick<WikiPage, 'id' | 'title' | 'slug' | 'tagPath'> & { snipp
 export type RelatedPages = { pages: RelatedPage[]; sharedFacet: SharedFacet | null };
 
 // ========== PAGE VIEW (Read-only) ==========
-function PageViewContent({ page, related, series, sections, listing, nowMs }: { page: WikiPage; related: RelatedPages; series: PageRef | null; sections?: ReactNode; listing?: ReactNode; nowMs: number }) {
+function PageViewContent({ page, related, series, news, sections, listing, nowMs }: { page: WikiPage; related: RelatedPages; series: PageRef | null; news: NewsItem[]; sections?: ReactNode; listing?: ReactNode; nowMs: number }) {
   const { isAuthenticated } = useAuth();
   // Contributor stats belong to the page's *subject* — the explicit
   // metadata.subjectUserId pointer set on profile pages (community bios,
@@ -609,6 +612,7 @@ function PageViewContent({ page, related, series, sections, listing, nowMs }: { 
         />
         <h1 id={slugifyHeading(page.title)} className="m-0!">{page.title}</h1>
       </Banner>
+      <NewsTicker items={news} />
       {showInfobox ? (
         <div className="page-with-infobox">
           {main}
@@ -624,7 +628,7 @@ function PageViewContent({ page, related, series, sections, listing, nowMs }: { 
 }
 
 // ========== PAGE VIEW WRAPPER ==========
-export function PageView({ page, tagPath, slug, isEditMode, related = { pages: [], sharedFacet: null }, series = null, nowMs }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; related?: RelatedPages; series?: PageRef | null; nowMs: number }) {
+export function PageView({ page, tagPath, slug, isEditMode, related = { pages: [], sharedFacet: null }, series = null, news = [], nowMs }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; related?: RelatedPages; series?: PageRef | null; news?: NewsItem[]; nowMs: number }) {
   const { status } = useAuth();
   // The header sits outside this tree and cites the page it is on; it knows
   // only the URL, and a slug is not a title.
@@ -638,5 +642,5 @@ export function PageView({ page, tagPath, slug, isEditMode, related = { pages: [
   if (isEditMode && status !== 'signed-in') return <AuthRequired status={status} {...EDIT_AUTH} backHref={viewPath} />;
   // Keyed, so another page, or a new version of this one, opens a fresh form.
   if (!page || isEditMode) return <LazyPageEditor key={page ? `${page.id}@${page.version}` : viewPath} page={page ?? undefined} tagPath={tagPath} slug={slug} />;
-  return <PageViewContent page={page} related={related} series={series} nowMs={nowMs} />;
+  return <PageViewContent page={page} related={related} series={series} news={news} nowMs={nowMs} />;
 }
