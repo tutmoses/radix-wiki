@@ -818,7 +818,7 @@
      twice, slid left by one copy. Asked for less motion, it stops and the reader
      scrolls the one copy. */
   .news-ticker { @apply flex items-center h-9 overflow-hidden rounded-lg border border-border-muted bg-surface-1 text-small; }
-  .news-ticker-label { @apply shrink-0 self-stretch flex items-center px-3 text-xs font-bold uppercase tracking-wide bg-accent text-text-inverted; }
+  .news-ticker-label { @apply shrink-0 self-stretch flex items-center px-3 text-xs font-semibold uppercase tracking-wide bg-accent-muted text-accent; }
   .news-ticker-view { @apply flex-1 min-w-0 overflow-hidden; mask-image: linear-gradient(to right, transparent, black 1rem, black calc(100% - 2rem), transparent); }
   .news-ticker-track { @apply flex w-max; animation: news-ticker linear infinite; }
   .news-ticker:is(:hover, :focus-within) .news-ticker-track { animation-play-state: paused; }
