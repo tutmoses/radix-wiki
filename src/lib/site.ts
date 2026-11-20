@@ -15,7 +15,7 @@ export const SITE_DESCRIPTION = 'RADIX Wiki is a community-edited encyclopedia t
 export const SITE_REFS = siteRefs(SITE_URL);
 
 // The X account, as the social cards, the JSON-LD `sameAs`, the footer, llms.txt,
-// AGENTS.md and the MCP instructions name it. `posts` is what the `tweet` and
+// AGENTS.md and the MCP instructions name it. `posts` is what the `x` and
 // `radix-week-in-review` routines in radix-studio post from it.
 export const X = xAccount({
   siteName: SITE_NAME,
