@@ -43,6 +43,7 @@ const RULES = {
 const RUBRICS = [
   { id: 'ledger-table', label: 'The week on the ledger', match: /<h2[^>]*>\s*The week on the ledger/i, required: true },
   { id: 'ledger', label: 'The ledger', match: /<h2[^>]*>\s*The ledger\b/i, required: false },
+  { id: 'hyperscale', label: 'Hyperscale: what is built and what is left', match: /<h2[^>]*>\s*Hyperscale: what is built/i, required: true, uncapped: true },
   { id: 'concept', label: 'This week on the wiki', match: /<h2[^>]*>\s*This week on the wiki/i, required: true },
   { id: 'everything', label: 'Everything else this week', match: /Everything else this week/i, required: true },
   { id: 'next', label: 'What to watch', match: /<h2[^>]*>\s*What to watch/i, required: true },
@@ -188,7 +189,7 @@ function lint(name, blocks) {
   for (const [, head, body] of sections) {
     const label = plainText(head);
     const rubric = RUBRICS.find((r) => r.match.test(`<h2>${label}</h2>`));
-    if (rubric && words(plainText(body)) > RULES.rubricBudget) {
+    if (rubric && !rubric.uncapped && words(plainText(body)) > RULES.rubricBudget) {
       warn.push(`rubric over budget: "${label}" ${words(plainText(body))}w > ${RULES.rubricBudget}w`);
     }
   }

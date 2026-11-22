@@ -66,6 +66,13 @@ await withClient(async (client) => {
     role: 'in the Radix Telegram',
   });
 
+  // --- Hyperscale progress: lists carried forward from the previous issue
+  blocks.push(content(
+    `<h2>Hyperscale: what is built and what is left</h2>` +
+    `<p>${TODO}: the week's change, or that there was none, with its source.</p>` +
+    `<h3>What is built</h3><ul><li>${TODO}: carry forward from last issue; one line per working part, dated.</li></ul>` +
+    `<h3>What is left</h3><ul><li>${TODO}: the RFC's remaining milestones and the latest stated plan, sourced.</li></ul>`));
+
   // --- what the wiki gained, from the rows themselves
   blocks.push(content(
     `<h2>This week on the wiki</h2>` +
