@@ -2,7 +2,7 @@
 //
 // Single source of truth for what an agent can do with the wiki. Consumed by
 // the MCP server (`api/mcp` → tools/list) and by the A2A agent card
-// (`.well-known/agent.json` → skills), so the two can never disagree.
+// (`.well-known/agent-card.json` → skills), so the two can never disagree.
 //
 // Read tools are public, and are `wiki-formant/wiki-tools`: the same eight
 // caper and miow's wikis serve, carrying their own handlers, so this module
