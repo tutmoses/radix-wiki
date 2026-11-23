@@ -554,10 +554,10 @@ export type RelatedPages = { pages: RelatedPage[]; sharedFacet: SharedFacet | nu
 // ========== PAGE VIEW (Read-only) ==========
 /**
  * An Ideas card: its opening and Deliverables, then the rest of the card; beside
- * them its facts, its room and its background rows. On a phone the facts lead,
- * then the Deliverables, then the room, then the rest.
+ * them its facts and its room. On a phone the facts lead, then the Deliverables,
+ * then the room, then the rest.
  */
-function CardLayout({ page, blocks, infobox, series, nowMs, children }: { page: WikiPage; blocks: Block[]; infobox: InfoboxBlock | null | undefined; series: PageRef | null; nowMs: number; children: ReactNode }) {
+function CardLayout({ page, blocks, series, nowMs, children }: { page: WikiPage; blocks: Block[]; series: PageRef | null; nowMs: number; children: ReactNode }) {
   const [top, rest] = splitCard(blocks);
   return (
     <div className="card-layout">
@@ -571,7 +571,6 @@ function CardLayout({ page, blocks, infobox, series, nowMs, children }: { page: 
           </InfoboxSidebar>
         </div>
         <div className="card-talk"><CardRoom pageId={page.id} /></div>
-        {infobox?.blocks?.length ? <div className="card-more"><InfoboxSidebar block={infobox} title={`${page.title}, its background`} /></div> : null}
       </div>
       <div className="card-rest stack"><BlockRenderer content={rest} />{children}</div>
     </div>
@@ -642,7 +641,7 @@ function PageViewContent({ page, related, series, news, sections, listing, nowMs
         <h1 id={slugifyHeading(page.title)} className="m-0!">{page.title}</h1>
       </Banner>
       <NewsTicker items={news} />
-      {isCard ? <CardLayout page={page} blocks={mainBlocks} infobox={infobox} series={series} nowMs={nowMs}>{tail}</CardLayout>
+      {isCard ? <CardLayout page={page} blocks={mainBlocks} series={series} nowMs={nowMs}>{tail}</CardLayout>
       : showInfobox ? (
         <div className="page-with-infobox">
           {main}

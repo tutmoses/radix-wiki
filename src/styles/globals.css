@@ -730,7 +730,7 @@
   .card-layout {
     @apply grid gap-6;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "facts" "top" "talk" "rest" "more";
+    grid-template-areas: "facts" "top" "talk" "rest";
     > * { @apply min-w-0; }
     @media (min-width: 768px) {
       grid-template-columns: minmax(0, 1fr) var(--infobox-width);
@@ -743,7 +743,6 @@
   .card-side { display: contents; @media (min-width: 768px) { @apply flex flex-col gap-6; grid-area: side; } }
   .card-facts { grid-area: facts; }
   .card-talk { grid-area: talk; }
-  .card-more { grid-area: more; }
   .trollbox-inline.trollbox-card { height: 30rem; min-height: 0; }
 
   /* Infobox sidebar */
