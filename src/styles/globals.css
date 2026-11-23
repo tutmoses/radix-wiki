@@ -771,13 +771,27 @@
   /* Infobox editor sidebar */
   .infobox-editor { grid-area: infobox; width: 100%; min-width: 0; }
 
-  /* One sticky slot for all three rails. It has to stay after `.infobox`, whose
-     `overflow: hidden` a later `overflow-y: auto` is what beats. The query is px
-     rather than Tailwind's `md`: 48rem resolves against the browser's default
-     font size, so for a reader who has changed it the rail's grid slot (768px,
-     above) and its stickiness would flip at different widths. */
+  /* One sticky slot for every side column, sticking exactly where its layout
+     splits: an article's infobox from 768px of its column (`.page-with-infobox`,
+     a container query in wiki-formant/base.css), the rest from a 768px window,
+     as their grids split. Keyed to the window, an article's infobox stuck while
+     it still sat above the prose, beside an open rail at 1024px, and floated
+     over the sections below it. It has to stay after `.infobox`, whose
+     `overflow: hidden` a later `overflow-y: auto` is what beats. px rather than
+     Tailwind's `md`: 48rem resolves against the browser's default font size,
+     so for a reader who has changed it a grid slot and its stickiness would
+     flip at different widths. */
+  @container (min-width: 768px) {
+    .page-with-infobox > :is(.infobox, .infobox-editor) {
+      position: sticky;
+      top: calc(var(--rail-top) + 1.5rem);
+      align-self: start;
+      max-height: calc(100dvh - var(--rail-top) - 3rem);
+      overflow-y: auto;
+    }
+  }
   @media (min-width: 768px) {
-    :is(.infobox, .infobox-editor, .category-rail) {
+    :is(.infobox, .category-rail):not(.page-with-infobox > *) {
       position: sticky;
       top: calc(var(--rail-top) + 1.5rem);
       align-self: start;
