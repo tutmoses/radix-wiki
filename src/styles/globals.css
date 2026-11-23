@@ -443,7 +443,7 @@
      structure is base.css's `wiki-rail__*`: this wiki's rows, its accent for the
      link being read, and the category trail indented under a rule so it reads
      without an expander control. The contents list comes last, under a rule. */
-  .wiki-rail__group { @apply gap-(--rail-gap) px-4; }
+  .wiki-rail__group { @apply gap-(--rail-gap); }
   .wiki-rail__group:has(> .wiki-rail__toc-btn) { @apply flex-1 pt-(--rail-section) border-t border-border-muted; }
   .wiki-rail__label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3 py-(--rail-row); }
   .wiki-rail__list { @apply gap-(--rail-gap); li { @apply flex flex-col gap-(--rail-gap); } }
