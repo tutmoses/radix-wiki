@@ -4,7 +4,7 @@
 
 import { useState, useMemo, type ComponentProps } from 'react';
 import Link from 'next/link';
-import { MessageSquare, LayoutGrid, List } from 'lucide-react';
+import { MessageSquare, LayoutGrid, List, User } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Badge } from '@/components/ui';
@@ -31,7 +31,7 @@ function AssigneeChip({ raw }: { raw?: string }) {
   if (assignee.kind === 'none') return null;
   return (
     <span className="assignee-chip">
-      {assignee.kind === 'member' && assignee.address ? <UserAvatar seed={assignee.address} size="sm" /> : null}
+      {assignee.kind === 'member' && assignee.address ? <UserAvatar seed={assignee.address} size="sm" /> : <User size={12} />}
       <span>{assignee.name}</span>
     </span>
   );
@@ -47,6 +47,9 @@ const EMOJI_TONE: Record<string, Tone> = {
   '\u{1F535}': { color: 'info', variant: 'info' },          // 🔵
   '\u{1F7E3}': { color: 'purple', variant: 'secondary' },   // 🟣
   '\u{1F7E2}': { color: 'success', variant: 'success' },    // 🟢
+  '\u{3194}': { color: 'danger', variant: 'danger' },       // ㆔ High
+  '\u{3193}': { color: 'warning', variant: 'warning' },     // ㆓ Medium
+  '\u{2F00}': { color: 'default', variant: 'secondary' },   // ⼀ Low
 };
 
 type StatusOption = { raw: string; label: string } & Tone;
@@ -56,24 +59,33 @@ function parseSelectOptions(options: string[]): StatusOption[] {
 }
 
 /** A metadata value as a badge in its option's colour. */
-function OptionBadge({ options, value }: { options: StatusOption[]; value?: string }) {
+function OptionBadge({ options, value, className }: { options: StatusOption[]; value?: string; className?: string }) {
   if (!value) return null;
   const label = categoryLabel(value);
-  return <Badge variant={options.find(o => o.label === label)?.variant}>{label}</Badge>;
+  return <Badge variant={options.find(o => o.label === label)?.variant} className={className}>{label}</Badge>;
 }
 
+/**
+ * A card read top to bottom: whose it is and how urgent, what it is, how far
+ * along, then who has it, by when, and how much talk.
+ */
 function BoardCard({ page, priorityOptions }: { page: IdeasPage; priorityOptions: StatusOption[] }) {
   const meta = (page.metadata as PageMetadata) || {};
   return (
     <Link href={`/${page.tagPath}/${page.slug}`} className="board-card">
+      {(meta.workingGroup || meta.priority) && (
+        <div className="board-card-head">
+          <span>{meta.workingGroup}</span>
+          <OptionBadge options={priorityOptions} value={meta.priority} className="badge-sm shrink-0" />
+        </div>
+      )}
       <span className="board-card-title">{page.title}</span>
+      <CardProgress progress={page.progress} />
       <div className="board-card-meta">
-        <OptionBadge options={priorityOptions} value={meta.priority} />
-        {meta.workingGroup && <Badge variant="secondary">{meta.workingGroup}</Badge>}
         <AssigneeChip raw={meta.assignee} />
         <TargetChip meta={meta} />
+        {page.replyCount > 0 && <span className="assignee-chip ml-auto" title={`${page.replyCount} replies`}><MessageSquare size={12} />{page.replyCount}</span>}
       </div>
-      <CardProgress progress={page.progress} />
     </Link>
   );
 }
