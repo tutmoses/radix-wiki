@@ -375,119 +375,115 @@ export function Header() {
   };
 
   return (
-    <header className="header">
-      <div className="header-inner">
-        <div className="header-bar">
-          <RailToggle />
+    <>
+      <RailToggle />
 
-          <Link href="/" className="row shrink-0">
-            <Image src="/logo.png" alt={SITE_NAME} width={240} height={240} className="size-8 object-contain" priority />
-            <span className="logo-text">{SITE_NAME}</span>
-          </Link>
+      <Link href="/" className="row shrink-0">
+        <Image src="/logo.png" alt={SITE_NAME} width={240} height={240} className="size-8 object-contain" priority />
+        <span className="logo-text">{SITE_NAME}</span>
+      </Link>
 
-          {/* One field for both breakpoints, revealed by the magnifier: inline above
-              `sm`, its own row below it. The two copies had drifted, and the desktop one
-              was the broken half — it nested `.search-empty` (itself absolutely
-              placed) inside `.search-results`, which is `overflow-hidden`, so
-              "No pages found" was clipped to a bordered 2px strip. */}
-          <form ref={searchRef} className={cn('header-search', fieldShown && 'header-search-open')}
-            onSubmit={e => { e.preventDefault(); goToSearchPage(); }}>
-            <Search className="search-icon-left" size={18} />
-            <input ref={searchInputRef} type="search" placeholder="Search the wiki..." className="input pl-10" value={searchQuery}
-              onChange={e => { setSearchQuery(e.target.value); setField('listing'); }}
-              onBlur={() => { if (!searchQuery.trim()) setField('folded'); }}
-              onKeyDown={onSearchKeyDown} {...searchCombobox.inputProps} />
-            {search.status === 'searching' && <Loader2 className="search-icon-right" size={18} />}
-            {listOpen && searchResults.length > 0 && (
-              <div className="search-results" {...searchCombobox.listProps}>
-                {searchResults.map((page, i) => (
-                  <SearchResultRow key={page.url} page={page} query={searchQuery.trim()} active={i === highlight}
-                    onHover={() => setHighlight(i)} onSelect={handleSearchSelect}
-                    optionProps={searchCombobox.optionProps(i)} />
-                ))}
-                <button type="button" onClick={goToSearchPage} className="search-result search-result-all">
-                  See all results for &ldquo;{searchQuery.trim()}&rdquo;
-                </button>
-              </div>
-            )}
-            {listOpen && search.status === 'found' && search.items.length === 0 && (
-              <div className="search-empty">No pages found for &ldquo;{search.query}&rdquo;</div>
-            )}
-            {listOpen && search.status === 'failed' && (
-              <div className="search-empty" role="alert">Search did not answer. Press Enter for the full results page.</div>
-            )}
-          </form>
-
-          <div ref={actionsRef} className="header-actions">
-            {/* With no script it goes to the results page. Its mousedown keeps focus
-                in the field, so the field's blur does not fold it before the click. */}
-            <a href="/search" onMouseDown={e => e.preventDefault()} onClick={e => { e.preventDefault(); closeMenu(); setField(fieldShown ? 'folded' : 'open'); }}
-              className="icon-btn text-inherit" title="Search" aria-label="Search" aria-expanded={fieldShown}><Search size={20} /></a>
-
-            {historyHref && (
-              <Link href={historyHref} prefetch={false} onClick={closeMenu} className="icon-btn text-inherit" title="History" aria-label="History"><History size={20} /></Link>
-            )}
-
-            {hasTools && (
-              <div className="relative">
-                <button onClick={() => toggleMenu('tools')} className="icon-btn" title="Page tools" aria-label="Page tools" aria-expanded={menu === 'tools' || menu === 'ledger'}>
-                  <MoreVertical size={20} />
-                </button>
-                {menu === 'tools' && (
-                  <PageToolsDropdown
-                    onClose={closeMenu}
-                    mdxPath={canExportMdx ? mdxPath : null}
-                    tagPath={tagPath ?? undefined} slug={slug ?? undefined} isPage={isPage} sectionPath={sectionPath}
-                    ledgerColor={LEDGER_COLOR[backupStanding(ledgerStatus, slug ?? null, ledgerBackup)]}
-                    onOpenLedger={isAuthenticated && hasLedger ? () => openMenu('ledger') : null}
-                  />
-                )}
-                {menu === 'ledger' && <LedgerDropdown tagPath={tagPath ?? null} slug={slug ?? null} status={ledgerStatus} />}
-              </div>
-            )}
-
-            {/* On the room's own page the room is on screen, and there is nothing for the button to open. */}
-            {pathname !== ROOM_PATH && (
-              <button onClick={() => { closeMenu(); toggleChat(); }} className="icon-btn relative" title="Trollbox" aria-label="Trollbox" aria-expanded={chatOpen}>
-                <MessagesSquare size={20} />
-                {chatUnread && !chatOpen && <span className="trollbox-unread" title="New lines in the trollbox" />}
-              </button>
-            )}
-
-            {isAuthenticated && (
-              <div className="relative">
-                <button onClick={() => toggleMenu('notifications')} className="icon-btn" title="Notifications" aria-label="Notifications" aria-expanded={menu === 'notifications'}>
-                  <Bell size={20} />
-                  {bell === 'failed'
-                    ? <span className="notification-badge notification-badge-failed" title="Your notifications could not be loaded">!</span>
-                    : typeof bell === 'number' && bell > 0 && <span className="notification-badge">{bell > 9 ? '9+' : bell}</span>}
-                </button>
-                {menu === 'notifications' && <NotificationDropdown onClose={closeMenu} />}
-              </div>
-            )}
-
-            <div id="radix-connect-btn" className="relative">
-              {authStatus === 'checking' || authStatus === 'connecting' ? (
-                <div className="user-pill"><Loader2 size={14} className="animate-spin" /><span className="hidden sm:inline">Connecting...</span></div>
-              ) : authStatus === 'signed-in' ? (
-                <>
-                  <button onClick={() => toggleMenu('account')} className="icon-btn" title={displayName} aria-expanded={menu === 'account'} aria-label="Account menu">
-                    <UserAvatar seed={user?.id || walletData?.accounts?.[0]?.address || ''} size="md" />
-                  </button>
-                  {menu === 'account' && <AccountMenu name={displayName} hasWallet={!!user?.radixAddress} profilePath={userProfilePath} onClose={closeMenu} onLogout={handleLogout} />}
-                </>
-              ) : (
-                <>
-                  <Button variant="primary" size="sm" onClick={() => toggleMenu('signin')} aria-expanded={menu === 'signin'} title={authStatus === 'unreadable' ? SESSION_UNREADABLE : undefined}>
-                    Sign in
-                  </Button>
-                  {menu === 'signin' && <Dropdown className="signin-menu"><SignInOptions onDone={closeMenu} /></Dropdown>}
-                </>
-              )}
-            </div>
+      {/* One field for both breakpoints, revealed by the magnifier: inline above
+          `sm`, its own row below it. The two copies had drifted, and the desktop one
+          was the broken half — it nested `.search-empty` (itself absolutely
+          placed) inside `.search-results`, which is `overflow-hidden`, so
+          "No pages found" was clipped to a bordered 2px strip. */}
+      <form ref={searchRef} className={cn('header-search', fieldShown && 'header-search-open')}
+        onSubmit={e => { e.preventDefault(); goToSearchPage(); }}>
+        <Search className="search-icon-left" size={18} />
+        <input ref={searchInputRef} type="search" placeholder="Search the wiki..." className="input pl-10" value={searchQuery}
+          onChange={e => { setSearchQuery(e.target.value); setField('listing'); }}
+          onBlur={() => { if (!searchQuery.trim()) setField('folded'); }}
+          onKeyDown={onSearchKeyDown} {...searchCombobox.inputProps} />
+        {search.status === 'searching' && <Loader2 className="search-icon-right" size={18} />}
+        {listOpen && searchResults.length > 0 && (
+          <div className="search-results" {...searchCombobox.listProps}>
+            {searchResults.map((page, i) => (
+              <SearchResultRow key={page.url} page={page} query={searchQuery.trim()} active={i === highlight}
+                onHover={() => setHighlight(i)} onSelect={handleSearchSelect}
+                optionProps={searchCombobox.optionProps(i)} />
+            ))}
+            <button type="button" onClick={goToSearchPage} className="search-result search-result-all">
+              See all results for &ldquo;{searchQuery.trim()}&rdquo;
+            </button>
           </div>
+        )}
+        {listOpen && search.status === 'found' && search.items.length === 0 && (
+          <div className="search-empty">No pages found for &ldquo;{search.query}&rdquo;</div>
+        )}
+        {listOpen && search.status === 'failed' && (
+          <div className="search-empty" role="alert">Search did not answer. Press Enter for the full results page.</div>
+        )}
+      </form>
+
+      <div ref={actionsRef} className="header-actions">
+        {/* With no script it goes to the results page. Its mousedown keeps focus
+            in the field, so the field's blur does not fold it before the click. */}
+        <a href="/search" onMouseDown={e => e.preventDefault()} onClick={e => { e.preventDefault(); closeMenu(); setField(fieldShown ? 'folded' : 'open'); }}
+          className="icon-btn text-inherit" title="Search" aria-label="Search" aria-expanded={fieldShown}><Search size={20} /></a>
+
+        {historyHref && (
+          <Link href={historyHref} prefetch={false} onClick={closeMenu} className="icon-btn text-inherit" title="History" aria-label="History"><History size={20} /></Link>
+        )}
+
+        {hasTools && (
+          <div className="relative">
+            <button onClick={() => toggleMenu('tools')} className="icon-btn" title="Page tools" aria-label="Page tools" aria-expanded={menu === 'tools' || menu === 'ledger'}>
+              <MoreVertical size={20} />
+            </button>
+            {menu === 'tools' && (
+              <PageToolsDropdown
+                onClose={closeMenu}
+                mdxPath={canExportMdx ? mdxPath : null}
+                tagPath={tagPath ?? undefined} slug={slug ?? undefined} isPage={isPage} sectionPath={sectionPath}
+                ledgerColor={LEDGER_COLOR[backupStanding(ledgerStatus, slug ?? null, ledgerBackup)]}
+                onOpenLedger={isAuthenticated && hasLedger ? () => openMenu('ledger') : null}
+              />
+            )}
+            {menu === 'ledger' && <LedgerDropdown tagPath={tagPath ?? null} slug={slug ?? null} status={ledgerStatus} />}
+          </div>
+        )}
+
+        {/* On the room's own page the room is on screen, and there is nothing for the button to open. */}
+        {pathname !== ROOM_PATH && (
+          <button onClick={() => { closeMenu(); toggleChat(); }} className="icon-btn relative" title="Trollbox" aria-label="Trollbox" aria-expanded={chatOpen}>
+            <MessagesSquare size={20} />
+            {chatUnread && !chatOpen && <span className="trollbox-unread" title="New lines in the trollbox" />}
+          </button>
+        )}
+
+        {isAuthenticated && (
+          <div className="relative">
+            <button onClick={() => toggleMenu('notifications')} className="icon-btn" title="Notifications" aria-label="Notifications" aria-expanded={menu === 'notifications'}>
+              <Bell size={20} />
+              {bell === 'failed'
+                ? <span className="notification-badge notification-badge-failed" title="Your notifications could not be loaded">!</span>
+                : typeof bell === 'number' && bell > 0 && <span className="notification-badge">{bell > 9 ? '9+' : bell}</span>}
+            </button>
+            {menu === 'notifications' && <NotificationDropdown onClose={closeMenu} />}
+          </div>
+        )}
+
+        <div id="radix-connect-btn" className="relative">
+          {authStatus === 'checking' || authStatus === 'connecting' ? (
+            <div className="user-pill"><Loader2 size={14} className="animate-spin" /><span className="hidden sm:inline">Connecting...</span></div>
+          ) : authStatus === 'signed-in' ? (
+            <>
+              <button onClick={() => toggleMenu('account')} className="icon-btn" title={displayName} aria-expanded={menu === 'account'} aria-label="Account menu">
+                <UserAvatar seed={user?.id || walletData?.accounts?.[0]?.address || ''} size="md" />
+              </button>
+              {menu === 'account' && <AccountMenu name={displayName} hasWallet={!!user?.radixAddress} profilePath={userProfilePath} onClose={closeMenu} onLogout={handleLogout} />}
+            </>
+          ) : (
+            <>
+              <Button variant="primary" size="sm" onClick={() => toggleMenu('signin')} aria-expanded={menu === 'signin'} title={authStatus === 'unreadable' ? SESSION_UNREADABLE : undefined}>
+                Sign in
+              </Button>
+              {menu === 'signin' && <Dropdown className="signin-menu"><SignInOptions onDone={closeMenu} /></Dropdown>}
+            </>
+          )}
         </div>
       </div>
-    </header>
+    </>
   );
 }

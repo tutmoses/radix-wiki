@@ -1,14 +1,14 @@
 // src/app/layout.tsx
 
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { Inter } from 'next/font/google';
 import '@/styles/globals.css';
-import { RailFrame, SiteDocument, SiteShell } from 'wiki-formant/react-server';
+import { RailFrame, SiteDocument, SiteFooter, SiteShell } from 'wiki-formant/react-server';
 import { cardUrl, rootMetadata, siteGraphLd } from 'wiki-formant/metadata';
 import { RadixProvider } from '@/components/RadixProvider';
 import { Header } from '@/components/Header';
 import { Sidebar } from '@/components/Sidebar';
-import { Footer } from '@/components/Footer';
 import { Toast } from '@/components/Toast';
 import { TrollboxDock } from '@/components/TrollboxDock';
 
@@ -48,13 +48,27 @@ const SITE_JSON_LD = siteGraphLd({
   // The wiki's own accounts only: listing the Radix GitHub org or a Radix
   // Telegram here asserts the wiki is that organisation.
   sameAs: [X.url, 'https://www.moltbook.com/u/RadixWiki', 'https://github.com/tutmoses/radix-wiki'],
-  searchUrl: `${SITE_URL}/search?q={search_term_string}`,
   api: {
     description: 'REST API and MCP server for reading and writing Radix ecosystem wiki content',
     url: `${SITE_URL}/api/wiki`,
-    documentation: `${SITE_URL}/llms.txt`,
   },
 });
+
+// Home, Contents, Charts and Leaderboard are the rail's; the footer keeps what
+// nothing else on the page links to.
+const FOOTER_LINKS = [
+  { href: '/about', label: 'About' },
+  { href: '/policy', label: 'Policy' },
+  { href: '/llms.txt', label: 'llms.txt' },
+  { href: '/terms', label: 'Terms' },
+  { href: '/privacy', label: 'Privacy' },
+];
+
+const FOOTER_NOTE = (
+  <p>
+    Content licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Powered by Radix DLT.
+  </p>
+);
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -71,9 +85,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <RadixProvider>
         {/* The rail is the site nav, on every route, so the root layout mounts it. */}
-        <SiteShell className="bg-surface-0" header={<Header />} footer={<Footer />}>
-          <RailFrame rail={<Sidebar />}>
-            <div className="page-frame">{children}</div>
+        <SiteShell
+          className="bg-surface-0"
+          header={<Header />}
+          footer={<SiteFooter links={FOOTER_LINKS} x={X} owner={SITE_NAME} note={FOOTER_NOTE} link={Link} />}
+        >
+          <RailFrame rail={<Sidebar />} preview={{ endpoint: '/api/wiki/preview', scope: '.prose-content' }}>
+            {children}
           </RailFrame>
         </SiteShell>
         <TrollboxDock />

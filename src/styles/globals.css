@@ -23,6 +23,7 @@
   --ui-small: var(--text-small);
   --ui-muted: var(--color-text-muted);
   --ui-accent: var(--color-accent);
+  --ui-accent-soft: var(--color-accent-muted);
   --ui-on-accent: var(--color-surface-0);
   --ui-up: var(--color-success);
   --ui-down: var(--color-error);
@@ -389,11 +390,9 @@
   .wiki-layout__main > .page-frame:first-child { @apply grow py-6 sm:py-8; }
 
   /* ===== HEADER ===== */
-  .header { @apply sticky top-0 z-50 bg-surface-0/80 backdrop-blur-md border-b border-border-muted; }
-  .header-inner { @apply w-full; padding-inline: var(--page-pad); }
-  /* flex-wrap + min-h only differ from a fixed row when a child actually wraps,
-     and only `.header-search-open` does that, below `sm`. */
-  .header-bar { @apply flex flex-wrap items-center gap-2 min-h-[var(--rail-top)]; }
+  /* The box is wiki-formant's `.app-header`. flex-wrap only differs from a fixed
+     row when a child actually wraps, and only `.header-search-open` does that, below `sm`. */
+  .app-header { @apply z-50 flex-wrap gap-2 bg-surface-0/80 backdrop-blur-md border-b border-border-muted; }
   .logo-text { @apply font-semibold text-lg hidden sm:block; }
   .header-actions { @apply flex items-center gap-2 ml-auto; }
 
@@ -447,14 +446,14 @@
   .wiki-rail__group:has(> .wiki-rail__toc-btn) { @apply flex-1 pt-(--rail-section) border-t border-border-muted; }
   .wiki-rail__label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3 py-(--rail-row); }
   .wiki-rail__list { @apply gap-(--rail-gap); li { @apply flex flex-col gap-(--rail-gap); } }
-  .wiki-rail__item { @apply gap-x-2 px-3 py-(--rail-row) rounded-md text-text-muted hover:bg-surface-2 hover:text-text; }
-  .wiki-rail__item--active { @apply bg-accent-muted text-accent font-medium hover:bg-accent-muted hover:text-accent; }
+  .wiki-rail__item { @apply gap-x-2 px-3 py-(--rail-row) rounded-md; }
+  .wiki-rail__item--active { @apply font-medium; }
   .wiki-rail__subtree { @apply ml-4 pl-2 border-l border-border-muted; .wiki-rail__item { @apply text-small; } }
   .wiki-rail__toc-btn { @apply gap-x-2 px-3 py-(--rail-row) text-text-muted hover:text-text transition-colors; }
   .wiki-rail__toc-btn > .wiki-rail__label { @apply p-0 font-medium text-inherit; }
   .wiki-rail__toc-list { @apply gap-(--rail-gap) pl-4; }
-  .wiki-rail__toc-item { @apply block py-(--rail-row) px-2 rounded truncate border-l-2 border-transparent text-small text-text-muted hover:text-accent; }
-  .wiki-rail__toc-item--active { @apply text-accent font-medium bg-accent-muted border-accent; }
+  .wiki-rail__toc-item { @apply block py-(--rail-row) px-2 rounded truncate border-transparent; }
+  .wiki-rail__toc-item--active { @apply font-medium border-accent; }
 
   /* ===== BANNER ===== */
   /* The frame and its 4:1 floor are wiki-formant/banner's (base.css); this is
@@ -804,8 +803,7 @@
   }
 
   /* ===== FOOTER ===== */
-  .footer { @apply flex items-center justify-between gap-4 flex-wrap border-t border-border-muted py-8 mt-8 text-text-muted text-small; }
-  .footer-links { @apply flex items-center gap-4 flex-wrap; }
+  .app-footer { @apply border-t border-border-muted mt-8; }
 
 
   /* ===== CHARTS / DATA TABLES ===== */
