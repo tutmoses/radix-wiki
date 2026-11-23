@@ -908,10 +908,14 @@
   .trollbox-row { overflow-wrap: anywhere; white-space: pre-wrap; a { @apply text-accent underline; } }
   .trollbox-day { @apply self-center py-1 text-xs text-text-muted; }
   .trollbox-time { @apply mr-2 text-xs text-text-muted; }
-  .trollbox-name { @apply mr-1 font-semibold; }
+  /* Each poster's name is drawn in a hue of their own (`--hue`, set inline from
+     their id), at the lightness and chroma of the palette's pastels, so a busy
+     room reads poster by poster and still reads as this site. */
+  .trollbox-name { @apply mr-1 font-semibold; color: oklch(0.86 0.1 var(--hue, 0)); }
   .trollbox-name::after { content: ':'; @apply font-normal text-text-muted; }
   .trollbox-name[data-standing='guest'] { @apply font-normal; }
-  .trollbox-mark { @apply inline ml-0.5 text-accent; vertical-align: -1px; }
+  /* A holder is marked the way caper marks its founder: a star, not a colour, so it survives the hue. */
+  .trollbox-star { @apply mr-0.5 text-warning; }
   .trollbox-guest { @apply ml-1 text-xs text-text-muted; }
   /* A tagged page reads as the page's title; a mention as the name. */
   .trollbox-page { @apply px-1 rounded bg-accent-muted text-accent no-underline!; }

@@ -4,7 +4,7 @@
 
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { BadgeCheck, CornerUpLeft, Flag, Hash, ImagePlus, Loader2, Maximize2, Trash2, X } from 'lucide-react';
+import { CornerUpLeft, Flag, Hash, ImagePlus, Loader2, Maximize2, Trash2, X } from 'lucide-react';
 import { useAuth, useStore } from '@/hooks';
 import { CHANGE_WINDOW_MS, MAX_BODY, POLL_MS, remember, ROOM_PATH, SEEN_KEY, type Me, type Message, type Read, type Ref } from '@/lib/trollbox';
 import { HIDDEN_TAG_PATHS, TAG_TREE } from '@/lib/tags';
@@ -17,6 +17,13 @@ const PIN_SLACK = 32;
 
 const TIME = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
 const DAY = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+
+/** A poster's hue, from their id: the same colour on every line and every visit. FNV-1a. */
+function hueOf(id: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 0x01000193);
+  return (h >>> 0) % 360;
+}
 
 /** The room: loading, a first read that failed, or its lines and whether older ones remain. */
 type Room =
@@ -490,9 +497,9 @@ export default function Trollbox({ docked = false, pageId }: { docked?: boolean;
                       </button>
                     )}
                     <time className="trollbox-time" dateTime={m.at}>{TIME.format(at)}</time>
-                    <span className="trollbox-name" data-standing={author.standing}>
+                    <span className="trollbox-name" data-standing={author.standing} style={{ '--hue': hueOf(author.id) } as React.CSSProperties}>
+                      {author.standing === 'holder' && <span className="trollbox-star" title="$XRD holder" aria-label="$XRD holder">★</span>}
                       {author.name}
-                      {author.standing === 'holder' && <BadgeCheck size={12} className="trollbox-mark" aria-label="$XRD holder"><title>$XRD holder</title></BadgeCheck>}
                       {author.standing === 'guest' && <span className="trollbox-guest">guest</span>}
                     </span>
                     {shown !== null ? (
