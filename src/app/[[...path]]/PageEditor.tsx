@@ -14,7 +14,7 @@ import { CARRIED_TOAST } from '@/components/Toast';
 import { cn, mustReload, pagePath, sendJson } from '@/lib/utils';
 import { isReservedSlug } from '@/lib/path';
 import { slugifyHeading } from 'wiki-formant/headings';
-import { isAuthorOnlyPath, isLockedPage, deleteRight, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, XRD_NOT_A_FEE, type MetadataKeyDefinition } from '@/lib/tags';
+import { isAuthorOnlyPath, isLockedPage, isWithin, deleteRight, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, XRD_NOT_A_FEE, type MetadataKeyDefinition } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
 import { ArticleBlocksEditor, Banner, ConflictNotice, type SavePhase } from './PageContent';
 import type { WikiPage, PageMetadata } from '@/types';
@@ -250,8 +250,12 @@ type SlugField = { kind: 'title' } | { kind: 'typed'; value: string };
 
 type Fields = { title: string; content: Block[]; bannerImage: string | null; metadata: PageMetadata; slug: SlugField; editorIds: string[] };
 
+// A new Ideas card opens on its opening line and its Deliverables, a tick-box
+// list the card lifts beside its room and the board counts as progress.
+const CARD_STARTER = '<p></p><h2>Deliverables</h2><ul data-type="taskList"><li data-type="taskItem" data-checked="false"><p></p></li></ul>';
+
 // What the form opens on, and what it is compared against to know it is dirty.
-function initialFields(page: WikiPage | undefined, slug: string): Fields {
+function initialFields(page: WikiPage | undefined, tagPath: string, slug: string): Fields {
   return page
     ? {
         title: page.title,
@@ -261,7 +265,7 @@ function initialFields(page: WikiPage | undefined, slug: string): Fields {
         slug: { kind: 'typed', value: page.slug },
         editorIds: page.editorIds,
       }
-    : { title: '', content: [createBlock('content')], bannerImage: null, metadata: {}, slug: slug ? { kind: 'typed', value: slug } : { kind: 'title' }, editorIds: [] };
+    : { title: '', content: [isWithin(tagPath, 'ideas') ? { ...createBlock('content'), text: CARD_STARTER } as Block : createBlock('content')], bannerImage: null, metadata: {}, slug: slug ? { kind: 'typed', value: slug } : { kind: 'title' }, editorIds: [] };
 }
 
 /** Keyed by its page where it is rendered, so it opens on `page` once and never resyncs. */
@@ -274,7 +278,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   // A category's hub article lives at the empty slug and is reached by its
   // category's own URL, so there is no slug to edit and no rename to offer.
   const isHub = !isCreating && !slug;
-  const [initial] = useState(() => initialFields(page, slug));
+  const [initial] = useState(() => initialFields(page, tagPath, slug));
   const [fields, setFields] = useState(initial);
   const { title, content, bannerImage, metadata, slug: slugField, editorIds } = fields;
   const patch = (p: Partial<Fields>) => setFields(f => ({ ...f, ...p }));
