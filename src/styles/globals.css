@@ -65,12 +65,10 @@
   --shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.25);
   --header-height: 4rem;
   --editor-bar-height: 3.5rem;
-  /* The reading measure, as a CEILING. There was none: prose was constrained
-     only by whatever sat beside it, so a page whose infobox did not render ran
-     the full column. `ch` is the advance of the digit zero, not an average
-     character — in Inter it is 1.26x wider — so 63ch renders about 80
-     characters. acuiq2's prose already measured 640px, which is what this
-     resolves to at 16px. */
+  /* The reading measure, a ceiling on prose outside an article (a link grid's
+     descriptions); an article's prose fills its column up to the infobox.
+     `ch` is the advance of the digit zero, not an average character: in Inter
+     it is 1.26x wider, so 63ch renders about 80 characters. */
   --measure: 63ch;
   --scrollbar-thumb: var(--color-border);
   --scrollbar-thumb-hover: var(--color-text-muted);
@@ -165,12 +163,6 @@
     .selectedCell { @apply bg-accent-muted; }
     &.ProseMirror-selectednode .iframe-embed { @apply outline-2 outline-accent outline-offset-2 rounded-lg; }
   }
-
-  /* Cap the reading measure on text elements only — tables, images, code and
-     embeds keep the full column. Same split caper draws, and a ceiling beside
-     an infobox too: lifted there, a line ran 709px, 89 characters, where caper
-     and acuiq hold theirs at the measure (STRUCTURE.md D8). */
-  .prose-content :where(p, ul, ol, blockquote, h2, h3, h4) { max-width: var(--measure); }
 
 
   /* The infobox's facts table carries stored links too, and reads them as prose does. */
