@@ -129,7 +129,7 @@ function MetadataFields({ metadataKeys, metadata, onChange, invalidKeys = [] }: 
   return (
     <div className="metadata-panel">
       <div className="spread">
-        <h4 className="text-small font-medium text-text-muted m-0!">Page Metadata</h4>
+        <h4 className="subtext font-medium m-0!">Page Metadata</h4>
         {!showAll && hiddenCount > 0 && (
           <button type="button" className="link text-small" onClick={() => setShowAll(true)}>More fields ({hiddenCount})</button>
         )}
@@ -199,7 +199,7 @@ function EditorWhitelist({ editors: list, onAdd, onRemove }: {
   if (list.status !== 'loaded') {
     return (
       <div className="metadata-panel">
-        <h4 className="text-small font-medium text-text-muted m-0!">Allowed Editors</h4>
+        <h4 className="subtext font-medium m-0!">Allowed Editors</h4>
         {list.status === 'loading'
           ? <div className="h-8 skeleton" />
           : <p className="text-small text-text-muted">The allowed editors could not be loaded, so they are kept as they are. Reload to change them.</p>}
@@ -209,9 +209,9 @@ function EditorWhitelist({ editors: list, onAdd, onRemove }: {
   const editors = list.users;
   return (
     <div className="metadata-panel">
-      <h4 className="text-small font-medium text-text-muted m-0!">Allowed Editors</h4>
+      <h4 className="subtext font-medium m-0!">Allowed Editors</h4>
       {editors.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="badge-list">
           {editors.map(u => (
             <span key={u.id} className="badge row gap-1">
               {u.displayName || u.shortAddress}
@@ -391,7 +391,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
         <Link href={backHref} onClick={e => { if (!confirmLeave()) e.preventDefault(); }} className="row link-muted"><ArrowLeft size={16} /><span>{isCreating ? 'Back to Category' : 'Back to Page'}</span></Link>
         <Button onClick={save} disabled={phase.kind !== 'editing' || !canSave} size="sm" title={uploading ? 'Saves once the image has uploaded' : 'Save (⌘S)'}><Save size={16} />{uploading ? 'Uploading...' : saveLabel}</Button>
       </div>
-      <header className="stack pb-6 border-b border-border">
+      <header className="stack page-editor-head">
         {gate.kind === 'refused' ? (
           <div data-callout="warning"><p>{gate.reason}</p></div>
         ) : gate.kind !== 'allowed' ? (

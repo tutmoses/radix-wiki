@@ -20,12 +20,12 @@ const COLUMNS: Column<TokenRow>[] = [
         <Link href={`/charts/tokens/${t.address}`} className="row group min-w-0">
           <EntityIcon src={t.iconUrl} name={t.symbol || t.name} />
           <div className="stack-xs min-w-0">
-            <span className="font-medium group-hover:text-accent transition-colors data-table-name">{t.symbol || t.name}</span>
+            <span className="entity-name data-table-name">{t.symbol || t.name}</span>
             {t.symbol && t.name && t.symbol !== t.name && <span className="text-xs text-text-muted data-table-name">{t.name}</span>}
           </div>
         </Link>
         {t.wikiPath && (
-          <Link href={t.wikiPath} className="table-wiki-link" title="Wiki article" aria-label={`${t.symbol || t.name} on the wiki`}>
+          <Link href={t.wikiPath} className="icon-link" title="Wiki article" aria-label={`${t.symbol || t.name} on the wiki`}>
             <BookOpen size={14} />
           </Link>
         )}
@@ -38,7 +38,7 @@ const COLUMNS: Column<TokenRow>[] = [
     cell: t => (
       <>
         ${formatPriceSubscript(t.price)}
-        <div className="show-mobile text-xs text-text-muted font-normal">{formatUsd(t.volume24h)} vol.</div>
+        <div className="show-mobile caption font-normal">{formatUsd(t.volume24h)} vol.</div>
       </>
     ),
   },

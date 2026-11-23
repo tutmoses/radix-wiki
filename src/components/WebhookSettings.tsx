@@ -223,7 +223,7 @@ function TelegramSection({ watch }: { watch?: string }) {
   };
 
   if (state.status === 'loading') return null;
-  if (state.status === 'failed') return <p className="text-small text-text-muted px-3 py-2">Telegram settings could not be loaded. Reload to try again.</p>;
+  if (state.status === 'failed') return <p className="subtext px-3 py-2">Telegram settings could not be loaded. Reload to try again.</p>;
 
   // Scoped subscriptions, paused or not (excludes the connection-only record with no scope)
   const subs = state.subscriptions.filter(s => s.tagPath !== '');
@@ -238,7 +238,7 @@ function TelegramSection({ watch }: { watch?: string }) {
       <div className="spread px-3 py-2">
         <span className="text-small font-medium">Telegram</span>
         {state.connected && (
-          <button onClick={handleDisconnect} disabled={busy.kind !== 'idle'} className="text-xs text-text-muted hover:text-error cursor-pointer">
+          <button onClick={handleDisconnect} disabled={busy.kind !== 'idle'} className="caption hover:text-error cursor-pointer">
             {busy.kind === 'disconnecting' ? 'Disconnecting...' : 'Disconnect'}
           </button>
         )}
@@ -250,7 +250,7 @@ function TelegramSection({ watch }: { watch?: string }) {
           <a href={link.deepLink} target="_blank" rel="noopener noreferrer" className="telegram-deep-link">
             <ExternalLink size={14} />Open in Telegram
           </a>
-          <div className="row justify-center gap-1 text-xs text-text-muted">
+          <div className="row-xs justify-center caption">
             <Loader2 size={12} className="animate-spin" />Waiting for connection...
           </div>
         </div>
@@ -285,7 +285,7 @@ function TelegramSection({ watch }: { watch?: string }) {
                         ? `/${sub.tagPath}/${sub.pageSlug}`
                         : `/${sub.tagPath}/*`}
                     </div>
-                    <div className="row flex-wrap gap-1 mt-0.5">
+                    <div className="row-xs flex-wrap mt-0.5">
                       {sub.events.map(e => <span key={e} className="badge">{e.replace('.', ' ')}</span>)}
                     </div>
                   </div>
@@ -416,7 +416,7 @@ export function WebhookSettings({ watch }: { watch?: string }) {
       {list.status === 'loading' ? (
         <div className="webhook-empty"><Loader2 size={16} className="animate-spin" /></div>
       ) : list.status === 'failed' ? (
-        <p className="text-small text-text-muted px-3 py-2">Your webhooks could not be loaded. Reload to try again.</p>
+        <p className="subtext px-3 py-2">Your webhooks could not be loaded. Reload to try again.</p>
       ) : (
         <>
           {/* Secret reveal banner */}
@@ -429,7 +429,7 @@ export function WebhookSettings({ watch }: { watch?: string }) {
                   {copied ? <Check size={14} /> : <Copy size={14} />}
                 </button>
               </div>
-              <button onClick={() => setNewSecret(null)} className="text-xs text-text-muted hover:text-text cursor-pointer">Dismiss</button>
+              <button onClick={() => setNewSecret(null)} className="caption hover:text-text cursor-pointer">Dismiss</button>
             </div>
           )}
 
@@ -441,7 +441,7 @@ export function WebhookSettings({ watch }: { watch?: string }) {
               {webhooks.map(w => (
                 <div key={w.id} className="webhook-row">
                   <div className="min-w-0 flex-1 stack-xs">
-                    <div className="text-small font-medium truncate">{w.url}</div>
+                    <div className="item-title">{w.url}</div>
                     <div className="row flex-wrap">
                       {w.events.map(e => <span key={e} className="badge">{e.replace('.', ' ')}</span>)}
                     </div>

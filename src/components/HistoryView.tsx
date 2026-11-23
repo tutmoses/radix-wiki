@@ -98,11 +98,11 @@ export default function HistoryView({ data, tagPath, slug, isHomepage }: { data:
           <table className="w-full text-small">
             <thead>
               <tr className="text-left text-text-muted">
-                <SortHeader {...headerProps('version')} className="history-cell font-medium w-20 sm:w-24">Version</SortHeader>
+                <SortHeader {...headerProps('version')} className="history-cell font-medium history-col-version">Version</SortHeader>
                 <SortHeader {...headerProps('type')} className="history-cell font-medium w-20 hidden-mobile">Type</SortHeader>
                 <SortHeader {...headerProps('changes')} className="history-cell font-medium">Changes</SortHeader>
                 <SortHeader {...headerProps('author')} className="history-cell font-medium hidden-mobile">Author</SortHeader>
-                <SortHeader {...headerProps('date')} className="history-cell font-medium w-28 sm:w-36">Date</SortHeader>
+                <SortHeader {...headerProps('date')} className="history-cell font-medium history-col-date">Date</SortHeader>
                 {isAuthenticated && <th className="history-cell font-medium sm:w-24"></th>}
               </tr>
             </thead>
@@ -125,7 +125,7 @@ export default function HistoryView({ data, tagPath, slug, isHomepage }: { data:
                     <tr className={cn('border-t border-border-muted hover:bg-surface-1/50', isCurrent && 'bg-accent/5', i === 0 && '[&>td]:rounded-none')}>
                       <td className="history-cell">
                         <span className="font-mono font-medium">v{rev.version}</span>
-                        {isCurrent && <Badge variant="default" className="ml-2 text-xs py-0">current</Badge>}
+                        {isCurrent && <Badge variant="default" className="badge-sm ml-2">current</Badge>}
                       </td>
                       <td className="history-cell hidden-mobile"><Badge variant={type.variant}>{type.label}</Badge></td>
                       <td className="history-cell">
@@ -139,7 +139,7 @@ export default function HistoryView({ data, tagPath, slug, isHomepage }: { data:
                           )}
                         </div>
                         {/* The editor's own summary; one left blank was stored as the counted one above. */}
-                        {rev.message && rev.message !== summary && <div className="text-xs text-text-muted mt-1 wrap-anywhere">{rev.message}</div>}
+                        {rev.message && rev.message !== summary && <div className="caption mt-1 wrap-anywhere">{rev.message}</div>}
                         {/* A phone has no room for the author's column, so the author signs the change. */}
                         {author && <div className="show-mobile text-xs mt-1">{author}</div>}
                       </td>

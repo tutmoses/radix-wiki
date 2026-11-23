@@ -449,7 +449,7 @@ function CategoryListing({ name, tagPath, pages, sort, total, facetGroups, filte
                         <h3 className="m-0!">{p.title}</h3>
                         {p.metadata?.status && <span>{p.metadata.status}</span>}
                       </div>
-                      {(() => { const snippet = (p.metadata as Record<string, string> | null)?.excerpt || p.snippet || describe(openingText(p.content)); return snippet && <p className="text-text-muted text-small line-clamp-2">{snippet}</p>; })()}
+                      {(() => { const snippet = (p.metadata as Record<string, string> | null)?.excerpt || p.snippet || describe(openingText(p.content)); return snippet && <p className="page-card-snippet">{snippet}</p>; })()}
                     </div>
                   </div>
                 </Link>

@@ -303,6 +303,14 @@
   /* ===== LAYOUT ===== */
   .center { @apply flex items-center justify-center; }
 
+  /* ===== TYPE ===== */
+  /* Secondary text at the two small sizes: a path, snippet, note or panel label
+     beside the thing it qualifies; fine print, a hint or a quiet text button. */
+  .subtext { @apply text-small text-text-muted; }
+  .caption { @apply text-xs text-text-muted; }
+  /* A list row's name: one line, small, medium weight. */
+  .item-title { @apply text-small font-medium truncate; }
+
   /* ===== SURFACES ===== */
   .surface { @apply bg-surface-1 border border-border-muted rounded-lg; }
   /* A card that is a link: it lifts and takes the accent on hover. */
@@ -315,6 +323,8 @@
   .btn-primary { @apply bg-accent text-text-inverted hover:bg-accent-hover hover:text-text-inverted; }
   .icon-btn { @apply p-2 rounded transition-colors cursor-pointer inline-flex items-center justify-center hover:bg-surface-2; }
   .icon-btn-remove { @apply text-text-muted hover:text-error; }
+  /* <Button>'s spinner while it is loading. */
+  .btn-spinner { @apply h-4 w-4 text-current; }
   .input { @apply w-full py-2 px-4 bg-surface-0 border border-border rounded transition-all focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-muted placeholder:text-text-muted placeholder:opacity-60; }
   .input-ghost { @apply w-full bg-transparent border-0 outline-none placeholder:text-text-muted placeholder:opacity-60; }
 
@@ -341,10 +351,15 @@
   .badge-success { @apply bg-success/12 text-success border border-success/25; }
   .badge-warning { @apply bg-warning/12 text-warning border border-warning/25; }
   .badge-danger { @apply bg-danger-muted text-danger border border-danger/25; }
+  .badge-sm { @apply text-xs py-0; }
+  .badge-list { @apply flex flex-wrap gap-2; }
 
   /* ===== SKELETON / LOADING ===== */
   /* The pulse and the spinner's ring and spin are base.css; the surface is this wiki's. */
   .skeleton { @apply bg-surface-1 rounded-lg; }
+  /* A line of text still loading; its width is the call site's. */
+  .skeleton-line { @apply h-6 rounded; }
+  .skeleton-line-lg { @apply h-8 rounded; }
 
   /* ===== BREADCRUMBS (STRUCTURE.md D8 canonical) ===== */
   /* The trail is a <nav> wrapping an <ol> — a breadcrumb trail IS an ordered
@@ -456,6 +471,7 @@
 
   /* ===== PAGE CARD ===== */
   .page-card { @apply h-full overflow-hidden; }
+  .card-banner-picture { @apply object-cover group-hover:scale-105 transition-transform duration-300; }
 
   .page-card-body { @apply flex flex-col gap-2 p-4; }
   .page-card-title { @apply font-medium transition-colors truncate; .group:hover & { @apply text-accent; } }
@@ -609,12 +625,14 @@
 
   /* ===== SCORE RING ===== */
   .score-ring { @apply flex flex-col gap-4 items-center p-4 bg-surface-1 rounded-xl; }
+  .score-ring-dial { @apply relative w-24 h-24; > svg { @apply w-full h-full -rotate-90; } }
 
   /* ===== TOOLBAR (editor) ===== */
   .toolbar { @apply sticky top-[var(--header-height)] z-40 flex flex-wrap gap-0.5 p-1 bg-surface-1 border border-border-muted rounded-md mb-2; }
   /* The page editor's Back and Save, held under the site header for the whole
      edit. A field's toolbar sticks under it there, rather than behind it. */
   .editor-bar { @apply sticky top-[var(--header-height)] z-40 flex items-center justify-between gap-4 h-[var(--editor-bar-height)] bg-surface-0 border-b border-border-muted; }
+  .page-editor-head { @apply pb-6 border-b border-border; }
   .page-editor .toolbar { top: calc(var(--header-height) + var(--editor-bar-height)); }
   .toolbar-btn { @apply p-1.5 rounded transition-colors text-text-muted hover:bg-surface-2 hover:text-text; }
   .toolbar-btn-on { @apply bg-accent text-text-inverted; }
@@ -699,6 +717,8 @@
   /* ===== HISTORY / DIFF ===== */
   /* A phone shows three of the table's columns, on a narrower gutter. */
   .history-cell { @apply py-2 px-2 sm:px-3; }
+  .history-col-version { @apply w-20 sm:w-24; }
+  .history-col-date { @apply w-28 sm:w-36; }
   .restore-btn { @apply flex items-center gap-1 text-accent hover:text-accent-hover disabled:opacity-50; }
   /* RevisionChanges (wiki-formant/react-server): the list resets in base.css,
      the colours are these. */
@@ -782,7 +802,9 @@
   .metric-events { @apply text-small leading-relaxed; }
   .charts-section-link { @apply inline-flex items-center gap-1 text-small text-accent hover:underline; }
   .charts-recap { @apply inline-flex items-center gap-2 self-start px-3 py-2 text-small bg-surface-1 border border-border-muted rounded-lg transition-colors hover:border-accent; }
-  .table-wiki-link { @apply shrink-0 text-text-muted hover:text-accent; }
+  /* An icon link beside a name: to its wiki article, or out to the explorer. */
+  .icon-link { @apply shrink-0 text-text-muted hover:text-accent; }
+  .entity-name { @apply font-medium group-hover:text-accent transition-colors; }
   .entity-icon { @apply w-5 h-5 rounded-full shrink-0 object-cover; }
   .entity-icon-fallback { @apply inline-flex items-center justify-center bg-surface-2 text-[10px] font-semibold uppercase text-text-muted; }
   .entity-icon-lg { @apply w-12 h-12 text-h4; }

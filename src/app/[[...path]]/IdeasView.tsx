@@ -204,7 +204,7 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
           {columns.map(({ label, color, items }) => (
             <div key={label} className="board-column">
               <h3 className="board-column-head">
-                <span className="flex items-center gap-2"><span className={cn('size-2 rounded-full', `bg-${color}`)} />{label}</span>
+                <span className="row"><span className={cn('size-2 rounded-full', `bg-${color}`)} />{label}</span>
                 <Badge>{items.length}</Badge>
               </h3>
               <div className="board-column-body">

@@ -35,7 +35,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', isLoading, disabled, children, ...props }, ref) => (
     <button ref={ref} className={cn('btn', btnStyles[variant], btnSizes[size], className)} disabled={disabled || isLoading} {...props}>
-      {isLoading ? <><span className="spinner h-4 w-4 text-current" />Loading...</> : children}
+      {isLoading ? <><span className="spinner btn-spinner" />Loading...</> : children}
     </button>
   )
 );

@@ -11,10 +11,10 @@ import { SESSION_UNREADABLE, useStore, type AuthStatus } from '@/hooks';
 export function PageSkeleton() {
   return (
     <div className="stack">
-      <div className="h-8 w-48 skeleton rounded" />
+      <div className="skeleton skeleton-line-lg w-48" />
       <div className="h-48 skeleton" />
-      <div className="h-6 w-3/4 skeleton rounded" />
-      <div className="h-6 w-1/2 skeleton rounded" />
+      <div className="skeleton skeleton-line w-3/4" />
+      <div className="skeleton skeleton-line w-1/2" />
     </div>
   );
 }

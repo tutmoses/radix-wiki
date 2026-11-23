@@ -28,12 +28,12 @@ const COLUMNS: Column<ValidatorRow>[] = [
           <span className="font-medium data-table-name">{v.name}</span>
           {!v.isRegistered && <span className="badge badge-warning">unreg</span>}
           {v.wikiPath && (
-            <Link href={v.wikiPath} className="table-wiki-link" title="Wiki article" aria-label={`${v.name} on the wiki`}>
+            <Link href={v.wikiPath} className="icon-link" title="Wiki article" aria-label={`${v.name} on the wiki`}>
               <BookOpen size={14} />
             </Link>
           )}
         </div>
-        <a href={`https://dashboard.radixdlt.com/network-staking/${v.address}`} target="_blank" rel="noopener" className="text-xs text-text-muted hover:text-accent">{shortenAddress(v.address)}</a>
+        <a href={`https://dashboard.radixdlt.com/network-staking/${v.address}`} target="_blank" rel="noopener" className="caption hover:text-accent">{shortenAddress(v.address)}</a>
       </>
     ),
   },
@@ -45,7 +45,7 @@ const COLUMNS: Column<ValidatorRow>[] = [
       <>
         {formatPercent(v.fee * 100)}
         {v.feeChange && (
-          <div className="text-xs text-warning whitespace-normal" title={`Takes effect at epoch ${v.feeChange.epoch.toLocaleString('en-US')}`}>
+          <div className="caption text-warning whitespace-normal" title={`Takes effect at epoch ${v.feeChange.epoch.toLocaleString('en-US')}`}>
             → {formatPercent(v.feeChange.fee * 100)}{v.feeChange.around && ` around ${v.feeChange.around}`}
           </div>
         )}

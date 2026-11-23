@@ -60,7 +60,7 @@ export function PageThumb({ page }: { page: Pick<WikiPage, 'title' | 'tagPath' |
     <CardBanner
       seed={page.title + page.tagPath}
       style={page.bannerImage ? undefined : bannerPalette(page.tagPath)}
-      picture={page.bannerImage && <Image src={page.bannerImage} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />}
+      picture={page.bannerImage && <Image src={page.bannerImage} alt="" fill className="card-banner-picture" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />}
     />
   );
 }
@@ -134,7 +134,7 @@ function AssetPriceBlockView({ block }: { block: AssetPriceBlock }) {
   const { data, status, error } = useResourcePrice(block.resourceAddress);
   if (!block.resourceAddress) return <p className="text-text-muted">No resource address configured</p>;
   if (status === 'failed') return <p className="text-error text-small">The price could not be read: {error}</p>;
-  if (status !== 'loaded') return <div className="surface p-4 animate-pulse"><div className="h-8 w-32 bg-surface-2 rounded" /></div>;
+  if (status !== 'loaded') return <div className="surface p-4 animate-pulse"><div className="skeleton-line-lg w-32 bg-surface-2" /></div>;
   if (data.price.kind !== 'priced') return <p className="text-text-muted text-small">Not traded on OciSwap</p>;
   const displayName = data.symbol || data.name || block.resourceAddress.slice(0, 20) + '...';
   const priceStr = formatPriceSubscript(data.price.usd);

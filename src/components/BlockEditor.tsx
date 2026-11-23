@@ -74,7 +74,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
       <UrlPromptField prompt={prompt} classNames={PROMPT_CLASSES} />
       <div className={cn('tiptap-editor tiptap-field', upload.status === 'uploading' && 'tiptap-field-disabled')}>
         <EditorContent editor={editor} />
-        {upload.status === 'uploading' && <div className="text-center text-text-muted text-small py-2">Uploading image...</div>}
+        {upload.status === 'uploading' && <div className="subtext text-center py-2">Uploading image...</div>}
         {upload.status === 'failed' && <div role="alert" data-callout="error"><p>{upload.error}</p></div>}
       </div>
     </div>

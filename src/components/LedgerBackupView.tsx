@@ -203,7 +203,7 @@ export function LedgerDropdown({ tagPath, slug, status: statusFetch }: LedgerDro
                 </span>
                 {/* The page's own backup, so it belongs beside the anchor only when that is this page. */}
                 {standing !== 'none' && status.backupTxHash && (
-                  <a href={`${explorerBase}${status.backupTxHash}`} target="_blank" rel="noopener" className="text-text-muted hover:text-accent shrink-0">
+                  <a href={`${explorerBase}${status.backupTxHash}`} target="_blank" rel="noopener" className="icon-link">
                     <ExternalLink size={12} />
                   </a>
                 )}
@@ -277,7 +277,7 @@ export function LedgerDropdown({ tagPath, slug, status: statusFetch }: LedgerDro
               <div className="ledger-recovered-list">
                 {recovery.pages.map(p => (
                   <div key={p.slug} className="ledger-recovered-item">
-                    <span className="text-small font-medium truncate">{p.title}</span>
+                    <span className="item-title">{p.title}</span>
                     <span className="text-xs text-text-muted">{p.tagPath} v{p.version}</span>
                   </div>
                 ))}

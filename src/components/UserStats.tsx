@@ -39,8 +39,8 @@ function ScoreRing({ score, points }: { score: number; points: number }) {
 
   return (
     <div className="score-ring">
-      <div className="relative w-24 h-24">
-        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+      <div className="score-ring-dial">
+        <svg viewBox="0 0 100 100">
           <circle cx="50" cy="50" r={radius} fill="none" stroke="var(--color-surface-2)" strokeWidth="8" />
           <circle cx="50" cy="50" r={radius} fill="none" stroke="var(--color-accent)" strokeWidth="8" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset} className="transition-all duration-700" />
         </svg>

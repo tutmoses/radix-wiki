@@ -101,8 +101,8 @@ export default function SearchView({ query: initialQuery }: { query: string }) {
             <li key={page.url}>
               <Link href={pagePath(page.tagPath, page.slug)} className="search-page-result">
                 <div className="font-medium"><Highlight text={page.title} query={found.q} /></div>
-                <div className="text-small text-text-muted truncate">{pagePath(page.tagPath, page.slug)}</div>
-                {page.snippet && <p className="text-small text-text-muted line-clamp-2 mt-1"><Highlight text={page.snippet} query={found.q} /></p>}
+                <div className="subtext truncate">{pagePath(page.tagPath, page.slug)}</div>
+                {page.snippet && <p className="subtext line-clamp-2 mt-1"><Highlight text={page.snippet} query={found.q} /></p>}
               </Link>
             </li>
           ))}

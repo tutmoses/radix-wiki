@@ -151,8 +151,8 @@ function SearchResultRow({ page, query, active, onSelect, onHover, optionProps }
     <button type="button" onClick={() => onSelect(page)} onMouseEnter={onHover}
       className={cn('search-result', active && 'search-result-active')} {...optionProps}>
       <div className="font-medium truncate"><Highlight text={page.title} query={query} /></div>
-      <div className="text-small text-text-muted truncate">{pagePath(page.tagPath, page.slug)}</div>
-      {page.snippet && <p className="text-small text-text-muted line-clamp-1 mt-0.5"><Highlight text={page.snippet} query={query} /></p>}
+      <div className="subtext truncate">{pagePath(page.tagPath, page.slug)}</div>
+      {page.snippet && <p className="subtext line-clamp-1 mt-0.5"><Highlight text={page.snippet} query={query} /></p>}
     </button>
   );
 }

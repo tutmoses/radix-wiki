@@ -23,7 +23,7 @@ export function StatCard({ icon, value, label, children }: { icon: ReactNode; va
     <div className="stat-card">
       {icon}
       <span className="stat-value">{value}</span>
-      <span className="text-small text-text-muted text-center">{label}</span>
+      <span className="subtext text-center">{label}</span>
       {children}
     </div>
   );
