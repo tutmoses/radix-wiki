@@ -259,7 +259,7 @@ export function isIdeasPath(tagPath: string): boolean {
   return tagPath === 'ideas' || tagPath.startsWith('ideas/');
 }
 
-export const getIdeasPages = cached('getIdeasCards',
+export const getIdeasPages = cached('getIdeasBoard',
   async (tagPath: string, limit = 200): Promise<IdeasPage[]> => {
     // Content is read only to count each card's tick-boxes; the board gets the count.
     const pages = await prisma.wikiPage.findMany({
@@ -267,8 +267,9 @@ export const getIdeasPages = cached('getIdeasCards',
       orderBy: { updatedAt: 'desc' },
       take: limit,
     });
+    // A card's talk is its room: the lines still standing, and when the last was said.
     const replies = pages.length
-      ? await prisma.comment.groupBy({ by: ['pageId'], where: { pageId: { in: pages.map(p => p.id) } }, _count: true, _max: { createdAt: true } })
+      ? await prisma.chatMessage.groupBy({ by: ['pageId'], where: { pageId: { in: pages.map(p => p.id) }, deletedAt: null }, _count: true, _max: { createdAt: true } })
       : [];
     const byPage = new Map(replies.map(r => [r.pageId, r]));
     const rows = await withAuthors(pages.map(p => ({ ...p, metadata: asMeta(p.metadata), snippet: '' })));
@@ -304,11 +305,12 @@ export async function loadPageHistory(tagPath: string, slug: string) {
 
 export const getPageHistory = cached('getPageHistory', loadPageHistory, (tagPath, slug) => [pageTag(tagPath, slug)]);
 
-/** Deletes a page, its history, and the comments and notifications that point at it. */
+/** Deletes a page, its history, and the comments, room and notifications that point at it. */
 export async function deletePage(page: { id: string; tagPath: string; slug: string }) {
   await prisma.$transaction([
     prisma.notification.deleteMany({ where: { pageId: page.id } }),
     prisma.comment.deleteMany({ where: { pageId: page.id } }),
+    prisma.chatMessage.deleteMany({ where: { pageId: page.id } }),
   ]);
   return store.remove(page.tagPath, page.slug);
 }

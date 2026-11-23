@@ -135,9 +135,12 @@ async function peopleFor(query: string, signal: AbortSignal): Promise<Option[]> 
 /**
  * The room. `docked` is the one the header's button opens beside any page: in
  * the corner on a desktop, the whole screen on a phone, and closable. Without
- * it the room is drawn in place, as its own page does.
+ * it the room is drawn in place, as its own page does. `pageId` is an Ideas
+ * card's own room, drawn in place beside the card.
  */
-export default function Trollbox({ docked = false }: { docked?: boolean }) {
+export default function Trollbox({ docked = false, pageId }: { docked?: boolean; pageId?: string }) {
+  // The card's room in every read and every line; the wiki's own room has none.
+  const roomQuery = pageId ? `page=${pageId}&` : '';
   const { user, status: authStatus } = useAuth();
   const toggleChat = useStore(s => s.toggleChat);
   const chatLine = useStore(s => s.chatLine);
@@ -185,7 +188,7 @@ export default function Trollbox({ docked = false }: { docked?: boolean }) {
   const load = useCallback(async () => {
     const read = ++reads.current;
     try {
-      const data = await ask<Read>(fetch('/api/trollbox'));
+      const data = await ask<Read>(fetch(pageId ? `/api/trollbox?page=${pageId}` : '/api/trollbox'));
       if (read !== reads.current) return;
       seen.current = new Set(data.messages.map(m => m.id));
       cursor.current = data.messages.at(-1)?.id ?? 0;
@@ -197,7 +200,7 @@ export default function Trollbox({ docked = false }: { docked?: boolean }) {
       // A failed read keeps the lines on screen; only a first read that fails says so.
       if (read === reads.current) setRoom(r => (r.status === 'ready' ? r : { status: 'failed' }));
     }
-  }, []);
+  }, [pageId]);
 
   /** New lines past the cursor, and the lines whose state has moved. */
   const poll = useCallback(async () => {
@@ -205,7 +208,7 @@ export default function Trollbox({ docked = false }: { docked?: boolean }) {
     if (Date.now() - lastRead.current > CHANGE_WINDOW_MS / 2) return load();
     const read = ++reads.current;
     try {
-      const data = await ask<Read>(fetch(`/api/trollbox?since=${cursor.current}`));
+      const data = await ask<Read>(fetch(`/api/trollbox?${roomQuery}since=${cursor.current}`));
       if (read !== reads.current) return;
       lastRead.current = Date.now();
       const fresh = data.messages.filter(m => !seen.current.has(m.id));
@@ -223,7 +226,7 @@ export default function Trollbox({ docked = false }: { docked?: boolean }) {
     } catch {
       // A dropped poll is not worth a word: the next tick asks again.
     }
-  }, [load]);
+  }, [load, roomQuery]);
 
   // Poll while the tab is visible. A hidden tab asking forever is the whole cost
   // of the room and nobody is reading it; coming back reads at once.
@@ -262,12 +265,12 @@ export default function Trollbox({ docked = false }: { docked?: boolean }) {
   }, [messages]);
 
   const newest = messages?.at(-1)?.id;
-  // What the reader has seen, kept for the header's dot once the room is closed.
+  // What the reader has seen, kept for the header's dot once the room is closed. A card's room has no dot.
   useEffect(() => {
-    if (!newest) return;
+    if (!newest || pageId) return;
     remember(SEEN_KEY, String(newest));
     useStore.setState({ chatUnread: false });
-  }, [newest]);
+  }, [newest, pageId]);
 
   const onScroll = () => {
     const log = logRef.current;
@@ -390,7 +393,7 @@ export default function Trollbox({ docked = false }: { docked?: boolean }) {
     const text = body.trim();
     if ((!text && !picture) || sending || uploading) return;
     setSending(true);
-    const line = { body: text, image: picture, replyTo: replyTo?.id, mentions: [...mentions.current] };
+    const line = { body: text, image: picture, replyTo: replyTo?.id, mentions: [...mentions.current], page: pageId };
     const sent = await run(() => ask<{ message: Message }>(sendJson('/api/trollbox', 'POST', line)), ({ message }) => {
       setBody('');
       setPicture(null);
@@ -412,7 +415,7 @@ export default function Trollbox({ docked = false }: { docked?: boolean }) {
   const loadEarlier = () => {
     const first = messages?.[0];
     if (!first) return;
-    void run(() => ask<Read>(fetch(`/api/trollbox?before=${first.id}`)), data => {
+    void run(() => ask<Read>(fetch(`/api/trollbox?${roomQuery}before=${first.id}`)), data => {
       const older = data.messages.filter(m => !seen.current.has(m.id));
       for (const m of older) seen.current.add(m.id);
       heightBefore.current = logRef.current?.scrollHeight ?? null;
@@ -433,10 +436,11 @@ export default function Trollbox({ docked = false }: { docked?: boolean }) {
 
   // A notification's line: scrolled to once the room holds it, then forgotten.
   useEffect(() => {
-    if (!chatLine || !messages) return;
+    // A notification's line is in the wiki's own room: a card's room leaves it to that one.
+    if (pageId || !chatLine || !messages) return;
     useStore.setState({ chatLine: null });
     showLine(chatLine);
-  }, [chatLine, messages]);
+  }, [chatLine, messages, pageId]);
 
   const signedIn = authStatus === 'signed-in';
   // A tagged page is somewhere to go: on a phone the room is in front of it, so it steps aside.
@@ -445,7 +449,7 @@ export default function Trollbox({ docked = false }: { docked?: boolean }) {
   const mutedUntil = me?.mutedUntil && new Date(me.mutedUntil) > new Date() ? new Date(me.mutedUntil) : null;
 
   return (
-    <section className={docked ? 'trollbox' : 'trollbox-inline'} aria-label="Trollbox" onKeyDown={e => { if (docked && e.key === 'Escape') toggleChat(); }}
+    <section className={docked ? 'trollbox' : pageId ? 'trollbox-inline trollbox-card' : 'trollbox-inline'} aria-label={pageId ? 'Talk' : 'Trollbox'} onKeyDown={e => { if (docked && e.key === 'Escape') toggleChat(); }}
       onDragOver={e => { if (pictures) e.preventDefault(); }}
       onDrop={e => { const file = e.dataTransfer.files[0]; if (pictures && file) { e.preventDefault(); void upload(file); } }}>
       {/* Its page has the title and needs no way out; the dock has both, and the way to that page. */}
@@ -456,6 +460,7 @@ export default function Trollbox({ docked = false }: { docked?: boolean }) {
           <button type="button" className="icon-btn" onClick={toggleChat} aria-label="Close the trollbox"><X size={18} /></button>
         </header>
       )}
+      {pageId && <header className="trollbox-head"><h2 className="trollbox-title">Talk</h2></header>}
 
       <div ref={logRef} className="trollbox-log" onScroll={onScroll} role="log" aria-live="polite">
         {room.status === 'loading' ? (

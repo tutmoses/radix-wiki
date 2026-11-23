@@ -26,7 +26,7 @@ import { openingText } from 'wiki-formant/text';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
 import { AGO, useNow } from '@/lib/now';
-import { findTagByPath, getXrdRequired, XRD_NOT_A_FEE, type SortOrder } from '@/lib/tags';
+import { findTagByPath, getXrdRequired, isWithin, XRD_NOT_A_FEE, type SortOrder } from '@/lib/tags';
 import { categoryHref, type Control, type FacetControlGroup, type FacetFilters, type SharedFacet } from '@/lib/taxonomy';
 import { createBlock } from '@/lib/block-utils';
 import { formatDay, freshnessBanner, relativeTime } from 'wiki-formant/freshness';
@@ -49,6 +49,8 @@ const HistoryView = dynamic(() => import('@/components/HistoryView'), {
 export { HistoryView };
 
 const Discussion = dynamic(() => import('@/components/Discussion').then(m => m.Discussion), { ssr: false });
+// An Ideas card's own room, drawn beside its Deliverables.
+const CardRoom = dynamic(() => import('@/components/Trollbox'), { ssr: false, loading: () => <div className="trollbox-inline trollbox-card" /> });
 const UserStats = dynamic(() => import('@/components/UserStats').then(m => m.UserStats));
 
 const BlockEditor = dynamic(() => import('@/components/BlockEditor').then(m => m.BlockEditor), { ssr: false, loading: () => <div className="h-64 skeleton" /> });
@@ -552,6 +554,32 @@ type RelatedPage = Pick<WikiPage, 'id' | 'title' | 'slug' | 'tagPath'> & { snipp
 export type RelatedPages = { pages: RelatedPage[]; sharedFacet: SharedFacet | null };
 
 // ========== PAGE VIEW (Read-only) ==========
+/**
+ * An Ideas card: its opening and Deliverables, then the rest of the card; beside
+ * them its facts, its room and its background rows. On a phone the facts lead,
+ * then the Deliverables, then the room, then the rest.
+ */
+function CardLayout({ page, blocks, infobox, series, nowMs, children }: { page: WikiPage; blocks: Block[]; infobox: InfoboxBlock | null | undefined; series: PageRef | null; nowMs: number; children: ReactNode }) {
+  const [top, rest] = splitCard(blocks);
+  return (
+    <div className="card-layout">
+      <div className="card-top stack"><BlockRenderer content={top} /></div>
+      <div className="card-side">
+        <div className="card-facts">
+          <InfoboxSidebar block={{ id: '__infobox__', type: 'infobox', blocks: [] }} title={page.title} metadata={page.metadata} tagPath={page.tagPath} series={series}>
+            <CardProgress progress={checklistProgress(page.content)} long />
+            {isOverdue(page.metadata ?? {}, nowMs) && <span className="text-error text-small">Past its target date</span>}
+            <ClaimRoles page={page} />
+          </InfoboxSidebar>
+        </div>
+        <div className="card-talk"><CardRoom pageId={page.id} /></div>
+        {infobox?.blocks?.length ? <div className="card-more"><InfoboxSidebar block={infobox} title={`${page.title}, its background`} /></div> : null}
+      </div>
+      <div className="card-rest stack"><BlockRenderer content={rest} />{children}</div>
+    </div>
+  );
+}
+
 function PageViewContent({ page, related, series, news, sections, listing, nowMs }: { page: WikiPage; related: RelatedPages; series: PageRef | null; news: NewsItem[]; sections?: ReactNode; listing?: ReactNode; nowMs: number }) {
   const { isAuthenticated } = useAuth();
   // Contributor stats belong to the page's *subject* — the explicit
@@ -569,6 +597,7 @@ function PageViewContent({ page, related, series, news, sections, listing, nowMs
   const mainBlocks = [...(fresh ? [fresh] : []), ...blocks.filter(b => b.type !== 'infobox')];
   const viewPath = pagePath(page.tagPath, page.slug);
   useHistoryLink(`${viewPath}/history`);
+  const isCard = isWithin(page.tagPath, 'ideas');
 
   // Everything after the prose. On a hub it moves below the listing, so the page
   // reads article → the pages in it → provenance and discussion.
@@ -584,7 +613,8 @@ function PageViewContent({ page, related, series, news, sections, listing, nowMs
       />
       {subjectUserId && <UserStats userId={subjectUserId} />}
       <PageMeta page={page} />
-      <Discussion pageId={page.id} />
+      {/* A card's talk is its room, beside the Deliverables. */}
+      {!isCard && <Discussion pageId={page.id} />}
     </>
   );
 
@@ -616,14 +646,11 @@ function PageViewContent({ page, related, series, news, sections, listing, nowMs
         <h1 id={slugifyHeading(page.title)} className="m-0!">{page.title}</h1>
       </Banner>
       <NewsTicker items={news} />
-      {showInfobox ? (
+      {isCard ? <CardLayout page={page} blocks={mainBlocks} infobox={infobox} series={series} nowMs={nowMs}>{tail}</CardLayout>
+      : showInfobox ? (
         <div className="page-with-infobox">
           {main}
-          <InfoboxSidebar block={infobox ?? { id: '__infobox__', type: 'infobox', blocks: [] }} title={page.title} metadata={page.metadata} tagPath={page.tagPath} series={series}>
-            <CardProgress progress={checklistProgress(page.content)} long />
-            {isOverdue(page.metadata ?? {}, nowMs) && <span className="text-error text-small">Past its target date</span>}
-            <ClaimRoles page={page} />
-          </InfoboxSidebar>
+          <InfoboxSidebar block={infobox ?? { id: '__infobox__', type: 'infobox', blocks: [] }} title={page.title} metadata={page.metadata} tagPath={page.tagPath} series={series} />
         </div>
       ) : main}
       {/* Full width, not nested in the article column: a card grid and a facet
@@ -632,6 +659,26 @@ function PageViewContent({ page, related, series, news, sections, listing, nowMs
       <LinkPreview />
     </article>
   );
+}
+
+/**
+ * An Ideas card's opening and its Deliverables, apart from what follows: the
+ * card's room sits beside the one and above the other. Split at the heading
+ * after Deliverables, or after the opening on a card without them.
+ */
+function splitCard(blocks: Block[]): [Block[], Block[]] {
+  const at = blocks.findIndex(b => b.type === 'content');
+  const block = blocks[at];
+  if (!block || block.type !== 'content') return [blocks, []];
+  const html = block.text ?? '';
+  // The heading may already carry its permalink anchor, so it is matched by its first word.
+  const deliverables = html.search(/<h2[^>]*>\s*Deliverables\b/);
+  const end = html.indexOf('<h2', deliverables < 0 ? 0 : deliverables + 3);
+  if (end < 0) return [blocks.slice(0, at + 1), blocks.slice(at + 1)];
+  return [
+    [...blocks.slice(0, at), { ...block, text: html.slice(0, end) }],
+    [{ ...block, id: `${block.id}:rest`, text: html.slice(end) }, ...blocks.slice(at + 1)],
+  ];
 }
 
 // ========== PAGE VIEW WRAPPER ==========

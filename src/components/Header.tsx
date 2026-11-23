@@ -47,9 +47,11 @@ function usePageContext() {
 
 function notificationText(n: WikiNotification): string {
   const actor = n.actor.displayName || 'Someone';
-  if (n.type === 'chat_mention') return `${actor} mentioned you in the trollbox`;
-  if (n.type === 'chat_reply') return `${actor} replied to you in the trollbox`;
   const title = n.page?.title ?? '';
+  // A line in a card's room names the card; one in the wiki's own room, the trollbox.
+  const where = n.page ? `on "${title}"` : 'in the trollbox';
+  if (n.type === 'chat_mention') return `${actor} mentioned you ${where}`;
+  if (n.type === 'chat_reply') return `${actor} replied to you ${where}`;
   switch (n.type) {
     case 'comment_on_page': return `${actor} commented on "${title}"`;
     case 'comment_reply': return `${actor} replied to your comment on "${title}"`;
@@ -93,7 +95,7 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
             <button key={n.id} className={cn('notification-item', !n.read && 'notification-unread')}
               onClick={() => {
                 markNotificationsRead([n.id]);
-                // One from the trollbox opens the room at its line; any other, its page.
+                // One from the trollbox opens the room at its line; any other, its page, a card's room included.
                 if (n.page) router.push(pagePath(n.page.tagPath, n.page.slug));
                 else if (n.chatMessageId) useStore.setState({ chatOpen: true, chatLine: n.chatMessageId });
                 onClose();

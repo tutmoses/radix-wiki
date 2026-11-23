@@ -98,31 +98,32 @@ export async function readMessage(id: number): Promise<Message | null> {
 /**
  * The room past `since`, or, with no cursor, its newest page; `before` pages
  * back from a line. Every read carries the lines whose state lately moved.
+ * `pageId` names an Ideas card's room; null is the wiki's own.
  */
-export async function readRoom({ since, before }: { since?: number; before?: number }): Promise<Read> {
+export async function readRoom({ pageId, since, before }: { pageId: string | null; since?: number; before?: number }): Promise<Read> {
   const changed = prisma.chatMessage.findMany({
-    where: { moderatedAt: { gte: new Date(Date.now() - CHANGE_WINDOW_MS) } },
+    where: { pageId, moderatedAt: { gte: new Date(Date.now() - CHANGE_WINDOW_MS) } },
     orderBy: { id: 'asc' },
     take: 200,
     ...ROW,
   });
   if (since !== undefined) {
     const [rows, moved] = await Promise.all([
-      prisma.chatMessage.findMany({ where: { id: { gt: since } }, orderBy: { id: 'asc' }, take: 200, ...ROW }),
+      prisma.chatMessage.findMany({ where: { pageId, id: { gt: since } }, orderBy: { id: 'asc' }, take: 200, ...ROW }),
       changed,
     ]);
     return { messages: rows.map(toMessage), changed: moved.map(toMessage) };
   }
   const [rows, moved] = await Promise.all([
-    prisma.chatMessage.findMany({ where: before === undefined ? {} : { id: { lt: before } }, orderBy: { id: 'desc' }, take: PAGE + 1, ...ROW }),
+    prisma.chatMessage.findMany({ where: before === undefined ? { pageId } : { pageId, id: { lt: before } }, orderBy: { id: 'desc' }, take: PAGE + 1, ...ROW }),
     changed,
   ]);
   return { messages: rows.slice(0, PAGE).reverse().map(toMessage), changed: moved.map(toMessage), earlier: rows.length > PAGE };
 }
 
-/** The newest line's id, 0 for an empty room: what a closed room polls to know there is something new. */
+/** The newest line's id in the wiki's own room, 0 for an empty one: what a closed room polls to know there is something new. */
 export async function latestId(): Promise<number> {
-  return (await prisma.chatMessage.aggregate({ _max: { id: true } }))._max.id ?? 0;
+  return (await prisma.chatMessage.aggregate({ where: { pageId: null }, _max: { id: true } }))._max.id ?? 0;
 }
 
 /**

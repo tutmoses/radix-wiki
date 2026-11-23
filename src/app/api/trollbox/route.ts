@@ -23,6 +23,9 @@ const SAY: RateLimitOptions = { capacity: 5, refillPerSec: 1 / 4 };
 /** Below the holder's bar an account costs nothing to make, so it posts slowly, and so does its address. */
 const SAY_UNWEIGHTED: RateLimitOptions = { capacity: 3, refillPerSec: 1 / 20 };
 
+/** A card's room from the query string or a body: a page id, or null for the wiki's own room. */
+const roomOf = (value: unknown): string | null => (typeof value === 'string' && /^[\w-]{1,64}$/.test(value) ? value : null);
+
 /** A cursor from the query string: a whole number, or undefined. */
 const cursor = (value: string | null) => (value !== null && /^\d{1,15}$/.test(value) ? Number(value) : undefined);
 
@@ -31,12 +34,13 @@ const cursor = (value: string | null) => (value !== null && /^\d{1,15}$/.test(va
  * GET /api/trollbox?since=ID   lines after ID
  * GET /api/trollbox?before=ID  the page before ID
  * GET /api/trollbox?head       the newest line's id
+ * Each takes `page=PAGE_ID` for an Ideas card's room in place of the wiki's own.
  */
 export async function GET(request: NextRequest) {
   return handleRoute(async () => {
     const params = request.nextUrl.searchParams;
     if (params.has('head')) return json({ latest: await latestId() }, { headers: HEAD_CACHE });
-    return json(await readRoom({ since: cursor(params.get('since')), before: cursor(params.get('before')) }), { headers: READ_CACHE });
+    return json(await readRoom({ pageId: roomOf(params.get('page')), since: cursor(params.get('since')), before: cursor(params.get('before')) }), { headers: READ_CACHE });
   }, 'The room could not be read');
 }
 
@@ -59,9 +63,10 @@ const ownPicture = (image: unknown): image is string => {
 };
 
 /**
- * POST /api/trollbox { body, image?, replyTo?, mentions? }
+ * POST /api/trollbox { body, image?, replyTo?, mentions?, page? }
  * `image` is a URL /api/upload answered, `replyTo` a line's id, `mentions` the
- * ids of the accounts the body names as `@name`.
+ * ids of the accounts the body names as `@name`, `page` the Ideas card whose
+ * room the line is for.
  */
 export async function POST(request: NextRequest) {
   return handleRoute(async () => {
@@ -71,7 +76,10 @@ export async function POST(request: NextRequest) {
     const limited = overBudget(`chat:${userId}`, SAY);
     if (limited) return limited;
 
-    const sent = await request.json().catch(() => ({})) as { body?: unknown; image?: unknown; replyTo?: unknown; mentions?: unknown };
+    const sent = await request.json().catch(() => ({})) as { body?: unknown; image?: unknown; replyTo?: unknown; mentions?: unknown; page?: unknown };
+    // Only an Ideas card has a room of its own.
+    const pageId = roomOf(sent.page);
+    if (pageId && !await prisma.wikiPage.count({ where: { id: pageId, tagPath: { startsWith: 'ideas' } } })) return errors.badRequest('That page has no room.');
     const body = cleanBody(sent.body);
     const image = sent.image == null ? null : sent.image;
     if (image !== null && !ownPicture(image)) return errors.badRequest('A picture is posted by uploading it here.');
@@ -100,11 +108,11 @@ export async function POST(request: NextRequest) {
     if (muted) return errors.forbidden(`Holders collapsed three of your lines in a day, so you cannot post until ${muted.toISOString().slice(0, 16).replace('T', ' ')} UTC.`);
 
     const parent = typeof sent.replyTo === 'number' && Number.isInteger(sent.replyTo)
-      ? await prisma.chatMessage.findFirst({ where: { id: sent.replyTo, deletedAt: null }, select: { id: true, authorId: true } })
+      ? await prisma.chatMessage.findFirst({ where: { id: sent.replyTo, pageId, deletedAt: null }, select: { id: true, authorId: true } })
       : null;
     const refs = await refsOf(body, sent.mentions);
     const { id } = await prisma.chatMessage.create({
-      data: { authorId: userId, body, image, replyToId: parent?.id, refs, authorWeight: weight },
+      data: { authorId: userId, body, image, replyToId: parent?.id, refs, authorWeight: weight, pageId },
       select: { id: true },
     });
 
@@ -115,7 +123,8 @@ export async function POST(request: NextRequest) {
     told.delete(userId);
     if (told.size) {
       after(() => prisma.notification.createMany({
-        data: [...told].map(([to, type]) => ({ userId: to, actorId: userId, type, chatMessageId: id })),
+        // A card's line names the card too, so the notification opens it there.
+        data: [...told].map(([to, type]) => ({ userId: to, actorId: userId, type, chatMessageId: id, pageId })),
       }).catch(() => { /* a notification is a courtesy: the line is posted either way */ }));
     }
     return json({ message: await readMessage(id) }, 201);

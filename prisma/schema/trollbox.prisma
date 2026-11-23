@@ -1,4 +1,4 @@
-// The trollbox: the wiki's one public room. `src/lib/trollbox` reads and writes it.
+// The trollbox: the wiki's public room, and a room per Ideas card. `src/lib/trollbox` reads and writes them.
 
 /// One line. A line is never deleted, only moved between states, so the log
 /// keeps its shape: live, hidden by weighted flags, removed by an admin, or
@@ -29,7 +29,11 @@ model ChatMessage {
   moderatedAt  DateTime?     @map("moderated_at")
   createdAt    DateTime      @default(now()) @map("created_at")
   flags        ChatFlag[]
+  /// The Ideas card whose room the line is in, as a "WikiPage" id; none for the
+  /// wiki's own room. No relation, as on Comment: `deletePage` deletes them.
+  pageId       String?       @map("page_id")
 
+  @@index([pageId, id])
   @@index([authorId, hiddenAt])
   @@index([moderatedAt])
   @@map("chat_messages")
