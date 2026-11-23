@@ -295,10 +295,7 @@
   .pager-count { @apply text-text-muted text-small; }
 
   /* ===== SKIP LINK ===== */
-  .skip-link {
-    @apply absolute -top-full left-4 z-50 px-4 py-2 bg-accent text-surface-0 rounded-b font-semibold text-sm;
-    &:focus { @apply top-0; }
-  }
+  .skip-link { @apply px-4 py-2 bg-accent text-surface-0 rounded-b font-semibold text-sm; }
 
   /* ===== LAYOUT ===== */
   .center { @apply flex items-center justify-center; }
@@ -385,8 +382,11 @@
   @media (min-width: 640px) { .show-mobile { display: none; } }
 
   /* ===== APP SHELL (layout.tsx) ===== */
-  .app-main { @apply min-h-[calc(100dvh-var(--header-height))] transition-all duration-200; }
-  .app-content { @apply py-6 sm:py-8 mx-auto w-full max-w-[var(--content-width)]; padding-inline: var(--page-pad); }
+  /* The rail's row takes what the header leaves and main fills it, so the
+     article column grows and a short page's footer sits at the foot. */
+  .wiki-layout { @apply grow; }
+  .wiki-layout__main { @apply self-stretch; }
+  .wiki-layout__main > .page-frame:first-child { @apply grow py-6 sm:py-8; }
 
   /* ===== HEADER ===== */
   .header { @apply sticky top-0 z-50 bg-surface-0/80 backdrop-blur-md border-b border-border-muted; }
@@ -787,7 +787,7 @@
   }
 
   /* ===== FOOTER ===== */
-  .footer { @apply flex items-center justify-between gap-4 flex-wrap border-t border-border-muted py-8 mt-8 mx-auto w-full max-w-[var(--content-width)] text-text-muted text-small; padding-inline: var(--page-pad); }
+  .footer { @apply flex items-center justify-between gap-4 flex-wrap border-t border-border-muted py-8 mt-8 text-text-muted text-small; }
   .footer-links { @apply flex items-center gap-4 flex-wrap; }
 
 

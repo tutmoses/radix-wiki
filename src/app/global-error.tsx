@@ -1,15 +1,13 @@
 'use client';
+import '@/styles/globals.css';
+import { RouteError } from 'wiki-formant/react';
 
-export default function GlobalError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
+// Replaces the root layout, so it draws the document and loads the styles itself.
+export default function GlobalError({ retry }: { retry: () => void }) {
   return (
     <html lang="en">
-      <body style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#393e50', color: '#fff', fontFamily: 'system-ui, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <h1>Something went wrong</h1>
-          <button onClick={reset} style={{ marginTop: '1rem', padding: '0.5rem 1.5rem', borderRadius: '0.5rem', border: 'none', background: '#ff9da0', color: '#1a1d28', cursor: 'pointer', fontWeight: 600 }}>
-            Try again
-          </button>
-        </div>
+      <body className="font-sans antialiased">
+        <RouteError retry={retry} buttonClassName="btn btn-primary" />
       </body>
     </html>
   );

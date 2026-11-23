@@ -1,13 +1,6 @@
 'use client';
-import { Button } from '@/components/ui';
-import { EmptyState } from '@/components/EmptyState';
+import { RouteError } from 'wiki-formant/react';
 
-export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  return (
-    <EmptyState
-      as="h1" title="Something went wrong"
-      description={error.message || 'The page failed to render.'}
-      action={<Button onClick={reset}>Try again</Button>}
-    />
-  );
+export default function Error({ retry }: { retry: () => void }) {
+  return <RouteError retry={retry} buttonClassName="btn btn-primary" />;
 }

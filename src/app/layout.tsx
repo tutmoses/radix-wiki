@@ -5,9 +5,8 @@ import { Inter } from 'next/font/google';
 import '@/styles/globals.css';
 import { Beacon, SidebarProvider } from 'wiki-formant/react';
 import { sidebarBootScript } from 'wiki-formant/sidebar';
-import { SIDEBAR_KEY } from '@/lib/sidebar';
-import { JsonLd } from 'wiki-formant/react-server';
-import { siteGraphLd } from 'wiki-formant/metadata';
+import { JsonLd, SiteLinks } from 'wiki-formant/react-server';
+import { cardUrl, rootMetadata, siteGraphLd } from 'wiki-formant/metadata';
 import { RadixProvider } from '@/components/RadixProvider';
 import { Header } from '@/components/Header';
 import { Sidebar } from '@/components/Sidebar';
@@ -16,7 +15,7 @@ import { Toast } from '@/components/Toast';
 import { TrollboxDock } from '@/components/TrollboxDock';
 
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, X } from '@/lib/site';
-import { ogMetadata } from '@/lib/og';
+import { CARD } from '@/lib/og';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -24,39 +23,23 @@ const inter = Inter({
   display: 'swap',
 });
 
-// Default card for URLs that declare none of their own. Next *replaces* rather than
-// merges these objects, so every page that sets one restates them via ogMetadata().
-// `alternates` is deliberately not inherited — canonical belongs to each URL.
-const SITE_CARD = ogMetadata({ title: SITE_NAME, description: SITE_DESCRIPTION, url: SITE_URL });
-
 export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: {
-    default: SITE_NAME,
-    template: `%s | ${SITE_NAME}`,
-  },
-  description: SITE_DESCRIPTION,
-  keywords: ['wiki', 'radix', 'blockchain', 'decentralized', 'web3', 'scrypto', 'defi', 'layer-1', 'radix dlt', 'xrd'],
+  ...rootMetadata({
+    name: SITE_NAME,
+    url: SITE_URL,
+    description: SITE_DESCRIPTION,
+    image: cardUrl(CARD, { title: SITE_NAME, description: SITE_DESCRIPTION }),
+    handle: X.handle,
+    keywords: ['wiki', 'radix', 'blockchain', 'decentralized', 'web3', 'scrypto', 'defi', 'layer-1', 'radix dlt', 'xrd'],
+    icons: { icon: '/favicon.ico', apple: '/logo.png' },
+  }),
   authors: [{ name: SITE_NAME }],
-  robots: {
-    index: true,
-    follow: true,
-    'max-snippet': -1,
-    'max-image-preview': 'large' as const,
-    'max-video-preview': -1,
-  },
   verification: {
     ...(process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : {}),
     other: {
       ...(process.env.BING_SITE_VERIFICATION ? { 'msvalidate.01': [process.env.BING_SITE_VERIFICATION] } : {}),
     },
   },
-  icons: {
-    icon: '/favicon.ico',
-    apple: '/logo.png',
-  },
-  openGraph: SITE_CARD.openGraph,
-  twitter: SITE_CARD.twitter,
 };
 
 const SITE_JSON_LD = siteGraphLd({
@@ -84,19 +67,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* Before first paint: stamp the remembered rail state on <html>, so a
             rail the reader collapsed does not paint open and animate shut. */}
-        <script dangerouslySetInnerHTML={{ __html: sidebarBootScript(SIDEBAR_KEY) }} />
-        <link rel="help" type="text/plain" href="/llms.txt" />
-        {/* Kept here rather than in `alternates.types`: pages set `alternates.canonical`,
-            which replaces the whole object and would drop the feed link from every page. */}
-        <link rel="alternate" type="application/rss+xml" href="/blog.xml" title="RADIX Wiki Blog" />
-        <link rel="alternate" type="application/rss+xml" href="/week-in-review.xml" title="Radix Week in Review" />
-        {/* IANA link relations, machine-readable first: the MCP endpoint is the
-            service description, the agent card is general metadata, AGENTS.md is
-            the prose documentation. No registered rel for MCP exists yet, and no
-            MCP discovery standard is ratified — see /api/mcp/server-card. */}
-        <link rel="service-desc" type="application/json" href="/api/mcp" title="MCP endpoint" />
-        <link rel="service-meta" type="application/json" href="/.well-known/agent-card.json" />
-        <link rel="service-doc" type="text/markdown" href="/AGENTS.md" title="Agent API reference" />
+        <script dangerouslySetInnerHTML={{ __html: sidebarBootScript() }} />
+        <SiteLinks
+          feeds={[
+            { href: '/blog.xml', title: 'RADIX Wiki Blog' },
+            { href: '/week-in-review.xml', title: 'Radix Week in Review' },
+          ]}
+          agentsMd
+        />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <JsonLd data={SITE_JSON_LD} />
@@ -104,14 +82,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <RadixProvider>
           {/* The rail and the header button that toggles it are not siblings,
               so the collapse state spans them through this provider. */}
-          <SidebarProvider storageKey={SIDEBAR_KEY}>
-            <div className="min-h-screen bg-surface-0">
+          <SidebarProvider>
+            <div className="app-shell bg-surface-0">
               <a href="#main" className="skip-link">Skip to content</a>
               <Header />
               <div className="wiki-layout">
                 <Sidebar />
                 <main id="main" className="app-main wiki-layout__main">
-                  <div className="app-content">{children}</div>
+                  <div className="page-frame">{children}</div>
                   <Footer />
                 </main>
               </div>

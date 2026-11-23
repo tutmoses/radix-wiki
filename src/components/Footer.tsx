@@ -8,7 +8,7 @@ import { X } from '@/lib/site';
 // what nothing else on the page links to.
 export function Footer() {
   return (
-    <footer className="footer">
+    <footer className="footer page-frame">
       <nav className="footer-links" aria-label="Footer">
         <Link href="/about">About</Link>
         <Link href="/policy">Policy</Link>
