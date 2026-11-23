@@ -236,7 +236,7 @@ export const TOOLS: McpToolSpec[] = [
     name: 'delete_page',
     title: 'Delete a page',
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-    description: `Delete an article with its history and comments. Requires a ROLA bearer token. Its author may delete it; on a shared board (${[...SHARED_PATHS].join(', ')}), so may anyone who clears the bar to edit it. Locked pages, hub articles and the homepage cannot be deleted.`,
+    description: `Delete an article with its history. Requires a ROLA bearer token. Its author may delete it; on a shared board (${[...SHARED_PATHS].join(', ')}), so may anyone who clears the bar to edit it. Locked pages, hub articles and the homepage cannot be deleted.`,
     auth: 'rola',
     inputSchema: {
       type: 'object',

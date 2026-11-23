@@ -17,7 +17,7 @@ export type SortOrder = 'title' | 'recent';
 export interface TagNode extends WikiNode {
   children?: TagNode[];
   sort?: SortOrder;
-  xrd?: { create?: number; edit?: number; comment?: number };
+  xrd?: { create?: number; edit?: number };
   metadataKeys?: MetadataKeyDefinition[];
   /** The listing's document `<title>` where `name` alone would repeat its main article's. */
   seoTitle?: string;
@@ -147,7 +147,7 @@ export const TAG_HIERARCHY: TagNode[] = [
       { key: 'deputy', label: 'Deputy:', type: 'user' },
       { key: 'target', label: 'Target:', type: 'date' },
     ],
-    xrd: { create: 10_000, edit: 10_000, comment: 10_000 },
+    xrd: { create: 10_000, edit: 10_000 },
   },
   {
     name: '⚖️ Policy',
@@ -249,9 +249,9 @@ export function deleteRight(
   return refused('Only its author can delete this page');
 }
 
-const XRD_DEFAULTS = { create: 10_000, edit: 20_000, comment: 10_000 } as const;
+const XRD_DEFAULTS = { create: 10_000, edit: 20_000 } as const;
 
-export function getXrdRequired(action: 'create' | 'edit' | 'comment', tagPath: string): number {
+export function getXrdRequired(action: 'create' | 'edit', tagPath: string): number {
   return resolveTagPath(tagPath.split('/')).xrdRequirements[action] ?? XRD_DEFAULTS[action];
 }
 

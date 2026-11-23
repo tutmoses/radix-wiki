@@ -16,7 +16,6 @@ export async function GET(_request: Request, context: RouteContext<PathParams>) 
     const accountAgeDays = ageDays(user.createdAt);
     const stats = {
       pages: user.pages,
-      comments: user.comments,
       edits: user.edits,
       uniqueContributions: user.contributions,
       accountAgeDays,

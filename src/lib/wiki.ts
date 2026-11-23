@@ -305,11 +305,10 @@ export async function loadPageHistory(tagPath: string, slug: string) {
 
 export const getPageHistory = cached('getPageHistory', loadPageHistory, (tagPath, slug) => [pageTag(tagPath, slug)]);
 
-/** Deletes a page, its history, and the comments, room and notifications that point at it. */
+/** Deletes a page, its history, and the room and notifications that point at it. */
 export async function deletePage(page: { id: string; tagPath: string; slug: string }) {
   await prisma.$transaction([
     prisma.notification.deleteMany({ where: { pageId: page.id } }),
-    prisma.comment.deleteMany({ where: { pageId: page.id } }),
     prisma.chatMessage.deleteMany({ where: { pageId: page.id } }),
   ]);
   return store.remove(page.tagPath, page.slug);

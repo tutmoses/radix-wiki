@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const url = pageUrl(page.tagPath, page.slug);
 
     // Subscribers and webhooks, through the same path an API write would take.
-    deliverWebhooks('page.created', page, null, null, null);
+    deliverWebhooks('page.created', page, null, null);
 
     // A recap carries its issue number and the running record; anything else is
     // announced as itself.

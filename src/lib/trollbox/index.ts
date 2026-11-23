@@ -27,7 +27,7 @@ export type Ref =
 
 /**
  * What a poster is to the room: a holder of the $XRD the wiki asks of a
- * commenter, a wallet below it, or a guest who signed in with a passkey. Never
+ * page's creator, a wallet below it, or a guest who signed in with a passkey. Never
  * an amount: the mark says which side of one line a wallet is on and no more.
  */
 export type Standing = 'holder' | 'wallet' | 'guest';

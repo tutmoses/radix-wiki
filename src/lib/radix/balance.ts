@@ -7,7 +7,7 @@ import { getXrdRequired, XRD_NOT_A_FEE } from '@/lib/tags';
 import { errors, json } from 'wiki-formant/http';
 import type { AuthSession } from '@/types';
 
-export type BalanceAction = { type: 'create' | 'edit' | 'comment'; tagPath: string };
+export type BalanceAction = { type: 'create' | 'edit'; tagPath: string };
 
 /** Total $XRD across every fungible vault an account holds. */
 async function getXrdBalance(address: string): Promise<number> {
@@ -47,7 +47,7 @@ export async function checkBalance(session: AuthSession, action: BalanceAction):
   return balance >= required ? { status: 'allowed', balance } : { status: 'short', balance, required };
 }
 
-const ACTION_LABELS: Record<BalanceAction['type'], string> = { edit: 'edit pages', create: 'create pages', comment: 'comment' };
+const ACTION_LABELS: Record<BalanceAction['type'], string> = { edit: 'edit pages', create: 'create pages' };
 
 /**
  * The answer to a check that did not pass. A shortfall is the only 403, so a

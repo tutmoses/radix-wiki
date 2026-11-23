@@ -3,7 +3,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Trophy, FileText, Edit3, MessageSquare, Star } from 'lucide-react';
+import { Trophy, FileText, Edit3, Star } from 'lucide-react';
 import { UserAvatar } from '@/components/UserAvatar';
 import { DataTable, type Column } from '@/components/charts/DataTable';
 import { PageHeading } from '@/components/PageHeading';
@@ -36,7 +36,6 @@ const COLUMNS: Column<RankedEntry>[] = [
   { k: 'name', label: 'Contributor', text: nameOf, cell: e => <Contributor entry={e} /> },
   { k: 'pages', label: 'Pages', header: <FileText size={14} />, className: 'text-center hidden-mobile', num: e => e.pages, cell: e => e.pages },
   { k: 'edits', label: 'Edits', header: <Edit3 size={14} />, className: 'text-center hidden-mobile', num: e => e.edits, cell: e => e.edits },
-  { k: 'comments', label: 'Comments', header: <MessageSquare size={14} />, className: 'text-center hidden-mobile', num: e => e.comments, cell: e => e.comments },
   { k: 'points', label: 'Points', header: <><Star size={14} /> Points</>, className: 'text-right', cellClass: 'font-medium text-accent', num: e => e.points, cell: e => e.points.toLocaleString('en-US') },
 ];
 

@@ -53,8 +53,6 @@ function notificationText(n: WikiNotification): string {
   if (n.type === 'chat_mention') return `${actor} mentioned you ${where}`;
   if (n.type === 'chat_reply') return `${actor} replied to you ${where}`;
   switch (n.type) {
-    case 'comment_on_page': return `${actor} commented on "${title}"`;
-    case 'comment_reply': return `${actor} replied to your comment on "${title}"`;
     case 'page_edited': return `${actor} edited "${title}"`;
     // A row written by another deploy can carry a type this one does not know.
     default: return `New activity from ${actor} on "${title}"`;

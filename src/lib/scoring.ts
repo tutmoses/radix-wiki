@@ -4,13 +4,12 @@ import { prisma } from '@/lib/prisma/client';
 import { unstable_cache } from 'next/cache';
 import { shortenAddress, pagePath } from '@/lib/utils';
 
-const WEIGHTS = { page: 150, edit: 80, contribution: 80, comment: 70, tenure: 50 } as const;
+const WEIGHTS = { page: 150, edit: 80, contribution: 80, tenure: 50 } as const;
 
 interface ScoreInput {
   pages: number;
   edits: number;
   contributions: number;
-  comments: number;
   ageDays: number;
 }
 
@@ -19,14 +18,13 @@ export function computePoints(s: ScoreInput) {
     pages: s.pages * WEIGHTS.page,
     edits: s.edits * WEIGHTS.edit,
     contributions: s.contributions * WEIGHTS.contribution,
-    comments: s.comments * WEIGHTS.comment,
     tenure: Math.floor(s.ageDays / 30) * WEIGHTS.tenure,
   };
 }
 
 export function totalPoints(s: ScoreInput): number {
   const b = computePoints(s);
-  return b.pages + b.edits + b.contributions + b.comments + b.tenure;
+  return b.pages + b.edits + b.contributions + b.tenure;
 }
 
 // --- Shared leaderboard query ---
@@ -42,7 +40,6 @@ interface EditorRow {
   page_count: bigint;
   edit_slots: bigint;
   unique_pages: bigint;
-  comment_slots: bigint;
 }
 
 interface EditorScore {
@@ -58,7 +55,6 @@ interface EditorScore {
   pages: number;
   edits: number;
   contributions: number;
-  comments: number;
   points: number;
 }
 
@@ -78,8 +74,7 @@ export const getEditorScores = unstable_cache(
         sp.slug AS subject_slug,
         (SELECT COUNT(*) FROM "WikiPage" p WHERE p."authorId" = u.id) AS page_count,
         COALESCE(r.edit_slots, 0) AS edit_slots,
-        COALESCE(r.unique_pages, 0) AS unique_pages,
-        COALESCE(c.comment_slots, 0) AS comment_slots
+        COALESCE(r.unique_pages, 0) AS unique_pages
       FROM users u
       LEFT JOIN LATERAL (
         SELECT "tagPath" AS tag_path, slug FROM "WikiPage" WHERE metadata->>'subjectUserId' = u.id LIMIT 1
@@ -90,18 +85,13 @@ export const getEditorScores = unstable_cache(
           COUNT(DISTINCT "pageId") AS unique_pages
         FROM "WikiRevision" WHERE "authorId" = u.id
       ) r ON true
-      LEFT JOIN LATERAL (
-        SELECT COUNT(DISTINCT page_id || ':' || EXTRACT(EPOCH FROM date_trunc('hour', created_at))::BIGINT) AS comment_slots
-        FROM comments WHERE author_id = u.id
-      ) c ON true
     `;
 
     return rows.map(u => {
       const pages = Number(u.page_count);
       const edits = Number(u.edit_slots);
       const contributions = Number(u.unique_pages);
-      const comments = Number(u.comment_slots);
-      const points = totalPoints({ pages, edits, contributions, comments, ageDays: ageDays(u.created_at) });
+      const points = totalPoints({ pages, edits, contributions, ageDays: ageDays(u.created_at) });
 
       return {
         id: u.id,
@@ -112,11 +102,11 @@ export const getEditorScores = unstable_cache(
         // An empty slug is a valid subject page (category hub), so presence is
         // keyed on tag_path rather than slug truthiness.
         subjectPage: u.subject_tag_path !== null ? { tagPath: u.subject_tag_path, slug: u.subject_slug ?? '' } : null,
-        pages, edits, contributions, comments, points,
+        pages, edits, contributions, points,
       };
     }).sort((a, b) => b.points - a.points);
   },
-  ['editor-scores'],
+  ['contributor-scores'],
   { revalidate: 3600, tags: ['leaderboard'] },
 );
 
@@ -131,7 +121,6 @@ export function publicScore(e: EditorScore) {
     pages: e.pages,
     edits: e.edits,
     contributions: e.contributions,
-    comments: e.comments,
     points: e.points,
   };
 }
@@ -141,12 +130,11 @@ export type LeaderboardEntry = ReturnType<typeof publicScore>;
 /** Log-dampened 0-100 ring score for profile display */
 export function ringScore(s: ScoreInput): number {
   const dampen = (v: number, base: number) => v > 0 ? Math.log(v + 1) / Math.log(base) : 0;
-  const hasActivity = (s.edits + s.comments) > 0 ? 1 : 0;
+  const hasActivity = s.edits > 0 ? 1 : 0;
   return Math.min(Math.round(
     15 * dampen(s.pages, 10) +
      8 * dampen(s.edits, 5) +
      8 * dampen(s.contributions, 5) +
-     7 * dampen(s.comments, 8) +
     10 * dampen(s.ageDays, 50) * hasActivity
   ), 100);
 }

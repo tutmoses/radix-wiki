@@ -246,23 +246,6 @@ export const SPEC = openApiDocument({
       },
     },
   },
-  '/api/comments': {
-    get: {
-      summary: 'List comments on a page',
-      parameters: [{ name: 'pageId', in: 'query', required: true, schema: { type: 'string' }, description: 'The page\'s `id`, as GET /api/wiki/{path} returns it' }],
-      responses: { '200': { description: 'Paginated comments, oldest first; a reply names its `parentId`' } },
-    },
-    post: {
-      summary: 'Post a comment',
-      security: rolaAuth,
-      requestBody: jsonBody({
-        type: 'object',
-        required: ['pageId', 'content'],
-        properties: { pageId: { type: 'string' }, content: { type: 'string', maxLength: 5000 }, parentId: { type: 'string', description: 'The comment this replies to' } },
-      }),
-      responses: { '201': { description: 'Comment created' }, '401': UNAUTH },
-    },
-  },
   '/api/leaderboard': {
     get: {
       summary: 'Top contributors by points',

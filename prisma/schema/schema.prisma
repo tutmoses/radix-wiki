@@ -21,7 +21,6 @@ model User {
   passkeys        UserPasskey[]
   chatMessages    ChatMessage[]
   chatFlags       ChatFlag[]
-  comments        Comment[]
   webhooks        Webhook[]
   telegramLinks   TelegramLink[]
   notifications       Notification[] @relation("notifications")
@@ -67,34 +66,14 @@ model Challenge {
   @@map("challenges")
 }
 
-model Comment {
-  id        String    @id @default(cuid())
-  /// A "WikiPage" id. No relation: the shipped model cannot carry the back-relation,
-  /// so deleting a page deletes its comments in the app (`deletePage`).
-  pageId    String    @map("page_id")
-  parentId  String?   @map("parent_id")
-  parent    Comment?  @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies   Comment[] @relation("Replies")
-  content   String
-  authorId  String    @map("author_id")
-  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  
-  @@index([pageId])
-  @@index([pageId, parentId])
-  @@index([authorId])
-  @@map("comments")
-}
-
 model Notification {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
-  type      String   // 'comment_on_page' | 'comment_reply' | 'page_edited' | 'chat_mention' | 'chat_reply'
+  type      String   // 'page_edited' | 'chat_mention' | 'chat_reply'
   actorId   String   @map("actor_id")
-  /// A "WikiPage" id, without a relation for the reason Comment.pageId gives. Null for one from the trollbox.
+  /// A "WikiPage" id, without a relation: the shipped WikiPage model cannot carry
+  /// the back-relation. Null for one from the wiki's own trollbox room.
   pageId    String?  @map("page_id")
-  commentId String?  @map("comment_id")
   /// The trollbox line a mention or a reply was made in.
   chatMessageId Int? @map("chat_message_id")
   read      Boolean  @default(false)
@@ -128,7 +107,7 @@ model TelegramLink {
   userId    String   @map("user_id")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   chatId    String   @map("chat_id")
-  events    String[] @default(["page.created", "page.updated", "comment.created"])
+  events    String[] @default(["page.created", "page.updated"])
   tagPath   String   @default("") @map("tag_path")
   pageSlug  String   @default("") @map("page_slug")
   active    Boolean  @default(true)

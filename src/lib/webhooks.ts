@@ -13,26 +13,25 @@ import { isWithin } from '@/lib/tags';
 import { escXml } from 'wiki-formant/feed';
 import type { ChangeType } from 'wiki-formant/versioning';
 
-export type WebhookEvent = 'page.created' | 'page.updated' | 'page.deleted' | 'comment.created';
+export type WebhookEvent = 'page.created' | 'page.updated' | 'page.deleted';
 
 /** Every event, with the icon and label a Telegram message leads with. */
 const EVENTS: Record<WebhookEvent, [icon: string, label: string]> = {
   'page.created': ['📄', 'New Page'],
   'page.updated': ['📝', 'Page Updated'],
   'page.deleted': ['🗑', 'Page Deleted'],
-  'comment.created': ['💬', 'New Comment'],
 };
 
 /** Subscribable events, derived so the accepted list cannot drift from the table. */
 export const VALID_EVENTS = Object.keys(EVENTS) as WebhookEvent[];
 
 /**
- * What a Telegram subscription that names no events delivers: a page's edits and
- * comments, and a section's new pages too – without `page.created` a subscription
+ * What a Telegram subscription that names no events delivers: a page's edits,
+ * and a section's new pages too – without `page.created` a subscription
  * to `blog` never delivered an issue. Watch and /settings send none and take this.
  */
 export const subscriptionEvents = (pageSlug: string | null | undefined): WebhookEvent[] =>
-  pageSlug ? ['page.updated', 'comment.created'] : ['page.created', 'page.updated', 'comment.created'];
+  pageSlug ? ['page.updated'] : ['page.created', 'page.updated'];
 
 const BOT_TOKEN = process.env.TELEGRAM_SUB_BOT_TOKEN;
 
@@ -41,7 +40,6 @@ interface Notification {
   page: { slug: string; title: string; tagPath: string; version: string };
   revision?: { changeType: ChangeType; message?: string | null; version: string } | null;
   actor?: { displayName?: string | null; radixAddress?: string | null } | null;
-  comment?: { id: string; content: string; parentId?: string | null } | null;
 }
 
 /** The homepage row carries no tag path, and its URL is the site root, not a path. */
@@ -63,9 +61,8 @@ export function deliverWebhooks(
   page: Notification['page'],
   revision?: Notification['revision'],
   actor?: Notification['actor'],
-  comment?: Notification['comment'],
 ): void {
-  const notification: Notification = { event, page, revision, actor, comment };
+  const notification: Notification = { event, page, revision, actor };
   after(() => Promise.all([
     deliverHttp(notification).catch((err) => console.error('Webhook delivery error:', err)),
     BOT_TOKEN && deliverTelegram(notification).catch((err) => console.error('Telegram delivery error:', err)),
@@ -74,7 +71,7 @@ export function deliverWebhooks(
 
 // ---- HTTP webhooks ----
 
-async function deliverHttp({ event, page, revision, actor, comment }: Notification): Promise<void> {
+async function deliverHttp({ event, page, revision, actor }: Notification): Promise<void> {
   const webhooks = await prisma.webhook.findMany({
     where: { active: true, events: { has: event } },
   });
@@ -98,7 +95,6 @@ async function deliverHttp({ event, page, revision, actor, comment }: Notificati
     ...(revision && { revision }),
     // External subscribers get the same truncated address the site shows.
     ...(actor && { actor: { displayName: actor.displayName, address: shortenAddress(actor.radixAddress) } }),
-    ...(comment && { comment }),
   });
 
   await Promise.allSettled(
@@ -150,11 +146,8 @@ export function sendMessage(chatId: string, text: string): Promise<boolean> {
   return telegramApi('sendMessage', { chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: false });
 }
 
-function formatMessage({ event, page, revision, actor, comment }: Notification): string {
+function formatMessage({ event, page, revision, actor }: Notification): string {
   const [icon, label] = EVENTS[event];
-  const excerpt = comment
-    ? `"${escXml(comment.content.slice(0, 200))}${comment.content.length > 200 ? '…' : ''}"`
-    : null;
 
   // Blank strings are the message's own spacing, so only nulls are dropped.
   return [
@@ -163,7 +156,6 @@ function formatMessage({ event, page, revision, actor, comment }: Notification):
     page.tagPath ? `Section: ${page.tagPath}` : null,
     revision ? `Version: ${revision.version}` : null,
     `By: ${escXml(actor?.displayName || (actor && shortenAddress(actor.radixAddress)) || 'Someone')}`,
-    ...(excerpt ? ['', excerpt] : []),
     '',
     `🔗 ${notificationUrl(page)}`,
   ].filter((line) => line !== null).join('\n');

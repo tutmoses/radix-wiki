@@ -1,6 +1,6 @@
 // src/types/index.ts
 
-import type { User, WikiPage as WikiPageRow, Comment, Notification, Prisma } from '@prisma/client';
+import type { User, WikiPage as WikiPageRow, Notification, Prisma } from '@prisma/client';
 
 // Auth types. The session and the wallet proof are shaped by the stack that
 // produces them, @/lib/auth; re-exported here so the rest of the app keeps
@@ -50,16 +50,6 @@ export type WikiPageInput = {
   metadata?: PageMetadata;
 };
 
-export type WikiComment = Comment & {
-  author?: WikiAuthor;
-  replies?: WikiComment[];
-};
-
-export type CommentInput = {
-  content: string;
-  parentId?: string;
-};
-
 import type { Progress } from '@/lib/checklist';
 
 export type IdeasPage = WikiPage & {
@@ -71,7 +61,7 @@ export type IdeasPage = WikiPage & {
 
 
 /** What a notification reports. The column is a plain string, so a row can still carry another value. */
-export type NotificationType = 'comment_on_page' | 'comment_reply' | 'page_edited' | 'chat_mention' | 'chat_reply';
+export type NotificationType = 'page_edited' | 'chat_mention' | 'chat_reply';
 
 export type WikiNotification = Omit<Notification, 'type'> & {
   type: NotificationType;

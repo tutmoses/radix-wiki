@@ -173,8 +173,8 @@ transaction manifests, the Gateway API, wallet integration, and more:
 ## Contribute to RADIX.wiki & Earn Points
 
 Every wiki contribution earns points, which rank contributors on the leaderboard:
-creating pages (150 pts), editing (80 pts), unique page contributions (80 pts),
-comments (70 pts), plus 50 pts per month of tenure.
+creating pages (150 pts), editing (80 pts) and unique page contributions (80 pts),
+plus 50 pts per month of tenure.
 
 - Leaderboard: ${SITE_URL}/leaderboard
 - Connect a Radix wallet to start contributing

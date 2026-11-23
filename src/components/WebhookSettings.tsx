@@ -60,7 +60,6 @@ const EVENT_OPTIONS: { value: WebhookEvent; label: string }[] = [
   { value: 'page.created', label: 'Page created' },
   { value: 'page.updated', label: 'Page updated' },
   { value: 'page.deleted', label: 'Page deleted' },
-  { value: 'comment.created', label: 'Comment created' },
 ];
 
 /** The page or category `/settings?watch=` names, as a subscription target; null where there is none. */
@@ -299,7 +298,7 @@ function TelegramSection({ watch }: { watch?: string }) {
           )}
 
           {subs.length === 0 && !context && (
-            <EmptyState title="No subscriptions yet." description="Use Watch this page in a page's Tools menu to get its edits and comments in Telegram." />
+            <EmptyState title="No subscriptions yet." description="Use Watch this page in a page's Tools menu to get its edits in Telegram." />
           )}
         </div>
       ) : (

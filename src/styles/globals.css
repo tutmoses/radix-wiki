@@ -666,11 +666,6 @@
   .user-picker-dropdown { @apply absolute z-50 mt-1 w-full rounded-lg border border-border bg-surface-1 shadow-lg overflow-hidden; }
   .user-picker-option { @apply flex items-center justify-between w-full px-3 py-2 text-sm text-left transition-colors hover:bg-surface-2 cursor-pointer; }
 
-  /* ===== DISCUSSION ===== */
-  .comment-thread { @apply flex flex-col gap-2 pl-4 border-l border-border-muted; }
-  .comment-action { @apply flex items-center gap-2 text-text-muted hover:text-accent; }
-  .comment-delete { @apply flex items-center gap-2 text-text-muted hover:text-error; }
-
   /* ===== IDEAS ===== */
   .ideas-panel { @apply flex flex-col gap-3; }
   .ideas-list { @apply flex flex-col rounded-lg overflow-hidden divide-y divide-border-muted; }

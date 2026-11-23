@@ -64,7 +64,7 @@ export async function generateStaticParams() {
 
 export const dynamicParams = true;
 // A day, not a minute: every API write busts the pages it changes (`revalidatePage`
-// in lib/wiki.ts, called from the wiki and comments routes), so an edit shows at
+// in lib/wiki.ts, called from the wiki routes), so an edit shows at
 // once and the timer only backstops. At 60s every article was re-rendered
 // and rewritten to ISR each minute. `CACHE_OPTS` in lib/wiki.ts must match, or its
 // shorter revalidate pins the page back down.

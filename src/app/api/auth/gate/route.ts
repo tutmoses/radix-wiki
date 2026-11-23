@@ -6,7 +6,7 @@ import { getSession } from '@/lib/auth';
 import { checkBalance, balanceRefusal, type BalanceAction } from '@/lib/radix/balance';
 import { errors, handleRoute, json } from 'wiki-formant/http';
 
-const GATE_TYPES = new Set(['create', 'edit', 'comment']);
+const GATE_TYPES = new Set(['create', 'edit']);
 
 /** The write routes' own answers: 200, a shortfall's 403, or a check that could not be made. */
 export async function GET(request: NextRequest) {

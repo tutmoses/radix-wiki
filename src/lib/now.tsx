@@ -24,7 +24,7 @@ export function NowProvider({ now, children }: { now: number; children: ReactNod
  * The server's render time while hydrating, so the markup matches, then the
  * live clock once mounted, so a cached page does not keep saying "43m ago".
  * Outside a provider it is the browser's clock, which is only safe for
- * something that renders after mount — a comment list, a notification.
+ * something that renders after mount — a trollbox line, a notification.
  */
 export function useNow(): number {
   const rendered = useContext(NowContext);

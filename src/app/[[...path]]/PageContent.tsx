@@ -48,7 +48,6 @@ const HistoryView = dynamic(() => import('@/components/HistoryView'), {
 
 export { HistoryView };
 
-const Discussion = dynamic(() => import('@/components/Discussion').then(m => m.Discussion), { ssr: false });
 // An Ideas card's own room, drawn beside its Deliverables.
 const CardRoom = dynamic(() => import('@/components/Trollbox'), { ssr: false, loading: () => <div className="trollbox-inline trollbox-card" /> });
 const UserStats = dynamic(() => import('@/components/UserStats').then(m => m.UserStats));
@@ -600,7 +599,7 @@ function PageViewContent({ page, related, series, news, sections, listing, nowMs
   const isCard = isWithin(page.tagPath, 'ideas');
 
   // Everything after the prose. On a hub it moves below the listing, so the page
-  // reads article → the pages in it → provenance and discussion.
+  // reads article → the pages in it → provenance.
   const tail = (
     <>
       {/* The heading *is* the link: it names what these pages have in common and
@@ -613,8 +612,6 @@ function PageViewContent({ page, related, series, news, sections, listing, nowMs
       />
       {subjectUserId && <UserStats userId={subjectUserId} />}
       <PageMeta page={page} />
-      {/* A card's talk is its room, beside the Deliverables. */}
-      {!isCard && <Discussion pageId={page.id} />}
     </>
   );
 

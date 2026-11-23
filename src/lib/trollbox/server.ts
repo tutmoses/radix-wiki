@@ -7,12 +7,12 @@ import { CHANGE_WINDOW_MS, EXCERPT, PAGE, type Message, type Read, type Ref, typ
 import { plainText } from './refs';
 
 /**
- * The $XRD, liquid and staked, that makes a wallet a holder in the room: the
- * same the wiki asks of a commenter. A holder's flag counts, their name carries
- * the mark and they post at the room's pace. Below it a wallet is as free to
- * make as a passkey account, and is treated as one.
+ * The $XRD, liquid and staked, that makes a wallet a holder in a room: the
+ * same the wiki asks of someone creating a page. A holder's flag counts, their
+ * name carries the mark and they post at the room's pace. Below it a wallet is
+ * as free to make as a passkey account, and is treated as one.
  */
-export const HOLDER_XRD = getXrdRequired('comment', '');
+export const HOLDER_XRD = getXrdRequired('create', '');
 
 // --- Weighted moderation ---
 //

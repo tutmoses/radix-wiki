@@ -16,7 +16,6 @@ interface UserStatsData {
   memberSince: string;
   stats: {
     pages: number;
-    comments: number;
     edits: number;
     uniqueContributions: number;
     accountAgeDays: number;
@@ -27,7 +26,6 @@ interface UserStatsData {
     pages: number;
     edits: number;
     contributions: number;
-    comments: number;
     tenure: number;
   };
 }
