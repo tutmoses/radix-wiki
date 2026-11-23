@@ -714,14 +714,6 @@
   .revision-changes-panel { @apply bg-surface-0 p-3 border-t border-border-muted text-xs; }
   .revision-change[data-action='modified'] .revision-change-action { @apply text-warning; }
 
-  /* ===== PAGE WITH INFOBOX LAYOUT ===== */
-  .page-with-infobox {
-    @media (min-width: 768px) {
-      grid-template-columns: 2fr 1fr;
-      grid-template-areas: "content infobox";
-    }
-  }
-
   /* An Ideas card. A phone reads facts, Deliverables, the room, then the rest;
      from 768px the facts, room and background rows stand beside the card. */
   .card-layout {
@@ -730,7 +722,7 @@
     grid-template-areas: "facts" "top" "talk" "rest" "more";
     > * { @apply min-w-0; }
     @media (min-width: 768px) {
-      grid-template-columns: 2fr 1fr;
+      grid-template-columns: minmax(0, 1fr) var(--infobox-width);
       grid-template-rows: auto 1fr;
       grid-template-areas: "top side" "rest side";
     }
@@ -826,7 +818,7 @@
     grid-template-areas: "summary" "infobox" "body";
 
     @media (min-width: 768px) {
-      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1fr) var(--infobox-width);
       grid-template-rows: auto 1fr;
       grid-template-areas: "summary infobox" "body infobox";
     }
