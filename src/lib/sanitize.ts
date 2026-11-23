@@ -43,6 +43,9 @@ const sanitizeHtml = createHtmlSanitizer({
     col: ['style'],
     tr: ['id'],
     ol: ['start', 'type'],
+    // Tick-box lists: the editor's task list, whose ticks are the Ideas board's progress.
+    ul: ['data-type'],
+    li: ['data-type', 'data-checked'],
     image: ['x', 'y', 'width', 'height', 'href', 'preserveAspectRatio', 'opacity'],
   },
   classes: {

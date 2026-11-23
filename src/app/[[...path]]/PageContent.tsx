@@ -15,6 +15,8 @@ import { LinkPreview } from '@/components/LinkPreview';
 import { NewsTicker } from '@/components/NewsTicker';
 import { AuthRequired } from '@/components/AuthRequired';
 import { ClaimRoles } from './ClaimRoles';
+import { CardProgress, isOverdue } from '@/components/CardProgress';
+import { checklistProgress } from '@/lib/checklist';
 import { Button } from '@/components/ui';
 import { useAuth, useHistoryLink, useStore } from '@/hooks';
 import { bannerPalette, categoryLabel, cn, mustReload, pagePath, sendJson } from '@/lib/utils';
@@ -618,6 +620,8 @@ function PageViewContent({ page, related, series, news, sections, listing, nowMs
         <div className="page-with-infobox">
           {main}
           <InfoboxSidebar block={infobox ?? { id: '__infobox__', type: 'infobox', blocks: [] }} title={page.title} metadata={page.metadata} tagPath={page.tagPath} series={series}>
+            <CardProgress progress={checklistProgress(page.content)} long />
+            {isOverdue(page.metadata ?? {}, nowMs) && <span className="text-error text-small">Past its target date</span>}
             <ClaimRoles page={page} />
           </InfoboxSidebar>
         </div>

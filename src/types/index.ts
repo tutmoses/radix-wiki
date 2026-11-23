@@ -60,9 +60,13 @@ export type CommentInput = {
   parentId?: string;
 };
 
+import type { Progress } from '@/lib/checklist';
+
 export type IdeasPage = WikiPage & {
   replyCount: number;
   lastActivity: Date;
+  /** The card's tick-box items, counted; null for a card with none. */
+  progress: Progress | null;
 };
 
 

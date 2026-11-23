@@ -11,12 +11,20 @@ import { Badge } from '@/components/ui';
 import { categoryLabel, cn } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { AGO, useNow } from '@/lib/now';
-import { relativeTime } from 'wiki-formant/freshness';
+import { formatDay, relativeTime } from 'wiki-formant/freshness';
 import { boardColumn, findTagByPath, getMetadataKeys, UNPLACED_COLUMN, type SortOrder } from '@/lib/tags';
 import { NewPageControl, SortToggle } from './PageContent';
-import type { WikiPage, PageMetadata, IdeasPage } from '@/types';
+import type { PageMetadata, IdeasPage } from '@/types';
 import { EmptyState } from '@/components/EmptyState';
 import { readAssignee } from '@/lib/assignee';
+import { CardProgress, isOverdue } from '@/components/CardProgress';
+
+function TargetChip({ meta }: { meta: PageMetadata }) {
+  const now = useNow();
+  if (!meta.target) return null;
+  const overdue = isOverdue(meta, now);
+  return <span className={cn('assignee-chip', overdue && 'text-error')}>{overdue ? 'Overdue: ' : 'Target: '}{formatDay(meta.target, { month: 'short', day: 'numeric' })}</span>;
+}
 
 function AssigneeChip({ raw }: { raw?: string }) {
   const assignee = readAssignee(raw);
@@ -54,7 +62,7 @@ function OptionBadge({ options, value }: { options: StatusOption[]; value?: stri
   return <Badge variant={options.find(o => o.label === label)?.variant}>{label}</Badge>;
 }
 
-function BoardCard({ page, priorityOptions }: { page: WikiPage; priorityOptions: StatusOption[] }) {
+function BoardCard({ page, priorityOptions }: { page: IdeasPage; priorityOptions: StatusOption[] }) {
   const meta = (page.metadata as PageMetadata) || {};
   return (
     <Link href={`/${page.tagPath}/${page.slug}`} className="board-card">
@@ -63,7 +71,9 @@ function BoardCard({ page, priorityOptions }: { page: WikiPage; priorityOptions:
         <OptionBadge options={priorityOptions} value={meta.priority} />
         {meta.category && <Badge variant="secondary">{categoryLabel(meta.category)}</Badge>}
         <AssigneeChip raw={meta.assignee} />
+        <TargetChip meta={meta} />
       </div>
+      <CardProgress progress={page.progress} />
     </Link>
   );
 }
@@ -95,6 +105,8 @@ function IdeasListView({ pages, statusFilter, statusOptions, priorityOptions }: 
               </div>
             </div>
             <div className="ideas-row-meta">
+              <CardProgress progress={p.progress} />
+              <TargetChip meta={meta} />
               <AssigneeChip raw={meta.assignee} />
               <span className="ideas-row-replies"><MessageSquare size={14} />{p.replyCount}</span>
               <span className="ideas-row-activity">{relativeTime(p.lastActivity, now, AGO)}</span>

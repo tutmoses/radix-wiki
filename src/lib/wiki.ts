@@ -19,6 +19,7 @@ import { leafBlocks } from '@/lib/block-utils';
 import { sanitizePage } from '@/lib/sanitize';
 import { splitNews, tickerNews, type NewsItem } from '@/lib/news';
 import { RECAP_PREFIX } from '@/lib/week-in-review';
+import { checklistProgress } from '@/lib/checklist';
 
 /**
  * The wiki's pages and revisions: `wiki-formant/store` over this app's client.
@@ -258,11 +259,11 @@ export function isIdeasPath(tagPath: string): boolean {
   return tagPath === 'ideas' || tagPath.startsWith('ideas/');
 }
 
-export const getIdeasPages = cached('getIdeasPages',
+export const getIdeasPages = cached('getIdeasCards',
   async (tagPath: string, limit = 200): Promise<IdeasPage[]> => {
+    // Content is read only to count each card's tick-boxes; the board gets the count.
     const pages = await prisma.wikiPage.findMany({
       where: { siteId: '', tagPath: { startsWith: tagPath } },
-      omit: { content: true },
       orderBy: { updatedAt: 'desc' },
       take: limit,
     });
@@ -277,6 +278,7 @@ export const getIdeasPages = cached('getIdeasPages',
       version: '',
       replyCount: byPage.get(p.id)?._count ?? 0,
       lastActivity: byPage.get(p.id)?._max.createdAt ?? p.createdAt,
+      progress: checklistProgress(p.content),
     }));
   },
   tagPath => [pageTag(tagPath)],

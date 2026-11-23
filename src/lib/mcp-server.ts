@@ -20,6 +20,7 @@ import { TOOLS, SERVER_INFO } from '@/lib/mcp-tools';
 import { getLedgerDayRows, parseDayRange } from '@/lib/radix/activity';
 import { trackMcpCall } from '@/lib/track';
 import { assigneeName } from '@/lib/assignee';
+import { checklistProgress } from '@/lib/checklist';
 import { uploadImage } from '@/lib/upload';
 import { McpToolError, readArgs, type McpServerConfig, type McpPrompt, type McpResource, type ToolContext } from 'wiki-formant/mcp';
 
@@ -92,7 +93,7 @@ const PROMPTS: McpPrompt[] = [
 
 // ========== DB SELECT SHAPES ==========
 
-const IDEAS_SELECT = { title: true, tagPath: true, slug: true, metadata: true, updatedAt: true } as const;
+const IDEAS_SELECT = { title: true, tagPath: true, slug: true, metadata: true, content: true, updatedAt: true } as const;
 
 // ========== IDEAS BOARD HELPERS ==========
 
@@ -132,6 +133,8 @@ async function get_ideas_board(raw: Record<string, unknown>) {
       category: categoryLabel(m.category) || null,
       assignee: assigneeName(m.assignee),
       deputy: assigneeName(m.deputy),
+      target: m.target || null,
+      progress: checklistProgress(p.content),
       updatedAt: isoDate(p.updatedAt),
     };
   }).filter(c => {

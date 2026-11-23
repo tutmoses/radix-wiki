@@ -26,6 +26,8 @@
     "@radixdlt/rola": "^2.1.0",
     "@simplewebauthn/browser": "^14.0.0",
     "@simplewebauthn/server": "^14.1.0",
+    "@tiptap/extension-task-item": "^2.27.3",
+    "@tiptap/extension-task-list": "^2.27.3",
     "@vercel/blob": "^2.8.0",
     "clsx": "^2.1.1",
     "jose": "^6.2.12",

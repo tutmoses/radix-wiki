@@ -3,13 +3,15 @@
 'use client';
 
 import { useMemo, useState, type ReactNode } from 'react';
-import { EditorContent, UrlPromptField, WikiToolbar, uploadImageTo, useUrlPrompt, useWikiEditor, type WikiToolbarProps } from 'wiki-formant/editor';
+import { EditorContent, ToolbarButton, UrlPromptField, WikiToolbar, uploadImageTo, useUrlPrompt, useWikiEditor, type WikiToolbarProps } from 'wiki-formant/editor';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
 import {
   BannerFields, BlockEditor as FormantBlockEditor, Choice, CodeTabsFields, ColumnsFields, Field, InfoboxFields, LimitField, LinkGridFields,
   EventsFields, ListFields, LocationsFields, ReferencesFields, StatsFields, TestimonialFields, type BlockEditorKit, type BlockMeta, type BlockSchema, type ChoiceProps, type FieldProps, type PageOption,
 } from 'wiki-formant/block-editor';
 import { CHART_RANGES } from 'wiki-formant/chart';
-import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Bold, Italic, Link2, Unlink, Heading2, Heading3, Heading4, List, ListOrdered, TableIcon, Globe, LayoutList, Info, Undo2, Redo2 } from 'lucide-react';
+import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Upload, Minus, Code, Quote, Bold, Italic, Link2, Unlink, Heading2, Heading3, Heading4, List, ListOrdered, ListChecks, TableIcon, Globe, LayoutList, Info, Undo2, Redo2 } from 'lucide-react';
 import { categoryLabel, cn, tipAddress } from '@/lib/utils';
 import { TAG_TREE, tagPaths } from '@/lib/tags';
 import { useFetch, useStore } from '@/hooks';
@@ -46,7 +48,8 @@ const PROMPT_CLASSES = { row: 'row', input: 'input', apply: 'btn btn-primary', c
 function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   // This wiki's own nodes, built from its class names and icons. Memoised
   // because a fresh array would tear the editor down and lose the selection.
-  const nodes = useMemo(() => [...embedNodes({ iframeHosts: EMBED_HOSTS }), TabGroup, TabItem, CodeBlock, HeadingIds], []);
+  // The tick-box list is this wiki's: an Ideas card's ticked items are its progress.
+  const nodes = useMemo(() => [...embedNodes({ iframeHosts: EMBED_HOSTS }), TabGroup, TabItem, CodeBlock, HeadingIds, TaskList, TaskItem], []);
   const { editor, fileInputRef, upload, handleFileChange, triggerUpload } = useWikiEditor({
     value,
     onChange,
@@ -62,7 +65,11 @@ function RichTextEditor({ value, onChange, placeholder = 'Write content...' }: {
     <div className="stack-sm">
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" className="hidden" onChange={handleFileChange} />
       {editor && (
-        <WikiToolbar editor={editor} prompt={prompt} onUpload={triggerUpload} icons={TOOLBAR_ICONS} classNames={TOOLBAR_CLASSES} />
+        <WikiToolbar editor={editor} prompt={prompt} onUpload={triggerUpload} icons={TOOLBAR_ICONS} classNames={TOOLBAR_CLASSES}>
+          <ToolbarButton label="Tick-box list" pressed={editor.isActive('taskList')} onPress={() => editor.chain().focus().toggleTaskList().run()} className={cn(TOOLBAR_CLASSES.button, editor.isActive('taskList') && TOOLBAR_CLASSES.pressed)}>
+            <ListChecks size={14} />
+          </ToolbarButton>
+        </WikiToolbar>
       )}
       <UrlPromptField prompt={prompt} classNames={PROMPT_CLASSES} />
       <div className={cn('tiptap-editor tiptap-field', upload.status === 'uploading' && 'tiptap-field-disabled')}>
