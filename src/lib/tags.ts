@@ -144,6 +144,7 @@ export const TAG_HIERARCHY: TagNode[] = [
       { key: 'priority', label: 'Priority:', type: 'select', options: ['㆔ High', '㆓ Medium', '⼀ Low'] },
       { key: 'category', label: 'Category:', type: 'select', options: ['⚙️ Protocol', '🌐 Ecosystem', '🛠️ Tooling', '🫂 Community', '⚖️ Governance'] },
       { key: 'assignee', label: 'Assignee:', type: 'user' },
+      { key: 'deputy', label: 'Deputy:', type: 'user' },
     ],
     xrd: { create: 10_000, edit: 10_000, comment: 10_000 },
   },

@@ -300,10 +300,10 @@ export function articleGraphProps(p: {
 
   if (root === 'ideas') {
     const status = categoryLabel(md.status) || undefined;
-    const assignee = assigneeName(md.assignee);
+    const people = [md.assignee, md.deputy].map(assigneeName).filter((n): n is string => !!n);
     Object.assign(out, {
       ...(status && { creativeWorkStatus: status }),
-      ...(assignee && { contributor: { '@type': 'Person', name: assignee } }),
+      ...(people.length && { contributor: people.map(name => ({ '@type': 'Person', name })) }),
     });
   }
 

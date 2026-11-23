@@ -256,7 +256,7 @@ export function infoboxHasContent(block: InfoboxBlock | null, metadata?: PageMet
   return getResourceAddressEntries(metadata, tagPath).length > 0 || factRows(metadata, tagPath).length > 0;
 }
 
-export function InfoboxSidebar({ block, title, metadata, tagPath, series }: { block: InfoboxBlock; title: string; metadata?: PageMetadata | null; tagPath?: string; series?: { title: string; href: string } | null }) {
+export function InfoboxSidebar({ block, title, metadata, tagPath, series, children }: { block: InfoboxBlock; title: string; metadata?: PageMetadata | null; tagPath?: string; series?: { title: string; href: string } | null; children?: ReactNode }) {
   const assetEntries = metadata && tagPath ? getResourceAddressEntries(metadata, tagPath) : [];
   // `series` is Wikipedia's {{Category main article}}, pointed from the article:
   // the tag path names the topic's main article, so every page in it opens onto
@@ -269,6 +269,7 @@ export function InfoboxSidebar({ block, title, metadata, tagPath, series }: { bl
         </div>
       ))}
       <InfoboxFacts rows={factRows(metadata, tagPath)} link={Link} formatValue={factValue} />
+      {children}
       {(block.blocks || []).map(b => <div key={b.id}>{renderBlockView(b)}</div>)}
     </InfoboxAside>
   );

@@ -6,7 +6,7 @@
  */
 type Assignee =
   | { kind: 'none' }
-  | { kind: 'member'; name: string; address: string }
+  | { kind: 'member'; id: string; name: string; address: string }
   | { kind: 'named'; name: string };
 
 export function readAssignee(raw: unknown): Assignee {
@@ -15,9 +15,9 @@ export function readAssignee(raw: unknown): Assignee {
   // Only an object is a pick: a typed name such as "42" parses as JSON too.
   if (!text.startsWith('{')) return { kind: 'named', name: text };
   try {
-    const pick = JSON.parse(text) as { name?: unknown; address?: unknown };
+    const pick = JSON.parse(text) as { id?: unknown; name?: unknown; address?: unknown };
     return typeof pick?.name === 'string' && pick.name.trim()
-      ? { kind: 'member', name: pick.name.trim(), address: typeof pick.address === 'string' ? pick.address : '' }
+      ? { kind: 'member', id: typeof pick.id === 'string' ? pick.id : '', name: pick.name.trim(), address: typeof pick.address === 'string' ? pick.address : '' }
       : { kind: 'none' };
   } catch {
     return { kind: 'none' };

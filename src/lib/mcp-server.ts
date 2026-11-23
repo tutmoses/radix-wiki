@@ -131,6 +131,7 @@ async function get_ideas_board(raw: Record<string, unknown>) {
       priority: categoryLabel(m.priority) || null,
       category: categoryLabel(m.category) || null,
       assignee: assigneeName(m.assignee),
+      deputy: assigneeName(m.deputy),
       updatedAt: isoDate(p.updatedAt),
     };
   }).filter(c => {

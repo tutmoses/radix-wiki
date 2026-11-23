@@ -121,7 +121,8 @@ function MetadataFields({ metadataKeys, metadata, onChange, invalidKeys = [] }: 
     onChange({ ...metadata, [key]: value });
   };
 
-  const primary = metadataKeys.filter(k => k.required || metadata[k.key]?.trim());
+  // A person field shows even when empty: hidden behind "More fields", nobody found how to take a card.
+  const primary = metadataKeys.filter(k => k.required || k.type === 'user' || metadata[k.key]?.trim());
   const hiddenCount = metadataKeys.length - primary.length;
   const visible = showAll ? metadataKeys : primary;
 
