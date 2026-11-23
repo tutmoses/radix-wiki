@@ -3,120 +3,53 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Trophy, BarChart3, ChevronRight, ChevronDown, ListTree, Wrench, MessagesSquare } from 'lucide-react';
+import { Home, Trophy, BarChart3, Wrench, MessagesSquare } from 'lucide-react';
 import { useMemo } from 'react';
-// The rail's shell — its landmark, its three collapse states and the scroll
-// container that closes it when a link is followed on mobile — is
-// `wiki-formant/react`, and with the `wiki-sidebar` prefix its layout, column
-// and drawer, is `wiki-formant/base.css`, as on caper and acuiq2. The third
-// state is the one a reimplementation drops: without `--instant` a rail the
-// reader left closed renders open and slides shut on every load.
-import { RailShell, TableOfContents as SharedToc, isRailLinkActive } from 'wiki-formant/react';
-import { cn } from '@/lib/utils';
+// The rail's shell, its link groups and its "on this page" are
+// `wiki-formant/react`, drawn by `wiki-formant/base.css` in the `wiki-rail__*`
+// classes, as on caper, acuiq2 and miow; globals.css holds only this wiki's look.
+// Ids are injected server-side (lib/html.ts -> wiki-formant/headings), so the
+// contents list mints none: an id is a URL, and one minted in the browser is
+// not the one this wiki published.
+import { RailGroup, RailShell, TableOfContents, type RailLink } from 'wiki-formant/react';
 import { useAuth, useWikiPathname } from '@/hooks';
 import { getVisibleTags, type TagNode } from '@/lib/tags';
 import { ROOM_PATH } from '@/lib/trollbox';
 
-// `aria-current` is `page` on the view being rendered and `true` on a link lit
-// because the reader is somewhere beneath it, as on acuiq2's rail.
-const ariaCurrent = (pathname: string, href: string, active: boolean) =>
-  active ? (pathname === href ? 'page' as const : 'true' as const) : undefined;
-
-function NavItem({ href, icon, label, pathname, tree }: { href: string; icon: React.ReactNode; label: string; pathname: string; tree?: boolean }) {
-  const active = isRailLinkActive(pathname, href, tree);
-  return (
-    <Link href={href} className={cn('nav-item', active && 'bg-accent-muted text-accent font-medium')} aria-current={ariaCurrent(pathname, href, active)}>
-      {icon}<span>{label}</span>
-    </Link>
-  );
-}
-
-// The rail's "on this page" list is `wiki-formant/react`, shared with the other
-// wikis, which had written the same debounced MutationObserver and scroll-spy.
-// Ids are injected server-side here (lib/html.ts -> wiki-formant/headings), so
-// no `slug` is passed: an id is a URL, and one minted in the browser is not the
-// one this wiki published.
-//
-// It runs on every route. A heading without an id is left out, so every view
-// gives its headings one. The editor gets its ids from `HeadingIds`.
-// With no headings the list renders nothing, and neither does its divider,
-// which is why the divider belongs to `.toc`.
-const TableOfContents = () => (
-  <SharedToc
-    containerSelector="main"
-    offsetVar="--header-height"
-    classNames={{ root: 'toc', button: 'toc-btn', label: 'toc-label', list: 'nav-list pl-4', item: 'toc-item', itemActive: 'toc-item-active' }}
-    icon={expanded => (
-      <>
-        {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        <ListTree size={16} />
-      </>
-    )}
-    label="On this page"
-  />
-);
-
 /**
- * The category list, expanding only the branch the reader is in. It persists
- * while reading a guide, which a card grid on the category page cannot.
- *
- * Only the active trail opens, so the rail shows one section's children rather
- * than the whole hierarchy, and the deepest matching node is the one marked
- * current — an ancestor is on the trail, not the page you are on.
- *
- * Each open level is a list nested in its parent's item, inside the one
- * labelled <nav> the rail gives it; a <nav> per level made every open branch
- * an unlabelled landmark of its own.
+ * The category tree as rail links. A category stays lit while the reader is on a
+ * page inside it, and only the branch the reader is in opens, so the rail shows
+ * one section's children rather than the whole hierarchy.
  */
-function CategoryTree({ nodes, parent = '', pathname }: {
-  nodes: TagNode[]; parent?: string; pathname: string;
-}) {
-  return (
-    <ul className={cn('nav-list', parent && 'nav-subtree')}>
-      {nodes.map(node => {
-        const path = parent ? `${parent}/${node.slug}` : node.slug;
-        const href = `/${path}`;
-        const onTrail = isRailLinkActive(pathname, href, true);
-        const children = (node.children ?? []).filter(c => !c.hidden);
-        const openChildren = onTrail ? children : [];
-        const isCurrent = onTrail && !openChildren.some(c => isRailLinkActive(pathname, `${href}/${c.slug}`, true));
-        return (
-          <li key={path}>
-            <Link href={href} title={node.name} aria-current={ariaCurrent(pathname, href, isCurrent)}
-              className={cn('nav-item', isCurrent && 'bg-accent-muted text-accent font-medium')}>
-              <span className="truncate">{node.name}</span>
-            </Link>
-            {openChildren.length > 0 && <CategoryTree nodes={openChildren} parent={path} pathname={pathname} />}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
+const categoryLinks = (nodes: TagNode[], parent = ''): RailLink[] =>
+  nodes
+    .filter(node => !node.hidden)
+    .map(node => {
+      const path = parent ? `${parent}/${node.slug}` : node.slug;
+      return { href: `/${path}`, label: node.name, title: node.name, tree: true, children: categoryLinks(node.children ?? [], path) };
+    });
 
 export function Sidebar() {
   const pathname = useWikiPathname();
   const { isAuthenticated } = useAuth();
+  const categories = useMemo(() => categoryLinks(getVisibleTags()), []);
 
-  const visibleTags = useMemo(() => getVisibleTags(), []);
+  const site: RailLink[] = [
+    { href: '/', label: 'Home', icon: <Home size={18} /> },
+    { href: '/charts', label: 'Charts', icon: <BarChart3 size={18} />, tree: true },
+    { href: '/leaderboard', label: 'Leaderboard', icon: <Trophy size={18} /> },
+    { href: ROOM_PATH, label: 'Trollbox', icon: <MessagesSquare size={18} /> },
+    // Editorial work queues — reader nav stays free of maintenance machinery.
+    ...(isAuthenticated ? [{ href: '/maintenance', label: 'Maintenance', icon: <Wrench size={18} /> }] : []),
+  ];
 
   return (
     <RailShell prefix="wiki-sidebar" label="Wiki navigation">
-      <nav className="nav-list px-4" aria-label="Site">
-        <NavItem href="/" icon={<Home size={18} />} label="Home" pathname={pathname} />
-        <NavItem href="/charts" icon={<BarChart3 size={18} />} label="Charts" pathname={pathname} tree />
-        <NavItem href="/leaderboard" icon={<Trophy size={18} />} label="Leaderboard" pathname={pathname} />
-        <NavItem href={ROOM_PATH} icon={<MessagesSquare size={18} />} label="Trollbox" pathname={pathname} />
-        {/* Editorial work queues — reader nav stays free of maintenance machinery. */}
-        {isAuthenticated && <NavItem href="/maintenance" icon={<Wrench size={18} />} label="Maintenance" pathname={pathname} />}
-      </nav>
-
-      <nav className="nav-list px-4" aria-labelledby="rail-categories">
-        <span id="rail-categories" className="sidebar-label">Categories</span>
-        <CategoryTree nodes={visibleTags} pathname={pathname} />
-      </nav>
-
-      <TableOfContents />
+      <RailGroup links={site} pathname={pathname} link={Link} />
+      <RailGroup label="Categories" links={categories} pathname={pathname} link={Link} />
+      {/* Every route: a heading without an id is left out, so every view gives
+          its headings one, the editor through `HeadingIds`. */}
+      <TableOfContents containerSelector="main" />
     </RailShell>
   );
 }

@@ -3,9 +3,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import '@/styles/globals.css';
-import { Beacon, SidebarProvider } from 'wiki-formant/react';
-import { sidebarBootScript } from 'wiki-formant/sidebar';
-import { JsonLd, SiteLinks } from 'wiki-formant/react-server';
+import { RailFrame, SiteDocument, SiteShell } from 'wiki-formant/react-server';
 import { cardUrl, rootMetadata, siteGraphLd } from 'wiki-formant/metadata';
 import { RadixProvider } from '@/components/RadixProvider';
 import { Header } from '@/components/Header';
@@ -59,46 +57,28 @@ const SITE_JSON_LD = siteGraphLd({
 });
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // suppressHydrationWarning: the sidebar boot script below stamps
-  // data-sidebar on <html> before React hydrates, so the server HTML and the
-  // client DOM differ by exactly that attribute, by design.
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* Before first paint: stamp the remembered rail state on <html>, so a
-            rail the reader collapsed does not paint open and animate shut. */}
-        <script dangerouslySetInnerHTML={{ __html: sidebarBootScript() }} />
-        <SiteLinks
-          feeds={[
-            { href: '/blog.xml', title: 'RADIX Wiki Blog' },
-            { href: '/week-in-review.xml', title: 'Radix Week in Review' },
-          ]}
-          agentsMd
-        />
-      </head>
-      <body className={`${inter.variable} font-sans antialiased`}>
-        <JsonLd data={SITE_JSON_LD} />
-        <Beacon />
-        <RadixProvider>
-          {/* The rail and the header button that toggles it are not siblings,
-              so the collapse state spans them through this provider. */}
-          <SidebarProvider>
-            <div className="app-shell bg-surface-0">
-              <a href="#main" className="skip-link">Skip to content</a>
-              <Header />
-              <div className="wiki-layout">
-                <Sidebar />
-                <main id="main" className="app-main wiki-layout__main">
-                  <div className="page-frame">{children}</div>
-                  <Footer />
-                </main>
-              </div>
-            </div>
-          </SidebarProvider>
-          <TrollboxDock />
-          <Toast />
-        </RadixProvider>
-      </body>
-    </html>
+    <SiteDocument
+      bodyClassName={`${inter.variable} font-sans antialiased`}
+      links={{
+        feeds: [
+          { href: '/blog.xml', title: 'RADIX Wiki Blog' },
+          { href: '/week-in-review.xml', title: 'Radix Week in Review' },
+        ],
+        agentsMd: true,
+      }}
+      graph={SITE_JSON_LD}
+    >
+      <RadixProvider>
+        {/* The rail is the site nav, on every route, so the root layout mounts it. */}
+        <SiteShell className="bg-surface-0" header={<Header />} footer={<Footer />}>
+          <RailFrame rail={<Sidebar />}>
+            <div className="page-frame">{children}</div>
+          </RailFrame>
+        </SiteShell>
+        <TrollboxDock />
+        <Toast />
+      </RadixProvider>
+    </SiteDocument>
   );
 }

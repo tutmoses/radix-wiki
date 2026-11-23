@@ -11,7 +11,6 @@ import { ArrowLeft, ArrowRight, Save, Plus, Upload, X, Image as ImageIcon, Arrow
 import { BlockRenderer, findInfobox, infoboxHasContent, InfoboxSidebar, PageThumb } from '@/components/BlockRenderer';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Breadcrumbs, PageActions } from '@/components/Breadcrumbs';
-import { LinkPreview } from '@/components/LinkPreview';
 import { NewsTicker } from '@/components/NewsTicker';
 import { AuthRequired } from '@/components/AuthRequired';
 import { ClaimRoles } from './ClaimRoles';
@@ -31,7 +30,7 @@ import { categoryHref, type Control, type FacetControlGroup, type FacetFilters, 
 import { createBlock } from '@/lib/block-utils';
 import { formatDay, freshnessBanner, relativeTime } from 'wiki-formant/freshness';
 import { Cite, FacetBar, FacetSummary, RelatedPages as SeeAlso } from 'wiki-formant/react-server';
-import { useSaveShortcut, useUnsavedChanges } from 'wiki-formant/react';
+import { useSaveShortcut, useUnsavedChanges, WikiLinkPreview } from 'wiki-formant/react';
 import type { NewsItem } from '@/lib/news';
 import type { WikiPage } from '@/types';
 import type { Block, InfoboxBlock } from '@/types/blocks';
@@ -653,7 +652,7 @@ function PageViewContent({ page, related, series, news, sections, listing, nowMs
       {/* Full width, not nested in the article column: a card grid and a facet
           rail don't fit beside an infobox. */}
       {listing && <>{listing}<div className="stack">{tail}</div></>}
-      <LinkPreview />
+      <WikiLinkPreview endpoint="/api/wiki/preview" scope=".prose-content" />
     </article>
   );
 }

@@ -63,7 +63,7 @@
   --radius: 0.5rem;
   --radius-lg: 0.75rem;
   --shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.25);
-  --header-height: 4rem;
+  --rail-top: 4rem;
   --editor-bar-height: 3.5rem;
   /* The reading measure, a ceiling on prose outside an article (a link grid's
      descriptions); an article's prose fills its column up to the infobox.
@@ -84,7 +84,7 @@
      scroll anchoring is off during a smooth scroll, so it lands short. The rail's
      table of contents asks for smooth scrolling itself. The padding clears the
      sticky header for every anchor target, heading or not. */
-  html { font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; scroll-padding-top: calc(var(--header-height) + 1rem); }
+  html { font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; scroll-padding-top: calc(var(--rail-top) + 1rem); }
   body { @apply bg-surface-0 text-text text-base min-h-screen; }
 
   /* One flow rhythm for every block-level element. Individual rules below carry
@@ -382,10 +382,10 @@
   @media (min-width: 640px) { .show-mobile { display: none; } }
 
   /* ===== APP SHELL (layout.tsx) ===== */
-  /* The rail's row takes what the header leaves and main fills it, so the
-     article column grows and a short page's footer sits at the foot. */
+  /* The rail's row fills main, which takes what the header and footer leave,
+     so the article column grows and a short page's footer sits at the foot. */
   .wiki-layout { @apply grow; }
-  .wiki-layout__main { @apply self-stretch; }
+  .wiki-layout__main { @apply flex flex-col self-stretch; }
   .wiki-layout__main > .page-frame:first-child { @apply grow py-6 sm:py-8; }
 
   /* ===== HEADER ===== */
@@ -393,7 +393,7 @@
   .header-inner { @apply w-full; padding-inline: var(--page-pad); }
   /* flex-wrap + min-h only differ from a fixed row when a child actually wraps,
      and only `.header-search-open` does that, below `sm`. */
-  .header-bar { @apply flex flex-wrap items-center gap-2 min-h-[var(--header-height)]; }
+  .header-bar { @apply flex flex-wrap items-center gap-2 min-h-[var(--rail-top)]; }
   .logo-text { @apply font-semibold text-lg hidden sm:block; }
   .header-actions { @apply flex items-center gap-2 ml-auto; }
 
@@ -437,25 +437,24 @@
      Every row in the rail sits on one vertical rhythm, three tokens: a row's
      own padding, the gap between rows, and the space between sections.
      `npm run lint` fails on any other vertical spacing in the rail. */
-  .wiki-sidebar { @apply bg-surface-0; --rail-top: var(--header-height); --rail-row: 0.125rem; --rail-gap: 0.0625rem; --rail-section: 1.25rem; }
+  .wiki-sidebar { @apply bg-surface-0; --rail-row: 0.125rem; --rail-gap: 0.0625rem; --rail-section: 1.25rem; }
   .wiki-sidebar__scroll { @apply pb-24 gap-(--rail-section); }
-    .sidebar-label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3 py-(--rail-row); }
-
-  /* Nav items */
-  .nav-item { @apply flex items-center gap-x-2 px-3 py-(--rail-row) rounded-md transition-colors text-text-muted hover:bg-surface-2 hover:text-text; }
-  /* A column of rail rows: the site links, the category tree and its open
-     branches, the contents list. The base list rules are for prose. */
-  .nav-list { @apply flex flex-col gap-(--rail-gap) m-0 p-0 list-none; li { @apply flex flex-col gap-(--rail-gap) m-0; } }
-  /* A child branch of the category tree: indented under its parent with a rule,
-     so the trail is readable without an expander control. */
-  .nav-subtree { @apply ml-4 pl-2 border-l border-border-muted; .nav-item { @apply text-small; } }
-
-  /* Table of contents */
-  .toc { @apply flex flex-col gap-(--rail-gap) flex-1 px-4 pt-(--rail-section) border-t border-border-muted; }
-  .toc-btn { @apply flex items-center gap-x-2 px-3 py-(--rail-row) text-text-muted hover:text-text transition-colors w-full; }
-  .toc-label { @apply text-small font-medium uppercase tracking-wide; }
-  .toc-item { @apply text-left text-small text-text-muted hover:text-accent transition-colors py-(--rail-row) px-2 rounded truncate border-l-2 border-transparent; }
-  .toc-item-active { @apply text-accent font-medium bg-accent-muted border-accent; }
+  /* The rail's groups (RailGroup) and contents (TableOfContents), whose
+     structure is base.css's `wiki-rail__*`: this wiki's rows, its accent for the
+     link being read, and the category trail indented under a rule so it reads
+     without an expander control. The contents list comes last, under a rule. */
+  .wiki-rail__group { @apply gap-(--rail-gap) px-4; }
+  .wiki-rail__group:has(> .wiki-rail__toc-btn) { @apply flex-1 pt-(--rail-section) border-t border-border-muted; }
+  .wiki-rail__label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3 py-(--rail-row); }
+  .wiki-rail__list { @apply gap-(--rail-gap); li { @apply flex flex-col gap-(--rail-gap); } }
+  .wiki-rail__item { @apply gap-x-2 px-3 py-(--rail-row) rounded-md text-text-muted hover:bg-surface-2 hover:text-text; }
+  .wiki-rail__item--active { @apply bg-accent-muted text-accent font-medium hover:bg-accent-muted hover:text-accent; }
+  .wiki-rail__subtree { @apply ml-4 pl-2 border-l border-border-muted; .wiki-rail__item { @apply text-small; } }
+  .wiki-rail__toc-btn { @apply gap-x-2 px-3 py-(--rail-row) text-text-muted hover:text-text transition-colors; }
+  .wiki-rail__toc-btn > .wiki-rail__label { @apply p-0 font-medium text-inherit; }
+  .wiki-rail__toc-list { @apply gap-(--rail-gap) pl-4; }
+  .wiki-rail__toc-item { @apply block py-(--rail-row) px-2 rounded truncate border-l-2 border-transparent text-small text-text-muted hover:text-accent; }
+  .wiki-rail__toc-item--active { @apply text-accent font-medium bg-accent-muted border-accent; }
 
   /* ===== BANNER ===== */
   /* The frame and its 4:1 floor are wiki-formant/banner's (base.css); this is
@@ -628,12 +627,12 @@
   .score-ring-dial { @apply relative w-24 h-24; > svg { @apply w-full h-full -rotate-90; } }
 
   /* ===== TOOLBAR (editor) ===== */
-  .toolbar { @apply sticky top-[var(--header-height)] z-40 flex flex-wrap gap-0.5 p-1 bg-surface-1 border border-border-muted rounded-md mb-2; }
+  .toolbar { @apply sticky top-[var(--rail-top)] z-40 flex flex-wrap gap-0.5 p-1 bg-surface-1 border border-border-muted rounded-md mb-2; }
   /* The page editor's Back and Save, held under the site header for the whole
      edit. A field's toolbar sticks under it there, rather than behind it. */
-  .editor-bar { @apply sticky top-[var(--header-height)] z-40 flex items-center justify-between gap-4 h-[var(--editor-bar-height)] bg-surface-0 border-b border-border-muted; }
+  .editor-bar { @apply sticky top-[var(--rail-top)] z-40 flex items-center justify-between gap-4 h-[var(--editor-bar-height)] bg-surface-0 border-b border-border-muted; }
   .page-editor-head { @apply pb-6 border-b border-border; }
-  .page-editor .toolbar { top: calc(var(--header-height) + var(--editor-bar-height)); }
+  .page-editor .toolbar { top: calc(var(--rail-top) + var(--editor-bar-height)); }
   .toolbar-btn { @apply p-1.5 rounded transition-colors text-text-muted hover:bg-surface-2 hover:text-text; }
   .toolbar-btn-on { @apply bg-accent text-text-inverted; }
   .toolbar-divider { @apply w-px h-6 bg-border-muted mx-1 self-center; }
@@ -780,9 +779,9 @@
   @media (min-width: 768px) {
     :is(.infobox, .infobox-editor, .category-rail) {
       position: sticky;
-      top: calc(var(--header-height) + 1.5rem);
+      top: calc(var(--rail-top) + 1.5rem);
       align-self: start;
-      max-height: calc(100dvh - var(--header-height) - 3rem);
+      max-height: calc(100dvh - var(--rail-top) - 3rem);
       overflow-y: auto;
     }
   }
@@ -909,9 +908,9 @@
     @apply lg:inset-auto lg:right-4 lg:bottom-4 lg:z-40 lg:w-96 lg:border lg:border-border lg:rounded-lg lg:shadow-lg;
     padding-bottom: env(safe-area-inset-bottom);
   }
-  @media (min-width: 1024px) { .trollbox { height: min(36rem, calc(100dvh - var(--header-height) - 2rem)); } }
+  @media (min-width: 1024px) { .trollbox { height: min(36rem, calc(100dvh - var(--rail-top) - 2rem)); } }
   /* The room on its own page: in the column, as tall as the screen leaves it under the heading. */
-  .trollbox-inline { @apply flex flex-col bg-surface-1 border border-border rounded-lg; height: calc(100dvh - var(--header-height) - 11rem); min-height: 24rem; }
+  .trollbox-inline { @apply flex flex-col bg-surface-1 border border-border rounded-lg; height: calc(100dvh - var(--rail-top) - 11rem); min-height: 24rem; }
   .trollbox-head { @apply flex items-center gap-2 pl-3 pr-1 py-1 border-b border-border-muted; }
   .trollbox-title { @apply m-0 text-base font-semibold; }
   /* The log scrolls, the room does not: without `min-h-0` a long room pushes the composer off its foot. */
