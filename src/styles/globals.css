@@ -726,23 +726,27 @@
   .revision-change[data-action='modified'] .revision-change-action { @apply text-warning; }
 
   /* An Ideas card. A phone reads facts, Deliverables, the room, then the rest;
-     from 768px the facts, room and background rows stand beside the card. */
+     from 768px of its column, as an article's infobox splits, the Deliverables
+     and the room stand side by side on top and the facts beside the rest. */
+  :has(> .card-layout) { container-type: inline-size; }
   .card-layout {
     @apply grid gap-6;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "facts" "top" "talk" "rest";
+    grid-template-areas: "facts" "deliverables" "talk" "rest";
     > * { @apply min-w-0; }
-    @media (min-width: 768px) {
-      grid-template-columns: minmax(0, 1fr) var(--infobox-width);
-      grid-template-rows: auto 1fr;
-      grid-template-areas: "top side" "rest side";
-    }
   }
-  .card-top { grid-area: top; }
-  .card-rest { grid-area: rest; }
-  .card-side { display: contents; @media (min-width: 768px) { @apply flex flex-col gap-6; grid-area: side; } }
-  .card-facts { grid-area: facts; }
-  .card-talk { grid-area: talk; }
+  .card-top, .card-body { display: contents; }
+  .card-deliverables { grid-area: deliverables; min-width: 0; }
+  .card-talk { grid-area: talk; min-width: 0; }
+  .card-rest { grid-area: rest; min-width: 0; }
+  .card-facts { grid-area: facts; min-width: 0; }
+  @container (min-width: 768px) {
+    .card-layout { grid-template-areas: none; }
+    .card-top { @apply grid gap-6 items-start; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+    .card-body { @apply grid gap-6 items-start; grid-template-columns: minmax(0, 1fr) var(--infobox-width); }
+    .card-top > *, .card-body > * { grid-area: auto; }
+    .card-facts { position: sticky; top: calc(var(--rail-top) + 1.5rem); }
+  }
   .trollbox-inline.trollbox-card { height: 30rem; min-height: 0; }
 
   /* Infobox sidebar */

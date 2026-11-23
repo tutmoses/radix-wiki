@@ -553,16 +553,20 @@ export type RelatedPages = { pages: RelatedPage[]; sharedFacet: SharedFacet | nu
 
 // ========== PAGE VIEW (Read-only) ==========
 /**
- * An Ideas card: its opening and Deliverables, then the rest of the card; beside
- * them its facts and its room. On a phone the facts lead, then the Deliverables,
- * then the room, then the rest.
+ * An Ideas card: its Deliverables and its room side by side, then the rest of
+ * the card beside its facts. On a phone the facts lead, then the Deliverables,
+ * the room and the rest.
  */
 function CardLayout({ page, blocks, series, nowMs, children }: { page: WikiPage; blocks: Block[]; series: PageRef | null; nowMs: number; children: ReactNode }) {
-  const [top, rest] = splitCard(blocks);
+  const [deliverables, rest] = splitCard(blocks);
   return (
     <div className="card-layout">
-      <div className="card-top stack"><BlockRenderer content={top} /></div>
-      <div className="card-side">
+      <div className="card-top">
+        {deliverables && <div className="card-deliverables stack"><BlockRenderer content={[deliverables]} /></div>}
+        <div className="card-talk"><CardRoom pageId={page.id} /></div>
+      </div>
+      <div className="card-body">
+        <div className="card-rest stack"><BlockRenderer content={rest} />{children}</div>
         <div className="card-facts">
           <InfoboxSidebar block={{ id: '__infobox__', type: 'infobox', blocks: [] }} title={page.title} metadata={page.metadata} tagPath={page.tagPath} series={series}>
             <CardProgress progress={checklistProgress(page.content)} long />
@@ -570,9 +574,7 @@ function CardLayout({ page, blocks, series, nowMs, children }: { page: WikiPage;
             <ClaimRoles page={page} />
           </InfoboxSidebar>
         </div>
-        <div className="card-talk"><CardRoom pageId={page.id} /></div>
       </div>
-      <div className="card-rest stack"><BlockRenderer content={rest} />{children}</div>
     </div>
   );
 }
@@ -657,22 +659,23 @@ function PageViewContent({ page, related, series, news, sections, listing, nowMs
 }
 
 /**
- * An Ideas card's opening and its Deliverables, apart from what follows: the
- * card's room sits beside the one and above the other. Split at the heading
- * after Deliverables, or after the opening on a card without them.
+ * An Ideas card's Deliverables, from their heading to the next, lifted out of
+ * the first content block; the card without them. Null on a card that has none.
  */
-function splitCard(blocks: Block[]): [Block[], Block[]] {
+function splitCard(blocks: Block[]): [Block | null, Block[]] {
   const at = blocks.findIndex(b => b.type === 'content');
   const block = blocks[at];
-  if (!block || block.type !== 'content') return [blocks, []];
+  if (!block || block.type !== 'content') return [null, blocks];
   const html = block.text ?? '';
   // The heading may already carry its permalink anchor, so it is matched by its first word.
-  const deliverables = html.search(/<h2[^>]*>\s*Deliverables\b/);
-  const end = html.indexOf('<h2', deliverables < 0 ? 0 : deliverables + 3);
-  if (end < 0) return [blocks.slice(0, at + 1), blocks.slice(at + 1)];
+  const start = html.search(/<h2[^>]*>\s*Deliverables\b/);
+  if (start < 0) return [null, blocks];
+  const end = html.indexOf('<h2', start + 3);
+  const stop = end < 0 ? html.length : end;
+  const text = html.slice(0, start) + html.slice(stop);
   return [
-    [...blocks.slice(0, at), { ...block, text: html.slice(0, end) }],
-    [{ ...block, id: `${block.id}:rest`, text: html.slice(end) }, ...blocks.slice(at + 1)],
+    { ...block, id: `${block.id}:deliverables`, text: html.slice(start, stop) },
+    [...blocks.slice(0, at), ...(text.trim() ? [{ ...block, text }] : []), ...blocks.slice(at + 1)],
   ];
 }
 
