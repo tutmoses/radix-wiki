@@ -93,12 +93,11 @@ export const TOOLS: McpToolSpec[] = [
     name: 'get_ideas_board',
     title: 'Ideas pipeline',
     annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-    description: `Get the RADIX Wiki Ideas Pipeline kanban: community proposals and Radix DAO tasks grouped into status columns (${ideasOptions('status').join(' → ')}), each card carrying its working group, category, priority, assignee, deputy, target date and progress (ticked deliverables of the total). Use this to follow DAO / project progress.`,
+    description: `Get the RADIX Wiki Ideas Pipeline kanban: community proposals and Radix DAO tasks grouped into status columns (${ideasOptions('status').join(' → ')}), each card carrying its working group, priority, assignee, deputy, target date and progress (ticked deliverables of the total). Use this to follow DAO / project progress.`,
     inputSchema: {
       type: 'object',
       properties: {
-        category: { type: 'string', description: `Filter to one category: ${ideasOptions('category').join(', ')}` },
-        workingGroup: { type: 'string', description: 'Filter by working group name substring, e.g. "Treasury", "Legal", "NetOps"' },
+        workingGroup: { type: 'string', description: `Filter to one working group: ${ideasOptions('workingGroup').join(', ')}` },
       },
     },
     skill: {

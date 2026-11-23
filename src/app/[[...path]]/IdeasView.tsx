@@ -69,7 +69,7 @@ function BoardCard({ page, priorityOptions }: { page: IdeasPage; priorityOptions
       <span className="board-card-title">{page.title}</span>
       <div className="board-card-meta">
         <OptionBadge options={priorityOptions} value={meta.priority} />
-        {meta.category && <Badge variant="secondary">{categoryLabel(meta.category)}</Badge>}
+        {meta.workingGroup && <Badge variant="secondary">{meta.workingGroup}</Badge>}
         <AssigneeChip raw={meta.assignee} />
         <TargetChip meta={meta} />
       </div>
@@ -100,7 +100,7 @@ function IdeasListView({ pages, statusFilter, statusOptions, priorityOptions }: 
               <span className="ideas-row-title">{p.title}</span>
               <div className="ideas-row-badges">
                 <OptionBadge options={statusOptions} value={meta.status} />
-                {meta.category && <Badge variant="secondary">{categoryLabel(meta.category)}</Badge>}
+                {meta.workingGroup && <Badge variant="secondary">{meta.workingGroup}</Badge>}
                 <OptionBadge options={priorityOptions} value={meta.priority} />
               </div>
             </div>
@@ -129,18 +129,18 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
   const pathStr = tagPath.join('/');
   const tag = findTagByPath(tagPath);
   const [view, setView] = useState<'list' | 'board'>('board');
-  const [categoryFilter, setCategoryFilter] = useState('');
+  const [groupFilter, setGroupFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
   const metaKeys = useMemo(() => getMetadataKeys(tagPath), [tagPath]);
   const statusOptions = useMemo(() => parseSelectOptions(metaKeys.find(k => k.key === 'status')?.options ?? []), [metaKeys]);
   const priorityOptions = useMemo(() => parseSelectOptions(metaKeys.find(k => k.key === 'priority')?.options ?? []), [metaKeys]);
 
-  // The category filter both views apply; the list adds its status filter.
+  // The working-group filter both views apply; the list adds its status filter.
   const filtered = useMemo(() => {
     const sorted = sortPages(pages, sort);
-    return categoryFilter ? sorted.filter(p => categoryLabel((p.metadata as PageMetadata)?.category) === categoryFilter) : sorted;
-  }, [pages, sort, categoryFilter]);
+    return groupFilter ? sorted.filter(p => (p.metadata as PageMetadata)?.workingGroup === groupFilter) : sorted;
+  }, [pages, sort, groupFilter]);
 
   const columns = useMemo(() => {
     // A card whose status the board does not offer gets a column of its own, as
@@ -153,21 +153,18 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
     ];
   }, [filtered, statusOptions]);
 
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    for (const p of pages) {
-      const c = categoryLabel((p.metadata as PageMetadata)?.category);
-      if (c) set.add(c);
-    }
-    return [...set].sort();
-  }, [pages]);
+  // The groups the cards carry, in the order tags.ts lists them.
+  const groups = useMemo(() => {
+    const held = new Set(pages.map(p => (p.metadata as PageMetadata)?.workingGroup));
+    return (metaKeys.find(k => k.key === 'workingGroup')?.options ?? []).filter(g => held.has(g));
+  }, [pages, metaKeys]);
 
   // The one filter row both views carry.
-  const categoryTabs = categories.length > 0 && (
+  const groupTabs = groups.length > 0 && (
     <div className="status-tabs">
-      <button className={cn('status-tab', categoryFilter === '' && 'border-text text-text')} onClick={() => setCategoryFilter('')}>All Types</button>
-      {categories.map(c => (
-        <button key={c} className={cn('status-tab', categoryFilter === c && 'border-text text-text')} onClick={() => setCategoryFilter(c)}>{c}</button>
+      <button className={cn('status-tab', groupFilter === '' && 'border-text text-text')} onClick={() => setGroupFilter('')}>All groups</button>
+      {groups.map(g => (
+        <button key={g} className={cn('status-tab', groupFilter === g && 'border-text text-text')} onClick={() => setGroupFilter(g)}>{g}</button>
       ))}
     </div>
   );
@@ -197,12 +194,12 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
               <button key={o.label} className={cn('status-tab', statusFilter === o.label && `border-${o.color} text-${o.color}`)} onClick={() => setStatusFilter(o.label)}>{o.label}</button>
             ))}
           </div>
-          {categoryTabs}
+          {groupTabs}
           <IdeasListView pages={filtered} statusFilter={statusFilter} statusOptions={statusOptions} priorityOptions={priorityOptions} />
         </div>
       ) : (
         <div className="ideas-panel">
-          {categoryTabs}
+          {groupTabs}
           <div className="board-columns">
           {columns.map(({ label, color, items }) => (
             <div key={label} className="board-column">

@@ -97,12 +97,6 @@ const IDEAS_SELECT = { title: true, tagPath: true, slug: true, metadata: true, c
 
 // ========== IDEAS BOARD HELPERS ==========
 
-/** Working group is encoded as a "<WG> · <task>" title prefix. */
-function workingGroupFromTitle(title: string): string | null {
-  const i = title.indexOf('·');
-  return i === -1 ? null : title.slice(0, i).trim();
-}
-
 // ========== READ HANDLERS ==========
 //
 // The wiki's own reads are `wiki-formant/wiki-tools` (the manifest carries
@@ -110,7 +104,6 @@ function workingGroupFromTitle(title: string): string | null {
 
 async function get_ideas_board(raw: Record<string, unknown>) {
   const args = readArgs(raw);
-  const category = args.str('category');
   const workingGroup = args.str('workingGroup');
   const pages = await prisma.wikiPage.findMany({
     where: { tagPath: { startsWith: 'ideas' } },
@@ -118,8 +111,7 @@ async function get_ideas_board(raw: Record<string, unknown>) {
     orderBy: { updatedAt: 'desc' },
   });
 
-  const catFilter = category ? categoryLabel(category).toLowerCase() : null;
-  const wgFilter = workingGroup ? workingGroup.toLowerCase() : null;
+  const wgFilter = workingGroup ? categoryLabel(workingGroup).toLowerCase() : null;
   const statusOptions = getMetadataKeys(['ideas']).find(k => k.key === 'status')?.options ?? [];
 
   const cards = pages.map(p => {
@@ -127,21 +119,16 @@ async function get_ideas_board(raw: Record<string, unknown>) {
     return {
       title: p.title,
       url: pageUrl(p.tagPath, p.slug),
-      workingGroup: workingGroupFromTitle(p.title),
+      workingGroup: categoryLabel(m.workingGroup) || null,
       column: boardColumn(m, statusOptions),
       priority: categoryLabel(m.priority) || null,
-      category: categoryLabel(m.category) || null,
       assignee: assigneeName(m.assignee),
       deputy: assigneeName(m.deputy),
       target: m.target || null,
       progress: checklistProgress(p.content),
       updatedAt: isoDate(p.updatedAt),
     };
-  }).filter(c => {
-    if (catFilter && (c.category ?? '').toLowerCase() !== catFilter) return false;
-    if (wgFilter && !(c.workingGroup ?? '').toLowerCase().includes(wgFilter)) return false;
-    return true;
-  });
+  }).filter(c => !wgFilter || (c.workingGroup ?? '').toLowerCase() === wgFilter);
 
   const columns = [...statusOptions, null].map(opt => {
     const items = cards.filter(c => c.column === opt);
