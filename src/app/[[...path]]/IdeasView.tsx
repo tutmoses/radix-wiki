@@ -94,10 +94,12 @@ function BoardCard({ page }: { page: IdeasPage }) {
       <span className="board-card-title">{page.title}</span>
       <div className="board-card-progress">
         <CardProgress progress={page.progress} />
-        <span className="assignee-chip ml-auto" title={`${page.replyCount} replies`}><MessageSquare size={12} />{page.replyCount}</span>
+        <span className="board-card-who">
+          <AssigneeChip raw={meta.assignee} />
+          <span className="assignee-chip ml-auto" title={`${page.replyCount} replies`}><MessageSquare size={12} />{page.replyCount}</span>
+        </span>
       </div>
       <div className="board-card-meta">
-        <AssigneeChip raw={meta.assignee} />
         <TargetChip meta={meta} />
       </div>
     </Link>
