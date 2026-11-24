@@ -6,9 +6,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Search, Loader2, LogOut, User, FileCode, Bell, Database, MoreVertical, Quote, Check, Eye, EyeOff, Settings, History, KeyRound, MessagesSquare, Wallet } from 'lucide-react';
-import { RailToggle, focusShown, useCopy, useSearchShortcut, useTypeahead, useClickOutside } from 'wiki-formant/react';
-import type { ComboboxOptionProps } from 'wiki-formant/combobox';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { RailToggle, SearchField, useCopy, useClickOutside } from 'wiki-formant/react';
+import { useState, useEffect, useCallback } from 'react';
 import { SESSION_UNREADABLE, useStore, useAuth, usePagePath, useFetch, useWikiPathname } from '@/hooks';
 import { ROOM_PATH } from '@/lib/trollbox';
 import { cn, shortenAddress, pagePath } from '@/lib/utils';
@@ -142,20 +141,14 @@ function AccountMenu({ name, hasWallet, profilePath, onClose, onLogout }: { name
 // ===== Search =====
 // The snippet is the passage the query matched (computed server-side by the
 // shared summarizer), so a body-text hit doesn't read as an unrelated title.
-function SearchResultRow({ page, query, active, onSelect, onHover, optionProps }: {
-  page: PageSummary; query: string; active?: boolean; onSelect: (page: PageSummary) => void; onHover?: () => void;
-  optionProps: ComboboxOptionProps;
-}) {
-  return (
-    // The listbox contract is `wiki-formant/combobox`.
-    <button type="button" onClick={() => onSelect(page)} onMouseEnter={onHover}
-      className={cn('search-result', active && 'search-result-active')} {...optionProps}>
-      <div className="font-medium truncate"><Highlight text={page.title} query={query} /></div>
-      <div className="subtext truncate">{pagePath(page.tagPath, page.slug)}</div>
-      {page.snippet && <p className="subtext line-clamp-1 mt-0.5"><Highlight text={page.snippet} query={query} /></p>}
-    </button>
-  );
-}
+const pageHref = (page: PageSummary) => pagePath(page.tagPath, page.slug);
+const searchRow = (page: PageSummary, query: string) => (
+  <>
+    <div className="font-medium truncate"><Highlight text={page.title} query={query} /></div>
+    <div className="subtext truncate">{pageHref(page)}</div>
+    {page.snippet && <p className="subtext line-clamp-1 mt-0.5"><Highlight text={page.snippet} query={query} /></p>}
+  </>
+);
 
 // Module scope, so the reference is stable: `useTypeahead` runs it from an
 // effect, and an inline arrow would re-search on every render. A refusal (a 429,
@@ -243,13 +236,6 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
 
 const LEDGER_COLOR: Record<BackupStanding, string | null> = { unknown: null, none: 'text-error', stale: 'text-warning', current: 'text-success' };
 
-/**
- * The header's search field: folded to its magnifier, shown, or shown with its
- * result list. The list cannot outlive the field, so a field folded and shown
- * again opens without the last query's list.
- */
-type SearchField = 'folded' | 'open' | 'listing';
-
 /** The header menus: at most one is open, so opening one closes the other. */
 type Menu = 'tools' | 'ledger' | 'notifications' | 'account' | 'signin' | null;
 
@@ -285,7 +271,6 @@ export function Header() {
   const toggleChat = useStore(s => s.toggleChat);
   const pathname = useWikiPathname();
   const { hasTools, hasLedger, sectionPath, canExportMdx, isPage, mdxPath, tagPath, slug } = usePageContext();
-  const [field, setField] = useState<SearchField>('folded');
   const { menu, open: openMenu, close: closeMenu, toggle: toggleMenu, ref: actionsRef } = useHeaderMenu();
 
   // The ledger backup status: the tools item's colour, and the ledger menu's status row.
@@ -296,50 +281,6 @@ export function Header() {
   const ledgerStatus = useFetch<LedgerStatus>(ledgerStatusUrl);
   // A backup made from the menu, which outlives the menu, so the colour reads it too.
   const ledgerBackup = useLedgerBackup(accountAddress, tagPath ?? null, slug ?? null);
-
-  // The search field's state machine is `wiki-formant/react`, shared with the
-  // other wikis. This surface had no keyboard navigation at all and no guard
-  // against an older response landing after a newer one — on a wiki whose
-  // search IS its primary navigation.
-  const {
-    query: searchQuery,
-    setQuery: setSearchQuery,
-    items: searchResults,
-    results: search,
-    highlight,
-    setHighlight,
-    onKeyDown: onSearchKeyDown,
-    clearItems,
-    reset: resetSearch,
-    combobox,
-  } = useTypeahead<PageSummary>({
-    fetch: searchPages,
-    onPick: page => handleSearchSelect(page),
-    // Escape shuts the list, and folds the field back to its magnifier once it is empty.
-    onEscape: () => setField(searchQuery.trim() ? 'open' : 'folded'),
-  });
-  const listOpen = field === 'listing';
-  // `listOpen` is passed because the hook keeps its results when the dropdown
-  // closes, and an aria-activedescendant pointing into a list that is not
-  // rendered is worse than none.
-  const searchCombobox = combobox(undefined, listOpen);
-  const clearSearchResults = useCallback(() => { clearItems(); setField(f => (f === 'listing' ? 'open' : f)); }, [clearItems]);
-  const searchRef = useClickOutside<HTMLFormElement>(clearSearchResults);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  const goToSearchPage = useCallback(() => {
-    const trimmed = searchQuery.trim();
-    if (!trimmed) return;
-    clearItems();
-    setField('folded');
-    router.push(`/search?q=${encodeURIComponent(trimmed)}`);
-  }, [searchQuery, router, clearItems]);
-
-  // "/" focuses search from anywhere (Wikipedia-style), unless already typing.
-  // The one field is hidden until the magnifier reveals it.
-  useSearchShortcut(() => {
-    if (!focusShown(searchInputRef.current)) setField(f => (f === 'folded' ? 'open' : f));
-  });
 
   const displayName = user?.displayName || walletData?.persona?.label ||
     (walletData?.accounts?.[0]?.address ? shortenAddress(walletData.accounts[0].address) : null) ||
@@ -357,18 +298,6 @@ export function Header() {
     return () => { clearInterval(interval); window.removeEventListener('focus', onFocus); };
   }, [isAuthenticated, fetchNotifications]);
 
-  const fieldShown = field !== 'folded';
-  useEffect(() => {
-    if (fieldShown) searchInputRef.current?.focus();
-  }, [fieldShown]);
-
-  // A declaration, not a const: `onPick` above is wired before this point.
-  function handleSearchSelect(page: PageSummary) {
-    resetSearch();
-    setField('folded');
-    router.push(pagePath(page.tagPath, page.slug));
-  }
-
   const handleLogout = async (everywhere?: boolean) => {
     closeMenu();
     await logout(everywhere);
@@ -383,45 +312,35 @@ export function Header() {
         <span className="logo-text">{SITE_NAME}</span>
       </Link>
 
-      {/* One field for both breakpoints, revealed by the magnifier: inline above
-          `sm`, its own row below it. The two copies had drifted, and the desktop one
-          was the broken half — it nested `.search-empty` (itself absolutely
-          placed) inside `.search-results`, which is `overflow-hidden`, so
-          "No pages found" was clipped to a bordered 2px strip. */}
-      <form ref={searchRef} action="/search" className={cn('header-search', fieldShown && 'header-search-open')}
-        onSubmit={e => { e.preventDefault(); goToSearchPage(); }}>
-        <Search className="search-icon-left" size={18} />
-        <input ref={searchInputRef} type="search" name="q" placeholder="Search the wiki..." className="input pl-10" value={searchQuery}
-          onChange={e => { setSearchQuery(e.target.value); setField('listing'); }}
-          onBlur={() => { if (!searchQuery.trim()) setField('folded'); }}
-          onKeyDown={onSearchKeyDown} {...searchCombobox.inputProps} />
-        {search.status === 'searching' && <Loader2 className="search-icon-right" size={18} />}
-        {listOpen && searchResults.length > 0 && (
-          <div className="search-results" {...searchCombobox.listProps}>
-            {searchResults.map((page, i) => (
-              <SearchResultRow key={page.url} page={page} query={searchQuery.trim()} active={i === highlight}
-                onHover={() => setHighlight(i)} onSelect={handleSearchSelect}
-                optionProps={searchCombobox.optionProps(i)} />
-            ))}
-            <button type="button" onClick={goToSearchPage} className="search-result search-result-all">
-              See all results for &ldquo;{searchQuery.trim()}&rdquo;
-            </button>
-          </div>
-        )}
-        {listOpen && search.status === 'found' && search.items.length === 0 && (
-          <div className="search-empty">No pages found for &ldquo;{search.query}&rdquo;</div>
-        )}
-        {listOpen && search.status === 'failed' && (
-          <div className="search-empty" role="alert">Search did not answer. Press Enter for the full results page.</div>
-        )}
-      </form>
+      {/* One field for both breakpoints, a magnifier until opened: inline in the
+          bar above `sm`, its own row below it. */}
+      <SearchField
+        fetch={searchPages}
+        action="/search"
+        hrefOf={pageHref}
+        renderRow={searchRow}
+        navigate={href => router.push(href)}
+        label="Search the wiki"
+        placeholder="Search the wiki..."
+        icon={<Search size={20} />}
+        before={<Search className="search-icon-left" size={18} />}
+        spinner={<Loader2 className="search-icon-right" size={18} />}
+        classNames={{
+          root: 'header-search',
+          input: 'input pl-10',
+          toggle: 'icon-btn text-inherit',
+          list: 'search-results',
+          item: 'search-result',
+          itemActive: 'search-result-active',
+          all: 'search-result search-result-all',
+          note: 'search-empty',
+        }}
+        all={q => <>See all results for &ldquo;{q}&rdquo;</>}
+        empty={q => <>No pages found for &ldquo;{q}&rdquo;</>}
+        failed="Search did not answer. Press Enter for the full results page."
+      />
 
       <div ref={actionsRef} className="header-actions">
-        {/* With no script it goes to the results page. Its mousedown keeps focus
-            in the field, so the field's blur does not fold it before the click. */}
-        <a href="/search" onMouseDown={e => e.preventDefault()} onClick={e => { e.preventDefault(); closeMenu(); setField(fieldShown ? 'folded' : 'open'); }}
-          className="icon-btn text-inherit" title="Search" aria-label="Search" aria-expanded={fieldShown}><Search size={20} /></a>
-
         {historyHref && (
           <Link href={historyHref} prefetch={false} onClick={closeMenu} className="icon-btn text-inherit" title="History" aria-label="History"><History size={20} /></Link>
         )}
