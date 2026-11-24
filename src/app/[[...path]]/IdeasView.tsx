@@ -47,9 +47,6 @@ const EMOJI_TONE: Record<string, Tone> = {
   '\u{1F535}': { color: 'info', variant: 'info' },          // 🔵
   '\u{1F7E3}': { color: 'purple', variant: 'secondary' },   // 🟣
   '\u{1F7E2}': { color: 'success', variant: 'success' },    // 🟢
-  '\u{3194}': { color: 'danger', variant: 'danger' },       // ㆔ High
-  '\u{3193}': { color: 'warning', variant: 'warning' },     // ㆓ Medium
-  '\u{2F00}': { color: 'default', variant: 'secondary' },   // ⼀ Low
 };
 
 type StatusOption = { raw: string; label: string } & Tone;
@@ -59,10 +56,10 @@ function parseSelectOptions(options: string[]): StatusOption[] {
 }
 
 /** A metadata value as a badge in its option's colour. */
-function OptionBadge({ options, value, className }: { options: StatusOption[]; value?: string; className?: string }) {
+function OptionBadge({ options, value }: { options: StatusOption[]; value?: string }) {
   if (!value) return null;
   const label = categoryLabel(value);
-  return <Badge variant={options.find(o => o.label === label)?.variant} className={className}>{label}</Badge>;
+  return <Badge variant={options.find(o => o.label === label)?.variant}>{label}</Badge>;
 }
 
 /** Priority as signal bars in its level's colour, named for screen readers and on hover. */
@@ -105,9 +102,9 @@ function BoardCard({ page }: { page: IdeasPage }) {
   );
 }
 
-function IdeasListView({ pages, statusFilter, statusOptions, priorityOptions }: {
+function IdeasListView({ pages, statusFilter, statusOptions }: {
   pages: IdeasPage[]; statusFilter: string;
-  statusOptions: StatusOption[]; priorityOptions: StatusOption[];
+  statusOptions: StatusOption[];
 }) {
   const now = useNow();
   const filtered = useMemo(
@@ -128,7 +125,7 @@ function IdeasListView({ pages, statusFilter, statusOptions, priorityOptions }: 
               <div className="ideas-row-badges">
                 <OptionBadge options={statusOptions} value={meta.status} />
                 {meta.workingGroup && <Badge variant="secondary">{meta.workingGroup}</Badge>}
-                <OptionBadge options={priorityOptions} value={meta.priority} />
+                <PriorityIcon value={meta.priority} />
               </div>
             </div>
             <div className="ideas-row-meta">
@@ -161,7 +158,6 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
 
   const metaKeys = useMemo(() => getMetadataKeys(tagPath), [tagPath]);
   const statusOptions = useMemo(() => parseSelectOptions(metaKeys.find(k => k.key === 'status')?.options ?? []), [metaKeys]);
-  const priorityOptions = useMemo(() => parseSelectOptions(metaKeys.find(k => k.key === 'priority')?.options ?? []), [metaKeys]);
 
   // The working-group filter both views apply; the list adds its status filter.
   const filtered = useMemo(() => {
@@ -222,7 +218,7 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
             ))}
           </div>
           {groupTabs}
-          <IdeasListView pages={filtered} statusFilter={statusFilter} statusOptions={statusOptions} priorityOptions={priorityOptions} />
+          <IdeasListView pages={filtered} statusFilter={statusFilter} statusOptions={statusOptions} />
         </div>
       ) : (
         <div className="ideas-panel">
