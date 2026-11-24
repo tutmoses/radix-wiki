@@ -2,7 +2,9 @@
 
 import { cache } from 'react';
 import { revalidateTag, unstable_cache } from 'next/cache';
-import { wikiStore, type ListSort, type WikiPageRow } from 'wiki-formant/store';
+import { wikiStore, type ListSort, type WikiPageRow, type WikiRevisionRow } from 'wiki-formant/store';
+import { withChanges } from 'wiki-formant/history';
+import { HttpError } from 'wiki-formant/http';
 import { cacheTagHeaders } from 'wiki-formant/http';
 import { searchWiki, type WikiRow } from 'wiki-formant/wiki-tools';
 import { blocksToMarkdown } from '@/lib/markdown';
@@ -285,19 +287,36 @@ export const getIdeasPages = cached('getIdeasBoard',
   tagPath => [pageTag(tagPath)],
 );
 
+/** A deleted page's newest snapshot at an address, its rows as `deletePage` kept them. */
+export async function findDeletion(tagPath: string, slug: string) {
+  const row = await prisma.deletedPage.findFirst({ where: { tagPath, slug }, orderBy: { deletedAt: 'desc' } });
+  if (!row) return null;
+  return {
+    ...row,
+    page: row.page as unknown as StoredRow,
+    revisions: (row.revisions as unknown as WikiRevisionRow<Block>[]).map(r => ({ ...r, createdAt: new Date(r.createdAt) })),
+  };
+}
+
 /**
  * A page's history for the history view and `/api/wiki/…/history`, each
  * revision diffed against the one before it. Uncached, and deliberately
  * reachable that way: the API route is the documented way to confirm a
  * direct-DB script write landed before any cache has caught up with it.
+ * A deleted page answers from its snapshot, with `deleted` saying when and by
+ * whom, so any of its revisions can restore it.
  */
 export async function loadPageHistory(tagPath: string, slug: string) {
   const page = await store.get(tagPath, slug);
-  if (!page) return null;
-  const revisions = await store.history(page.id, { limit: 500 });
-  const authors = await authorsOf(revisions.map(r => r.authorId));
+  const gone = page ? null : await findDeletion(tagPath, slug);
+  if (!page && !gone) return null;
+  const revisions = page
+    ? await store.history(page.id, { limit: 500 })
+    : withChanges<WikiRevisionRow<Block>, Block>(gone!.revisions.slice(-501).reverse()).slice(0, 500);
+  const authors = await authorsOf([...revisions.map(r => r.authorId), gone?.deletedBy ?? null]);
   return {
-    currentVersion: page.version,
+    currentVersion: page?.version ?? gone!.page.version,
+    ...(gone && { deleted: { at: gone.deletedAt, by: (gone.deletedBy && authors.get(gone.deletedBy)) || null } }),
     // The column is a string, written only by the store's own version bump.
     revisions: revisions.map(r => ({ ...r, changeType: r.changeType as ChangeType, ...(r.authorId && authors.get(r.authorId) ? { author: authors.get(r.authorId) } : {}) })),
   };
@@ -305,13 +324,47 @@ export async function loadPageHistory(tagPath: string, slug: string) {
 
 export const getPageHistory = cached('getPageHistory', loadPageHistory, (tagPath, slug) => [pageTag(tagPath, slug)]);
 
-/** Deletes a page, its history, and the room and notifications that point at it. */
-export async function deletePage(page: { id: string; tagPath: string; slug: string }) {
+/**
+ * Deletes a page, keeping it and its revisions in `deleted_pages` so its
+ * history can still restore it. Its notifications go; its room's lines stay,
+ * keyed to the page id a restore brings back.
+ */
+export async function deletePage(page: { id: string }, deletedBy: string | null) {
   await prisma.$transaction([
     prisma.notification.deleteMany({ where: { pageId: page.id } }),
-    prisma.chatMessage.deleteMany({ where: { pageId: page.id } }),
+    prisma.$executeRaw`
+      INSERT INTO deleted_pages (id, tag_path, slug, page, revisions, deleted_by)
+      SELECT p.id, p."tagPath", p.slug, to_jsonb(p) - 'search_tsv',
+             COALESCE((SELECT jsonb_agg(to_jsonb(r) ORDER BY r."createdAt", r.id) FROM "WikiRevision" r WHERE r."pageId" = p.id), '[]'::jsonb),
+             ${deletedBy}::text
+        FROM "WikiPage" p WHERE p.id = ${page.id}`,
+    prisma.wikiPage.delete({ where: { id: page.id } }),
   ]);
-  return store.remove(page.tagPath, page.slug);
+}
+
+/**
+ * Puts a page back as one of its revisions had it, the restore a major
+ * revision of its own. A deleted page first comes back as it stood, under its
+ * own id with its whole history, unless a page has taken its address since.
+ */
+export async function restoreRevision(tagPath: string, slug: string, revisionId: string, authorId: string) {
+  if (!await store.get(tagPath, slug)) {
+    const gone = await findDeletion(tagPath, slug);
+    if (!gone) throw new HttpError(404, 'Page not found');
+    if (!gone.revisions.some(r => r.id === revisionId)) throw new HttpError(404, 'Revision not found');
+    await prisma.$transaction([
+      prisma.$executeRaw`
+        INSERT INTO "WikiPage" (id, "siteId", "tagPath", slug, title, content, metadata, version, "authorId", "lastVerifiedAt", "createdAt", "updatedAt")
+        SELECT id, "siteId", "tagPath", slug, title, content, metadata, version, "authorId", "lastVerifiedAt", "createdAt", "updatedAt"
+          FROM jsonb_populate_record(NULL::"WikiPage", ${JSON.stringify(gone.page)}::jsonb)`,
+      prisma.$executeRaw`
+        INSERT INTO "WikiRevision" (id, "pageId", title, content, version, "changeType", message, "authorId", "createdAt")
+        SELECT id, "pageId", title, content, version, "changeType", message, "authorId", "createdAt"
+          FROM jsonb_populate_recordset(NULL::"WikiRevision", ${JSON.stringify(gone.revisions)}::jsonb)`,
+      prisma.deletedPage.delete({ where: { id: gone.id } }),
+    ]);
+  }
+  return store.restore(tagPath, slug, revisionId, { authorId });
 }
 
 // ========== SEARCH ==========

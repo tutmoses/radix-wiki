@@ -30,7 +30,8 @@ model ChatMessage {
   createdAt    DateTime      @default(now()) @map("created_at")
   flags        ChatFlag[]
   /// The Ideas card whose room the line is in, as a "WikiPage" id; none for the
-  /// wiki's own room. No relation, as on Notification: `deletePage` deletes them.
+  /// wiki's own room. No relation, as on Notification: a deleted card's lines stay
+  /// for the restore that brings its id back.
   pageId       String?       @map("page_id")
 
   @@index([pageId, id])

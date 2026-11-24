@@ -3,8 +3,10 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
+import { EmptyState } from '@/components/EmptyState';
 import { parsePath } from '@/lib/path';
-import { getHomepage, getNews, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, resolveBlockData, getPageByAsset, getSiblingPages, getAssetPages, getTitleIndex } from '@/lib/wiki';
+import { getHomepage, getNews, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, findDeletion, resolveBlockData, getPageByAsset, getSiblingPages, getAssetPages, getTitleIndex } from '@/lib/wiki';
 import { getMaintenanceQueues } from '@/lib/maintenance';
 import { getSession } from '@/lib/auth';
 import { rankRelated, taxonomy } from '@/lib/taxonomy';
@@ -38,7 +40,7 @@ import ChartsOverview from '@/components/charts/ChartsOverview';
 import ValidatorsView from '@/components/charts/ValidatorsView';
 import TokensView from '@/components/charts/TokensView';
 import TokenDetailView from '@/components/charts/TokenDetailView';
-import { pageDescription, pageUrl } from '@/lib/utils';
+import { pageDescription, pagePath, pageUrl } from '@/lib/utils';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_REFS, SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { CARD, ogMetadata } from '@/lib/og';
@@ -178,7 +180,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const session = await getSession();
     if (!session) notFound();
     return {
-      title: 'New page',
+      title: await findDeletion(parsed.tagPath, parsed.slug) ? 'Deleted page' : 'New page',
       description: 'Create a new page on RADIX Wiki.',
       robots: NOINDEX_ROBOTS,
       alternates: { canonical: pageUrl(parsed.tagPath, parsed.slug) },
@@ -553,6 +555,14 @@ async function renderRoute({ params, searchParams }: Props, nowMs: number) {
   if (!rawPage) {
     const session = await getSession();
     if (!session) notFound();
+    // A deleted page's address points at the history that can restore it, not at a new page.
+    if (await findDeletion(parsed.tagPath, parsed.slug)) {
+      return (
+        <EmptyState as="h1" title="This page was deleted"
+          description="Its history keeps every revision, and restoring one brings it back."
+          action={<Link href={`${pagePath(parsed.tagPath, parsed.slug)}/history`}>View its history</Link>} />
+      );
+    }
     // Authenticated visitors fall through to PageView, which renders the create-page editor.
   }
   // The editor gets the stored HTML cleaned but undecorated: its iframe node

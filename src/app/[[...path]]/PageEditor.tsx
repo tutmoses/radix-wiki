@@ -351,7 +351,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   };
 
   const handleDelete = async () => {
-    if (!page || !confirm('Are you sure you want to delete this page?')) return;
+    if (!page || !confirm('Delete this page? Its history keeps every revision, and restoring one brings it back.')) return;
     setPhase({ kind: 'deleting' });
     try {
       const r = await fetch(`/api/wiki/${page.tagPath}/${page.slug}`, { method: 'DELETE' });

@@ -220,7 +220,7 @@ export const TOOLS: McpToolSpec[] = [
     name: 'restore_revision',
     title: 'Restore a revision',
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
-    description: 'Make an earlier revision the current page, written as a new revision. Requires a ROLA bearer token and passes the same gates as edit_page. Take the revision `id` from get_page_history.',
+    description: 'Make an earlier revision the current page, written as a new revision; on a deleted page, bring the page back as that revision had it. Requires a ROLA bearer token and passes the same gates as edit_page. Take the revision `id` from get_page_history.',
     auth: 'rola',
     inputSchema: {
       type: 'object',
@@ -235,7 +235,7 @@ export const TOOLS: McpToolSpec[] = [
     name: 'delete_page',
     title: 'Delete a page',
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-    description: `Delete an article with its history. Requires a ROLA bearer token. Its author may delete it; on a shared board (${[...SHARED_PATHS].join(', ')}), so may anyone who clears the bar to edit it. Locked pages, hub articles and the homepage cannot be deleted.`,
+    description: `Delete an article. Its history stays readable through get_page_history, and restore_revision with any of its revisions brings it back. Requires a ROLA bearer token. Its author may delete it; on a shared board (${[...SHARED_PATHS].join(', ')}), so may anyone who clears the bar to edit it. Locked pages, hub articles and the homepage cannot be deleted.`,
     auth: 'rola',
     inputSchema: {
       type: 'object',

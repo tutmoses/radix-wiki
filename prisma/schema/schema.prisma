@@ -139,3 +139,21 @@ model LedgerDay {
 
   @@map("ledger_days")
 }
+
+/// A deleted page as it stood, with every revision, so its history can still
+/// restore it: `deletePage` writes it, and `restoreRevision` puts the page and
+/// its revisions back under their own ids and drops it. Keyed by the page's id.
+model DeletedPage {
+  id        String   @id
+  tagPath   String   @map("tag_path")
+  slug      String
+  /// The "WikiPage" row, its generated search column left out.
+  page      Json
+  /// Its "WikiRevision" rows, oldest first.
+  revisions Json
+  deletedBy String?  @map("deleted_by")
+  deletedAt DateTime @default(now()) @map("deleted_at")
+
+  @@index([tagPath, slug, deletedAt])
+  @@map("deleted_pages")
+}

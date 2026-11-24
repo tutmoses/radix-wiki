@@ -32,7 +32,12 @@ interface RevisionData {
   author?: { id: string; displayName?: string | null; shortAddress: string; avatarUrl?: string | null };
 }
 
-type HistoryData = { currentVersion: string; revisions: RevisionData[] };
+type HistoryData = {
+  currentVersion: string;
+  revisions: RevisionData[];
+  /** A deleted page's: none of its revisions is current, so any of them brings it back. */
+  deleted?: { at: Date; by: RevisionData['author'] | null };
+};
 
 const TYPE_BADGE: Record<string, { label: string; variant: 'danger' | 'warning' | 'secondary' }> = {
   major: { label: 'Major', variant: 'danger' },
@@ -80,6 +85,8 @@ export default function HistoryView({ data, tagPath, slug, isHomepage }: { data:
 
   const apiBase = isHomepage ? '/api/wiki' : `/api/wiki${pagePath(tagPath, slug)}`;
   const viewPath = isHomepage ? '/' : pagePath(tagPath, slug);
+  // A deleted page's own address is gone, so Back goes to its category.
+  const backPath = data.deleted ? `/${tagPath}` : viewPath;
   // Confirm, POST, report: `wiki-formant/react`. A failure shows above the table.
   const { restore, busyId, error: restoreError } = useRevisionRestore<string>(restoreViaPost(`${apiBase}/history`), {
     onRestored: () => router.push(viewPath),
@@ -90,8 +97,15 @@ export default function HistoryView({ data, tagPath, slug, isHomepage }: { data:
       {!isHomepage && <Breadcrumbs path={[...tagPath.split('/'), slug].filter(Boolean)} suffix="History" />}
       <div className="spread">
         <h1 id={isHomepage ? 'homepage-history' : 'page-history'} className="m-0!">{isHomepage ? 'Homepage' : 'Page'} History</h1>
-        <Link href={viewPath}><Button variant="secondary" size="sm"><ArrowLeft size={16} />Back</Button></Link>
+        <Link href={backPath}><Button variant="secondary" size="sm"><ArrowLeft size={16} />Back</Button></Link>
       </div>
+      {data.deleted && (
+        <p className="text-small" role="status">
+          Deleted {formatDay(data.deleted.at, { month: 'short', day: 'numeric', year: 'numeric' })}
+          {data.deleted.by && <> by {data.deleted.by.displayName || data.deleted.by.shortAddress}</>}.
+          {isAuthenticated ? ' Restore any revision to bring the page back.' : ' Sign in to restore it.'}
+        </p>
+      )}
       {restoreError && <p className="text-error text-small" role="alert">{restoreError}</p>}
       {data.revisions.length > 0 ? (
         <div className="overflow-x-auto">
@@ -109,7 +123,7 @@ export default function HistoryView({ data, tagPath, slug, isHomepage }: { data:
             <tbody>
               {sorted.map((rev, i) => {
                 // The newest revision is the current one wherever the sort puts it.
-                const isCurrent = rev.id === data.revisions[0]?.id;
+                const isCurrent = !data.deleted && rev.id === data.revisions[0]?.id;
                 const type = TYPE_BADGE[rev.changeType] ?? TYPE_BADGE.patch!;
                 const { changes } = rev;
                 const summary = summarize(changes, rev.changeType);

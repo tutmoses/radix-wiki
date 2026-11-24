@@ -12,7 +12,7 @@ import { requireAuth, cachedJson, tagged, CACHE, overBudget, IP_LIMITS, type Rou
 import { clientKey } from 'wiki-formant/rate-limit';
 import { toListing } from 'wiki-formant/store';
 import { isReservedSlug, parsePath } from '@/lib/path';
-import { store, toWikiPage, withAuthor, withAuthors, deletePage, searchPages, resolveBlockData, loadPageHistory, getCategoryPages, revalidatePage, pageTag, routeTags, CORPUS_TAG, type StoredRow } from '@/lib/wiki';
+import { store, toWikiPage, withAuthor, withAuthors, deletePage, findDeletion, restoreRevision, searchPages, resolveBlockData, loadPageHistory, getCategoryPages, revalidatePage, pageTag, routeTags, CORPUS_TAG, type StoredRow } from '@/lib/wiki';
 import { blockIssues, validateBlocks } from '@/lib/block-utils';
 import { describeBlockIssues, MAX_BLOCK_ROWS } from 'wiki-formant/validation';
 import { blocksToMdx } from '@/lib/mdx';
@@ -307,7 +307,8 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
       const auth = await requireAuth(request, { type: 'edit', tagPath: parsed.tagPath });
       if ('error' in auth) return auth.error;
 
-      const page = await store.get(parsed.tagPath, parsed.slug);
+      // A deleted page is restored from its snapshot, under the gates it had.
+      const page = await store.get(parsed.tagPath, parsed.slug) ?? (await findDeletion(parsed.tagPath, parsed.slug))?.page;
       if (!page) return errors.notFound('Page not found');
 
       const refusal = writeRefusal(page, auth.session.userId, 'restore');
@@ -316,7 +317,7 @@ export async function POST(request: NextRequest, context: RouteContext<PathParam
       const { revisionId } = await request.json();
       if (!revisionId) return errors.badRequest('Revision ID required');
 
-      const restored = await store.restore(page.tagPath, page.slug, revisionId, { authorId: auth.session.userId });
+      const restored = await restoreRevision(page.tagPath, page.slug, revisionId, auth.session.userId);
       revalidatePage(page.tagPath, page.slug);
       return json({ success: true, version: restored.page.version });
     }
@@ -452,7 +453,7 @@ export async function DELETE(request: NextRequest, context: RouteContext<PathPar
       if (check.status !== 'allowed') return balanceRefusal(check, action);
     }
 
-    await deletePage(existing);
+    await deletePage(existing, auth.session.userId);
     revalidatePage(existing.tagPath, existing.slug);
     deliverWebhooks('page.deleted', toWikiPage(existing), null, { displayName: null, radixAddress: auth.session.radixAddress });
     return json({ success: true });
