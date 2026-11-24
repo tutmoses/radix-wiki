@@ -698,12 +698,28 @@
   .board-column { @apply flex flex-col rounded-lg bg-surface-1/40; }
   .board-column-head { @apply m-0 flex items-center justify-between gap-2 px-3 py-2.5 text-sm font-semibold border-b border-border-muted whitespace-nowrap; }
   .board-column-body { @apply flex flex-col gap-2 p-2 min-h-24; }
-  .board-card { @apply flex flex-col gap-2 p-3 rounded-lg bg-surface-1 border border-border-muted/60 transition-all hover:bg-surface-2 hover:border-border-muted; }
+  .board-card { @apply flex flex-col gap-2 p-3 rounded-lg bg-surface-1 border border-border-muted/60 transition-all hover:bg-surface-2 hover:border-border-muted; container-type: inline-size; }
   .board-card-head { @apply flex items-start justify-between gap-2 text-xs text-text-muted; }
   .board-card-title { @apply text-sm font-medium text-text line-clamp-3; }
-  .board-card-progress { @apply flex flex-wrap items-center gap-x-3 gap-y-1.5; & > .card-progress { @apply grow basis-24 min-w-0; } }
-  /* The owner and the reply count stay on one line: a long name truncates rather than pushing the count down. */
-  .board-card-who { @apply flex grow items-center gap-3 min-w-0; & > .assignee-chip { @apply min-w-0; & > span { @apply truncate; } } }
+  /*
+   * Owner, progress bar, reply count, each in its own column so a missing one
+   * leaves the others in place. A card too narrow for all three puts the bar on
+   * its own line above the owner and the count. Margins, not gaps, so an absent
+   * owner leaves no indent.
+   */
+  .board-card-progress {
+    @apply grid items-center gap-y-1.5;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    & > .board-card-owner { grid-column: 1; @apply min-w-0 mr-3; & > span { @apply truncate; } }
+    & > .card-progress { grid-column: 2; @apply min-w-0; }
+    & > .board-card-replies { grid-column: 3; @apply ml-3; }
+    @container (width < 14rem) {
+      grid-template-columns: minmax(0, 1fr) auto;
+      & > .card-progress { grid-column: 1 / -1; grid-row: 1; }
+      & > .board-card-owner { @apply mr-0; }
+      & > .board-card-replies { grid-column: 2; }
+    }
+  }
   .board-card-meta { @apply flex flex-wrap items-center gap-x-3 gap-y-1 empty:hidden; }
   .board-empty { @apply flex items-center justify-center py-8 text-sm text-text-muted italic; }
   .assignee-chip { @apply flex items-center gap-1.5 text-xs text-text-muted; }

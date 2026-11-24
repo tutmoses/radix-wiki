@@ -26,11 +26,11 @@ function TargetChip({ meta }: { meta: PageMetadata }) {
   return <span className={cn('assignee-chip', overdue && 'text-error')}>{overdue ? 'Overdue: ' : 'Target: '}{formatDay(meta.target, { month: 'short', day: 'numeric' })}</span>;
 }
 
-function AssigneeChip({ raw }: { raw?: string }) {
+function AssigneeChip({ raw, className }: { raw?: string; className?: string }) {
   const assignee = readAssignee(raw);
   if (assignee.kind === 'none') return null;
   return (
-    <span className="assignee-chip">
+    <span className={cn('assignee-chip', className)}>
       {assignee.kind === 'member' && assignee.address ? <UserAvatar seed={assignee.address} size="sm" /> : <User size={12} />}
       <span>{assignee.name}</span>
     </span>
@@ -93,11 +93,9 @@ function BoardCard({ page }: { page: IdeasPage }) {
       )}
       <span className="board-card-title">{page.title}</span>
       <div className="board-card-progress">
+        <AssigneeChip raw={meta.assignee} className="board-card-owner" />
         <CardProgress progress={page.progress} />
-        <span className="board-card-who">
-          <AssigneeChip raw={meta.assignee} />
-          <span className="assignee-chip ml-auto" title={`${page.replyCount} replies`}><MessageSquare size={12} />{page.replyCount}</span>
-        </span>
+        <span className="assignee-chip board-card-replies" title={`${page.replyCount} replies`}><MessageSquare size={12} />{page.replyCount}</span>
       </div>
       <div className="board-card-meta">
         <TargetChip meta={meta} />
