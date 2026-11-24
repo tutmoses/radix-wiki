@@ -3,9 +3,10 @@
 // The rail had drifted to three spacings at once: 8px between the site links,
 // 4px before an open branch and between contents entries, and 56px between
 // sections, each written as its own utility on its own rule. globals.css now
-// holds the rhythm in three tokens on `.wiki-sidebar` (`--rail-row`, a row's own
-// padding; `--rail-gap`, between rows; `--rail-section`, between sections), and
-// this fails on any vertical spacing in the rail that is not one of them.
+// holds the rhythm in three tokens in `:root`, which wiki-formant/base.css's
+// rows read (`--rail-row`, a row's own padding; `--rail-gap`, between rows;
+// `--rail-section`, between sections), and this fails on any vertical spacing
+// in the rail that is not one of them.
 //
 //   node scripts/check-rail.mjs      # npm run lint runs it too
 //

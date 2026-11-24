@@ -16,7 +16,7 @@ export const viewport = site.viewport;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SiteDocument className={fontVariables} bodyClassName="font-sans antialiased" site={site}>
+    <SiteDocument className={fontVariables} site={site}>
       <RadixProvider>
         {/* The rail is the site nav, on every route, so the root layout mounts it. */}
         <SiteShell header={<Header />} footer={<Footer />}>

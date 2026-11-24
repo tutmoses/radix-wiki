@@ -4,5 +4,5 @@ import { GlobalRouteError } from 'wiki-formant/react';
 import { fontVariables } from '@/app/fonts';
 
 export default function GlobalError({ retry }: { retry: () => void }) {
-  return <GlobalRouteError retry={retry} htmlClassName={fontVariables} bodyClassName="font-sans antialiased" buttonClassName="btn btn-primary" />;
+  return <GlobalRouteError retry={retry} htmlClassName={fontVariables} />;
 }

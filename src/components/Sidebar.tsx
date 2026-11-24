@@ -2,15 +2,15 @@
 
 'use client';
 
-import Link from 'next/link';
 import { Home, Trophy, BarChart3, Wrench, MessagesSquare } from 'lucide-react';
 import { useMemo } from 'react';
-// The rail is wiki-formant's `Rail`, drawn by `wiki-formant/base.css` in the
-// `wiki-rail__*` classes, as on caper, acuiq2 and miow; globals.css holds only
+// The rail is wiki-formant's `Rail` on Next's router, drawn by
+// `wiki-formant/base.css` in the `wiki-rail__*` classes; globals.css holds only
 // this wiki's look. Its "On this page" lists the headings the page on screen
 // hands up with `RailHeadings`.
-import { Rail, type RailLink } from 'wiki-formant/react';
-import { useAuth, useWikiPathname } from '@/hooks';
+import { Rail } from 'wiki-formant/next';
+import type { RailLink } from 'wiki-formant/react';
+import { useAuth } from '@/hooks';
 import { getVisibleTags, type TagNode } from '@/lib/tags';
 import { ROOM_PATH } from '@/lib/trollbox';
 
@@ -28,7 +28,6 @@ const categoryLinks = (nodes: TagNode[], parent = ''): RailLink[] =>
     });
 
 export function Sidebar() {
-  const pathname = useWikiPathname();
   const { isAuthenticated } = useAuth();
   const categories = useMemo(() => categoryLinks(getVisibleTags()), []);
 
@@ -41,5 +40,5 @@ export function Sidebar() {
     ...(isAuthenticated ? [{ href: '/maintenance', label: 'Maintenance', icon: <Wrench size={18} /> }] : []),
   ];
 
-  return <Rail label="Wiki navigation" nav={nav} groups={[{ label: 'Categories', links: categories }]} pathname={pathname} link={Link} />;
+  return <Rail label="Wiki navigation" nav={nav} groups={[{ label: 'Categories', links: categories }]} />;
 }

@@ -2,5 +2,5 @@
 import { RouteError } from 'wiki-formant/react';
 
 export default function Error({ retry }: { retry: () => void }) {
-  return <RouteError retry={retry} buttonClassName="btn btn-primary" />;
+  return <RouteError retry={retry} />;
 }

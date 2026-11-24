@@ -28,6 +28,14 @@
   --ui-up: var(--color-success);
   --ui-down: var(--color-error);
   --ui-shadow: var(--shadow);
+  /* The rail's rows (base.css's `wiki-rail__*`) on one vertical rhythm, which
+     `npm run lint` holds them to: --rail-row, --rail-gap, --rail-section. */
+  --rail-pad-block: 1rem 6rem;
+  --rail-section: 1.25rem;
+  --rail-gap: 0.0625rem;
+  --rail-row: 0.125rem;
+  --rail-inline: 0.75rem;
+  --rail-weight: 500;
 }
 
 @theme {
@@ -84,7 +92,7 @@
      scroll anchoring is off during a smooth scroll, so it lands short. The rail's
      table of contents asks for smooth scrolling itself. The padding clears the
      sticky header for every anchor target, heading or not. */
-  html { font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; scroll-padding-top: calc(var(--rail-top) + 1rem); }
+  html { font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; scroll-padding-top: calc(var(--rail-top) + 1rem); }
   body { @apply bg-surface-0 text-text text-base; }
 
   /* One flow rhythm for every block-level element. Individual rules below carry
@@ -275,17 +283,16 @@
   /* Tabs: base.css draws its own tab classes, which are this wiki's names too, and
      shows the panel the editor selected; these are this wiki's look over them. */
   [data-tabs] {
-    .tabs-list { @apply flex gap-1 border-b border-border-muted mb-4; }
-    .tab-button { @apply py-2 px-4 bg-transparent border-b-2 border-transparent text-text-muted cursor-pointer transition-all hover:text-text; &.active { @apply text-accent border-accent; } }
+    .tabs-list { @apply border-b border-border-muted mb-4; }
+    .tab-button { @apply py-2 px-4 text-text-muted transition-all hover:text-text; &.active { @apply text-accent; } }
   }
   .tabs-editor {
-    @apply border border-border-muted rounded-lg overflow-hidden;
-    .tabs-list { @apply flex items-center gap-1 p-2 bg-surface-1 border-b border-border-muted mb-0; }
+    @apply border-border-muted rounded-lg overflow-hidden;
+    .tabs-list { @apply p-2 bg-surface-1 border-border-muted mb-0; }
     .tab-button-edit { @apply flex items-center gap-1 py-1 px-2 bg-surface-2 rounded border border-transparent; &.active { @apply bg-accent-muted border-accent; } }
     .tab-title-input { @apply bg-transparent border-0 outline-none w-24 text-small text-text placeholder:text-text-muted; }
-    .tab-remove { @apply p-0.5 rounded-sm text-text-muted cursor-pointer hover:text-error hover:bg-surface-2; }
-    .tab-add { @apply py-1 px-2 text-text-muted cursor-pointer rounded hover:text-accent hover:bg-surface-2; }
-    .tabs-content { @apply p-4; }
+    .tab-remove { @apply p-0.5 rounded-sm text-text-muted hover:text-error hover:bg-surface-2; }
+    .tab-add { @apply py-1 px-2 text-text-muted rounded hover:text-accent hover:bg-surface-2; }
   }
 
     .code-block-wrapper:hover > .code-copy-btn { @apply opacity-100; }
@@ -315,8 +322,8 @@
 
   /* ===== FORM CONTROLS ===== */
   /* <Button> composes these with its size; a button rendered outside React's <Button>, such as
-     wiki-formant's PasskeyButton, names them directly. */
-  .btn { @apply flex items-center gap-2 justify-center px-4 py-2 font-medium rounded-md border border-transparent cursor-pointer transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed; }
+     wiki-formant's PasskeyButton or RouteError, names them directly, and `.btn-primary` alone is a whole button. */
+  .btn, .btn-primary { @apply flex items-center gap-2 justify-center px-4 py-2 font-medium rounded-md border border-transparent cursor-pointer transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed; }
   .btn-primary { @apply bg-accent text-text-inverted hover:bg-accent-hover hover:text-text-inverted; }
   .icon-btn { @apply p-2 rounded transition-colors cursor-pointer inline-flex items-center justify-center hover:bg-surface-2; }
   .icon-btn-remove { @apply text-text-muted hover:text-error; }
@@ -425,33 +432,26 @@
 
   /* ===== SIDEBAR ===== */
   /* The rail's layout — a sticky column from wiki-formant's 1024px breakpoint,
-     a drawer stacked above the article below it — is wiki-formant/base.css,
-     the same on all three wikis; this is the surface. `--rail-top` is what the
-     sticky rail clears and `--rail-border` the rule beside it, which becomes
-     the drawer's foot.
-
-     Every row in the rail sits on one vertical rhythm, three tokens: a row's
-     own padding, the gap between rows, and the space between sections.
-     `npm run lint` fails on any other vertical spacing in the rail. */
-  .wiki-sidebar { @apply bg-surface-0; --rail-row: 0.125rem; --rail-gap: 0.0625rem; --rail-section: 1.25rem; }
-  .wiki-sidebar__scroll { @apply pb-24 gap-(--rail-section); }
+     a drawer stacked above the article below it — and its rows on the `--rail-*`
+     tokens in `:root` are wiki-formant/base.css, the same on all three wikis;
+     this is the surface. `--rail-top` is what the sticky rail clears and
+     `--rail-border` the rule beside it, which becomes the drawer's foot. */
+  .wiki-sidebar { @apply bg-surface-0; }
   /* The rail's groups and its "On this page", whose structure is base.css's
      `wiki-rail__*`: this wiki's rows, its accent for the link being read, and
      the category trail indented under a rule so it reads without an expander
      control. "On this page" sits between the site links and the categories,
      under a rule. */
-  .wiki-rail__group { @apply gap-(--rail-gap); }
   .wiki-rail__group:has(> .wiki-rail__toc-btn) { @apply pt-(--rail-section) border-t border-border-muted; }
-  .wiki-rail__label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3 py-(--rail-row); }
-  .wiki-rail__list { @apply gap-(--rail-gap); li { @apply flex flex-col gap-(--rail-gap); } }
-  .wiki-rail__item { @apply gap-x-2 px-3 py-(--rail-row) rounded-md; }
-  .wiki-rail__item--active { @apply font-medium; }
-  .wiki-rail__subtree { @apply ml-4 pl-2 border-l border-border-muted; .wiki-rail__item { @apply text-small; } }
-  .wiki-rail__toc-btn { @apply gap-x-2 px-3 py-(--rail-row) text-text-muted hover:text-text transition-colors; }
+  .wiki-rail__label { @apply text-small font-bold tracking-wide px-3 py-(--rail-row); }
+  .wiki-rail__list li { @apply flex flex-col gap-(--rail-gap); }
+  .wiki-rail__item { @apply rounded-md; }
+  .wiki-rail__subtree { @apply ml-4 pl-2 border-l border-border-muted; --rail-size: var(--text-small); }
+  .wiki-rail__toc-btn { @apply gap-x-2 hover:text-text transition-colors; }
   .wiki-rail__toc-btn > .wiki-rail__label { @apply p-0 font-medium text-inherit; }
-  .wiki-rail__toc-list { @apply gap-(--rail-gap) pl-4; }
-  .wiki-rail__toc-item { @apply block py-(--rail-row) px-2 rounded truncate border-transparent; }
-  .wiki-rail__toc-item--active { @apply font-medium border-accent; }
+  .wiki-rail__toc-list { @apply pl-4; }
+  .wiki-rail__toc-item { @apply block px-2 rounded truncate border-transparent; }
+  .wiki-rail__toc-item--active { @apply border-accent; }
 
   /* ===== BANNER ===== */
   /* The frame and its 4:1 floor are wiki-formant/banner's (base.css); this is
@@ -591,8 +591,7 @@
 
 
   /* ===== STATS (/stats) =====
-     The layout and the bars' shape are wiki-formant/base.css; this is the colour. */
-  .stats-figures button > span, .stats-list h2 { @apply text-text-muted; }
+     The layout, the bars' shape and the muted names are wiki-formant/base.css; this is the figures' type. */
   .stats-figures strong { @apply text-h3 font-normal; }
 
   /* ===== SEE ALSO ===== */
@@ -603,7 +602,7 @@
   .category-grid { @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4; }
 
   /* ===== STAT GRID ===== */
-  .stat-grid { @apply sm:grid-cols-5 gap-3; }
+  .stat-grid { @apply sm:grid-cols-5; }
   .stat-suffix { @apply ml-0.5 text-small font-normal text-text-muted; }
     /* Column overrides for the `stats` block; source order beats the base rule. */
   .stat-grid-2 { @apply sm:grid-cols-2; }
@@ -611,11 +610,11 @@
   .stat-grid-4 { @apply sm:grid-cols-4; }
 
   /* ===== TESTIMONIAL (TestimonialView) ===== */
-  .testimonial { @apply flex flex-col gap-2 my-6 pl-5 border-l-4 border-accent; }
+  .testimonial { @apply flex flex-col gap-2 pl-5 border-l-4 border-accent; }
   .testimonial > blockquote { @apply m-0 p-0 border-0 not-italic text-lg text-text; }
-  .testimonial figcaption { @apply flex flex-wrap items-center gap-2 text-text-muted text-small; }
-  .testimonial figcaption img { @apply size-8 rounded-full object-cover; }
-  .testimonial figcaption > span { @apply flex flex-wrap items-center gap-2; }
+  .testimonial figcaption { @apply flex-wrap gap-2 text-text-muted text-small; }
+  .testimonial figcaption img { @apply size-8; }
+  .testimonial figcaption > span { @apply items-center gap-2; }
   .testimonial strong { @apply font-normal; }
   .testimonial small { @apply px-2 py-0.5 bg-surface-1 rounded-full text-xs; }
 
@@ -773,7 +772,6 @@
     width: 100%;
     overflow: hidden;
     container-type: inline-size;
-    table { white-space: normal; }
     th { @apply bg-surface-2; }
 
     /* Between 768px and ~1150px the 1fr rail is only 130–260px wide, and two
