@@ -692,7 +692,7 @@
 
   .status-tabs { @apply flex items-center gap-0 border-b border-border-muted overflow-x-auto; scrollbar-width: none; &::-webkit-scrollbar { display: none; } }
   .status-tab { @apply px-3 py-2 text-small font-medium text-text-muted cursor-pointer transition-colors hover:text-text -mb-px border-b-2 border-transparent whitespace-nowrap shrink-0; }
-  .board-columns { @apply grid gap-3 pb-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6; }
+  .board-columns { @apply grid gap-3 pb-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-none xl:grid-flow-col xl:auto-cols-fr; }
   .board-column { @apply flex flex-col rounded-lg bg-surface-1/40; }
   .board-column-head { @apply m-0 flex items-center justify-between gap-2 px-3 py-2.5 text-sm font-semibold border-b border-border-muted whitespace-nowrap; }
   .board-column-body { @apply flex flex-col gap-2 p-2 min-h-24; }
