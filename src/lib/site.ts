@@ -1,7 +1,7 @@
 // src/lib/site.ts – the canonical origin every absolute URL is built from, named
 // and placed as in caper and acuiq2 so one grep finds it in all three.
 import { ccBy40 } from 'wiki-formant/license';
-import { siteRefs } from 'wiki-formant/metadata';
+import { siteGraphLd, siteRefs } from 'wiki-formant/metadata';
 import { xAccount } from 'wiki-formant/social';
 
 export const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
@@ -9,7 +9,7 @@ export const SITE_NAME = 'RADIX Wiki';
 export const SITE_DESCRIPTION = 'RADIX Wiki is a community-edited encyclopedia that documents Radix, a layer-1 blockchain with asset-oriented smart contracts, for its users and builders.';
 
 // The wiki as schema.org names it: `@id` references to the Organization and
-// WebSite nodes the layout's `siteGraphLd` states once on every page. Each
+// WebSite nodes `siteGraph` states once on every page. Each
 // Article and collection points at these rather than restating the nodes, which
 // had been declared twice and had already parted on the logo.
 export const SITE_REFS = siteRefs(SITE_URL);
@@ -21,6 +21,21 @@ export const X = xAccount({
   siteName: SITE_NAME,
   handle: '@RadixWiki',
   posts: 'news from the Radix ecosystem, one update per post, and a link to the Week in Review essay every Sunday',
+});
+
+// The Organization and WebSite nodes, which the root layout states on every page.
+export const siteGraph = siteGraphLd({
+  name: SITE_NAME,
+  url: SITE_URL,
+  description: SITE_DESCRIPTION,
+  logo: `${SITE_URL}/logo.png`,
+  // The wiki's own accounts only: listing the Radix GitHub org or a Radix
+  // Telegram here asserts the wiki is that organisation.
+  sameAs: [X.url, 'https://www.moltbook.com/u/RadixWiki', 'https://github.com/tutmoses/radix-wiki'],
+  api: {
+    description: 'REST API and MCP server for reading and writing Radix ecosystem wiki content',
+    url: `${SITE_URL}/api/wiki`,
+  },
 });
 
 // The sister wiki, named in llms.txt and the MCP instructions so an agent that
