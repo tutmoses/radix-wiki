@@ -131,8 +131,8 @@ export const TAG_HIERARCHY: TagNode[] = [
       { key: 'open positions', label: 'Open Positions:', type: 'text' },
     ],
     xrd: { create: 20_000 } },
-  { name: '✍️ Blog', slug: 'blog', sort: 'recent',
-    description: 'Long-form essays and analysis from the RADIX Wiki community — protocol commentary, ecosystem deep-dives, and editorial pieces.',
+  { name: '✍️ Blog', slug: 'blog', sort: 'recent', seoTitle: 'Radix News: Week in Review and Analysis',
+    description: 'Radix news every week: the Week in Review covers releases, governance, exchanges and the ledger, alongside essays on the protocol and its ecosystem.',
     metadataKeys: [{ key: 'date', label: 'Published:', type: 'date' }], xrd: { create: 50_000 } },
   {
     name: '💡 Ideas Pipeline',
