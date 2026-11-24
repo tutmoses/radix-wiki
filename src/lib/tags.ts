@@ -140,7 +140,7 @@ export const TAG_HIERARCHY: TagNode[] = [
     sort: 'recent' as SortOrder,
     description: 'A community-curated pipeline of proposals, feature requests, and research ideas for Radix — tracked from discussion through delivery.',
     metadataKeys: [
-      { key: 'status', label: 'Status:', type: 'select', options: ['🔴 Discussion', '🟠 Proposed', '🟡 Approved', '🔵 In Progress', '🟣 Testing', '🟢 Done'], required: true },
+      { key: 'status', label: 'Status:', type: 'select', options: ['🔴 Discussion', '🟠 Proposed', '🟡 Approved', '🔵 In Progress', '🟢 Done'], required: true },
       { key: 'priority', label: 'Priority:', type: 'select', options: ['㆔ High', '㆓ Medium', '⼀ Low'] },
       { key: 'workingGroup', label: 'Working Group:', type: 'select', options: ['📈 Biz / Marketing', '🤖 Dev / Network', '🗂️ Other'] },
       { key: 'assignee', label: 'Assignee:', type: 'user' },

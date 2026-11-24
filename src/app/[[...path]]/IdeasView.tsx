@@ -45,7 +45,6 @@ const EMOJI_TONE: Record<string, Tone> = {
   '\u{1F7E0}': { color: 'danger', variant: 'danger' },      // 🟠
   '\u{1F7E1}': { color: 'warning', variant: 'warning' },    // 🟡
   '\u{1F535}': { color: 'info', variant: 'info' },          // 🔵
-  '\u{1F7E3}': { color: 'purple', variant: 'secondary' },   // 🟣
   '\u{1F7E2}': { color: 'success', variant: 'success' },    // 🟢
 };
 
