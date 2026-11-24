@@ -420,7 +420,6 @@
   /* The keyboard highlight. Same surface as :hover so arrowing down and
      mousing over read as one selection rather than two competing ones. */
   .search-result-active { @apply bg-surface-2; }
-  .search-mark { @apply bg-accent/25 text-text rounded-sm px-0.5; }
   .search-result-all { @apply text-center text-small text-accent font-medium border-t border-border-muted hover:text-accent-hover; }
   .search-empty { @apply absolute top-full left-0 right-0 mt-2 bg-surface-1 border border-border rounded-lg shadow p-4 text-center text-text-muted z-50; }
   .search-page-result { @apply block p-3; }
