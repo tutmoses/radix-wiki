@@ -150,25 +150,25 @@ function radixOrgChart() {
   // 760 is the width figureBlock displays at. Four subsidiary boxes across at that width
   // leave 124px of inner space for a 144px title, so the row is two-by-two instead.
   const W = 760, H = 870, L = 48, R = W - L;
-  let b = paras(L, 146, 'How Radix is organized: a UK not-for-profit foundation and its subsidiaries build and steward the network – while governance is now handing over to a community-owned DAO.', 95, { size: 14, lh: 20, fill: C.text2 });
+  let b = paras(L, 146, 'How Radix is organized: the not-for-profit Radix Foundation, in the UK and Jersey, and its subsidiaries steward the network while governance passes to Radix DAO LLC.', 95, { size: 14, lh: 20, fill: C.text2 });
 
   // --- Section A: the Foundation group -------------------------------------
   b += sectionLabel(L, 198, 'THE FOUNDATION GROUP');
   // legend (line semantics), right-aligned to the margin
   b += line(520, 194, 542, 194, C.getaway, { w: 2 }) + t(548, 198, 'owns', { size: 11, w: 600, fill: C.muted });
-  b += line(600, 194, 622, 194, C.jupiter, { w: 2, dash: '4 3' }) + t(628, 198, 'funds / forming', { size: 11, w: 600, fill: C.muted });
+  b += line(600, 194, 622, 194, C.jupiter, { w: 2, dash: '4 3' }) + t(628, 198, 'paid to 2025', { size: 11, w: 600, fill: C.muted });
 
   // top tier: Foundation (owner) + RDX Works (funded, separate)
   const fdX = 202, fdW = 214, fdY = 212, topH = 92, fdCx = fdX + fdW / 2; // 309
   b += node(fdX, fdY, fdW, topH, {
-    titleLines: ['Radix Foundation Ltd'],
-    descLines: ['UK not-for-profit · limited by', 'guarantee · no shareholders'],
-    accent: C.getaway, fill: C.gTint, chipCol: C.getaway, tag: 'HOLDING CO',
+    titleLines: ['Radix Foundation'],
+    descLines: ['UK company (2019) and', 'Jersey foundation (2024)'],
+    accent: C.getaway, fill: C.gTint, chipCol: C.getaway, tag: 'NOT-FOR-PROFIT',
   });
   const rwX = 488, rwW = 224; // right-aligned to R
   b += node(rwX, fdY, rwW, topH, {
     titleLines: ['RDX Works Ltd'],
-    descLines: ['Core protocol developer; fka', 'Radix DLT (2017), renamed 2021'],
+    descLines: ['Core developer to Feb 2025;', 'owned by RDX Holdings Ltd'],
     accent: C.jupiter, fill: C.oTint, dash: '4 3', chipCol: C.jupiter, tag: 'SEPARATE COMPANY',
   });
   // dashed funding link Foundation -> RDX Works
@@ -177,7 +177,7 @@ function radixOrgChart() {
   b += `<path d="M${rwX - 9},${linkY - 5} L${rwX},${linkY} L${rwX - 9},${linkY + 5}" fill="none" stroke="${C.jupiter}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`;
   // 'grant funding' is 73px at 11px and the gap between the boxes is 72; the legend
   // already names the dashed line, so the inline label only has to disambiguate it.
-  b += t((fdX + fdW + rwX) / 2, linkY - 8, 'funding', { size: 11, w: 700, fill: C.muted, anchor: 'middle', ls: '0.04em' });
+  b += t((fdX + fdW + rwX) / 2, linkY - 8, 'contract', { size: 11, w: 700, fill: C.muted, anchor: 'middle', ls: '0.04em' });
 
   // ownership bus down to four subsidiaries, two by two
   const gap = 16, subW = (R - L - gap) / 2, subH = 100;
@@ -193,13 +193,13 @@ function radixOrgChart() {
     const from = r === 0 ? busY : busY2;
     centers.forEach((cx) => { b += line(cx, from, cx, sy, C.getaway, { w: 1.2 }) + triDown(cx, sy, C.getaway); });
   });
-  b += t(430, busY - 7, 'wholly-owned subsidiaries', { size: 11, w: 700, fill: C.muted, anchor: 'middle', ls: '0.06em' });
+  b += t(430, busY - 7, 'subsidiaries', { size: 11, w: 700, fill: C.muted, anchor: 'middle', ls: '0.06em' });
 
   const subs = [
     { titleLines: ['Radix Tokens (Jersey) Ltd'], titleSlot: 1, descLines: ['Issues & manages XRD;', 'JFSC-regulated treasury'], tag: 'TOKENS', accent: C.xrd, chipCol: C.xrd, fill: C.xTint },
-    { titleLines: ['Radix Publishing Ltd'], titleSlot: 1, descLines: ['Canonical open-source', 'code, GitHub & comms'], tag: 'CODE / COMMS' },
+    { titleLines: ['Radix Publishing (UK) Ltd'], titleSlot: 1, descLines: ['Dormant; holds the Radix', "Wallet's app-store listings"], tag: 'APP STORES' },
     { titleLines: ['Archetype Ltd'], titleSlot: 1, descLines: ['Holds non-open-source', 'intellectual property'], tag: 'IP' },
-    { titleLines: ['Exosphere Ltd'], titleSlot: 1, descLines: ['Holding co; formerly', 'Radix Ecosystem Holding'], tag: 'HOLDING' },
+    { titleLines: ['Exosphere Ltd'], titleSlot: 1, descLines: ['Jersey; role not published;', 'formerly Radix Ecosystem Holding'], tag: 'JERSEY' },
   ];
   subs.forEach((s, i) => { b += node(cols[i % 2], i < 2 ? subY1 : subY2, subW, subH, s); });
 
@@ -214,16 +214,16 @@ function radixOrgChart() {
   const fx = [0, 1, 2].map((i) => L + i * (flW + aGap));
   const fc = fx.map((x) => x + flW / 2);
   b += node(fx[0], flY, flW, flH, {
-    titleLines: ['Radix Foundation'], titleSlot: 2, descLines: ['Entering maintenance mode', '(2026); pre-funds core infra'], tag: 'WINDING DOWN',
+    titleLines: ['Radix Foundation'], titleSlot: 2, descLines: ['Maintenance mode since', 'May 2026; pre-funds infra'], tag: 'WINDING DOWN',
   });
   b += node(fx[1], flY, flW, flH, {
     titleLines: ['Radix Accountability', 'Council'], titleSlot: 2, descLines: ['5 community-elected;', 'multi-sig steward · Feb 2026'], tag: 'BRIDGE BODY (RAC)', accent: C.getaway, fill: C.gTint, chipCol: C.getaway,
   });
   b += node(fx[2], flY, flW, flH, {
-    titleLines: ['Radix DLT DAO (RDD)'], titleSlot: 2, descLines: ['Community-owned; legal', 'entity forming · gets treasury'], tag: 'FUTURE OWNER', dash: '4 3', accent: C.getaway, fill: C.surf1, chipCol: C.muted,
+    titleLines: ['Radix DLT DAO (RDD)'], titleSlot: 2, descLines: ['Radix DAO LLC (Marshall', 'Islands, 2026); gets treasury'], tag: 'FUTURE OWNER', accent: C.getaway, fill: C.surf1, chipCol: C.muted,
   });
   // arrows between flow stages
-  [[fx[0] + flW, fx[1], 'hands over'], [fx[1] + flW, fx[2], 'forms']].forEach(([x1, x2, lab]) => {
+  [[fx[0] + flW, fx[1], 'hands over'], [fx[1] + flW, fx[2], 'formed']].forEach(([x1, x2, lab]) => {
     const mid = (x1 + x2) / 2;
     b += arrowR(mid + 6, flY + flH / 2, C.neut);
     b += line(x1 + 4, flY + flH / 2, mid, flY + flH / 2, C.neut, { w: 1.4 });

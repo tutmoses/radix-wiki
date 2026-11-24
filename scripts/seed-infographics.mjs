@@ -3,7 +3,8 @@
 //
 // Idempotent: keyed on data-graphic="<marker>" (re-run replaces in place). Writes
 // one revisions row per changed page. Skips locked pages. Run: node scripts/seed-infographics.mjs
-import { isLockedPage, withClient, embedFigure, readPage } from './wiki-utils.ts';
+// [--dry-run] [--message "why the figures changed"]
+import { isLockedPage, withClient, embedFigure, readPage, argOf } from './wiki-utils.ts';
 import { figureBlock } from '../brand-assets/kit.mjs';
 import { svgOf } from '../brand-assets/generate-infographics.mjs';
 
@@ -19,7 +20,7 @@ const SPECS = [
     file: '02-org-structure', marker: 'radix-org-structure',
     tagPath: 'ecosystem', slug: 'radix-foundation',
     heading: 'Organizational Structure at a Glance',
-    intro: 'Radix is run by a family of legal entities – a UK not-for-profit foundation and its wholly-owned subsidiaries – while the core protocol is built by RDX Works, a separate company the Foundation funds. Since 2026 the Foundation has been handing governance over to a community-owned DAO, bridged by the elected Radix Accountability Council.',
+    intro: 'Radix is run by a <a href="/contents/history/radix-corporate-structure" rel="noopener">family of legal entities</a>: the not-for-profit Radix Foundation, registered in the UK and in Jersey, and its subsidiaries. RDX Works, a separate company the Foundation paid under contract, built the core protocol until February 2025, when the Foundation took development in-house. Since 2026 the Foundation has been handing governance over to Radix DAO LLC, owned by the community, with the elected Radix Accountability Council as the bridge.',
     caption: 'The Radix entity group and the 2026 Foundation-to-DAO governance handover.',
   },
   {
@@ -98,7 +99,8 @@ await withClient(async (client) => {
       marker: s.marker,
       html: figureHtml(s),
       place: s.place,
-      message: `Add the "${s.heading}" infographic.`,
+      message: argOf('--message') ?? `Add the "${s.heading}" infographic.`,
+      dry: process.argv.includes('--dry-run'),
     });
     if (!res) { console.log(`${s.tagPath}/${s.slug}: unchanged, skip`); continue; }
     console.log(`${s.tagPath}/${s.slug}: ${res.action}; ${res.blocks.length} blocks; rev ${res.version}`);
