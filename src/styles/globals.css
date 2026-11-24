@@ -699,7 +699,7 @@
   .board-column-head { @apply m-0 flex items-center justify-between gap-2 px-3 py-2.5 text-sm font-semibold border-b border-border-muted whitespace-nowrap; }
   .board-column-body { @apply flex flex-col gap-2 p-2 min-h-24; }
   .board-card { @apply flex flex-col gap-2 p-3 rounded-lg bg-surface-1 border border-border-muted/60 transition-all hover:bg-surface-2 hover:border-border-muted; }
-  .board-card-head { @apply flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs text-text-muted; }
+  .board-card-head { @apply flex items-start justify-between gap-2 text-xs text-text-muted; }
   .board-card-title { @apply text-sm font-medium text-text line-clamp-3; }
   .board-card-meta { @apply flex flex-wrap items-center gap-x-3 gap-y-1 empty:hidden; }
   .board-empty { @apply flex items-center justify-center py-8 text-sm text-text-muted italic; }

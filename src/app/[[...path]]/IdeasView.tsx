@@ -4,7 +4,7 @@
 
 import { useState, useMemo, type ComponentProps } from 'react';
 import Link from 'next/link';
-import { MessageSquare, LayoutGrid, List, User } from 'lucide-react';
+import { MessageSquare, LayoutGrid, List, User, SignalHigh, SignalMedium, SignalLow } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Badge } from '@/components/ui';
@@ -65,18 +65,33 @@ function OptionBadge({ options, value, className }: { options: StatusOption[]; v
   return <Badge variant={options.find(o => o.label === label)?.variant} className={className}>{label}</Badge>;
 }
 
+/** Priority as signal bars in its level's colour, named for screen readers and on hover. */
+const PRIORITY_ICON: Record<string, { Icon: typeof SignalHigh; className: string }> = {
+  High: { Icon: SignalHigh, className: 'text-danger' },
+  Medium: { Icon: SignalMedium, className: 'text-warning' },
+  Low: { Icon: SignalLow, className: 'text-text-muted' },
+};
+
+function PriorityIcon({ value }: { value?: string }) {
+  if (!value) return null;
+  const label = categoryLabel(value);
+  const icon = PRIORITY_ICON[label];
+  if (!icon) return null;
+  return <icon.Icon size={16} className={cn('shrink-0', icon.className)} role="img" aria-label={`${label} priority`}><title>{`${label} priority`}</title></icon.Icon>;
+}
+
 /**
  * A card read top to bottom: whose it is and how urgent, what it is, how far
  * along, then who has it, by when, and how much talk.
  */
-function BoardCard({ page, priorityOptions }: { page: IdeasPage; priorityOptions: StatusOption[] }) {
+function BoardCard({ page }: { page: IdeasPage }) {
   const meta = (page.metadata as PageMetadata) || {};
   return (
     <Link href={`/${page.tagPath}/${page.slug}`} className="board-card">
       {(meta.workingGroup || meta.priority) && (
         <div className="board-card-head">
           <span>{meta.workingGroup}</span>
-          <OptionBadge options={priorityOptions} value={meta.priority} className="badge-sm shrink-0" />
+          <PriorityIcon value={meta.priority} />
         </div>
       )}
       <span className="board-card-title">{page.title}</span>
@@ -220,7 +235,7 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
                 <Badge>{items.length}</Badge>
               </h3>
               <div className="board-column-body">
-                {items.length > 0 ? items.map(p => <BoardCard key={p.id} page={p} priorityOptions={priorityOptions} />) : <div className="board-empty">No items</div>}
+                {items.length > 0 ? items.map(p => <BoardCard key={p.id} page={p} />) : <div className="board-empty">No items</div>}
               </div>
             </div>
           ))}
