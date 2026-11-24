@@ -22,16 +22,17 @@ import { bannerPalette, categoryLabel, cn, mustReload, pagePath, sendJson } from
 import { PageBanner } from 'wiki-formant/banner';
 import { describe } from 'wiki-formant/metadata';
 import { openingText } from 'wiki-formant/text';
-import { slugifyHeading } from 'wiki-formant/headings';
+import { headingsFrom, slugifyHeading, type Heading } from 'wiki-formant/headings';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
 import { AGO, useNow } from '@/lib/now';
 import { findTagByPath, getXrdRequired, isWithin, XRD_NOT_A_FEE, type SortOrder } from '@/lib/tags';
 import { categoryHref, type Control, type FacetControlGroup, type FacetFilters, type SharedFacet } from '@/lib/taxonomy';
-import { createBlock } from '@/lib/block-utils';
+import { createBlock, leafBlocks } from '@/lib/block-utils';
 import { formatDay, freshnessBanner, relativeTime } from 'wiki-formant/freshness';
-import { Cite, FacetBar, FacetSummary, RelatedPages as SeeAlso } from 'wiki-formant/react-server';
+import { Cite, FacetBar, FacetSummary, RelatedPages as SeeAlso, seeAlsoHeading } from 'wiki-formant/react-server';
 import { RailHeadings, toast, useSaveShortcut, useUnsavedChanges } from 'wiki-formant/react';
-import { pageHeadings } from '@/lib/html';
+import { processHtml } from '@/lib/html';
+import { referencesHeading } from 'wiki-formant/block-views';
 import type { NewsItem } from '@/lib/news';
 import type { WikiPage } from '@/types';
 import type { Block, InfoboxBlock } from '@/types/blocks';
@@ -69,6 +70,26 @@ export function ArticleBlocksEditor({ content, onChange }: { content: Block[]; o
       </aside>
     </div>
   );
+}
+
+/**
+ * An article's "On this page": its title, then the h2s and h3s of its prose
+ * (the infobox's left out), with the ids `processBlocks` gives them, and with
+ * `references` the heading each references section the view draws, then
+ * `after`, the headings the view draws below the blocks. Read from the blocks,
+ * published or a draft, never from the DOM. None for an article without sections.
+ */
+export function pageHeadings(title: string, blocks: Block[], { references = false, after = [] }: { references?: boolean; after?: Heading[] } = {}): Heading[] {
+  const titleId = slugifyHeading(title);
+  const used = new Set([titleId]);
+  const sections = [
+    ...leafBlocks(blocks.filter(b => b.type !== 'infobox')).flatMap(b =>
+      b.type === 'content' ? headingsFrom(processHtml(b.text ?? '', undefined, used)).filter(h => h.level <= 3)
+      : b.type === 'references' && references && b.items?.length ? [referencesHeading(undefined, b.title || undefined)]
+      : []),
+    ...after,
+  ];
+  return sections.length ? [...(titleId ? [{ id: titleId, text: title, level: 1 }] : []), ...sections] : [];
 }
 
 // ========== PAGE META (foot line) ==========
@@ -585,13 +606,18 @@ function PageViewContent({ page, related, series, news, sections, listing, nowMs
   // are usually written by someone else.
   const subjectUserId = page.metadata?.subjectUserId;
   const blocks = (page.content as unknown as Block[]) || [];
-  const headings = useMemo(() => pageHeadings(page.title, blocks), [page.title, blocks]);
   const infobox = findInfobox(blocks);
   const showInfobox = infoboxHasContent(infobox, page.metadata, page.tagPath);
   // The synthetic freshness notice defers to an author-placed outdated banner.
   const hasOutdatedBanner = blocks.some(b => b.type === 'banner' && b.variant === 'outdated');
   const fresh = hasOutdatedBanner ? null : freshnessBanner(page, nowMs, { against: 'current sources and the live ledger' });
   const sectionName = categoryLabel(findTagByPath(page.tagPath.split('/'))?.name ?? '') || page.tagPath;
+  const seeAlso = related.sharedFacet ? `More ${related.sharedFacet.value} in ${sectionName}` : `More from ${sectionName}`;
+  const hasSeeAlso = related.pages.length > 0;
+  const headings = useMemo(
+    () => pageHeadings(page.title, blocks, { references: true, after: hasSeeAlso ? [seeAlsoHeading(seeAlso)] : [] }),
+    [page.title, blocks, hasSeeAlso, seeAlso],
+  );
   const mainBlocks = [...(fresh ? [fresh] : []), ...blocks.filter(b => b.type !== 'infobox')];
   const viewPath = pagePath(page.tagPath, page.slug);
   useHistoryLink(`${viewPath}/history`);
@@ -606,7 +632,7 @@ function PageViewContent({ page, related, series, news, sections, listing, nowMs
       <SeeAlso
         link={Link}
         pages={related.pages.map(p => ({ href: pagePath(p.tagPath, p.slug), title: p.title, detail: p.snippet }))}
-        heading={related.sharedFacet ? <>More {related.sharedFacet.value} in {sectionName}</> : <>More from {sectionName}</>}
+        heading={seeAlso}
         href={categoryHref(page.tagPath, related.sharedFacet ? { filters: { [related.sharedFacet.key]: related.sharedFacet.value } } : {})}
       />
       {subjectUserId && <UserStats userId={subjectUserId} />}

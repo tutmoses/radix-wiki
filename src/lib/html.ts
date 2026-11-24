@@ -5,10 +5,10 @@
 // decisions: which slug rule its published anchors were minted under, its own
 // host, the h1 demotion and the empty alts.
 
-import { articleHtml, headingsFrom, slugifyHeading, type Heading } from 'wiki-formant/headings';
+import { articleHtml, slugifyHeading } from 'wiki-formant/headings';
 import type { Block } from '@/types/blocks';
 import { mapBlockTree } from 'wiki-formant/blocks';
-import { BLOCK_SHAPE, leafBlocks } from '@/lib/block-utils';
+import { BLOCK_SHAPE } from '@/lib/block-utils';
 import { SITE_URL } from '@/lib/site';
 
 const SELF_HOST = new URL(SITE_URL).host;
@@ -47,19 +47,4 @@ export function processBlocks(blocks: Block[], reserved: string[] = []): Block[]
     b => (b.type === 'content' && typeof b.text === 'string' ? { ...b, text: processHtml(b.text, citedRefs, used) } : b),
     BLOCK_SHAPE,
   );
-}
-
-/**
- * An article's "On this page": its title, then the h2s and h3s of its prose
- * (the infobox's left out), with the ids `processBlocks` gives them. Read from
- * the blocks, published or a draft, never from the DOM. None for an article
- * without sections.
- */
-export function pageHeadings(title: string, blocks: Block[]): Heading[] {
-  const titleId = slugifyHeading(title);
-  const used = new Set([titleId]);
-  const sections = leafBlocks(blocks.filter(b => b.type !== 'infobox'))
-    .flatMap(b => (b.type === 'content' ? headingsFrom(processHtml(b.text ?? '', undefined, used)) : []))
-    .filter(h => h.level <= 3);
-  return sections.length ? [...(titleId ? [{ id: titleId, text: title, level: 1 }] : []), ...sections] : [];
 }

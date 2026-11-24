@@ -357,7 +357,7 @@ function renderBlockView(block: Block | AtomicBlock): React.ReactNode {
     case 'tipJar': return <TipJarBlockView block={block} />;
     case 'references':
       return (
-        <ReferencesView items={block.items} title={block.title || 'References'} processHtml={processHtml} />
+        <ReferencesView items={block.items} title={block.title || undefined} processHtml={processHtml} />
       );
     case 'banner': {
       const { message, icon: Icon, policy } = BANNER_META[bannerVariant(block.variant)];

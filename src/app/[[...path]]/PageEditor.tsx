@@ -15,11 +15,10 @@ import { isReservedSlug } from '@/lib/path';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { isAuthorOnlyPath, isLockedPage, isWithin, deleteRight, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, XRD_NOT_A_FEE, type MetadataKeyDefinition } from '@/lib/tags';
 import { createBlock } from '@/lib/block-utils';
-import { ArticleBlocksEditor, Banner, ConflictNotice, type SavePhase } from './PageContent';
+import { ArticleBlocksEditor, Banner, ConflictNotice, pageHeadings, type SavePhase } from './PageContent';
 import type { WikiPage, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
 import { RailHeadings, toast, useSaveShortcut, useTypeahead, useUnsavedChanges, useClickOutside } from 'wiki-formant/react';
-import { pageHeadings } from '@/lib/html';
 import { WikiLine } from 'wiki-formant/editor';
 import { assigneeName } from '@/lib/assignee';
 
