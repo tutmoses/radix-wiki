@@ -7,10 +7,9 @@ import { Plus, Trash2, Copy, Check, Loader2, ExternalLink, Bell, BellOff } from 
 import { Button } from '@/components/ui';
 import { EmptyState } from 'wiki-formant/react-server';
 import { cn, sendJson } from '@/lib/utils';
-import { useStore } from '@/hooks';
 import { tagLabel } from '@/lib/tags';
 import { parsePath } from '@/lib/path';
-import { useCopy } from 'wiki-formant/react';
+import { toast, useCopy } from 'wiki-formant/react';
 import type { WebhookEvent } from '@/lib/webhooks';
 
 interface Webhook {
@@ -93,7 +92,6 @@ export function useTelegram(enabled = true) {
   const readRef = useRef(0);
   const landedRef = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const showToast = useStore(s => s.showToast);
 
   const stopPoll = () => {
     if (pollRef.current) clearInterval(pollRef.current);
@@ -146,7 +144,8 @@ export function useTelegram(enabled = true) {
         attemptRef.current++;
         stopPoll();
         setLink({ status: 'none' });
-        showToast(connected ? 'Telegram connected!' : 'The Telegram link expired. Press Connect Telegram for a new one.', connected ? 'success' : 'error');
+        if (connected) toast.success('Telegram connected!');
+        else toast.error('The Telegram link expired. Press Connect Telegram for a new one.');
       }, 3000);
     } catch {
       if (attempt === attemptRef.current) setLink({ status: 'failed', error: 'The request did not reach the wiki. Try again.' });
@@ -191,7 +190,6 @@ function TelegramSection({ watch }: { watch?: string }) {
   const { telegram: state, paused, link, connect, subscribe, unsubscribe, disconnect } = useTelegram();
   const [subscribing, setSubscribing] = useState(false);
   const [busy, setBusy] = useState<TelegramBusy>({ kind: 'idle' });
-  const showToast = useStore(s => s.showToast);
 
   const context = parseWatchTarget(watch);
 
@@ -199,8 +197,8 @@ function TelegramSection({ watch }: { watch?: string }) {
     if (!context) return;
     setSubscribing(true);
     try {
-      if (await subscribe(context.tagPath, context.slug)) showToast(paused ? `Subscribed to ${context.label}; notifications resumed` : `Subscribed to ${context.label}`);
-      else showToast(`Could not subscribe to ${context.label}. Try again.`, 'error');
+      if (await subscribe(context.tagPath, context.slug)) toast.success(paused ? `Subscribed to ${context.label}; notifications resumed` : `Subscribed to ${context.label}`);
+      else toast.error(`Could not subscribe to ${context.label}. Try again.`);
     } finally { setSubscribing(false); }
   };
 
@@ -208,8 +206,8 @@ function TelegramSection({ watch }: { watch?: string }) {
     if (busy.kind !== 'idle') return;
     setBusy({ kind: 'unsubscribing', id });
     try {
-      if (await unsubscribe(id)) showToast('Unsubscribed');
-      else showToast('Could not unsubscribe. Try again.', 'error');
+      if (await unsubscribe(id)) toast.success('Unsubscribed');
+      else toast.error('Could not unsubscribe. Try again.');
     } finally { setBusy({ kind: 'idle' }); }
   };
 
@@ -217,8 +215,8 @@ function TelegramSection({ watch }: { watch?: string }) {
     if (busy.kind !== 'idle') return;
     setBusy({ kind: 'disconnecting' });
     try {
-      if (await disconnect()) showToast('Telegram disconnected');
-      else showToast('Telegram could not be disconnected. Try again.', 'error');
+      if (await disconnect()) toast.success('Telegram disconnected');
+      else toast.error('Telegram could not be disconnected. Try again.');
     } finally { setBusy({ kind: 'idle' }); }
   };
 
@@ -344,7 +342,6 @@ export function WebhookSettings({ watch }: { watch?: string }) {
   const [tagFilter, setTagFilter] = useState('');
   // The webhook whose delete is in flight, so a second press cannot send it again.
   const [deleting, setDeleting] = useState<string | null>(null);
-  const showToast = useStore(s => s.showToast);
 
   useEffect(() => {
     let cancelled = false;
@@ -387,9 +384,9 @@ export function WebhookSettings({ watch }: { watch?: string }) {
     setDeleting(id);
     try {
       const ok = await fetch(`/api/webhooks/${id}`, { method: 'DELETE' }).then(r => r.ok, () => false);
-      if (!ok) { showToast('The webhook could not be deleted. Try again.', 'error'); return; }
+      if (!ok) { toast.error('The webhook could not be deleted. Try again.'); return; }
       setList(l => (l.status === 'loaded' ? { status: 'loaded', items: l.items.filter(w => w.id !== id) } : l));
-      showToast('Webhook deleted');
+      toast.success('Webhook deleted');
     } finally { setDeleting(null); }
   };
 

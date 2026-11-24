@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useCallback, type KeyboardEvent } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save, Trash2, Link2, X } from 'lucide-react';
@@ -10,7 +10,6 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { EmptyState, Highlight } from 'wiki-formant/react-server';
 import { Button, Input } from '@/components/ui';
 import { useAuth, useHistoryLink, useStore } from '@/hooks';
-import { CARRIED_TOAST } from '@/components/Toast';
 import { cn, mustReload, pagePath, sendJson } from '@/lib/utils';
 import { isReservedSlug } from '@/lib/path';
 import { slugifyHeading } from 'wiki-formant/headings';
@@ -19,7 +18,8 @@ import { createBlock } from '@/lib/block-utils';
 import { ArticleBlocksEditor, Banner, ConflictNotice, type SavePhase } from './PageContent';
 import type { WikiPage, PageMetadata } from '@/types';
 import type { Block } from '@/types/blocks';
-import { useSaveShortcut, useTypeahead, useUnsavedChanges, useClickOutside } from 'wiki-formant/react';
+import { RailHeadings, toast, useSaveShortcut, useTypeahead, useUnsavedChanges, useClickOutside } from 'wiki-formant/react';
+import { pageHeadings } from '@/lib/html';
 import { WikiLine } from 'wiki-formant/editor';
 import { assigneeName } from '@/lib/assignee';
 
@@ -281,6 +281,8 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const [initial] = useState(() => initialFields(page, tagPath, slug));
   const [fields, setFields] = useState(initial);
   const { title, content, bannerImage, metadata, slug: slugField, editorIds } = fields;
+  // "On this page" follows the draft, with the ids its headings will publish under.
+  const headings = useMemo(() => pageHeadings(title, content), [title, content]);
   const patch = (p: Partial<Fields>) => setFields(f => ({ ...f, ...p }));
   const [editors, setEditors] = useState<Editors>(initial.editorIds.length ? { status: 'loading' } : { status: 'loaded', users: [] });
   const [phase, setPhase] = useState<Phase>({ kind: 'editing', error: null });
@@ -343,7 +345,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
       // Saving stays the phase until the load replaces the editor. A taken slug
       // is an edit the reader can make and save again; only a reload fixes the rest.
       if (res.ok) {
-        if (data.isFirstContribution) sessionStorage.setItem(CARRIED_TOAST, 'Your first contribution! Welcome to the wiki.');
+        if (data.isFirstContribution) toast.carry('Your first contribution! Welcome to the wiki.');
         window.location.href = pagePath(data.tagPath, data.slug);
       } else if (mustReload(res.status, data)) setPhase({ kind: 'conflict', message: data.error || 'This page changed since it was opened.' });
       else setPhase({ kind: 'editing', error: data.error || 'Failed to save.' });
@@ -387,6 +389,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
 
   return (
     <article className="stack page-editor">
+      <RailHeadings headings={headings} />
       <Breadcrumbs
         path={[...tagPath.split('/'), slug].filter(Boolean)} suffix={isCreating ? 'Create' : 'Edit'}
       />
@@ -403,7 +406,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
         ) : null}
         {phase.kind === 'editing' && phase.error && <div data-callout="error"><p>{phase.error}</p></div>}
         {phase.kind === 'conflict' && <ConflictNotice message={phase.message} />}
-        <input type="text" value={title} onChange={e => patch({ title: e.target.value })} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
+        <input type="text" id={slugifyHeading(title) || undefined} value={title} onChange={e => patch({ title: e.target.value })} placeholder="Page Title" className="input-ghost text-h1 font-bold" autoFocus={isCreating} />
         <div className="slug-editor">
           <Link2 size={14} />
           {isHub ? <span>/{tagPath}</span> : <>

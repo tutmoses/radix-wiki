@@ -2,14 +2,11 @@
 //
 // The canonical, markdown-twin, Open Graph and Twitter objects are `pageMetadata`
 // from `wiki-formant/metadata`, shared with the other wikis, bound once to this
-// wiki's name and handle. What stays here is that identity and its generated card.
+// wiki's name, handle and card route (`CARD`, `@/lib/site`).
 
 import type { Metadata } from 'next';
 import { sitePageMetadata, type PageMetadataOptions } from 'wiki-formant/metadata';
-import { SITE_NAME, SITE_URL, X } from '@/lib/site';
-
-/** The generated 1200x630 card, for `cardUrl`. `tagPath` picks the section palette; `banner` overrides the gradient. */
-export const CARD = `${SITE_URL}/og`;
+import { CARD, SITE_NAME, X } from '@/lib/site';
 
 const pageMetadata = sitePageMetadata({ siteName: SITE_NAME, handle: X.handle, card: CARD });
 

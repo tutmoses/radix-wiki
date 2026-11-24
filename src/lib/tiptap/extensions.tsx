@@ -43,7 +43,8 @@ export const { TabGroup, TabItem } = createTabs({
 
 /**
  * Gives each heading in the editor the id its published copy will carry, so
- * the "on this page" rail can list it while the page is being edited.
+ * the rail's "On this page" entries, which `PageEditor` reads from the draft,
+ * scroll to it and light it while the page is being edited.
  * `slugifyHeading` is the rule `processHtml` passes to `injectHeadingIds`.
  */
 export const HeadingIds = createHeadingIds({ slug: slugifyHeading });

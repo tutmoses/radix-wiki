@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Search, Loader2, LogOut, User, FileCode, Bell, Database, MoreVertical, Quote, Check, Eye, EyeOff, Settings, History, KeyRound, MessagesSquare, Wallet } from 'lucide-react';
-import { RailToggle, SearchField, useCopy, useClickOutside } from 'wiki-formant/react';
+import { RailToggle, SearchField, toast, useCopy, useClickOutside } from 'wiki-formant/react';
 import { useState, useEffect, useCallback } from 'react';
 import { SESSION_UNREADABLE, useStore, useAuth, usePagePath, useFetch, useWikiPathname } from '@/hooks';
 import { ROOM_PATH } from '@/lib/trollbox';
@@ -114,14 +114,13 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
 function AccountMenu({ name, hasWallet, profilePath, onClose, onLogout }: { name: string; hasWallet: boolean; profilePath: string | null; onClose: () => void; onLogout: (everywhere?: boolean) => void }) {
   const connect = useStore(s => s.connect);
   const passkey = useStore(s => s.passkey);
-  const showToast = useStore(s => s.showToast);
   return (
     <Dropdown>
       <div className="dropdown-header">{name}</div>
       {profilePath && <Link href={profilePath} className="dropdown-item" onClick={onClose}><User size={16} />Profile</Link>}
       <Link href="/settings" className="dropdown-item" onClick={onClose}><Settings size={16} />Notification settings</Link>
       {!hasWallet && <button className="dropdown-item" onClick={() => { onClose(); connect(); }}><Wallet size={16} />Connect a wallet</button>}
-      <button className="dropdown-item" onClick={async () => { onClose(); if (await passkey('register')) showToast('Passkey saved. It signs this account in on this device.'); }}>
+      <button className="dropdown-item" onClick={async () => { onClose(); if (await passkey('register')) toast.success('Passkey saved. It signs this account in on this device.'); }}>
         <KeyRound size={16} />Save a passkey
       </button>
       <button onClick={() => { onClose(); onLogout(); }} className="dropdown-item text-error hover:text-error/80">
@@ -171,7 +170,6 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
 }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const showToast = useStore(s => s.showToast);
   const pageTitle = useStore(s => s.pageTitle);
   // `useCopy` from `wiki-formant/react`.
   const { copied, copy } = useCopy(1500);
@@ -193,17 +191,17 @@ function PageToolsDropdown({ onClose, mdxPath, tagPath, slug, isPage, sectionPat
 
   const toggleWatch = async () => {
     if (!target || telegram.status === 'loading' || watchBusy) return;
-    if (telegram.status === 'failed') { showToast('Your Telegram settings could not be loaded. Reload to try again.', 'error'); return; }
+    if (telegram.status === 'failed') { toast.error('Your Telegram settings could not be loaded. Reload to try again.'); return; }
     // Telegram is connected on /settings, which then offers this page or section.
     if (!telegram.connected) { onClose(); router.push(`/settings?watch=${encodeURIComponent(pagePath(target.tagPath, target.slug).slice(1))}`); return; }
     setWatchBusy(true);
     try {
       if (live) {
-        if (await unsubscribe(watching.id)) showToast(`No longer watching this ${target.noun}`);
-        else showToast(`This ${target.noun} could not be unwatched. Try again.`, 'error');
+        if (await unsubscribe(watching.id)) toast.success(`No longer watching this ${target.noun}`);
+        else toast.error(`This ${target.noun} could not be unwatched. Try again.`);
       } else if (await subscribe(target.tagPath, target.slug || null)) {
-        showToast(paused ? `Watching this ${target.noun}; notifications resumed` : `Watching this ${target.noun}`);
-      } else showToast(`This ${target.noun} could not be watched. Try again.`, 'error');
+        toast.success(paused ? `Watching this ${target.noun}; notifications resumed` : `Watching this ${target.noun}`);
+      } else toast.error(`This ${target.noun} could not be watched. Try again.`);
     } finally { setWatchBusy(false); }
   };
 

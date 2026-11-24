@@ -76,7 +76,6 @@
 }
 
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slide-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes news-ticker { to { transform: translateX(-50%); } }
 
 @layer base {
@@ -436,12 +435,13 @@
      `npm run lint` fails on any other vertical spacing in the rail. */
   .wiki-sidebar { @apply bg-surface-0; --rail-row: 0.125rem; --rail-gap: 0.0625rem; --rail-section: 1.25rem; }
   .wiki-sidebar__scroll { @apply pb-24 gap-(--rail-section); }
-  /* The rail's groups (RailGroup) and contents (TableOfContents), whose
-     structure is base.css's `wiki-rail__*`: this wiki's rows, its accent for the
-     link being read, and the category trail indented under a rule so it reads
-     without an expander control. The contents list comes last, under a rule. */
+  /* The rail's groups and its "On this page", whose structure is base.css's
+     `wiki-rail__*`: this wiki's rows, its accent for the link being read, and
+     the category trail indented under a rule so it reads without an expander
+     control. "On this page" sits between the site links and the categories,
+     under a rule. */
   .wiki-rail__group { @apply gap-(--rail-gap); }
-  .wiki-rail__group:has(> .wiki-rail__toc-btn) { @apply flex-1 pt-(--rail-section) border-t border-border-muted; }
+  .wiki-rail__group:has(> .wiki-rail__toc-btn) { @apply pt-(--rail-section) border-t border-border-muted; }
   .wiki-rail__label { @apply text-small text-text-muted font-bold uppercase tracking-wide px-3 py-(--rail-row); }
   .wiki-rail__list { @apply gap-(--rail-gap); li { @apply flex flex-col gap-(--rail-gap); } }
   .wiki-rail__item { @apply gap-x-2 px-3 py-(--rail-row) rounded-md; }
@@ -1003,14 +1003,8 @@
   .trollbox-unread { @apply absolute top-1 right-1 size-2 rounded-full bg-accent; }
 
   /* ===== TOAST ===== */
-  /* Over the trollbox, which on a phone is the whole screen. */
-  .toast {
-    @apply fixed bottom-6 right-6 z-[70] bg-surface-1 border border-accent/30 rounded-lg px-4 py-3 text-small shadow-lg;
-    @apply flex items-center gap-3;
-    animation: slide-up 0.3s ease-out;
-  }
-  .toast-error { @apply border-error; }
-  .toast-close { @apply p-1 rounded hover:text-text-muted transition-colors; }
+  /* Over the trollbox, which on a phone is the whole screen at the same z-index. */
+  .toast-stack { z-index: 70; }
 
   /* ===== NOTIFICATIONS ===== */
   .notification-dropdown { @apply w-80 max-h-96 flex flex-col p-0! overflow-hidden; }

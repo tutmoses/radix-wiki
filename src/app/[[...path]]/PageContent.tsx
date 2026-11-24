@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -30,7 +30,8 @@ import { categoryHref, type Control, type FacetControlGroup, type FacetFilters, 
 import { createBlock } from '@/lib/block-utils';
 import { formatDay, freshnessBanner, relativeTime } from 'wiki-formant/freshness';
 import { Cite, FacetBar, FacetSummary, RelatedPages as SeeAlso } from 'wiki-formant/react-server';
-import { useSaveShortcut, useUnsavedChanges } from 'wiki-formant/react';
+import { RailHeadings, toast, useSaveShortcut, useUnsavedChanges } from 'wiki-formant/react';
+import { pageHeadings } from '@/lib/html';
 import type { NewsItem } from '@/lib/news';
 import type { WikiPage } from '@/types';
 import type { Block, InfoboxBlock } from '@/types/blocks';
@@ -99,7 +100,6 @@ export function Banner({ src, title, tagPath, editable, onUpload, onRemove, chil
   const [isUploading, setIsUploading] = useState(false);
   // Numbers each upload; a later one, or Remove, supersedes it, so its picture never lands after.
   const attemptRef = useRef(0);
-  const showToast = useStore(s => s.showToast);
   const trackUpload = useStore(s => s.trackUpload);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,7 +110,7 @@ export function Banner({ src, title, tagPath, editable, onUpload, onRemove, chil
     setIsUploading(true);
     // Imported on use: the module carries Tiptap, which a reader never loads.
     trackUpload(import('wiki-formant/editor').then(({ uploadImageTo }) => uploadImageTo('/api/upload')(file)))
-      .then(url => { if (current()) onUpload(url); }, (err: Error) => { if (current()) showToast(err.message, 'error'); })
+      .then(url => { if (current()) onUpload(url); }, (err: Error) => { if (current()) toast.error(err.message); })
       .finally(() => { if (current()) setIsUploading(false); if (fileInputRef.current) fileInputRef.current.value = ''; });
   };
 
@@ -585,6 +585,7 @@ function PageViewContent({ page, related, series, news, sections, listing, nowMs
   // are usually written by someone else.
   const subjectUserId = page.metadata?.subjectUserId;
   const blocks = (page.content as unknown as Block[]) || [];
+  const headings = useMemo(() => pageHeadings(page.title, blocks), [page.title, blocks]);
   const infobox = findInfobox(blocks);
   const showInfobox = infoboxHasContent(infobox, page.metadata, page.tagPath);
   // The synthetic freshness notice defers to an author-placed outdated banner.
@@ -633,6 +634,7 @@ function PageViewContent({ page, related, series, news, sections, listing, nowMs
 
   return (
     <article className="stack">
+      <RailHeadings headings={headings} />
       <Banner src={page.bannerImage} title={page.title} tagPath={page.tagPath}>
         <Breadcrumbs
           path={[...page.tagPath.split('/'), page.slug].filter(Boolean)} leafTitle={page.title}

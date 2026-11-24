@@ -5,6 +5,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { create } from 'zustand';
+import { toast } from 'wiki-formant/react';
 import { parsePath } from '@/lib/path';
 import { pagePath, sendJson } from '@/lib/utils';
 import type { AuthSession, RadixWalletData, WikiNotification } from '@/types';
@@ -140,9 +141,6 @@ let notificationsAttempt = 0;
 /** A sign-out the server confirmed, or one it did not, which leaves the session as it was. */
 type Logout = { kind: 'signed-out' } | { kind: 'failed'; message: string };
 
-/** `error` is something the reader asked for that did not happen; `info` is news that is not a failure. */
-type ToastType = 'success' | 'info' | 'error';
-
 const WALLET_UNAVAILABLE = 'The Radix wallet toolkit did not load, so the wallet cannot be reached from this page. Reload and try again.';
 
 interface AppStore {
@@ -167,10 +165,6 @@ interface AppStore {
   passkey: (ceremony: 'register' | 'login', name?: string) => Promise<boolean>;
   /** Signs out only once the server has ended the session; a failure keeps it, and says so. */
   logout: (everywhere?: boolean) => Promise<Logout>;
-  /** `timer` is the toast's own dismissal, cleared when another replaces it. */
-  toast: { message: string; type: ToastType; timer: ReturnType<typeof setTimeout> } | null;
-  showToast: (message: string, type?: ToastType) => void;
-  dismissToast: () => void;
   /** The article on screen, set by `PageView`, so the header's citation can name it. */
   pageTitle: string | null;
   /** The history of the revisioned page on screen, set by its view through `useHistoryLink`. */
@@ -209,7 +203,7 @@ export const useStore = create<AppStore>()((set, get) => ({
     if (auth.kind !== 'connecting' || auth.timeout !== timeout) return;
     clearTimeout(timeout);
     set({ auth: { kind: 'idle' } });
-    if (message) get().showToast(message, 'error');
+    if (message) toast.error(message);
   },
   setWallet: (wallet) => {
     const { wallet: prev, auth } = get();
@@ -229,7 +223,7 @@ export const useStore = create<AppStore>()((set, get) => ({
   setWalletData: (walletData) => set({ walletData }),
   connect: () => {
     const { wallet, auth } = get();
-    if (wallet.kind === 'unavailable') { get().showToast(WALLET_UNAVAILABLE, 'error'); return; }
+    if (wallet.kind === 'unavailable') { toast.error(WALLET_UNAVAILABLE); return; }
     if (auth.kind === 'connecting') clearTimeout(auth.timeout);
     const timeout = setTimeout(() => get()._endConnect(timeout,
       'No response from the Radix Wallet. Make sure the wallet app or Connector extension is reachable, then try again.'), 60_000);
@@ -254,7 +248,7 @@ export const useStore = create<AppStore>()((set, get) => ({
     } catch (err) {
       const { name: kind, message } = err as Error;
       if (kind !== 'NotAllowedError' && kind !== 'AbortError') {
-        get().showToast(kind === 'InvalidStateError' ? 'This device already holds a passkey for this account.' : message, 'error');
+        toast.error(kind === 'InvalidStateError' ? 'This device already holds a passkey for this account.' : message);
       }
       return false;
     }
@@ -265,7 +259,7 @@ export const useStore = create<AppStore>()((set, get) => ({
       const message = everywhere
         ? 'Your sessions could not be ended, so you are still signed in everywhere. Try again.'
         : 'You could not be signed out just now, so your session is still live. Try again.';
-      get().showToast(message, 'error');
+      toast.error(message);
       return { kind: 'failed', message };
     }
     const { wallet } = get();
@@ -273,17 +267,6 @@ export const useStore = create<AppStore>()((set, get) => ({
     notificationsAttempt++;
     set({ session: null, walletData: null, notifications: { status: 'loading' } });
     return { kind: 'signed-out' };
-  },
-  toast: null,
-  showToast: (message, type = 'success') => {
-    const prev = get().toast;
-    if (prev) clearTimeout(prev.timer);
-    set({ toast: { message, type, timer: setTimeout(() => set({ toast: null }), 5000) } });
-  },
-  dismissToast: () => {
-    const prev = get().toast;
-    if (prev) clearTimeout(prev.timer);
-    set({ toast: null });
   },
   pageTitle: null,
   historyHref: null,
@@ -311,7 +294,7 @@ export const useStore = create<AppStore>()((set, get) => ({
   },
   markNotificationsRead: async (ids) => {
     const ok = await sendJson('/api/notifications', 'PATCH', { ids }).then(r => r.ok, () => false);
-    if (!ok) { get().showToast('Your notifications could not be marked read. Try again.', 'error'); return; }
+    if (!ok) { toast.error('Your notifications could not be marked read. Try again.'); return; }
     notificationsAttempt++;
     set(({ notifications: n }) => {
       if (n.status !== 'loaded') return {};

@@ -5,13 +5,11 @@
 import Link from 'next/link';
 import { Home, Trophy, BarChart3, Wrench, MessagesSquare } from 'lucide-react';
 import { useMemo } from 'react';
-// The rail's shell, its link groups and its "on this page" are
-// `wiki-formant/react`, drawn by `wiki-formant/base.css` in the `wiki-rail__*`
-// classes, as on caper, acuiq2 and miow; globals.css holds only this wiki's look.
-// Ids are injected server-side (lib/html.ts -> wiki-formant/headings), so the
-// contents list mints none: an id is a URL, and one minted in the browser is
-// not the one this wiki published.
-import { RailGroup, RailShell, TableOfContents, type RailLink } from 'wiki-formant/react';
+// The rail is wiki-formant's `Rail`, drawn by `wiki-formant/base.css` in the
+// `wiki-rail__*` classes, as on caper, acuiq2 and miow; globals.css holds only
+// this wiki's look. Its "On this page" lists the headings the page on screen
+// hands up with `RailHeadings`.
+import { Rail, type RailLink } from 'wiki-formant/react';
 import { useAuth, useWikiPathname } from '@/hooks';
 import { getVisibleTags, type TagNode } from '@/lib/tags';
 import { ROOM_PATH } from '@/lib/trollbox';
@@ -34,7 +32,7 @@ export function Sidebar() {
   const { isAuthenticated } = useAuth();
   const categories = useMemo(() => categoryLinks(getVisibleTags()), []);
 
-  const site: RailLink[] = [
+  const nav: RailLink[] = [
     { href: '/', label: 'Home', icon: <Home size={18} /> },
     { href: '/charts', label: 'Charts', icon: <BarChart3 size={18} />, tree: true },
     { href: '/leaderboard', label: 'Leaderboard', icon: <Trophy size={18} /> },
@@ -43,13 +41,5 @@ export function Sidebar() {
     ...(isAuthenticated ? [{ href: '/maintenance', label: 'Maintenance', icon: <Wrench size={18} /> }] : []),
   ];
 
-  return (
-    <RailShell prefix="wiki-sidebar" label="Wiki navigation">
-      <RailGroup links={site} pathname={pathname} link={Link} />
-      <RailGroup label="Categories" links={categories} pathname={pathname} link={Link} />
-      {/* Every route: a heading without an id is left out, so every view gives
-          its headings one, the editor through `HeadingIds`. */}
-      <TableOfContents containerSelector="main" />
-    </RailShell>
-  );
+  return <Rail label="Wiki navigation" nav={nav} groups={[{ label: 'Categories', links: categories }]} pathname={pathname} link={Link} />;
 }

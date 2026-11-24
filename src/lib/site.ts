@@ -1,7 +1,7 @@
 // src/lib/site.ts – the canonical origin every absolute URL is built from, named
 // and placed as in caper and acuiq2 so one grep finds it in all three.
 import { ccBy40 } from 'wiki-formant/license';
-import { siteGraphLd, siteRefs } from 'wiki-formant/metadata';
+import { cardUrl, defineSite, siteRefs } from 'wiki-formant/metadata';
 import { xAccount } from 'wiki-formant/social';
 
 export const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://radix.wiki';
@@ -9,7 +9,7 @@ export const SITE_NAME = 'RADIX Wiki';
 export const SITE_DESCRIPTION = 'RADIX Wiki is a community-edited encyclopedia that documents Radix, a layer-1 blockchain with asset-oriented smart contracts, for its users and builders.';
 
 // The wiki as schema.org names it: `@id` references to the Organization and
-// WebSite nodes `siteGraph` states once on every page. Each
+// WebSite nodes `site.graph` states once on every page. Each
 // Article and collection points at these rather than restating the nodes, which
 // had been declared twice and had already parted on the logo.
 export const SITE_REFS = siteRefs(SITE_URL);
@@ -23,18 +23,37 @@ export const X = xAccount({
   posts: 'news from the Radix ecosystem, one update per post, and a link to the Week in Review essay every Sunday',
 });
 
-// The Organization and WebSite nodes, which the root layout states on every page.
-export const siteGraph = siteGraphLd({
+/** The generated 1200x630 card, for `cardUrl`. `tagPath` picks the section palette; `banner` overrides the gradient. */
+export const CARD = `${SITE_URL}/og`;
+
+/** The page's ground, `--color-surface-0`: the browser chrome's colour on a phone and the installed app's. */
+export const THEME_COLOR = '#393e50';
+
+// The wiki's identity as every surface states it: the root layout's metadata,
+// viewport, head links and the Organization and WebSite graph.
+export const site = defineSite({
   name: SITE_NAME,
   url: SITE_URL,
   description: SITE_DESCRIPTION,
-  logo: `${SITE_URL}/logo.png`,
-  // The wiki's own accounts only: listing the Radix GitHub org or a Radix
-  // Telegram here asserts the wiki is that organisation.
-  sameAs: [X.url, 'https://www.moltbook.com/u/RadixWiki', 'https://github.com/tutmoses/radix-wiki'],
-  api: {
-    description: 'REST API and MCP server for reading and writing Radix ecosystem wiki content',
-    url: `${SITE_URL}/api/wiki`,
+  image: cardUrl(CARD, { title: SITE_NAME, description: SITE_DESCRIPTION }),
+  keywords: ['wiki', 'radix', 'blockchain', 'decentralized', 'web3', 'scrypto', 'defi', 'layer-1', 'radix dlt', 'xrd'],
+  icons: { icon: '/favicon.ico', apple: '/logo.png' },
+  x: X,
+  feeds: [
+    { href: '/blog.xml', title: 'RADIX Wiki Blog' },
+    { href: '/week-in-review.xml', title: 'Radix Week in Review' },
+  ],
+  agentsMd: true,
+  themeColor: THEME_COLOR,
+  graph: {
+    logo: `${SITE_URL}/logo.png`,
+    // The wiki's own accounts only: listing the Radix GitHub org or a Radix
+    // Telegram here asserts the wiki is that organisation.
+    sameAs: [X.url, 'https://www.moltbook.com/u/RadixWiki', 'https://github.com/tutmoses/radix-wiki'],
+    api: {
+      description: 'REST API and MCP server for reading and writing Radix ecosystem wiki content',
+      url: `${SITE_URL}/api/wiki`,
+    },
   },
 });
 

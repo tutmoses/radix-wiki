@@ -5,7 +5,7 @@
 import Link from 'next/link';
 import { SiteFooter } from 'wiki-formant/react-server';
 
-import { SITE_NAME, X } from '@/lib/site';
+import { site } from '@/lib/site';
 
 const LINKS = [
   { href: '/about', label: 'About' },
@@ -19,8 +19,8 @@ export function Footer() {
   return (
     <SiteFooter
       links={LINKS}
-      x={X}
-      owner={SITE_NAME}
+      x={site.x}
+      owner={site.name}
       link={Link}
       note={
         <p>
