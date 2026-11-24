@@ -7,10 +7,8 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, Loader2 } from 'lucide-react';
 import { pagePath } from '@/lib/utils';
-import Highlight from '@/components/Highlight';
+import { EmptyState, Highlight, Pager } from 'wiki-formant/react-server';
 import type { PageSummary } from '@/lib/wiki';
-import { EmptyState } from 'wiki-formant/react-server';
-import { Pager } from 'wiki-formant/react-server';
 
 const PAGE_SIZE = 25;
 
@@ -102,7 +100,7 @@ export default function SearchView({ query: initialQuery }: { query: string }) {
               <Link href={pagePath(page.tagPath, page.slug)} className="search-page-result">
                 <div className="font-medium"><Highlight text={page.title} query={found.q} /></div>
                 <div className="subtext truncate">{pagePath(page.tagPath, page.slug)}</div>
-                {page.snippet && <p className="subtext line-clamp-2 mt-1"><Highlight text={page.snippet} query={found.q} /></p>}
+                {page.snippet && <p className="subtext line-clamp-2 mt-1"><Highlight text={page.snippet} query={found.q} lead={24} /></p>}
               </Link>
             </li>
           ))}

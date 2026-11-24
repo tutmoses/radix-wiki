@@ -1,10 +1,9 @@
 // src/components/MaintenanceView.tsx - Tracking categories, rendered as work queues.
 
 import Link from 'next/link';
-import { MaintenanceQueues } from 'wiki-formant/react-server';
+import { EmptyState, MaintenanceQueues } from 'wiki-formant/react-server';
 import type { MaintenanceQueue } from 'wiki-formant/queues';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
-import { EmptyState } from 'wiki-formant/react-server';
 
 function MaintenanceView({ queues }: { queues: MaintenanceQueue[] }) {
   return (

@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { EmptyState } from 'wiki-formant/react-server';
+import { EmptyState, JsonLd } from 'wiki-formant/react-server';
 import { parsePath } from '@/lib/path';
 import { getHomepage, getNews, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, findDeletion, resolveBlockData, getPageByAsset, getSiblingPages, getAssetPages, getTitleIndex } from '@/lib/wiki';
 import { getMaintenanceQueues } from '@/lib/maintenance';
@@ -19,7 +19,6 @@ import { sanitizePage } from '@/lib/sanitize';
 import { NowProvider } from '@/lib/now';
 // Payloads carry wallet-authored titles and excerpts, so they go out through
 // `wiki-formant/react-server`'s JsonLd, which escapes an authored `</script>`.
-import { JsonLd } from 'wiki-formant/react-server';
 import { chartsHeadline } from '@/lib/radix/headline';
 import { articleLd, cardUrl, citationsFromReferences, collectionLd, describe, documentTitle, faqPageLd, questionPairs } from 'wiki-formant/metadata';
 import { hasCodeBlocksInContent } from '@/lib/block-utils';

@@ -15,13 +15,12 @@ import { SITE_NAME } from '@/lib/site';
 import { AGO, useNow } from '@/lib/now';
 import { isoDate, relativeTime } from 'wiki-formant/freshness';
 import type { PageSummary } from '@/lib/wiki';
-import Highlight from '@/components/Highlight';
+import { EmptyState, Highlight } from 'wiki-formant/react-server';
 import { Button, Dropdown } from '@/components/ui';
 import { SignInOptions } from '@/components/SignIn';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiNotification } from '@/types';
 import { useTelegram } from '@/components/WebhookSettings';
-import { EmptyState } from 'wiki-formant/react-server';
 import { LedgerDropdown, backupStanding, useLedgerBackup, type BackupStanding, type LedgerStatus } from '@/components/LedgerBackupView';
 
 // Edit is not here: it sits beside the breadcrumb (`PageActions`). History is
@@ -146,7 +145,7 @@ const searchRow = (page: PageSummary, query: string) => (
   <>
     <div className="font-medium truncate"><Highlight text={page.title} query={query} /></div>
     <div className="subtext truncate">{pageHref(page)}</div>
-    {page.snippet && <p className="subtext line-clamp-1 mt-0.5"><Highlight text={page.snippet} query={query} /></p>}
+    {page.snippet && <p className="subtext line-clamp-1 mt-0.5"><Highlight text={page.snippet} query={query} lead={24} /></p>}
   </>
 );
 

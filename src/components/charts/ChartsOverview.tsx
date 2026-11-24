@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowRight, ArrowLeftRight, BarChart3, CircleDollarSign, Layers, Lock, Newspaper, Server } from 'lucide-react';
-import { JsonLd } from 'wiki-formant/react-server';
+import { EmptyState, JsonLd } from 'wiki-formant/react-server';
 import { getNetworkStats, type NetworkStats } from '@/lib/radix/network';
 import { getDexStats, getTopTokens, type TokenSummary } from '@/lib/radix/tokens';
 import { getLedgerDays, type LedgerDayPoint } from '@/lib/radix/activity';
@@ -16,7 +16,6 @@ import { getLatestRecap, getNetworkEvents, getPageByAsset } from '@/lib/wiki';
 import { pagePath } from '@/lib/utils';
 import { SITE_REFS, SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { PageHeading } from '@/components/PageHeading';
-import { EmptyState } from 'wiki-formant/react-server';
 import { MetricChart, type Metric } from './MetricChart';
 import { TokenChart } from './TokenChart';
 import { ValidatorsTable } from './ValidatorsTable';

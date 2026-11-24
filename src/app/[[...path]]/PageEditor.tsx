@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save, Trash2, Link2, X } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
-import { EmptyState } from 'wiki-formant/react-server';
+import { EmptyState, Highlight } from 'wiki-formant/react-server';
 import { Button, Input } from '@/components/ui';
 import { useAuth, useHistoryLink, useStore } from '@/hooks';
 import { CARRIED_TOAST } from '@/components/Toast';
@@ -102,8 +102,8 @@ function UserSearch({ initial = '', placeholder, exclude, onPick, onClear }: {
               onClick={() => pick(u)}
               {...aria.optionProps(i)}
             >
-              <span className="font-medium">{u.displayName || 'Anonymous'}</span>
-              <span className="text-text-muted text-xs">{u.shortAddress}</span>
+              <span className="font-medium">{u.displayName ? <Highlight text={u.displayName} query={query} /> : 'Anonymous'}</span>
+              <span className="text-text-muted text-xs"><Highlight text={u.shortAddress} query={query} /></span>
             </button>
           ))}
         </div>
