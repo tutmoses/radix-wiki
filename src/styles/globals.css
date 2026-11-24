@@ -86,7 +86,7 @@
      table of contents asks for smooth scrolling itself. The padding clears the
      sticky header for every anchor target, heading or not. */
   html { font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; scroll-padding-top: calc(var(--rail-top) + 1rem); }
-  body { @apply bg-surface-0 text-text text-base min-h-screen; }
+  body { @apply bg-surface-0 text-text text-base; }
 
   /* One flow rhythm for every block-level element. Individual rules below carry
      only their top margin and type; nothing restates the bottom gap. */
@@ -725,8 +725,8 @@
   .revision-change[data-action='modified'] .revision-change-action { @apply text-warning; }
 
   /* An Ideas card. A phone reads facts, Deliverables, the room, then the rest;
-     from 768px of its column, as an article's infobox splits, the Deliverables
-     and the room stand side by side on top and the facts beside the rest. */
+     from 768px of its column, as an article's infobox splits, the Deliverables,
+     the room and the facts stand side by side on top of the rest. */
   :has(> .card-layout) { container-type: inline-size; }
   .card-layout {
     @apply grid gap-6;
@@ -734,17 +734,19 @@
     grid-template-areas: "facts" "deliverables" "talk" "rest";
     > * { @apply min-w-0; }
   }
-  .card-top, .card-body { display: contents; }
+  .card-top { display: contents; }
   .card-deliverables { grid-area: deliverables; min-width: 0; }
   .card-talk { grid-area: talk; min-width: 0; }
   .card-rest { grid-area: rest; min-width: 0; }
   .card-facts { grid-area: facts; min-width: 0; }
   @container (min-width: 768px) {
-    .card-layout { grid-template-areas: none; }
-    .card-top { @apply grid gap-6 items-start; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
-    .card-body { @apply grid gap-6 items-start; grid-template-columns: minmax(0, 1fr) var(--infobox-width); }
-    .card-top > *, .card-body > * { grid-area: auto; }
-    .card-facts { position: sticky; top: calc(var(--rail-top) + 1.5rem); }
+    .card-layout { grid-template-areas: none; > * { grid-area: auto; } }
+    .card-top {
+      @apply grid gap-6 items-start;
+      grid-template-columns: minmax(0, 1fr) var(--infobox-width);
+      &:has(> .card-deliverables) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) var(--infobox-width); }
+      > * { grid-area: auto; }
+    }
   }
   .trollbox-inline.trollbox-card { height: 30rem; min-height: 0; }
 

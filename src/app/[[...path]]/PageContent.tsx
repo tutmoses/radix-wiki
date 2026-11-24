@@ -553,9 +553,9 @@ export type RelatedPages = { pages: RelatedPage[]; sharedFacet: SharedFacet | nu
 
 // ========== PAGE VIEW (Read-only) ==========
 /**
- * An Ideas card: its Deliverables and its room side by side, then the rest of
- * the card beside its facts. On a phone the facts lead, then the Deliverables,
- * the room and the rest.
+ * An Ideas card: its Deliverables, its room and its facts side by side, then
+ * the rest of the card. On a phone the facts lead, then the Deliverables, the
+ * room and the rest.
  */
 function CardLayout({ page, blocks, series, nowMs, children }: { page: WikiPage; blocks: Block[]; series: PageRef | null; nowMs: number; children: ReactNode }) {
   const [deliverables, rest] = splitCard(blocks);
@@ -564,9 +564,6 @@ function CardLayout({ page, blocks, series, nowMs, children }: { page: WikiPage;
       <div className="card-top">
         {deliverables && <div className="card-deliverables stack"><BlockRenderer content={[deliverables]} /></div>}
         <div className="card-talk"><CardRoom pageId={page.id} /></div>
-      </div>
-      <div className="card-body">
-        <div className="card-rest stack"><BlockRenderer content={rest} />{children}</div>
         <div className="card-facts">
           <InfoboxSidebar block={{ id: '__infobox__', type: 'infobox', blocks: [] }} title={page.title} metadata={page.metadata} tagPath={page.tagPath} series={series}>
             <CardProgress progress={checklistProgress(page.content)} long />
@@ -575,6 +572,7 @@ function CardLayout({ page, blocks, series, nowMs, children }: { page: WikiPage;
           </InfoboxSidebar>
         </div>
       </div>
+      <div className="card-rest stack"><BlockRenderer content={rest} />{children}</div>
     </div>
   );
 }
