@@ -746,8 +746,7 @@
     .card-layout { grid-template-areas: none; > * { grid-area: auto; } }
     .card-top {
       @apply grid gap-6 items-start;
-      grid-template-columns: minmax(0, 1fr) var(--infobox-width);
-      &:has(> .card-deliverables) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) var(--infobox-width); }
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) var(--infobox-width);
       > * { grid-area: auto; }
     }
   }

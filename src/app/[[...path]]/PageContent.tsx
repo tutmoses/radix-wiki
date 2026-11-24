@@ -562,7 +562,7 @@ function CardLayout({ page, blocks, series, nowMs, children }: { page: WikiPage;
   return (
     <div className="card-layout">
       <div className="card-top">
-        {deliverables && <div className="card-deliverables stack"><BlockRenderer content={[deliverables]} /></div>}
+        <div className="card-deliverables stack"><BlockRenderer content={[deliverables]} /></div>
         <div className="card-talk"><CardRoom pageId={page.id} /></div>
         <div className="card-facts">
           <InfoboxSidebar block={{ id: '__infobox__', type: 'infobox', blocks: [] }} title={page.title} metadata={page.metadata} tagPath={page.tagPath} series={series}>
@@ -657,16 +657,18 @@ function PageViewContent({ page, related, series, news, sections, listing, nowMs
 
 /**
  * An Ideas card's Deliverables, from their heading to the next, lifted out of
- * the first content block; the card without them. Null on a card that has none.
+ * the first content block; the card without them. A card with none still
+ * shows the section, empty.
  */
-function splitCard(blocks: Block[]): [Block | null, Block[]] {
+function splitCard(blocks: Block[]): [Block, Block[]] {
+  const none: Block = { id: '__deliverables__', type: 'content', text: '<h2>Deliverables</h2><p>None yet.</p>' };
   const at = blocks.findIndex(b => b.type === 'content');
   const block = blocks[at];
-  if (!block || block.type !== 'content') return [null, blocks];
+  if (!block || block.type !== 'content') return [none, blocks];
   const html = block.text ?? '';
   // The heading may already carry its permalink anchor, so it is matched by its first word.
   const start = html.search(/<h2[^>]*>\s*Deliverables\b/);
-  if (start < 0) return [null, blocks];
+  if (start < 0) return [none, blocks];
   const end = html.indexOf('<h2', start + 3);
   const stop = end < 0 ? html.length : end;
   const text = html.slice(0, start) + html.slice(stop);
