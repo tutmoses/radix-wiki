@@ -96,7 +96,7 @@ function BoardCard({ page }: { page: IdeasPage }) {
       <div className="board-card-meta">
         <AssigneeChip raw={meta.assignee} />
         <TargetChip meta={meta} />
-        {page.replyCount > 0 && <span className="assignee-chip ml-auto" title={`${page.replyCount} replies`}><MessageSquare size={12} />{page.replyCount}</span>}
+        <span className="assignee-chip ml-auto" title={`${page.replyCount} replies`}><MessageSquare size={12} />{page.replyCount}</span>
       </div>
     </Link>
   );
