@@ -22,7 +22,7 @@ import { SignInOptions } from '@/components/SignIn';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiNotification } from '@/types';
 import { useTelegram } from '@/components/WebhookSettings';
-import { EmptyState } from '@/components/EmptyState';
+import { EmptyState } from 'wiki-formant/react-server';
 import { LedgerDropdown, backupStanding, useLedgerBackup, type BackupStanding, type LedgerStatus } from '@/components/LedgerBackupView';
 
 // Edit is not here: it sits beside the breadcrumb (`PageActions`). History is
@@ -388,10 +388,10 @@ export function Header() {
           was the broken half — it nested `.search-empty` (itself absolutely
           placed) inside `.search-results`, which is `overflow-hidden`, so
           "No pages found" was clipped to a bordered 2px strip. */}
-      <form ref={searchRef} className={cn('header-search', fieldShown && 'header-search-open')}
+      <form ref={searchRef} action="/search" className={cn('header-search', fieldShown && 'header-search-open')}
         onSubmit={e => { e.preventDefault(); goToSearchPage(); }}>
         <Search className="search-icon-left" size={18} />
-        <input ref={searchInputRef} type="search" placeholder="Search the wiki..." className="input pl-10" value={searchQuery}
+        <input ref={searchInputRef} type="search" name="q" placeholder="Search the wiki..." className="input pl-10" value={searchQuery}
           onChange={e => { setSearchQuery(e.target.value); setField('listing'); }}
           onBlur={() => { if (!searchQuery.trim()) setField('folded'); }}
           onKeyDown={onSearchKeyDown} {...searchCombobox.inputProps} />

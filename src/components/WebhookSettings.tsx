@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Trash2, Copy, Check, Loader2, ExternalLink, Bell, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui';
-import { EmptyState } from '@/components/EmptyState';
+import { EmptyState } from 'wiki-formant/react-server';
 import { cn, sendJson } from '@/lib/utils';
 import { useStore } from '@/hooks';
 import { tagLabel } from '@/lib/tags';

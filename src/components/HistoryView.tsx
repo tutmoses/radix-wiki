@@ -10,7 +10,7 @@ import { Button, Badge } from '@/components/ui';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { useAuth } from '@/hooks';
 import { UserAvatar } from '@/components/UserAvatar';
-import { EmptyState } from '@/components/EmptyState';
+import { EmptyState } from 'wiki-formant/react-server';
 import { changeSummary } from 'wiki-formant/revisions';
 import { SortHeader, restoreViaPost, useRevisionRestore, useTableSort } from 'wiki-formant/react';
 import { RevisionChanges } from 'wiki-formant/react-server';

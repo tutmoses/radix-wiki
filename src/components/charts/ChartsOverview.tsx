@@ -16,7 +16,7 @@ import { getLatestRecap, getNetworkEvents, getPageByAsset } from '@/lib/wiki';
 import { pagePath } from '@/lib/utils';
 import { SITE_REFS, SITE_URL, WIKI_LICENSE } from '@/lib/site';
 import { PageHeading } from '@/components/PageHeading';
-import { EmptyState } from '@/components/EmptyState';
+import { EmptyState } from 'wiki-formant/react-server';
 import { MetricChart, type Metric } from './MetricChart';
 import { TokenChart } from './TokenChart';
 import { ValidatorsTable } from './ValidatorsTable';

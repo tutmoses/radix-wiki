@@ -4,7 +4,7 @@
 
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { EmptyState } from '@/components/EmptyState';
+import { EmptyState } from 'wiki-formant/react-server';
 import { Button } from '@/components/ui';
 import { SESSION_UNREADABLE, useStore, type AuthStatus } from '@/hooks';
 

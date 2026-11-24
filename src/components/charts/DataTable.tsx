@@ -8,7 +8,7 @@
 
 import { useMemo, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { EmptyState } from '@/components/EmptyState';
+import { EmptyState } from 'wiki-formant/react-server';
 import { SortHeader, useTableSort } from 'wiki-formant/react';
 
 // `text` vs `num` decides more than the comparator: a text column opens A–Z on

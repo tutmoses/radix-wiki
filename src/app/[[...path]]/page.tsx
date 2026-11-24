@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { EmptyState } from '@/components/EmptyState';
+import { EmptyState } from 'wiki-formant/react-server';
 import { parsePath } from '@/lib/path';
 import { getHomepage, getNews, getPage, getCategoryHub, getCategoryPages, getSubtreeRefs, getPageRef, isIdeasPath, getIdeasPages, getPageHistory, findDeletion, resolveBlockData, getPageByAsset, getSiblingPages, getAssetPages, getTitleIndex } from '@/lib/wiki';
 import { getMaintenanceQueues } from '@/lib/maintenance';

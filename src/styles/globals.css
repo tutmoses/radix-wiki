@@ -482,10 +482,10 @@
   .page-ref-title { @apply font-medium; }
 
   /* ===== EMPTY STATE ===== */
-  /* `EmptyState`. The padding and centring are wiki-formant/base.css's
-     `.empty-state` (STRUCTURE.md D8); the column, the type and the colour are here. */
-  .empty-state { @apply flex flex-col items-center gap-2 text-text-muted; }
-  .empty-state-title { @apply m-0 font-medium text-text; }
+  /* `EmptyState` (wiki-formant). The column, the padding and the centring are
+     base.css's `.empty-state` (STRUCTURE.md D8); the type and the colour are here. */
+  .empty-state { @apply text-text-muted; }
+  .empty-state-title { @apply font-medium text-text; }
   .empty-state-desc { @apply flex flex-col gap-2 text-small; }
   .empty-state-action { @apply mt-2; }
 

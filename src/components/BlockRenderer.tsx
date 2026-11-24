@@ -51,7 +51,7 @@ import { describe } from 'wiki-formant/metadata';
 import { InfoboxAside, InfoboxFacts, formatFactValue } from 'wiki-formant/react-server';
 import { OCISWAP_API } from '@/lib/radix/config';
 import { ociswapPrice, type Price } from '@/lib/radix/price';
-import { EmptyState } from '@/components/EmptyState';
+import { EmptyState } from 'wiki-formant/react-server';
 
 // ========== PAGE CARD ==========
 /** A page card's banner: the page's own image, or the art its page is headed with. */

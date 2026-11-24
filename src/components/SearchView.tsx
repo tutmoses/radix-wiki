@@ -9,7 +9,7 @@ import { Search, Loader2 } from 'lucide-react';
 import { pagePath } from '@/lib/utils';
 import Highlight from '@/components/Highlight';
 import type { PageSummary } from '@/lib/wiki';
-import { EmptyState } from '@/components/EmptyState';
+import { EmptyState } from 'wiki-formant/react-server';
 import { Pager } from 'wiki-formant/react-server';
 
 const PAGE_SIZE = 25;

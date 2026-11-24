@@ -15,7 +15,7 @@ import { formatDay, relativeTime } from 'wiki-formant/freshness';
 import { boardColumn, findTagByPath, getMetadataKeys, UNPLACED_COLUMN, type SortOrder } from '@/lib/tags';
 import { NewPageControl, SortToggle } from './PageContent';
 import type { PageMetadata, IdeasPage } from '@/types';
-import { EmptyState } from '@/components/EmptyState';
+import { EmptyState } from 'wiki-formant/react-server';
 import { readAssignee } from '@/lib/assignee';
 import { CardProgress, isOverdue } from '@/components/CardProgress';
 

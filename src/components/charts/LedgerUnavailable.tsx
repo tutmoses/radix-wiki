@@ -1,6 +1,6 @@
 // src/components/charts/LedgerUnavailable.tsx — shown when the Gateway will not answer a state read
 
-import { EmptyState } from '@/components/EmptyState';
+import { EmptyState } from 'wiki-formant/react-server';
 import { getLedgerStatus } from '@/lib/radix/network';
 
 /**

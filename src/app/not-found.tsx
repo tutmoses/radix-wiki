@@ -1,6 +1,6 @@
 import Link from 'next/link';
+import { EmptyState } from 'wiki-formant/react-server';
 import { Button } from '@/components/ui';
-import { EmptyState } from '@/components/EmptyState';
 
 export default function NotFound() {
   return (
