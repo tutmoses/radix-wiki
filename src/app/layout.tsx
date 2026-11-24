@@ -56,7 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <RadixProvider>
         {/* The rail is the site nav, on every route, so the root layout mounts it. */}
         <SiteShell header={<Header />} footer={<Footer />}>
-          <RailFrame rail={<Sidebar />} preview={{ scope: '.prose-content' }}>
+          <RailFrame rail={<Sidebar />} preview={{ endpoint: '/api/wiki/preview', scope: '.prose-content' }}>
             {children}
           </RailFrame>
         </SiteShell>
