@@ -142,7 +142,7 @@ export const TAG_HIERARCHY: TagNode[] = [
     metadataKeys: [
       { key: 'status', label: 'Status:', type: 'select', options: ['🔴 Discussion', '🟠 Proposed', '🟡 Approved', '🔵 In Progress', '🟣 Testing', '🟢 Done'], required: true },
       { key: 'priority', label: 'Priority:', type: 'select', options: ['㆔ High', '㆓ Medium', '⼀ Low'] },
-      { key: 'workingGroup', label: 'Working Group:', type: 'select', options: ['📣 Business and Marketing', '🛠️ Development and Network', '🗂️ Other'] },
+      { key: 'workingGroup', label: 'Working Group:', type: 'select', options: ['📈 Biz / Marketing', '🤖 Dev / Network', '🗂️ Other'] },
       { key: 'assignee', label: 'Assignee:', type: 'user' },
       { key: 'deputy', label: 'Deputy:', type: 'user' },
       { key: 'target', label: 'Target:', type: 'date' },
