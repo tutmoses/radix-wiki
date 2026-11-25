@@ -3,15 +3,13 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Loader2, LogOut, User, Bell, Settings, KeyRound, MessagesSquare, Wallet } from 'lucide-react';
-import { AccountSlot, Menu, RailToggle, toast } from 'wiki-formant/react';
+import { AccountSlot, Menu, toast } from 'wiki-formant/react';
 import { useEffect } from 'react';
 import { SESSION_UNREADABLE, useStore, useAuth, useWikiPathname } from '@/hooks';
 import { ROOM_PATH } from '@/lib/trollbox';
 import { cn, shortenAddress, pagePath } from '@/lib/utils';
-import { SITE_NAME } from '@/lib/site';
 import { AGO } from '@/lib/now';
 import { relativeTime } from 'wiki-formant/freshness';
 import { EmptyState } from 'wiki-formant/react-server';
@@ -21,8 +19,8 @@ import { SignInOptions } from '@/components/SignIn';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiNotification } from '@/types';
 
-// What is the whole site's: the rail, the logo, search, the trollbox, the bell
-// and the account. What belongs to the page being read, Edit, History and the
+// What is the whole site's after the shell's rail toggle and logo: search, the
+// trollbox, the bell and the account. What belongs to the page being read, Edit, History and the
 // page tools, is the view's `PageActions`.
 
 function notificationText(n: WikiNotification): string {
@@ -141,13 +139,6 @@ export function Header() {
 
   return (
     <>
-      <RailToggle />
-
-      <Link href="/" className="row shrink-0">
-        <Image src="/logo.png" alt={SITE_NAME} width={240} height={240} className="size-8 object-contain" priority />
-        <span className="logo-text">{SITE_NAME}</span>
-      </Link>
-
       <HeaderSearch />
 
       {/* Each menu is wiki-formant's `Menu`, a native popover: a click outside, Escape, or opening another shuts it. */}
