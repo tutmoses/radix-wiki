@@ -1,6 +1,2 @@
 'use client';
-import { RouteError } from 'wiki-formant/react';
-
-export default function Error({ retry }: { retry: () => void }) {
-  return <RouteError retry={retry} />;
-}
+export { RouteError as default } from 'wiki-formant/react';
