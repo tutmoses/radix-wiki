@@ -18,11 +18,14 @@ const csp = contentSecurityPolicy({
   'worker-src': ["'self'", 'blob:'],
 });
 
+// The store's host is its id, lowercased: store_AbC… serves from abc….public.blob.vercel-storage.com.
+const STORE_HOST = process.env.BLOB_STORE_ID ? `${process.env.BLOB_STORE_ID.replace(/^store_/, '').toLowerCase()}.public.blob.vercel-storage.com` : '';
+
 export default withWikiDefaults({
   images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: '*.public.blob.vercel-storage.com' },
-    ],
+    // Only this wiki's own store, as miow's: a wildcard would resize anyone's
+    // Blob store on this wiki's bill, a transformation per URL they invent.
+    remotePatterns: STORE_HOST ? [{ protocol: 'https', hostname: STORE_HOST }] : [],
     // As miow's: three widths per kind, and a month in the optimizer's cache.
     // Every distinct width a srcset names is its own transformation and cache write.
     deviceSizes: [640, 1080, 1920],
