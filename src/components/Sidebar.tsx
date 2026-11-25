@@ -9,7 +9,8 @@ import { useMemo } from 'react';
 // this wiki's look. Its "On this page" lists the headings the page on screen
 // hands up with `RailHeadings`.
 import { Rail } from 'wiki-formant/next';
-import { treeRailLinks, type RailLink } from 'wiki-formant/react';
+import type { RailLink } from 'wiki-formant/react';
+import { treeRailLinks } from 'wiki-formant/react-server';
 import { useAuth } from '@/hooks';
 import { getVisibleTags } from '@/lib/tags';
 import { ROOM_PATH } from '@/lib/trollbox';
