@@ -485,7 +485,8 @@
   .section-divider { @apply pt-6 border-t border-border; }
 
   /* ===== PAGE META (foot line) ===== */
-  .page-meta { @apply flex items-center flex-wrap gap-x-4 gap-y-2 pt-6 border-t border-border-muted text-small text-text-muted; }
+  /* Its items are a row, not the flow's list, so they take no list margin. */
+  .article-meta { @apply items-center pt-6 border-t border-border-muted; > li { @apply m-0; } }
   .article-cite summary { @apply hover:text-accent-hover; }
 
   /* ===== CATEGORY HERO ===== */
@@ -493,21 +494,12 @@
   .category-main-article { @apply text-text-muted; }
 
   /* ===== SECTION INDEX ===== */
-  /* Three columns, not four: a card that lists the articles it holds needs the
-     width for titles. `auto-rows-fr` keeps the "N more pages" foot on one line
-     across a row whose cards hold different numbers of links. */
-  /* Two columns for most of the range: this grid runs both full-width and inside
-     the article column beside an infobox, and three cards there truncate titles. */
-  .section-index { @apply grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 auto-rows-fr gap-3; }
-    /* A heading element, so a category index has an outline rather than an h1 and
-     nothing under it — drawn as the card title it has always been. */
-  .section-card-title { @apply m-0 mt-0 text-base font-medium border-b-0; a { @apply transition-colors hover:text-accent; } }
-  .section-card-desc { @apply m-0 text-text-muted text-small; }
-  .section-card-links { @apply m-0 pl-0 list-none flex flex-col gap-1 text-small; li { @apply m-0 truncate; } }
+  /* A group's head is an h2, so a category index has an outline; it is drawn as a label, not as prose's ruled h2. */
+  .wiki-cat__title { @apply border-b-0; }
 
   /* ===== LEARNING PATH ===== */
-  /* Rows, not cards, and deliberately so: the section index above is already a
-     card grid listing every guide, so a second one reads as the same thing
+  /* Rows, not cards, and deliberately so: the section index above already lists
+     every guide, so a second one reads as the same thing
      twice. What this adds is order and difficulty, which a stepper carries and
      a grid cannot. It replaced an SVG whose boxes were links — a diagram gives
      no affordance that it can be clicked, and a 920px canvas scaled into a
@@ -529,7 +521,6 @@
   .path-step-desc { @apply text-text-muted text-small; }
   .path-step-meta { @apply hidden sm:block text-xs font-mono text-text-muted; }
   .path-branches { @apply text-text-muted text-small; }
-  .section-card-more { @apply mt-auto pt-1 text-text-muted text-xs transition-colors hover:text-accent; }
 
   /* ===== SUBSCRIBE ROW ===== */
   .subscribe-row { @apply flex items-center flex-wrap gap-2 text-small; }

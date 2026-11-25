@@ -29,8 +29,8 @@ import { AGO, useNow } from '@/lib/now';
 import { findTagByPath, getXrdRequired, isWithin, XRD_NOT_A_FEE, type SortOrder } from '@/lib/tags';
 import { categoryHref, type Control, type FacetControlGroup, type FacetFilters, type SharedFacet } from '@/lib/taxonomy';
 import { createBlock } from '@/lib/block-utils';
-import { formatDay, freshnessBanner, relativeTime } from 'wiki-formant/freshness';
-import { Cite, FacetBar, FacetSummary, RelatedPages as SeeAlso } from 'wiki-formant/react-server';
+import { freshnessBanner, relativeTime } from 'wiki-formant/freshness';
+import { ArticleMeta, FacetBar, FacetSummary, PageWithInfobox, RelatedPages as SeeAlso, SectionIndex } from 'wiki-formant/react-server';
 import { RailHeadings, toast, useSaveShortcut, useUnsavedChanges } from 'wiki-formant/react';
 import { pageHeadings } from '@/lib/html';
 import type { NewsItem } from '@/lib/news';
@@ -61,37 +61,37 @@ export function ArticleBlocksEditor({ content, onChange }: { content: Block[]; o
   const infobox = findInfobox(content) || createBlock('infobox') as InfoboxBlock;
   const mainBlocks = content.filter(b => b.type !== 'infobox');
   return (
-    <div className="page-with-infobox">
-      <div className="page-main-content">
-        <BlockEditor content={mainBlocks} onChange={blocks => onChange([...blocks, infobox])} />
-      </div>
+    <PageWithInfobox infobox={
       <aside className="infobox-editor">
         <InfoboxEditor block={infobox} onChange={block => onChange([...mainBlocks, block])} />
       </aside>
-    </div>
+    }>
+      <BlockEditor content={mainBlocks} onChange={blocks => onChange([...blocks, infobox])} />
+    </PageWithInfobox>
   );
 }
 
 // ========== PAGE META (foot line) ==========
-// The single home for page provenance — Wikipedia's "This page was last edited …" line.
-// The revision count is text: the History link beside the breadcrumb is the way in.
+// The page's provenance line. The revision count is text: the History link
+// beside the breadcrumb is the way in. Its own component, so the clock it reads
+// re-renders this line and not the article.
 function PageMeta({ page }: { page: WikiPage }) {
-  const revisions = page.revisionCount ?? 0;
   const now = useNow();
   return (
-    <div className="page-meta">
+    <ArticleMeta
+      updatedLabel={`Last updated ${relativeTime(page.updatedAt, now, AGO)}`}
+      version={page.version}
+      revisions={page.revisionCount ?? 0}
+      verified={page.lastVerifiedAt}
+      cite={{ publisher: SITE_NAME, title: page.title, date: page.updatedAt, url: `${SITE_URL}${pagePath(page.tagPath, page.slug)}` }}
+    >
       {page.author && (
         <span className="row">
           <UserAvatar seed={page.author.id} avatarUrl={page.author.avatarUrl} size="sm" />
           <span className="truncate">{page.author.displayName || page.author.shortAddress}</span>
         </span>
       )}
-      <span>Last updated {relativeTime(page.updatedAt, now, AGO)}</span>
-      <span className="font-mono">v{page.version}</span>
-      <span>{revisions} revision{revisions === 1 ? '' : 's'}</span>
-      {page.lastVerifiedAt && <span>Verified {formatDay(page.lastVerifiedAt)}</span>}
-      <Cite publisher={SITE_NAME} title={page.title} date={page.updatedAt} url={`${SITE_URL}${pagePath(page.tagPath, page.slug)}`} />
-    </div>
+    </ArticleMeta>
   );
 }
 
@@ -178,39 +178,8 @@ export interface SubcategorySummary {
   name: string; href: string; description?: string;
   /** Pages anywhere in this subcategory's subtree. */
   total: number;
-  /** What the card lists: its first few articles, then its sections. */
+  /** What its group lists: its first few articles, then its sections. */
   links: PageRef[];
-}
-
-/**
- * A category's subcategories, each card listing what it holds. The card used to
- * be a name, a blurb and a page count, which made a container category a page of
- * cards leading to another page of cards — /developers put 33 tutorials two
- * clicks away and named none of them. Listing the titles turns the card into the
- * index it was standing in for.
- */
-function SectionIndex({ subcategories }: { subcategories: SubcategorySummary[] }) {
-  if (!subcategories.length) return null;
-  return (
-    <div className="section-index">
-      {subcategories.map(child => (
-        <div key={child.href} className="section-card">
-          <h2 className="section-card-title"><Link href={child.href}>{child.name}</Link></h2>
-          {child.description && <p className="section-card-desc">{child.description}</p>}
-          {child.links.length > 0 && (
-            <ul className="section-card-links">
-              {child.links.map(l => (
-                <li key={l.href}><Link href={l.href} className="link">{l.title}</Link></li>
-              ))}
-            </ul>
-          )}
-          <Link href={child.href} className="section-card-more">
-            {child.total === 0 ? 'Browse section' : `All ${child.total} page${child.total === 1 ? '' : 's'}`} →
-          </Link>
-        </div>
-      ))}
-    </div>
-  );
 }
 
 /**
@@ -511,7 +480,11 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
   const sections = subcategories.length > 0 && (
     <section className="stack-sm" aria-label="Sections">
       {hub && !listing && hubControls}
-      <SectionIndex subcategories={subcategories} />
+      {/* Each subcategory lists what it holds, so a container category names its pages rather than a second page of cards. */}
+      <SectionIndex link={Link} groups={subcategories.map(child => ({
+        title: child.name, href: child.href, blurb: child.description, count: child.total, pages: child.links,
+        more: child.total === 0 ? 'Browse section →' : `All ${child.total} page${child.total === 1 ? '' : 's'} →`,
+      }))} />
     </section>
   );
 
