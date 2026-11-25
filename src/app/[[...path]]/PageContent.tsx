@@ -10,14 +10,15 @@ import dynamic from 'next/dynamic';
 import { ArrowLeft, ArrowRight, Save, Plus, Upload, X, Image as ImageIcon, ArrowDownAZ, RefreshCw, Rss, SlidersHorizontal } from 'lucide-react';
 import { BlockRenderer, findInfobox, infoboxHasContent, InfoboxSidebar, PageThumb } from '@/components/BlockRenderer';
 import { UserAvatar } from '@/components/UserAvatar';
-import { Breadcrumbs, PageActions } from '@/components/Breadcrumbs';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
+import { PageActions } from '@/components/PageActions';
 import { NewsTicker } from '@/components/NewsTicker';
 import { AuthRequired } from '@/components/AuthRequired';
 import { ClaimRoles } from './ClaimRoles';
 import { CardProgress, isOverdue } from '@/components/CardProgress';
 import { checklistProgress } from '@/lib/checklist';
 import { Button } from '@/components/ui';
-import { useAuth, useHistoryLink, useStore } from '@/hooks';
+import { useAuth, useStore } from '@/hooks';
 import { bannerPalette, categoryLabel, cn, mustReload, pagePath, sendJson } from '@/lib/utils';
 import { PageBanner } from 'wiki-formant/banner';
 import { describe } from 'wiki-formant/metadata';
@@ -310,7 +311,6 @@ export function HomepageView({ page, news = [], isEditing }: { page: WikiPage | 
   const router = useRouter();
   const { status, isAuthenticated } = useAuth();
   const connect = useStore(s => s.connect);
-  useHistoryLink(isEditing ? null : '/history');
   const [content, setContent] = useState<Block[]>((page?.content as unknown as Block[]) || []);
   const [bannerImage, setBannerImage] = useState<string | null>(page?.bannerImage || null);
   const [save, setSave] = useState<SavePhase>({ kind: 'editing', error: null });
@@ -382,7 +382,7 @@ export function HomepageView({ page, news = [], isEditing }: { page: WikiPage | 
   return (
     <div className="stack">
       <Banner src={bannerImage} title="Homepage">
-        <PageActions className="justify-end" editHref={isAuthenticated ? '/edit' : undefined} />
+        <PageActions className="justify-end" editHref={isAuthenticated ? '/edit' : undefined} historyHref="/history" />
         <h1 className="sr-only">Radix ($XRD) – The Radix DLT Crypto Wiki</h1>
       </Banner>
       <NewsTicker items={news} id="latest-news" />
@@ -534,7 +534,7 @@ export function CategoryView({ tagPath, pages, sort, total, facetGroups, filters
 
   return (
     <div className="stack">
-      <Breadcrumbs path={tagPath} />
+      <Breadcrumbs path={tagPath} actions={<PageActions />} />
       <div className="spread">
         <h1 id={slugifyHeading(title)}>{title}</h1>
         <div className="row-lg">{controlItems}</div>
@@ -599,7 +599,6 @@ function PageViewContent({ page, related, series, news, sections, listing, nowMs
   );
   const mainBlocks = [...(fresh ? [fresh] : []), ...blocks.filter(b => b.type !== 'infobox')];
   const viewPath = pagePath(page.tagPath, page.slug);
-  useHistoryLink(`${viewPath}/history`);
   const isCard = isWithin(page.tagPath, 'ideas');
 
   // Everything after the prose. On a hub it moves below the listing, so the page
@@ -643,7 +642,7 @@ function PageViewContent({ page, related, series, news, sections, listing, nowMs
       <Banner src={page.bannerImage} title={page.title} tagPath={page.tagPath}>
         <Breadcrumbs
           path={[...page.tagPath.split('/'), page.slug].filter(Boolean)} leafTitle={page.title}
-          actions={<PageActions editHref={isAuthenticated ? `${viewPath}/edit` : undefined} />}
+          actions={<PageActions editHref={isAuthenticated ? `${viewPath}/edit` : undefined} historyHref={`${viewPath}/history`} title={page.title} />}
         />
         <h1 id={slugifyHeading(page.title)} className="m-0!">{page.title}</h1>
       </Banner>
@@ -688,13 +687,6 @@ function splitCard(blocks: Block[]): [Block, Block[]] {
 // ========== PAGE VIEW WRAPPER ==========
 export function PageView({ page, tagPath, slug, isEditMode, related = { pages: [], sharedFacet: null }, series = null, news = [], nowMs }: { page: WikiPage | null; tagPath: string; slug: string; isEditMode: boolean; related?: RelatedPages; series?: PageRef | null; news?: NewsItem[]; nowMs: number }) {
   const { status } = useAuth();
-  // The header sits outside this tree and cites the page it is on; it knows
-  // only the URL, and a slug is not a title.
-  useEffect(() => {
-    useStore.setState({ pageTitle: page?.title ?? null });
-    return () => useStore.setState({ pageTitle: null });
-  }, [page?.title]);
-
   const viewPath = pagePath(tagPath, slug);
 
   if (isEditMode && status !== 'signed-in') return <AuthRequired status={status} {...EDIT_AUTH} backHref={viewPath} />;

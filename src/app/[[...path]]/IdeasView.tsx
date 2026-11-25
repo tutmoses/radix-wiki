@@ -6,6 +6,7 @@ import { useState, useMemo, type ComponentProps } from 'react';
 import Link from 'next/link';
 import { MessageSquare, LayoutGrid, List, User, SignalHigh, SignalMedium, SignalLow } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
+import { PageActions } from '@/components/PageActions';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Badge } from '@/components/ui';
 import { categoryLabel, cn } from '@/lib/utils';
@@ -195,7 +196,7 @@ export default function IdeasView({ tagPath, pages, sort }: { tagPath: string[];
 
   return (
     <div className="stack">
-      <Breadcrumbs path={tagPath} />
+      <Breadcrumbs path={tagPath} actions={<PageActions />} />
       <div className="spread">
         <h1 id={slugifyHeading(tag?.name || tagPath[tagPath.length - 1] || '')}>{tag?.name || tagPath[tagPath.length - 1]}</h1>
         {/* The board is the page's one region and the list view carries no

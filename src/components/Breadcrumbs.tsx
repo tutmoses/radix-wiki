@@ -11,7 +11,6 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { Pencil } from 'lucide-react';
 import { Breadcrumbs as SharedBreadcrumbs, BreadcrumbsRow } from 'wiki-formant/react-server';
 import { findTagByPath } from '@/lib/tags';
 import { SITE_URL } from '@/lib/site';
@@ -52,15 +51,3 @@ export function Breadcrumbs({ path, leafTitle, suffix, actions }: BreadcrumbsPro
     : <SharedBreadcrumbs items={items} base={SITE_URL} link={Link} />;
 }
 
-/**
- * Edit, beside the trail; History is the header's (`useHistoryLink`). Passed
- * only where editing applies, so the caller keeps the rule.
- */
-export function PageActions({ editHref, className }: { editHref?: string; className?: string }) {
-  if (!editHref) return null;
-  return (
-    <nav className={className ? `page-actions ${className}` : 'page-actions'} aria-label="Page actions">
-      <Link href={editHref} prefetch={false} className="page-action" aria-label="Edit" title="Edit"><Pencil size={16} aria-hidden /></Link>
-    </nav>
-  );
-}

@@ -1,4 +1,4 @@
-// src/components/LedgerBackupView.tsx — the header's ledger menu: on-chain wiki backup
+// src/components/LedgerBackupView.tsx — the page tools' ledger menu: on-chain wiki backup
 
 'use client';
 
@@ -58,7 +58,7 @@ interface BackupOf { account: string; tagPath: string; slug: string }
  * One page's backup: preparing its manifest, waiting on the wallet, on the
  * ledger (with whether the wiki has recorded its transaction), or refused. It
  * lives outside the menu, so closing the menu mid-backup loses nothing and the
- * header's standing reads it too. Each tab's state machine carries its own
+ * page tools' icon reads it too. Each tab's state machine carries its own
  * result or error, so a failure on one never shows on the other.
  */
 type Backup =
@@ -117,7 +117,7 @@ type Recovery =
 interface LedgerPanelProps {
   tagPath: string | null;
   slug: string | null;
-  /** The header's read of the status, which also colours its icon. */
+  /** `PageActions`' read of the status, which also colours the tools' icon. */
   status: Fetched<LedgerStatus>;
 }
 

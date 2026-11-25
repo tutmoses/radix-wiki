@@ -7,9 +7,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save, Trash2, Link2, X } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
+import { PageActions } from '@/components/PageActions';
 import { EmptyState, Highlight } from 'wiki-formant/react-server';
 import { Button, Input } from '@/components/ui';
-import { useAuth, useHistoryLink, useStore } from '@/hooks';
+import { useAuth, useStore } from '@/hooks';
 import { mustReload, pagePath, sendJson } from '@/lib/utils';
 import { isReservedSlug } from '@/lib/path';
 import { slugifyHeading } from 'wiki-formant/headings';
@@ -274,7 +275,6 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
   const { user } = useAuth();
   const isCreating = !page;
   const viewPath = pagePath(tagPath, slug);
-  useHistoryLink(isCreating ? null : `${viewPath}/history`);
   // A category's hub article lives at the empty slug and is reached by its
   // category's own URL, so there is no slug to edit and no rename to offer.
   const isHub = !isCreating && !slug;
@@ -392,6 +392,7 @@ export default function PageEditor({ page, tagPath, slug }: { page?: WikiPage; t
       <RailHeadings headings={headings} />
       <Breadcrumbs
         path={[...tagPath.split('/'), slug].filter(Boolean)} suffix={isCreating ? 'Create' : 'Edit'}
+        actions={page && <PageActions historyHref={`${viewPath}/history`} title={page.title} />}
       />
       {/* A child of the article, not the header, so it stays stuck for the whole edit. */}
       <div className="editor-bar">

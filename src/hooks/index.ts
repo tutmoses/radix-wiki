@@ -73,7 +73,7 @@ export function useFetch<T>(url: string | null | undefined, opts?: { transform?:
  * empty, so the article itself is right, but `usePathname()` reads `/index`
  * on the server and `/` in the browser. Anything client-side that branches on
  * it then renders one thing into the cached HTML and another at hydration:
- * the header's page-tools button disappeared from the server render, which is
+ * the page-tools button disappeared from the server render, which is
  * a structural mismatch, so React #418 hit every visitor to the homepage from
  * the first regeneration after a deploy — while the build-time prerender,
  * which does render at `/`, looked fine. `next start` never spells it the
@@ -165,10 +165,6 @@ interface AppStore {
   passkey: (ceremony: 'register' | 'login', name?: string) => Promise<boolean>;
   /** Signs out only once the server has ended the session; a failure keeps it, and says so. */
   logout: (everywhere?: boolean) => Promise<Logout>;
-  /** The article on screen, set by `PageView`, so the header's citation can name it. */
-  pageTitle: string | null;
-  /** The history of the revisioned page on screen, set by its view through `useHistoryLink`. */
-  historyHref: string | null;
   notifications: Notifications;
   fetchNotifications: () => Promise<void>;
   /** Image uploads in flight in the editor; a save and a leave wait for them, or the image is lost. */
@@ -268,8 +264,6 @@ export const useStore = create<AppStore>()((set, get) => ({
     set({ session: null, walletData: null, notifications: { status: 'loading' } });
     return { kind: 'signed-out' };
   },
-  pageTitle: null,
-  historyHref: null,
   uploads: 0,
   trackUpload: (upload) => {
     set(s => ({ uploads: s.uploads + 1 }));
@@ -305,18 +299,6 @@ export const useStore = create<AppStore>()((set, get) => ({
     });
   },
 }));
-
-/**
- * Puts History in the header for as long as the calling view is on screen. The
- * header sits outside the view and knows only the URL, which cannot tell a
- * page from one being created, or a category with a hub article from one without.
- */
-export function useHistoryLink(href: string | null) {
-  useEffect(() => {
-    useStore.setState({ historyHref: href });
-    return () => useStore.setState({ historyHref: null });
-  }, [href]);
-}
 
 // ========== AUTH HOOK ==========
 

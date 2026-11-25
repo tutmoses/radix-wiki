@@ -362,7 +362,7 @@
   .input-ghost { @apply w-full bg-transparent border-0 outline-none placeholder:text-text-muted placeholder:opacity-60; }
 
   /* ===== MENUS ===== */
-  /* The header's menus are wiki-formant's `Menu`, a native popover drawn by
+  /* The header's and the page tools' menus are wiki-formant's `Menu`, a native popover drawn by
      base.css's `.menu`; these only set a menu's width, never its `display`,
      which would show a closed popover. */
   /* The sign-in menu: two ways in, then the form that makes a passkey account. */
@@ -395,9 +395,12 @@
   .breadcrumbs .separator { @apply text-text-muted; }
   .breadcrumb-link { @apply capitalize text-text-muted no-underline hover:text-accent; }
   .breadcrumb-current { @apply capitalize text-text; }
-  /* Edit, right of the trail. A <nav>, so a banner's overlay draws it the way
-     it draws the trail beside it. */
-  .page-actions { @apply flex items-center gap-1 text-small; }
+  /* Edit, History and the page tools, right of the trail on its first line: a
+     long trail wraps within itself rather than pushing them onto a line of
+     their own. A <nav>, so a banner's overlay draws it the way it draws the
+     trail beside it. */
+  .breadcrumbs-row { @apply flex-nowrap items-start; }
+  .page-actions { @apply flex shrink-0 items-center gap-1 text-small; }
   /* An icon each, named by its label; over a banner the text's shadow does not
      reach an SVG, so the icon casts its own. */
   .page-action { @apply inline-flex p-1 rounded text-text-muted hover:text-accent hover:bg-surface-2; .page-banner__body & svg { filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.6)); } }
