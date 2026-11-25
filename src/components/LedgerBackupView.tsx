@@ -1,4 +1,4 @@
-// src/components/LedgerBackupView.tsx — Header dropdown for on-chain wiki backup
+// src/components/LedgerBackupView.tsx — the header's ledger menu: on-chain wiki backup
 
 'use client';
 
@@ -6,7 +6,6 @@ import { useState } from 'react';
 import { create } from 'zustand';
 import { Upload, Download, CheckCircle, AlertCircle, ExternalLink, Loader2 } from 'lucide-react';
 import { useAuth, useStore, type Fetched } from '@/hooks';
-import { Dropdown } from '@/components/ui';
 import type { RestoredPage, LedgerAnchor } from '@/lib/radix/ledger';
 import { DASHBOARD_URL } from '@/lib/radix/config';
 import { sendJson } from '@/lib/utils';
@@ -115,14 +114,14 @@ type Recovery =
   | { stage: 'done'; pages: RestoredPage[] }
   | { stage: 'error'; message: string };
 
-interface LedgerDropdownProps {
+interface LedgerPanelProps {
   tagPath: string | null;
   slug: string | null;
   /** The header's read of the status, which also colours its icon. */
   status: Fetched<LedgerStatus>;
 }
 
-export function LedgerDropdown({ tagPath, slug, status: statusFetch }: LedgerDropdownProps) {
+export function LedgerPanel({ tagPath, slug, status: statusFetch }: LedgerPanelProps) {
   const { user } = useAuth();
   const sendTransaction = useStore(s => s.sendTransaction);
   const accountAddress = user?.radixAddress ?? null;
@@ -164,12 +163,12 @@ export function LedgerDropdown({ tagPath, slug, status: statusFetch }: LedgerDro
   const recovering = recovery.stage === 'reading';
 
   return (
-    <Dropdown className="ledger-dropdown">
-      <div className="dropdown-tabs">
-        <button onClick={() => setTab('backup')} className={`dropdown-tab ${tab === 'backup' ? 'dropdown-tab-active' : ''}`}>
+    <>
+      <div className="ledger-tabs">
+        <button onClick={() => setTab('backup')} className={`ledger-tab ${tab === 'backup' ? 'ledger-tab-active' : ''}`}>
           <Upload size={14} />Backup
         </button>
-        <button onClick={() => setTab('recover')} className={`dropdown-tab ${tab === 'recover' ? 'dropdown-tab-active' : ''}`}>
+        <button onClick={() => setTab('recover')} className={`ledger-tab ${tab === 'recover' ? 'ledger-tab-active' : ''}`}>
           <Download size={14} />Recover
         </button>
       </div>
@@ -292,6 +291,6 @@ export function LedgerDropdown({ tagPath, slug, status: statusFetch }: LedgerDro
           )}
         </div>
       )}
-    </Dropdown>
+    </>
   );
 }

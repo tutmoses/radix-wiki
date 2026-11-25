@@ -6,15 +6,6 @@ import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type H
 import { QRCodeSVG } from 'qrcode.react';
 import { cn } from '@/lib/utils';
 
-/**
- * The panel a menu button opens. Closing it is the owner's: a click-outside
- * here would count the button itself as outside, so pressing it to close the
- * menu closed it on mousedown and opened it again on click.
- */
-export function Dropdown({ children, className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('dropdown', className)} {...props}>{children}</div>;
-}
-
 // Button
 type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 type ButtonSize = 'sm' | 'md' | 'lg';

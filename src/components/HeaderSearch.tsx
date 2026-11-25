@@ -47,7 +47,7 @@ export function HeaderSearch() {
       icon={<Search size={20} />}
       before={<Search className="search-icon-left" size={18} />}
       spinner={<Loader2 className="search-icon-right" size={18} />}
-      classNames={{ input: 'input pl-10', toggle: 'icon-btn text-inherit' }}
+      classNames={{ input: 'input pl-10', toggle: 'header-btn' }}
       all={q => <>See all results for &ldquo;{q}&rdquo;</>}
       empty={q => <>No pages found for &ldquo;{q}&rdquo;</>}
       failed="Search did not answer. Press Enter for the full results page."

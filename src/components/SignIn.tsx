@@ -29,9 +29,10 @@ export function SignInOptions({ onDone }: { onDone?: () => void }) {
 
   return (
     <>
-      <button type="button" className="dropdown-item" onClick={() => { onDone?.(); connect(); }}><Wallet size={16} />Radix Wallet</button>
-      <button type="button" className="dropdown-item" disabled={busy} onClick={() => run('login')}><KeyRound size={16} />Passkey</button>
-      <form className="signin-new" onSubmit={e => { e.preventDefault(); run('register'); }}>
+      {/* In the header's menu a passkey keeps it open until the account is in, which unmounts it. */}
+      <button type="button" className="menu__item" onClick={() => { onDone?.(); connect(); }}><Wallet size={16} />Radix Wallet</button>
+      <button type="button" className="menu__item" data-keep-open disabled={busy} onClick={() => run('login')}><KeyRound size={16} />Passkey</button>
+      <form className="signin-new" data-keep-open onSubmit={e => { e.preventDefault(); run('register'); }}>
         <label htmlFor="signin-name" className="text-small text-text-muted">No wallet? Pick a name and save a passkey. A passkey account can chat; editing needs a wallet.</label>
         <Input id="signin-name" value={name} onChange={e => setName(e.target.value)} placeholder="Name" autoComplete="nickname" minLength={2} maxLength={NAME_MAX} required />
         <Button type="submit" variant="secondary" size="sm" disabled={busy}>Create account</Button>

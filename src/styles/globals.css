@@ -36,13 +36,17 @@
   --rail-row: 0.125rem;
   --rail-inline: 0.75rem;
   --rail-weight: 500;
+  --rail-radius: var(--radius-md);
   /* The shell's surfaces (base.css, "the shell" and "the wiki rail"): a
      translucent header over the page as it scrolls, ruled off below it. */
   --header-bg: color-mix(in oklab, var(--color-surface-0) 80%, transparent);
   --header-border: 1px solid var(--color-border-muted);
   --header-filter: blur(12px);
   --rail-bg: var(--color-surface-0);
+  /* The rail's column's block padding (base.css, "the dock"), roomier from `sm`. */
+  --frame-pad-block: 1.5rem;
 }
+@media (min-width: 640px) { :root { --frame-pad-block: 2rem; } }
 
 @theme {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
@@ -307,9 +311,6 @@
   .pager-step { @apply text-accent hover:text-accent-hover; }
   .pager-count { @apply text-text-muted text-small; }
 
-  /* ===== SKIP LINK ===== */
-  .skip-link { @apply px-4 py-2 bg-accent text-surface-0 rounded-b font-semibold text-sm; }
-
   /* ===== LAYOUT ===== */
   .center { @apply flex items-center justify-center; }
 
@@ -331,6 +332,7 @@
      wiki-formant's PasskeyButton or RouteError, names them directly, and `.btn-primary` alone is a whole button. */
   .btn, .btn-primary { @apply flex items-center gap-2 justify-center px-4 py-2 font-medium rounded-md border border-transparent cursor-pointer transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed; }
   .btn-primary { @apply bg-accent text-text-inverted hover:bg-accent-hover hover:text-text-inverted; }
+  /* An icon button in the page; the header's are base.css's `.header-btn`. */
   .icon-btn { @apply p-2 rounded transition-colors cursor-pointer inline-flex items-center justify-center hover:bg-surface-2; }
   .icon-btn-remove { @apply text-text-muted hover:text-error; }
   /* <Button>'s spinner while it is loading. */
@@ -338,21 +340,13 @@
   .input { @apply w-full py-2 px-4 bg-surface-0 border border-border rounded transition-all focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-muted placeholder:text-text-muted placeholder:opacity-60; }
   .input-ghost { @apply w-full bg-transparent border-0 outline-none placeholder:text-text-muted placeholder:opacity-60; }
 
-  /* ===== DROPDOWN ===== */
-  .dropdown { @apply absolute right-0 top-full mt-2 min-w-48 bg-surface-1 border border-border rounded shadow py-1 z-50; }
-  .dropdown-item { @apply w-full flex items-center gap-2 py-2 px-4 text-left transition-colors hover:bg-surface-2; }
-  /* Tabs across the top of a dropdown (the ledger backup's Backup / Recover). */
-  .dropdown-tabs { @apply flex border-b border-border-muted; }
-  .dropdown-tab {
-    @apply flex-1 flex items-center justify-center gap-1.5 py-2.5 text-small text-text-muted cursor-pointer transition-colors;
-    @apply hover:text-text hover:bg-surface-2;
-  }
-  .dropdown-tab-active { @apply text-accent border-b-2 border-accent font-medium; }
+  /* ===== MENUS ===== */
+  /* The header's menus are wiki-formant's `Menu`, a native popover drawn by
+     base.css's `.menu`; these only set a menu's width, never its `display`,
+     which would show a closed popover. */
   /* The sign-in menu: two ways in, then the form that makes a passkey account. */
   .signin-menu { @apply w-72; }
-  .signin-new { @apply flex flex-col gap-2 px-4 py-3 mt-1 border-t border-border-muted; }
-  /* The account menu's first line: which account is connected. Not a control. */
-  .dropdown-header { @apply px-4 py-2 border-b border-border-muted text-small font-medium truncate; }
+  .signin-new { @apply flex flex-col gap-2 px-3 py-3 mt-1 border-t border-border-muted; }
 
   /* ===== BADGES ===== */
   .badge { @apply py-0.5 px-2 text-small font-medium bg-surface-2 text-text-muted; }
@@ -393,11 +387,6 @@
   .hidden-mobile { display: none; }
   @media (min-width: 640px) { .hidden-mobile { display: revert; } }
   @media (min-width: 640px) { .show-mobile { display: none; } }
-
-  /* ===== APP SHELL (layout.tsx) ===== */
-  /* The rail's row fills main and its column is a flex column (base.css), so a
-     short page's footer sits at the foot; this is the column's block padding. */
-  .wiki-layout__main > .page-frame { @apply py-6 sm:py-8; }
 
   /* ===== HEADER ===== */
   /* The box and its surface are wiki-formant's `.app-header` on the `--header-*`
@@ -442,12 +431,11 @@
      control. "On this page" sits between the site links and the categories,
      under a rule. */
   .wiki-rail__group:has(> .wiki-rail__toc-btn) { @apply pt-(--rail-section) border-t border-border-muted; }
-  .wiki-rail__label { @apply text-small font-bold tracking-wide px-3 py-(--rail-row); }
+  .wiki-rail__label { @apply px-3 py-(--rail-row); }
+  /* "On this page" is a label too, so it takes the labels' type (base.css). */
+  .wiki-rail__label, .wiki-rail__toc-btn { @apply text-small font-bold tracking-wide; }
   .wiki-rail__list li { @apply flex flex-col gap-(--rail-gap); }
-  .wiki-rail__item { @apply rounded-md; }
   .wiki-rail__subtree { @apply ml-4 pl-2 border-l border-border-muted; --rail-size: var(--text-small); }
-  .wiki-rail__toc-btn { @apply gap-x-2 hover:text-text transition-colors; }
-  .wiki-rail__toc-btn > .wiki-rail__label { @apply p-0 font-medium text-inherit; }
   .wiki-rail__toc-list { @apply pl-4; }
   .wiki-rail__toc-item { @apply block px-2 rounded truncate border-transparent; }
   .wiki-rail__toc-item--active { @apply border-accent; }
@@ -1000,11 +988,11 @@
   .trollbox-unread { @apply absolute top-1 right-1 size-2 rounded-full bg-accent; }
 
   /* ===== NOTIFICATIONS ===== */
-  .notification-dropdown { @apply w-80 max-h-96 flex flex-col p-0! overflow-hidden; }
-  .notification-header { @apply flex items-center justify-between px-3 py-2 border-b border-border-muted; }
+  .notification-menu { @apply w-80; }
+  .notification-header { @apply flex justify-end px-3 py-2 border-b border-border-muted; }
   .notification-mark-read { @apply text-xs text-accent hover:underline; }
-  .notification-list { @apply overflow-y-auto flex-1; }
-  .notification-item { @apply w-full flex items-start gap-2 px-3 py-2.5 text-left hover:bg-surface-2 transition-colors; }
+  /* A `.menu__item` whose avatar sits by its first line. */
+  .notification-item { @apply items-start; }
   .notification-unread { @apply bg-accent-muted; }
   .notification-dot { @apply size-2 rounded-full bg-accent shrink-0 mt-1.5; }
   .notification-badge {
@@ -1053,7 +1041,15 @@
   .telegram-sub-item { @apply flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface-1/50; }
 
   /* ===== LEDGER BACKUP ===== */
-  .ledger-dropdown { @apply w-80; }
+  /* The page tools' Ledger backup row opens this second menu, hung from the same button. */
+  .page-tools { display: flex; anchor-name: --page-tools; }
+  .ledger-menu { @apply w-80; position-anchor: --page-tools; }
+  .ledger-tabs { @apply flex border-b border-border-muted; }
+  .ledger-tab {
+    @apply flex-1 flex items-center justify-center gap-1.5 py-2.5 text-small text-text-muted cursor-pointer transition-colors;
+    @apply hover:text-text hover:bg-surface-2;
+  }
+  .ledger-tab-active { @apply text-accent border-b-2 border-accent font-medium; }
   .ledger-panel { @apply flex flex-col gap-2 p-3; }
   .ledger-status-row { @apply flex items-center gap-2; }
   .ledger-action-btn {
