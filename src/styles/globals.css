@@ -37,11 +37,32 @@
   --rail-inline: 0.75rem;
   --rail-weight: 500;
   --rail-radius: var(--radius-md);
+  /* Its labels, "On this page" among them, in bold small type on the rows' inset;
+     a trail's children indented under a rule, so it reads without an expander;
+     "On this page" under a rule a section below the site links, its entries
+     indented and resting on no rule until lit. */
+  --rail-label-pad: var(--rail-row) var(--rail-inline);
+  --rail-label-size: var(--text-small);
+  --rail-label-weight: 700;
+  --rail-label-tracking: 0.025em;
+  --rail-subtree-offset: 1rem;
+  --rail-subtree-indent: 0.5rem;
+  --rail-subtree-rule: 1px solid var(--color-border-muted);
+  --rail-subtree-size: var(--text-small);
+  --rail-toc-top: var(--rail-section);
+  --rail-toc-border: 1px solid var(--color-border-muted);
+  --rail-toc-indent: 1rem;
+  --rail-toc-rule: transparent;
+  --rail-toc-radius: var(--radius);
   /* The shell's surfaces (base.css, "the shell" and "the wiki rail"): a
      translucent header over the page as it scrolls, ruled off below it. */
   --header-bg: color-mix(in oklab, var(--color-surface-0) 80%, transparent);
   --header-border: 1px solid var(--color-border-muted);
   --header-filter: blur(12px);
+  /* An open search takes a line of its own below `sm`, so the row wraps. */
+  --header-wrap: wrap;
+  --header-gap: 0.5rem;
+  --header-z: 50;
   --rail-bg: var(--color-surface-0);
   /* The rail's column's block padding (base.css, "the dock"), roomier from `sm`. */
   --frame-pad-block: 1.5rem;
@@ -389,10 +410,7 @@
   @media (min-width: 640px) { .show-mobile { display: none; } }
 
   /* ===== HEADER ===== */
-  /* The box and its surface are wiki-formant's `.app-header` on the `--header-*`
-     tokens. flex-wrap only differs from a fixed row when a child actually
-     wraps, and only an open `.search-field` does that, below `sm`. */
-  .app-header { @apply z-50 flex-wrap gap-2; }
+  /* The box, its row and its surface are wiki-formant's `.app-header` on the `--header-*` tokens in `:root`. */
   .logo-text { @apply font-semibold text-lg hidden sm:block; }
   .header-actions { @apply flex items-center gap-2 ml-auto; }
 
@@ -420,25 +438,11 @@
   .search-page-result { @apply block p-3; }
 
   /* ===== SIDEBAR ===== */
-  /* The rail's layout — a sticky column from wiki-formant's 1024px breakpoint,
-     a drawer stacked above the article below it — and its rows on the `--rail-*`
-     tokens in `:root` are wiki-formant/base.css, the same on all three wikis,
-     as is its surface, `--rail-bg`. `--rail-top` is what the sticky rail clears
-     and `--rail-border` the rule beside it, which becomes the drawer's foot.
-     The rail's groups and its "On this page", whose structure is base.css's
-     `wiki-rail__*`: this wiki's rows, its accent for the link being read, and
-     the category trail indented under a rule so it reads without an expander
-     control. "On this page" sits between the site links and the categories,
-     under a rule. */
-  .wiki-rail__group:has(> .wiki-rail__toc-btn) { @apply pt-(--rail-section) border-t border-border-muted; }
-  .wiki-rail__label { @apply px-3 py-(--rail-row); }
-  /* "On this page" is a label too, so it takes the labels' type (base.css). */
-  .wiki-rail__label, .wiki-rail__toc-btn { @apply text-small font-bold tracking-wide; }
-  .wiki-rail__list li { @apply flex flex-col gap-(--rail-gap); }
-  .wiki-rail__subtree { @apply ml-4 pl-2 border-l border-border-muted; --rail-size: var(--text-small); }
-  .wiki-rail__toc-list { @apply pl-4; }
-  .wiki-rail__toc-item { @apply block px-2 rounded truncate border-transparent; }
-  .wiki-rail__toc-item--active { @apply border-accent; }
+  /* The rail — a sticky column from wiki-formant's 1024px breakpoint, a drawer
+     stacked above the article below it — its rows, labels, trail and "On this
+     page" are wiki-formant/base.css's `wiki-rail__*`, drawn on the `--rail-*`
+     tokens in `:root`; nothing here restates them. `--rail-top` is what the
+     sticky rail clears. */
 
   /* ===== BANNER ===== */
   /* The frame and its 4:1 floor are wiki-formant/banner's (base.css); this is
