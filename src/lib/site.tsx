@@ -1,5 +1,6 @@
-// src/lib/site.ts – the canonical origin every absolute URL is built from, named
+// src/lib/site.tsx – the canonical origin every absolute URL is built from, named
 // and placed as in caper and acuiq2 so one grep finds it in all three.
+import Image from 'next/image';
 import { ccBy40 } from 'wiki-formant/license';
 import { cardUrl, defineSite, siteRefs } from 'wiki-formant/metadata';
 import { xAccount } from 'wiki-formant/social';
@@ -73,6 +74,15 @@ export const site = defineSite({
     ],
     license: WIKI_LICENSE,
     note: 'Powered by Radix DLT.',
+  },
+  // The header's mark, which `SiteShell` draws as the link home; the name hides on a phone.
+  logo: <>
+    <Image src="/logo.png" alt="" width={240} height={240} className="size-8 object-contain" priority />
+    <span className="logo-text">{SITE_NAME}</span>
+  </>,
+  notFound: {
+    description: 'Nothing lives at this address. The page may have been moved or deleted.',
+    home: { href: '/', label: 'Back to homepage' },
   },
 });
 

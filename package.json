@@ -12,7 +12,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "postinstall": "prisma-models",
-    "lint": "check-classes --compositions && node scripts/check-rail.mjs && knip",
+    "lint": "check-classes --compositions --restated && node scripts/check-rail.mjs && knip",
     "db:generate": "prisma generate",
     "db:diff": "prisma migrate diff --from-config-datasource --to-schema prisma/schema --script",
     "db:migrate": "prisma migrate deploy",

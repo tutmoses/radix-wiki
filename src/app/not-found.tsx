@@ -1,12 +1,7 @@
 import Link from 'next/link';
-import { EmptyState } from 'wiki-formant/react-server';
+import { NotFound } from 'wiki-formant/react-server';
+import { site } from '@/lib/site';
 
-export default function NotFound() {
-  return (
-    <EmptyState
-      as="h1" title="Page not found"
-      description="Nothing lives at this address. The page may have been moved or deleted."
-      action={<Link href="/" className="btn-primary">Back to homepage</Link>}
-    />
-  );
+export default function NotFoundPage() {
+  return <NotFound site={site} link={Link} />;
 }
