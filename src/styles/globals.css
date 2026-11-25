@@ -235,7 +235,7 @@
   }
 
   /* Code block with language selector */
-  .code-block-wrapper { @apply relative my-4; pre { @apply m-0 border border-border-muted rounded-lg p-4 pr-24; background-color: var(--color-code-bg); } code { @apply bg-transparent p-0; } }
+  .code-block { @apply my-4; pre { @apply m-0 border border-border-muted rounded-lg p-4 pr-24; background-color: var(--color-code-bg); } code { @apply bg-transparent p-0; } }
 
   /* KaTeX math */
   .katex-display { @apply my-4; }
@@ -320,13 +320,12 @@
   .tabs-editor {
     @apply border-border-muted rounded-lg overflow-hidden;
     .tabs-list { @apply p-2 bg-surface-1 border-border-muted mb-0; }
-    .tab-button-edit { @apply flex items-center gap-1 py-1 px-2 bg-surface-2 rounded border border-transparent; &.active { @apply bg-accent-muted border-accent; } }
-    .tab-title-input { @apply bg-transparent border-0 outline-none w-24 text-small text-text placeholder:text-text-muted; }
+    /* The editor's tabs share the reader's `.tab-button`, so they restate the colour the reader's rule above dims. */
+    .tab-button { @apply flex items-center gap-1 py-1 px-2 bg-surface-2 rounded border border-transparent text-text; &.active { @apply bg-accent-muted border-accent text-text; } }
+    .tab-title { @apply w-24 text-small text-text placeholder:text-text-muted; }
     .tab-remove { @apply p-0.5 rounded-sm text-text-muted hover:text-error hover:bg-surface-2; }
     .tab-add { @apply py-1 px-2 text-text-muted rounded hover:text-accent hover:bg-surface-2; }
   }
-
-    .code-block-wrapper:hover > .code-copy-btn { @apply opacity-100; }
 
   /* `Pager`: laid out and dimmed at its ends by base.css; its steps read as links. */
   .pager-step { @apply text-accent hover:text-accent-hover; }
@@ -637,10 +636,11 @@
   .toggle-option-active { @apply bg-accent text-surface-0 border-accent; }
   .toggle-option-sm { @apply p-1.5 rounded text-text-muted cursor-pointer transition-colors hover:text-text; }
 
-  /* ===== CODE BLOCK LANG SELECTOR ===== */
-  .lang-btn { @apply flex items-center gap-1 px-2 py-1 bg-surface-2/80 hover:bg-surface-2 rounded text-xs text-text-muted hover:text-text transition-colors backdrop-blur-sm; }
-  .lang-dropdown { @apply absolute top-full right-0 mt-1 bg-surface-1 border border-border rounded shadow-lg max-h-48 overflow-y-auto min-w-28 z-50; }
-  .lang-option { @apply w-full px-3 py-1.5 text-left text-xs hover:bg-surface-2 transition-colors flex items-center justify-between; }
+  /* ===== CODE BLOCK LANG SELECTOR (the editor's) ===== */
+  .code-block-control { @apply top-2 right-2 z-10; }
+  .code-block-button { @apply flex items-center gap-1 px-2 py-1 bg-surface-2/80 hover:bg-surface-2 rounded text-xs text-text-muted hover:text-text transition-colors backdrop-blur-sm; }
+  .code-block-menu { @apply top-full mt-1 bg-surface-1 text-text border-border rounded shadow-lg max-h-48 overflow-y-auto min-w-28 z-50; }
+  .code-block-option { @apply w-full px-3 py-1.5 text-xs hover:bg-surface-2 transition-colors flex items-center justify-between; &.active { @apply font-normal text-accent; } }
 
   /* ===== METADATA FIELDS ===== */
   .metadata-panel { @apply flex flex-col gap-2 p-4 rounded-lg bg-surface-1 border border-border; }

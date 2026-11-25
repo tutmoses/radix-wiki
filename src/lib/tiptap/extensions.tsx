@@ -1,9 +1,9 @@
 // src/lib/tiptap/extensions.tsx — this wiki's binding of the shared editor nodes.
 //
-// The nodes themselves are `wiki-formant/tiptap`, shared with caper. What stays
-// here is the part that is this wiki's: the class tokens and the icon set. The
-// embeds carry neither, so they are `embedNodes()` in the editor, straight from
-// the package.
+// The nodes themselves are `wiki-formant/tiptap`, shared with caper, on its
+// default class names (this wiki's look over them is globals.css). What stays
+// here is the part that is this wiki's: the icon set. The embeds carry none,
+// so they are `embedNodes()` in the editor, straight from the package.
 
 'use client';
 
@@ -12,14 +12,6 @@ import { createCodeBlock, createHeadingIds, createTabs } from 'wiki-formant/tipt
 import { slugifyHeading } from 'wiki-formant/headings';
 
 export const CodeBlock = createCodeBlock({
-  classNames: {
-    wrapper: 'code-block-wrapper relative',
-    control: 'absolute top-2 right-2 z-10',
-    button: 'lang-btn',
-    dropdown: 'lang-dropdown',
-    option: 'lang-option',
-    optionActive: 'text-accent',
-  },
   icons: {
     lang: <Code size={12} />,
     chevron: open => <ChevronDown size={12} className={open ? 'transition-transform rotate-180' : 'transition-transform'} />,
@@ -28,16 +20,6 @@ export const CodeBlock = createCodeBlock({
 });
 
 export const { TabGroup, TabItem } = createTabs({
-  classNames: {
-    editor: 'tabs-editor',
-    list: 'tabs-list',
-    tab: 'tab-button-edit',
-    tabActive: 'active',
-    title: 'tab-title-input',
-    remove: 'tab-remove',
-    add: 'tab-add',
-    content: 'tabs-content',
-  },
   icons: { add: <Plus size={14} />, remove: <X size={12} /> },
 });
 
