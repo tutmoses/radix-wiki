@@ -31,9 +31,25 @@ type ResolvedPage = { title: string; tagPath: string; slug: string };
 const pageLinks = (pages: ResolvedPage[]) =>
   linkList(pages.map(p => ({ label: p.title, href: pageUrl(p.tagPath, p.slug) })));
 
+const PATH_STEP = /<a\b[^>]*class="path-step-link"[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi;
+const pathPart = (body: string, part: string) =>
+  body.match(new RegExp(`<span class="path-step-${part}">([\\s\\S]*?)</span>`))?.[1] ?? '';
+
+/**
+ * A learning-path card (`ol.path`) is spans laid out by CSS, which the shared
+ * converter joins with nothing between them ("1Getting Started3 guides"). Each
+ * card reads as its link, then its meta and description; the `<ol>` numbers it.
+ */
+const flattenPathSteps = (html: string) =>
+  html.replace(PATH_STEP, (_m, href: string, body: string) =>
+    `<a href="${href}">${pathPart(body, 'title')}</a> · ${pathPart(body, 'meta')} – ${pathPart(body, 'desc')}`);
+
 /** One leaf as markdown. The MDX export reuses it for every static leaf. */
 export function atomicToMarkdown(block: AtomicBlock): string {
   switch (block.type) {
+    case 'content':
+      return coreAtomicToMarkdown({ ...block, text: flattenPathSteps(block.text) }, { siteUrl: SITE_URL });
+
     case 'list':
       if (block.items?.length) return pageLinks(block.items);
       return block.source === 'chosen'
