@@ -283,6 +283,9 @@ export function HomepageView({ page, news = [], isEditing }: { page: WikiPage | 
   const [content, setContent] = useState<Block[]>((page?.content as unknown as Block[]) || []);
   const [bannerImage, setBannerImage] = useState<string | null>(page?.bannerImage || null);
   const [save, setSave] = useState<SavePhase>({ kind: 'editing', error: null });
+  // The homepage's h1 is for screen readers only, so its "On this page" opens on
+  // the prose's sections rather than the title.
+  const headings = useMemo(() => pageHeadings('', content), [content]);
 
   useEffect(() => {
     if (page) { setContent((page.content as unknown as Block[]) || []); setBannerImage(page.bannerImage || null); }
@@ -350,6 +353,7 @@ export function HomepageView({ page, news = [], isEditing }: { page: WikiPage | 
 
   return (
     <div className="stack">
+      <RailHeadings headings={headings} />
       <Banner src={bannerImage} title="Homepage">
         <PageActions className="justify-end" editHref={isAuthenticated ? '/edit' : undefined} historyHref="/history" />
         <h1 className="sr-only">Radix ($XRD) – The Radix DLT Crypto Wiki</h1>
