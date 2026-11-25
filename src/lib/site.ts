@@ -29,8 +29,14 @@ export const CARD = `${SITE_URL}/og`;
 /** The page's ground, `--color-surface-0`: the browser chrome's colour on a phone and the installed app's. */
 export const THEME_COLOR = '#393e50';
 
+// The grant, its name and the credit line, from `wiki-formant/license`. Only the
+// site's own identity is passed in. Here rather than beside any one surface
+// because every surface states it: the footer, the markdown twins, the llms
+// exports, the feeds, the agent card, the OpenAPI info and the Article JSON-LD.
+export const WIKI_LICENSE = ccBy40({ siteName: SITE_NAME, siteUrl: SITE_URL });
+
 // The wiki's identity as every surface states it: the root layout's metadata,
-// viewport, head links and the Organization and WebSite graph.
+// viewport, head links, the Organization and WebSite graph, and the footer.
 export const site = defineSite({
   name: SITE_NAME,
   url: SITE_URL,
@@ -55,6 +61,19 @@ export const site = defineSite({
       url: `${SITE_URL}/api/wiki`,
     },
   },
+  // What nothing else on the page links to: Home, Contents, Charts and
+  // Leaderboard are the rail's.
+  footer: {
+    links: [
+      { href: '/about', label: 'About' },
+      { href: '/policy', label: 'Policy' },
+      { href: '/llms.txt', label: 'llms.txt' },
+      { href: '/terms', label: 'Terms' },
+      { href: '/privacy', label: 'Privacy' },
+    ],
+    license: WIKI_LICENSE,
+    note: 'Powered by Radix DLT.',
+  },
 });
 
 // The sister wiki, named in llms.txt and the MCP instructions so an agent that
@@ -66,10 +85,3 @@ export const SIBLING_WIKI = {
   url: 'https://caper.network/wiki',
   mcp: 'https://caper.network/api/mcp',
 };
-
-// The grant, its name and the credit line, from `wiki-formant/license` — the
-// same four fields the other two wikis had each written out. Only the site's own
-// identity is passed in. Here rather than beside any one surface because every
-// surface states it: the markdown twins, the llms exports, the feeds, the agent
-// card, the OpenAPI info and the Article JSON-LD.
-export const WIKI_LICENSE = ccBy40({ siteName: SITE_NAME, siteUrl: SITE_URL });

@@ -1,9 +1,9 @@
 // src/app/layout.tsx
 
 import '@/styles/globals.css';
+import Link from 'next/link';
 import { RailFrame, SiteDocument, SiteShell } from 'wiki-formant/react-server';
 import { RadixProvider } from '@/components/RadixProvider';
-import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { Sidebar } from '@/components/Sidebar';
 import { TrollboxDock } from '@/components/TrollboxDock';
@@ -19,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <SiteDocument className={fontVariables} site={site}>
       <RadixProvider>
         {/* The rail is the site nav, on every route, so the root layout mounts it. */}
-        <SiteShell header={<Header />} footer={<Footer />}>
+        <SiteShell header={<Header />} site={site} link={Link}>
           <RailFrame rail={<Sidebar />} preview={{ scope: '.prose-content' }}>
             {children}
           </RailFrame>
