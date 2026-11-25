@@ -10,7 +10,7 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { EmptyState, Highlight } from 'wiki-formant/react-server';
 import { Button, Input } from '@/components/ui';
 import { useAuth, useHistoryLink, useStore } from '@/hooks';
-import { cn, mustReload, pagePath, sendJson } from '@/lib/utils';
+import { mustReload, pagePath, sendJson } from '@/lib/utils';
 import { isReservedSlug } from '@/lib/path';
 import { slugifyHeading } from 'wiki-formant/headings';
 import { isAuthorOnlyPath, isLockedPage, isWithin, deleteRight, canEditAuthorOnlyPage, getMetadataKeys, getXrdRequired, XRD_NOT_A_FEE, type MetadataKeyDefinition } from '@/lib/tags';
@@ -64,7 +64,7 @@ function UserSearch({ initial = '', placeholder, exclude, onPick, onClear }: {
     [],
   );
   const pick = (user: UserOption) => { setQuery(onPick(user)); setOpen(false); };
-  const { query, setQuery, items, highlight, setHighlight, onKeyDown, combobox } = useTypeahead<UserOption>({
+  const { query, setQuery, items, setHighlight, onKeyDown, combobox } = useTypeahead<UserOption>({
     fetch: search,
     onPick: user => pick(user),
     onEscape: () => setOpen(false),
@@ -97,7 +97,7 @@ function UserSearch({ initial = '', placeholder, exclude, onPick, onClear }: {
             <button
               key={u.id}
               type="button"
-              className={cn('user-picker-option', i === highlight && 'search-result-active')}
+              className="user-picker-option"
               onMouseEnter={() => setHighlight(i)}
               onClick={() => pick(u)}
               {...aria.optionProps(i)}

@@ -9,27 +9,16 @@ import { useMemo } from 'react';
 // this wiki's look. Its "On this page" lists the headings the page on screen
 // hands up with `RailHeadings`.
 import { Rail } from 'wiki-formant/next';
-import type { RailLink } from 'wiki-formant/react';
+import { treeRailLinks, type RailLink } from 'wiki-formant/react';
 import { useAuth } from '@/hooks';
-import { getVisibleTags, type TagNode } from '@/lib/tags';
+import { getVisibleTags } from '@/lib/tags';
 import { ROOM_PATH } from '@/lib/trollbox';
-
-/**
- * The category tree as rail links. A category stays lit while the reader is on a
- * page inside it, and only the branch the reader is in opens, so the rail shows
- * one section's children rather than the whole hierarchy.
- */
-const categoryLinks = (nodes: TagNode[], parent = ''): RailLink[] =>
-  nodes
-    .filter(node => !node.hidden)
-    .map(node => {
-      const path = parent ? `${parent}/${node.slug}` : node.slug;
-      return { href: `/${path}`, label: node.name, title: node.name, tree: true, children: categoryLinks(node.children ?? [], path) };
-    });
 
 export function Sidebar() {
   const { isAuthenticated } = useAuth();
-  const categories = useMemo(() => categoryLinks(getVisibleTags()), []);
+  // The category tree as rail links: a category stays lit while the reader is on
+  // a page inside it, and only the branch the reader is in opens.
+  const categories = useMemo(() => treeRailLinks(getVisibleTags()), []);
 
   const nav: RailLink[] = [
     { href: '/', label: 'Home', icon: <Home size={18} /> },

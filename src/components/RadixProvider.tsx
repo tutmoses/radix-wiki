@@ -4,12 +4,11 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { toast } from 'wiki-formant/react';
+import { loadRadixWallet, type RadixToolkit } from 'wiki-formant/rola-client';
 import { useStore } from '@/hooks';
 import { RADIX_CONFIG } from '@/lib/radix/config';
 import { sendJson } from '@/lib/utils';
 import type { RadixWalletData, SignedChallenge } from '@/types';
-
-type RadixDappToolkitType = Awaited<ReturnType<typeof import('@radixdlt/radix-dapp-toolkit').RadixDappToolkit>>;
 
 // The wallet's state arrives twice — once through dataRequestControl, once on
 // walletData$ — and carries proofs and persona data the app never stores. This
@@ -27,7 +26,7 @@ const connectFailure = ({ error, message }: { error: string; message?: string })
   : `The Radix Wallet did not connect${message ? ` (${message})` : ''}. Try again.`;
 
 export function RadixProvider({ children }: { children: React.ReactNode }) {
-  const rdtRef = useRef<RadixDappToolkitType | null>(null);
+  const rdtRef = useRef<RadixToolkit | null>(null);
   const setSession = useStore(s => s.setSession);
   const sessionChecked = useStore(s => s.sessionChecked);
   const setWalletData = useStore(s => s.setWalletData);
@@ -69,53 +68,31 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
 
     (async () => {
       try {
-        const { RadixDappToolkit, DataRequestBuilder } = await import('@radixdlt/radix-dapp-toolkit');
-
-        if (rdtRef.current) return;
-
-        const rdt = RadixDappToolkit({
+        // The toolkit asks for one or more accounts with a proof of the server's
+        // challenge, and hands the first account's proof here from a fresh
+        // answer only, never a cached replay. A failed sign-in never reaches the
+        // toolkit, so its request settles and isAuthenticated stays false.
+        const rdt = await loadRadixWallet({
           dAppDefinitionAddress: RADIX_CONFIG.dAppDefinitionAddress,
           networkId: RADIX_CONFIG.networkId,
           applicationName: RADIX_CONFIG.applicationName,
           applicationVersion: RADIX_CONFIG.applicationVersion,
-        });
-
-        rdtRef.current = rdt;
-
-        rdt.walletApi.provideChallengeGenerator(async () => {
-          const res = await fetch('/api/auth/challenge');
-          if (!res.ok) throw new Error(`Challenge endpoint returned ${res.status}`);
-          const { challenge } = await res.json();
-          return challenge;
-        });
-
-        rdt.walletApi.setRequestData(
-          DataRequestBuilder.accounts().atLeast(1).withProof(),
-        );
-
-        // dataRequestControl intercepts wallet responses BEFORE RDT processes them.
-        // Auth happens here — fires on sendRequest() responses, NOT cached replays.
-        // We never throw: if auth fails, RDT still proceeds, the request settles
-        // and ends the connect attempt. isAuthenticated stays false (no session).
-        rdt.walletApi.dataRequestControl(async (walletResponse) => {
-          try {
-            const account = walletResponse.accounts?.[0];
-            const proof = walletResponse.proofs?.find(
-              (p: { address: string }) => p.address === account?.address,
-            );
-
-            if (!account || !proof) return;
-
-            await createSession(toWalletData(walletResponse), {
-              challenge: proof.challenge,
-              address: proof.address,
-              proof: proof.proof,
-            });
-          } catch (error) {
+          accounts: 'some',
+          challenge: async () => {
+            const res = await fetch('/api/auth/challenge');
+            if (!res.ok) throw new Error(`Challenge endpoint returned ${res.status}`);
+            const { challenge } = await res.json();
+            return challenge;
+          },
+          onProof: (proof, response) => createSession(toWalletData(response), proof),
+          onError: (error) => {
             console.error('[ROLA] Auth failed:', error);
             toast.error('Sign-in failed — the wallet proof could not be verified. Please try connecting again.');
-          }
+          },
         });
+
+        if (rdtRef.current) return;
+        rdtRef.current = rdt;
 
         // walletData$ only tracks connection state — auth is handled above
         subscription = rdt.walletApi.walletData$.subscribe((walletData) => {

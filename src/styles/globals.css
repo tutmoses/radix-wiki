@@ -36,6 +36,12 @@
   --rail-row: 0.125rem;
   --rail-inline: 0.75rem;
   --rail-weight: 500;
+  /* The shell's surfaces (base.css, "the shell" and "the wiki rail"): a
+     translucent header over the page as it scrolls, ruled off below it. */
+  --header-bg: color-mix(in oklab, var(--color-surface-0) 80%, transparent);
+  --header-border: 1px solid var(--color-border-muted);
+  --header-filter: blur(12px);
+  --rail-bg: var(--color-surface-0);
 }
 
 @theme {
@@ -389,16 +395,15 @@
   @media (min-width: 640px) { .show-mobile { display: none; } }
 
   /* ===== APP SHELL (layout.tsx) ===== */
-  /* The rail's row fills main, which takes what the header and footer leave,
-     so the article column grows and a short page's footer sits at the foot. */
-  .wiki-layout { @apply grow; }
-  .wiki-layout__main { @apply flex flex-col self-stretch; }
-  .wiki-layout__main > .page-frame:first-child { @apply grow py-6 sm:py-8; }
+  /* The rail's row fills main and its column is a flex column (base.css), so a
+     short page's footer sits at the foot; this is the column's block padding. */
+  .wiki-layout__main > .page-frame { @apply py-6 sm:py-8; }
 
   /* ===== HEADER ===== */
-  /* The box is wiki-formant's `.app-header`. flex-wrap only differs from a fixed
-     row when a child actually wraps, and only an open `.header-search` does that, below `sm`. */
-  .app-header { @apply z-50 flex-wrap gap-2 bg-surface-0/80 backdrop-blur-md border-b border-border-muted; }
+  /* The box and its surface are wiki-formant's `.app-header` on the `--header-*`
+     tokens. flex-wrap only differs from a fixed row when a child actually
+     wraps, and only an open `.search-field` does that, below `sm`. */
+  .app-header { @apply z-50 flex-wrap gap-2; }
   .logo-text { @apply font-semibold text-lg hidden sm:block; }
   .header-actions { @apply flex items-center gap-2 ml-auto; }
 
@@ -412,32 +417,26 @@
   .user-avatar-lg { @apply w-10 h-10; }
 
   /* ===== SEARCH ===== */
-  /* `SearchField`: a magnifier until opened, first in the actions row; open,
-     inline in the bar above `sm` and its own full-width row under it, so on a
-     phone the field takes a line rather than competing with the icons.
+  /* `HeaderSearch`, whose dropdown is base.css's `search-field__*`: a magnifier
+     until opened, first in the actions row; open, inline in the bar above `sm`
+     and its own full-width row under it, so on a phone the field takes a line
+     rather than competing with the icons.
      `basis-full`, not `w-full`: `flex-1` (basis 0) beats a width in a flex row. */
-  .header-search { @apply relative flex-1 max-w-xl mx-2 max-sm:basis-full max-sm:order-last max-sm:mx-0 max-sm:max-w-none max-sm:pb-4; }
-  .header-search[data-folded] { @apply flex-none basis-auto order-none ml-auto mr-0 pb-0; }
-  .header-search[data-folded] + .header-actions { @apply ml-0; }
+  .search-field { @apply flex-1 max-w-xl mx-2 max-sm:basis-full max-sm:order-last max-sm:mx-0 max-sm:max-w-none max-sm:pb-4; }
+  .search-field[data-folded] { @apply flex-none basis-auto order-none ml-auto mr-0 pb-0; }
+  .search-field[data-folded] + .header-actions { @apply ml-0; }
+  .search-field__all { @apply font-medium hover:text-accent-hover; }
   .search-icon-left { @apply absolute left-3 top-1/2 -translate-y-1/2 text-text-muted; }
   .search-icon-right { @apply absolute right-3 top-1/2 -translate-y-1/2 text-text-muted animate-spin; }
-  .search-results { @apply absolute top-full left-0 right-0 mt-2 bg-surface-1 border border-border rounded-lg shadow overflow-hidden z-50; }
-  .search-result { @apply block w-full p-3 text-text hover:bg-surface-2 transition-colors text-left; }
-  /* The keyboard highlight. Same surface as :hover so arrowing down and
-     mousing over read as one selection rather than two competing ones. */
-  .search-result-active { @apply bg-surface-2; }
-  .search-result-all { @apply text-center text-small text-accent font-medium border-t border-border-muted hover:text-accent-hover; }
-  .search-empty { @apply absolute top-full left-0 right-0 mt-2 bg-surface-1 border border-border rounded-lg shadow p-4 text-center text-text-muted z-50; }
   .search-page-result { @apply block p-3; }
 
   /* ===== SIDEBAR ===== */
   /* The rail's layout — a sticky column from wiki-formant's 1024px breakpoint,
      a drawer stacked above the article below it — and its rows on the `--rail-*`
-     tokens in `:root` are wiki-formant/base.css, the same on all three wikis;
-     this is the surface. `--rail-top` is what the sticky rail clears and
-     `--rail-border` the rule beside it, which becomes the drawer's foot. */
-  .wiki-sidebar { @apply bg-surface-0; }
-  /* The rail's groups and its "On this page", whose structure is base.css's
+     tokens in `:root` are wiki-formant/base.css, the same on all three wikis,
+     as is its surface, `--rail-bg`. `--rail-top` is what the sticky rail clears
+     and `--rail-border` the rule beside it, which becomes the drawer's foot.
+     The rail's groups and its "On this page", whose structure is base.css's
      `wiki-rail__*`: this wiki's rows, its accent for the link being read, and
      the category trail indented under a rule so it reads without an expander
      control. "On this page" sits between the site links and the categories,
@@ -668,7 +667,7 @@
   .slug-editor input { @apply flex-1 bg-transparent border-0 outline-none text-small text-accent py-1 placeholder:text-text-muted placeholder:opacity-60; }
 
   .user-picker-dropdown { @apply absolute z-50 mt-1 w-full rounded-lg border border-border bg-surface-1 shadow-lg overflow-hidden; }
-  .user-picker-option { @apply flex items-center justify-between w-full px-3 py-2 text-sm text-left transition-colors hover:bg-surface-2 cursor-pointer; }
+  .user-picker-option { @apply flex items-center justify-between w-full px-3 py-2 text-sm text-left transition-colors hover:bg-surface-2 aria-selected:bg-surface-2 cursor-pointer; }
 
   /* ===== IDEAS ===== */
   .ideas-panel { @apply flex flex-col gap-3; }

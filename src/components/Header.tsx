@@ -5,8 +5,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Search, Loader2, LogOut, User, FileCode, Bell, Database, MoreVertical, Quote, Check, Eye, EyeOff, Settings, History, KeyRound, MessagesSquare, Wallet } from 'lucide-react';
-import { RailToggle, SearchField, toast, useCopy, useClickOutside } from 'wiki-formant/react';
+import { Loader2, LogOut, User, FileCode, Bell, Database, MoreVertical, Quote, Check, Eye, EyeOff, Settings, History, KeyRound, MessagesSquare, Wallet } from 'lucide-react';
+import { RailToggle, toast, useCopy, useClickOutside } from 'wiki-formant/react';
 import { useState, useEffect, useCallback } from 'react';
 import { SESSION_UNREADABLE, useStore, useAuth, usePagePath, useFetch, useWikiPathname } from '@/hooks';
 import { ROOM_PATH } from '@/lib/trollbox';
@@ -14,9 +14,9 @@ import { cn, shortenAddress, pagePath } from '@/lib/utils';
 import { SITE_NAME } from '@/lib/site';
 import { AGO, useNow } from '@/lib/now';
 import { isoDate, relativeTime } from 'wiki-formant/freshness';
-import type { PageSummary } from '@/lib/wiki';
-import { EmptyState, Highlight } from 'wiki-formant/react-server';
+import { EmptyState } from 'wiki-formant/react-server';
 import { Button, Dropdown } from '@/components/ui';
+import { HeaderSearch } from '@/components/HeaderSearch';
 import { SignInOptions } from '@/components/SignIn';
 import { UserAvatar } from '@/components/UserAvatar';
 import type { WikiNotification } from '@/types';
@@ -136,27 +136,6 @@ function AccountMenu({ name, hasWallet, profilePath, onClose, onLogout }: { name
   );
 }
 
-// ===== Search =====
-// The snippet is the passage the query matched (computed server-side by the
-// shared summarizer), so a body-text hit doesn't read as an unrelated title.
-const pageHref = (page: PageSummary) => pagePath(page.tagPath, page.slug);
-const searchRow = (page: PageSummary, query: string) => (
-  <>
-    <div className="font-medium truncate"><Highlight text={page.title} query={query} /></div>
-    <div className="subtext truncate">{pageHref(page)}</div>
-    {page.snippet && <p className="subtext line-clamp-1 mt-0.5"><Highlight text={page.snippet} query={query} lead={24} /></p>}
-  </>
-);
-
-// Module scope, so the reference is stable: `useTypeahead` runs it from an
-// effect, and an inline arrow would re-search on every render. A refusal (a 429,
-// say) rejects, which the typeahead does not cache as the query's answer.
-async function searchPages(q: string, signal: AbortSignal): Promise<PageSummary[]> {
-  const res = await fetch(`/api/wiki?${new URLSearchParams({ q, pageSize: '5' })}`, { signal });
-  if (!res.ok) throw new Error(res.statusText || `Failed (${res.status})`);
-  return (await res.json()).items || [];
-}
-
 // ===== Page tools =====
 // One home for page-scoped actions (Wikipedia's Tools menu): watch, export,
 // cite, ledger backup – instead of a row of header icons. History has its own
@@ -256,7 +235,6 @@ function useHeaderMenu() {
 }
 
 export function Header() {
-  const router = useRouter();
   const { status: authStatus, isAuthenticated, user, walletData } = useAuth();
   const logout = useStore(s => s.logout);
   const fetchNotifications = useStore(s => s.fetchNotifications);
@@ -309,33 +287,7 @@ export function Header() {
         <span className="logo-text">{SITE_NAME}</span>
       </Link>
 
-      {/* One field for both breakpoints, a magnifier until opened: inline in the
-          bar above `sm`, its own row below it. */}
-      <SearchField
-        fetch={searchPages}
-        action="/search"
-        hrefOf={pageHref}
-        renderRow={searchRow}
-        navigate={href => router.push(href)}
-        label="Search the wiki"
-        placeholder="Search the wiki..."
-        icon={<Search size={20} />}
-        before={<Search className="search-icon-left" size={18} />}
-        spinner={<Loader2 className="search-icon-right" size={18} />}
-        classNames={{
-          root: 'header-search',
-          input: 'input pl-10',
-          toggle: 'icon-btn text-inherit',
-          list: 'search-results',
-          item: 'search-result',
-          itemActive: 'search-result-active',
-          all: 'search-result search-result-all',
-          note: 'search-empty',
-        }}
-        all={q => <>See all results for &ldquo;{q}&rdquo;</>}
-        empty={q => <>No pages found for &ldquo;{q}&rdquo;</>}
-        failed="Search did not answer. Press Enter for the full results page."
-      />
+      <HeaderSearch />
 
       <div ref={actionsRef} className="header-actions">
         {historyHref && (
